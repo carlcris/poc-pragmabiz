@@ -1,5 +1,11 @@
 import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+  type QueryKey,
+} from "@tanstack/react-query";
 import * as businessUnitsApi from "@/api/businessUnits";
 import * as dashboardApi from "@/api/dashboard";
 import * as itemInfoApi from "@/api/itemInfo";
@@ -13,6 +19,7 @@ import type { PickListDetail, PickListSummary } from "@/contracts/picking";
 import type {
   LoadListReceivingDetail,
   RecordDeliveryNoteReceivingScanPayload,
+  SubmitGrnReceivingPayload,
   SubmitDeliveryNoteReceivingPayload,
   UpdateGrnReceivingPayload,
 } from "@/contracts/receiving";
@@ -36,6 +43,18 @@ export const queryKeys = {
 export const mutationKeys = {
   businessUnitContext: ["business-unit-context"] as const,
 };
+
+const markQueriesStaleWithoutRefetch = (client: QueryClient, queryKeysToInvalidate: QueryKey[]) => {
+  for (const queryKey of queryKeysToInvalidate) {
+    void client.invalidateQueries({ queryKey, refetchType: "none" });
+  }
+};
+
+const markGrnReceivingSummariesStale = (client: QueryClient) =>
+  markQueriesStaleWithoutRefetch(client, [["load-lists"], queryKeys.dashboard]);
+
+const markDeliveryNoteReceivingSummariesStale = (client: QueryClient) =>
+  markQueriesStaleWithoutRefetch(client, [["delivery-notes"], queryKeys.dashboard]);
 
 export const useBusinessUnits = () =>
   useQuery({
@@ -169,7 +188,7 @@ export const useUpdateGrnReceiving = (loadListId: string, grnId: string) => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (data: UpdateGrnReceivingPayload) => receivingApi.updateGrnReceiving(grnId, data),
-    onSuccess: async (updated) => {
+    onSuccess: (updated) => {
       client.setQueryData<LoadListReceivingDetail | undefined>(
         queryKeys.loadListReceiving(loadListId, true),
         (cached) => {
@@ -180,8 +199,7 @@ export const useUpdateGrnReceiving = (loadListId: string, grnId: string) => {
           };
         }
       );
-      await client.invalidateQueries({ queryKey: ["load-lists"] });
-      await client.invalidateQueries({ queryKey: queryKeys.dashboard });
+      markGrnReceivingSummariesStale(client);
     },
   });
 };
@@ -192,8 +210,7 @@ export const useStartGrnReceiving = (loadListId: string, grnId: string) => {
     mutationFn: () => receivingApi.startGrnReceiving(grnId),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: queryKeys.loadListReceivingScope(loadListId) });
-      await client.invalidateQueries({ queryKey: ["load-lists"] });
-      await client.invalidateQueries({ queryKey: queryKeys.dashboard });
+      markGrnReceivingSummariesStale(client);
     },
   });
 };
@@ -204,8 +221,7 @@ export const usePauseGrnReceiving = (loadListId: string, grnId: string) => {
     mutationFn: () => receivingApi.pauseGrnReceiving(grnId),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: queryKeys.loadListReceivingScope(loadListId) });
-      await client.invalidateQueries({ queryKey: ["load-lists"] });
-      await client.invalidateQueries({ queryKey: queryKeys.dashboard });
+      markGrnReceivingSummariesStale(client);
     },
   });
 };
@@ -213,11 +229,19 @@ export const usePauseGrnReceiving = (loadListId: string, grnId: string) => {
 export const useSubmitGrnReceiving = (loadListId: string, grnId: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () => receivingApi.submitGrnReceiving(grnId),
-    onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: queryKeys.loadListReceivingScope(loadListId) });
-      await client.invalidateQueries({ queryKey: ["load-lists"] });
-      await client.invalidateQueries({ queryKey: queryKeys.dashboard });
+    mutationFn: (data: SubmitGrnReceivingPayload) => receivingApi.submitGrnReceiving(grnId, data),
+    onSuccess: (updated) => {
+      client.setQueryData<LoadListReceivingDetail | undefined>(
+        queryKeys.loadListReceiving(loadListId, true),
+        (cached) => {
+          if (!cached) return cached;
+          return {
+            ...cached,
+            grn: updated,
+          };
+        }
+      );
+      markGrnReceivingSummariesStale(client);
     },
   });
 };
@@ -258,10 +282,9 @@ export const useRecordDeliveryNoteReceivingScan = (id: string) => {
   return useMutation({
     mutationFn: (data: RecordDeliveryNoteReceivingScanPayload) =>
       receivingApi.recordDeliveryNoteReceivingScan(id, data),
-    onSuccess: async (response) => {
+    onSuccess: (response) => {
       client.setQueryData(queryKeys.deliveryNote(id), response.deliveryNote);
-      await client.invalidateQueries({ queryKey: ["delivery-notes"] });
-      await client.invalidateQueries({ queryKey: queryKeys.dashboard });
+      markDeliveryNoteReceivingSummariesStale(client);
     },
   });
 };
@@ -271,10 +294,9 @@ export const useSubmitReceiving = (id: string) => {
   return useMutation({
     mutationFn: (data: SubmitDeliveryNoteReceivingPayload) =>
       receivingApi.submitReceiving(id, data),
-    onSuccess: async (updated) => {
+    onSuccess: (updated) => {
       client.setQueryData(queryKeys.deliveryNote(id), updated);
-      await client.invalidateQueries({ queryKey: ["delivery-notes"] });
-      await client.invalidateQueries({ queryKey: queryKeys.dashboard });
+      markDeliveryNoteReceivingSummariesStale(client);
     },
   });
 };

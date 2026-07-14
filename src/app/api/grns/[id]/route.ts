@@ -7,30 +7,8 @@ import {
   GRN_RECEIVING_SAVE_CAPABILITY,
   requireGrnReceivingOperation,
 } from "@/lib/grns/permissions";
-import { z } from "zod";
-
-const updateGrnLineSchema = z
-  .object({
-    id: z.string().uuid(),
-    receivedQty: z.number().finite().min(0).max(1_000_000_000),
-    damagedQty: z.number().finite().min(0).max(1_000_000_000),
-    numBoxes: z.number().int().min(0).max(1_000_000),
-    notes: z.string().max(2_000).nullable().optional(),
-  })
-  .strict();
-
-const updateGrnSchema = z
-  .object({
-    receivingDate: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .nullable()
-      .optional(),
-    notes: z.string().max(2_000).nullable().optional(),
-    items: z.array(updateGrnLineSchema).max(500).optional(),
-  })
-  .strict()
-  .refine((value) => Object.keys(value).length > 0, { message: "At least one field is required" });
+import { fetchMobileGrnReceivingRecord } from "@/lib/grns/mobile-receiving-detail";
+import { grnReceivingPatchSchema } from "@/lib/grns/receiving-validation";
 
 // GET /api/grns/[id]
 async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -243,39 +221,20 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
 // PUT /api/grns/[id] - Update GRN (receiving quantities)
 async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const unauthorized = await requireGrnReceivingOperation(GRN_RECEIVING_SAVE_CAPABILITY);
-    if (unauthorized) return unauthorized;
+    const access = await requireGrnReceivingOperation(GRN_RECEIVING_SAVE_CAPABILITY);
+    if (access instanceof NextResponse) return access;
     const { id } = await params;
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, userId, companyId, currentBusinessUnitId } = access.context;
     const body = await request.json().catch(() => null);
-    const parsed = updateGrnSchema.safeParse(body);
+    const parsed = grnReceivingPatchSchema.safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid GRN receiving payload" }, { status: 400 });
     }
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
-
     const { error } = await supabase.rpc("save_grn_receiving", {
-      p_company_id: userData.company_id,
-      p_user_id: user.id,
+      p_company_id: companyId,
+      p_user_id: userId,
       p_grn_id: id,
       p_patch: parsed.data,
     });
@@ -295,7 +254,17 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: message }, { status });
     }
 
-    return NextResponse.json({ id, message: "GRN updated successfully" });
+    const grn = await fetchMobileGrnReceivingRecord({
+      supabase,
+      companyId,
+      currentBusinessUnitId,
+      grnId: id,
+    });
+    if (!grn) {
+      return NextResponse.json({ error: "Failed to load updated GRN" }, { status: 500 });
+    }
+
+    return NextResponse.json({ grn });
   } catch (error) {
     console.error("Internal server error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

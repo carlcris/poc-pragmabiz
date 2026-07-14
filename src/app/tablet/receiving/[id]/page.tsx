@@ -220,6 +220,8 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
         return <span className="text-base text-gray-600">Draft</span>;
       case "receiving":
         return <span className="text-base text-amber-700">Receiving</span>;
+      case "paused":
+        return <span className="text-base text-blue-700">{t("paused")}</span>;
       case "pending_approval":
         return <span className="text-base text-yellow-700">Pending Approval</span>;
       case "approved":
@@ -230,7 +232,8 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
   };
 
   const isLoading = isLoadingLL || isLoadingGRNs || (grnId && isLoadingGRN);
-  const canStartReceiving = canStartGrnReceiving && grn?.status === "draft";
+  const canStartReceiving =
+    canStartGrnReceiving && (grn?.status === "draft" || grn?.status === "paused");
   const isEditable = canSaveGrnReceiving && grn?.status === "receiving";
   const canSubmit = canSubmitGrnReceiving && grn?.status === "receiving";
 
@@ -519,9 +522,7 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
                             </p>
                             <p className="text-sm text-gray-600">{item.item?.code || "-"}</p>
                             <div className="mt-2 space-y-1">
-                              <p className="text-sm font-semibold text-gray-800">
-                                {item.unitName}
-                              </p>
+                              <p className="text-sm font-semibold text-gray-800">{item.unitName}</p>
                               <p className="text-xs text-gray-500">
                                 Qty/Unit:{" "}
                                 {item.qtyPerUnit.toLocaleString(undefined, {

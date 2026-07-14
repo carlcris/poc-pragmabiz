@@ -1,5 +1,4 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import {
   GRN_RECEIVING_CONFIRM_CAPABILITY,
@@ -21,36 +20,17 @@ const userSafeConfirmMessage = (message: string | undefined) => {
 // POST /api/grns/[id]/confirm - Confirm GRN after received stock has been staged to putaway
 async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const unauthorized = await requireGrnReceivingOperation(GRN_RECEIVING_CONFIRM_CAPABILITY);
-    if (unauthorized) return unauthorized;
+    const access = await requireGrnReceivingOperation(GRN_RECEIVING_CONFIRM_CAPABILITY);
+    if (access instanceof NextResponse) return access;
     const { id } = await params;
-    const { supabase } = await createServerClientWithBU();
-    const body = await request.json().catch(() => ({} as { notes?: string | null }));
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
+    const { supabase, userId, companyId } = access.context;
+    const body = await request.json().catch(() => ({}) as { notes?: string | null });
 
     const { data: grn, error: fetchError } = await supabase
       .from("grns")
       .select("id, grn_number, status, load_list_id, company_id, items:grn_items(id)")
       .eq("id", id)
-      .eq("company_id", userData.company_id)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .single();
 
@@ -74,7 +54,7 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       "confirm_grn_with_putaway",
       {
         p_company_id: grn.company_id,
-        p_user_id: user.id,
+        p_user_id: userId,
         p_grn_id: grn.id,
         p_notes: body.notes || null,
       }

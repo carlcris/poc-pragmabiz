@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   Card,
@@ -10,7 +11,12 @@ import {
   SearchInput,
   StatusBadge
 } from "@/components/ui";
-import { useDeliveryNotes, useLoadLists, useReceivingWarehouse } from "@/hooks/queries";
+import {
+  queryKeys,
+  useDeliveryNotes,
+  useLoadLists,
+  useReceivingWarehouse
+} from "@/hooks/queries";
 import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
 import { borderRadius, shadows, spacing } from "@/theme/spacing";
@@ -36,6 +42,9 @@ const deliveryNoteStatusFilters = [
 ];
 
 export default function ReceivingScreen() {
+  const hasFocusedOnce = useRef(false);
+  const refreshOnFocusRef = useRef<() => void>(() => undefined);
+  const queryClient = useQueryClient();
   const session = useAuthStore((state) => state.session);
   const currentBusinessUnit = session?.currentBusinessUnit;
   const isSwitchingBusinessUnit = useAuthStore((state) => state.isSwitchingBusinessUnit);
@@ -75,6 +84,25 @@ export default function ReceivingScreen() {
     deliveryNoteStatusFilters.find((item) => item.value === deliveryNoteStatus) ||
     deliveryNoteStatusFilters[0];
 
+  refreshOnFocusRef.current = () => {
+    if (tab === "load-lists") {
+      const queryKey = queryKeys.loadLists(
+        status,
+        search,
+        receivingWarehouse.data?.warehouseId || ""
+      );
+      if (canLoadLoadLists && queryClient.getQueryState(queryKey)?.isInvalidated) {
+        void loadLists.refetch();
+      }
+      return;
+    }
+
+    const queryKey = queryKeys.deliveryNotes(deliveryNoteStatus, search);
+    if (canViewDeliveryNoteReceiving && queryClient.getQueryState(queryKey)?.isInvalidated) {
+      void deliveryNotes.refetch();
+    }
+  };
+
   useEffect(() => {
     if (tab === "load-lists" && !canViewLoadListReceiving && canViewDeliveryNoteReceiving) {
       setTab("delivery-notes");
@@ -83,6 +111,17 @@ export default function ReceivingScreen() {
       setTab("load-lists");
     }
   }, [canViewDeliveryNoteReceiving, canViewLoadListReceiving, tab]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasFocusedOnce.current) {
+        hasFocusedOnce.current = true;
+        return;
+      }
+
+      refreshOnFocusRef.current();
+    }, [])
+  );
 
   if (!canViewReceiving) {
     return (

@@ -1,27 +1,36 @@
 import { NextResponse } from "next/server";
 import { GRANULAR_CAPABILITIES, type GranularCapability } from "@/constants/granular-permissions";
 import { RESOURCES } from "@/constants/resources";
-import { getAuthenticatedUser, requirePermission } from "@/lib/auth";
-import { canAccessCapability } from "@/services/permissions/permissionResolver";
+import { requireRequestContext, type RequestContext } from "@/lib/auth/requestContext";
+import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
 
 export const GRN_RECEIVING_SAVE_CAPABILITY = GRANULAR_CAPABILITIES.GRN_RECEIVING_SAVE;
 export const GRN_RECEIVING_START_CAPABILITY = GRANULAR_CAPABILITIES.GRN_RECEIVING_START;
 export const GRN_RECEIVING_SUBMIT_CAPABILITY = GRANULAR_CAPABILITIES.GRN_RECEIVING_SUBMIT;
 export const GRN_RECEIVING_CONFIRM_CAPABILITY = GRANULAR_CAPABILITIES.GRN_RECEIVING_CONFIRM;
 
+export type GrnReceivingOperationAccess = {
+  context: RequestContext;
+};
+
 export async function requireGrnReceivingOperation(
   capability: GranularCapability
-): Promise<NextResponse | null> {
-  const parentDenied = await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "view");
-  if (parentDenied) return parentDenied;
+): Promise<GrnReceivingOperationAccess | NextResponse> {
+  const context = await requireRequestContext();
+  if ("status" in context) return context;
 
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const capabilities = await getUserCapabilities(context.userId, context.currentBusinessUnitId);
+  if (!hasCapability(capabilities, RESOURCES.GOODS_RECEIPT_NOTES, "view")) {
+    return NextResponse.json(
+      {
+        error: "Forbidden",
+        details: "You do not have permission to view goods receipt notes",
+      },
+      { status: 403 }
+    );
   }
 
-  const allowed = await canAccessCapability(user.id, capability, "edit", user.businessUnitId);
-  if (!allowed) {
+  if (!hasCapability(capabilities, capability, "edit")) {
     return NextResponse.json(
       {
         error: "Forbidden",
@@ -31,5 +40,5 @@ export async function requireGrnReceivingOperation(
     );
   }
 
-  return null;
+  return { context };
 }

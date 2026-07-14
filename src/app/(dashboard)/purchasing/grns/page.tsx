@@ -98,6 +98,8 @@ export default function GRNsPage() {
         return <StatusText tone="muted">{t("draft")}</StatusText>;
       case "receiving":
         return <StatusText tone="amber">{t("receiving")}</StatusText>;
+      case "paused":
+        return <StatusText tone="blue">{t("paused")}</StatusText>;
       case "pending_approval":
         return <StatusText tone="yellow">{t("pendingApproval")}</StatusText>;
       case "approved":
@@ -186,6 +188,7 @@ export default function GRNsPage() {
               <SelectItem value="all">{t("allStatus")}</SelectItem>
               <SelectItem value="draft">{t("draft")}</SelectItem>
               <SelectItem value="receiving">{t("receiving")}</SelectItem>
+              <SelectItem value="paused">{t("paused")}</SelectItem>
               <SelectItem value="pending_approval">{t("pendingApproval")}</SelectItem>
               <SelectItem value="approved">{t("approved")}</SelectItem>
               <SelectItem value="rejected">{t("rejected")}</SelectItem>

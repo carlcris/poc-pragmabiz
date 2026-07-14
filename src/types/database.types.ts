@@ -11836,6 +11836,16 @@ export type Database = {
             }
             Returns: undefined
           }
+      submit_grn_receiving_transaction: {
+        Args: {
+          p_company_id: string
+          p_grn_id: string
+          p_notes?: string
+          p_receiving_patch?: Json
+          p_user_id: string
+        }
+        Returns: string
+      }
       submit_grn_to_putaway: {
         Args: {
           p_company_id: string

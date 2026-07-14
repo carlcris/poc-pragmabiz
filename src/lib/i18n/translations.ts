@@ -7929,6 +7929,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       allWarehouses: "All Warehouses",
       draft: "Draft",
       receiving: "Receiving",
+      paused: "Paused",
       pendingApproval: "Pending Confirmation",
       approved: "Confirmed",
       rejected: "Rejected",
@@ -7976,6 +7977,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     grnDetailPage: {
       draft: "Draft",
       receiving: "Receiving",
+      paused: "Paused",
       pendingApproval: "Pending Confirmation",
       approved: "Confirmed",
       rejected: "Rejected",
@@ -13374,6 +13376,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       allWarehouses: "所有仓库",
       draft: "草稿",
       receiving: "收货中",
+      paused: "已暂停",
       pendingApproval: "待确认",
       approved: "已确认",
       rejected: "已拒绝",
@@ -13420,6 +13423,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     grnDetailPage: {
       draft: "草稿",
       receiving: "收货中",
+      paused: "已暂停",
       pendingApproval: "待确认",
       approved: "已确认",
       rejected: "已拒绝",

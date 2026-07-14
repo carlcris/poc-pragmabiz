@@ -131,9 +131,9 @@ apps/mobile/
    ↓
 5. Enter received and damaged quantities per GRN line
    ↓
-6. Save quantities, or pause receiving to return the load list to arrived status
+6. Save quantities without submitting, or pause the GRN while the load list remains in receiving
    ↓
-7. Submit GRN for Approval
+7. Submit GRN for Approval; any unsaved line changes are saved in the same transaction
    ↓
 8. Received stock is staged into Putaway Station
    ↓
@@ -146,8 +146,9 @@ apps/mobile/
 - Load-list receiving queue resolves the current business unit warehouse and fetches load lists with that `warehouseId` filter
 - Start and pause controls for user-triggered receiving sessions
 - Per-line received and damaged quantity entry
-- Save draft receiving quantities
-- Submit to the shared GRN confirmation and putaway-staging workflow
+- Save draft receiving quantities without changing workflow status
+- Submit to the shared GRN confirmation and putaway-staging workflow, atomically including any unsaved line changes
+- Save and submit update the active receiving detail from their responses; load-list and dashboard summaries are marked stale without hidden-screen requests, then refreshed when their screens regain focus
 - Real-time quantity tracking
 - Variance highlighting
 
@@ -424,21 +425,15 @@ Fetch native mobile load-list receiving candidates. The API only returns rows wh
 
 **Permissions**: `view` on either Load Lists or Goods Receipt Notes. Goods Receipt Notes access grants only the business-unit-scoped load-list context required by the receiving workflow; ordinary load-list APIs still require Load Lists access.
 
-#### GET /api/load-lists/[id]?receivingOnly=true
+#### GET /api/load-lists/[id]/receiving-detail?includeGrn=true
 
-Get business-unit-scoped load-list context for native mobile receiving.
+Get the business-unit-scoped load-list context and its linked GRN in one bounded native-mobile request. The GRN line collection is limited to 500 explicit records; oversized receipts return an error instead of an unbounded payload.
 
-**Permissions**: `view` on either Load Lists or Goods Receipt Notes
-
-#### GET /api/grns?load_list_id=:id
-
-Get the GRN linked to a load list for native mobile receiving.
-
-**Permissions**: `view` on Goods Receipt Notes
+**Permissions**: `view` on either Load Lists or Goods Receipt Notes for load-list context; `includeGrn=true` also requires `view` on Goods Receipt Notes
 
 #### PUT /api/grns/[id]
 
-Save native mobile GRN receiving quantities. The GRN must already be in `receiving`; bounded header and line patches are applied atomically by the database.
+Save native mobile GRN receiving quantities. The GRN must already be in `receiving`; bounded header and line patches are applied atomically by the database. The response includes the authoritative updated GRN, so the mobile client updates its detail cache without a follow-up detail request.
 
 **Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.save_receiving.edit`
 
@@ -466,13 +461,13 @@ Start native mobile GRN receiving. This transitions the GRN and linked arrived l
 
 #### POST /api/grns/[id]/pause-receiving
 
-Pause native mobile GRN receiving. This saves the session state by returning the GRN to `draft` and the linked load list to `arrived`; entered quantities remain on the GRN lines.
+Pause native mobile GRN receiving. This saves the session state by moving the GRN to `paused` while leaving the linked load list in `receiving`; entered quantities remain on the GRN lines. Starting receiving again resumes the paused GRN.
 
 **Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.start_receiving.edit`
 
 #### POST /api/grns/[id]/submit
 
-Submit native mobile GRN receiving for confirmation. Submission stages received good quantities into Putaway Station using the shared GRN putaway workflow; final batch/location placement happens when putaway is posted.
+Submit native mobile GRN receiving for confirmation. The request may include an optional `receivingPatch`; when present, the database saves that patch and stages the received good quantities into Putaway Station in one transaction. A submission failure rolls back the optional save and all staging writes. When no unsaved lines exist, the client submits without a patch. Final batch/location placement happens when putaway is posted.
 
 **Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.submit_receiving.edit`
 
@@ -583,8 +578,10 @@ Search items for mobile (autocomplete).
    - Compares to expected load-list quantities
    - Shows variances
 8. **Saves receiving quantities**
-   - Can pause receiving before submit
+   - Save remains a save-only action and keeps the GRN in `receiving`
+   - Can pause the GRN before submit; the load list remains `receiving`
 9. **Submits GRN for confirmation**
+   - If line edits are still unsaved, Submit saves and submits them atomically in one request
 10. **Received good stock is staged into Putaway Station**
 11. **Supervisor confirms GRN** (on desktop)
 
@@ -624,8 +621,8 @@ Search items for mobile (autocomplete).
 - Mobile receiving list resolves the current business unit warehouse and only fetches load lists with that exact `warehouseId`
 - Start and pause receiving controls
 - Per-line received and damaged quantity entry
-- Save receiving quantities
-- Submit for confirmation and putaway staging
+- Save receiving quantities without submitting
+- Submit for confirmation and putaway staging, including unsaved quantities atomically
 - Delivery-note receiving is inbound-only: the mobile receiving queue only shows delivery notes whose requesting warehouse belongs to the current business unit.
 
 ## Troubleshooting

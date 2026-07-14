@@ -60,7 +60,7 @@ export default function LoadListReceivingDetailScreen() {
   const startGrn = useStartGrnReceiving(id, grn?.id || "");
   const pauseGrn = usePauseGrnReceiving(id, grn?.id || "");
   const submitGrn = useSubmitGrnReceiving(id, grn?.id || "");
-  const canStart = grn?.status === "draft" && canStartReceiving;
+  const canStart = (grn?.status === "draft" || grn?.status === "paused") && canStartReceiving;
   const canPause = grn?.status === "receiving" && canStartReceiving;
   const canEdit = grn?.status === "receiving" && canSaveReceiving;
   const hasUnsavedChanges = Object.keys(lineEdits).length > 0;
@@ -150,11 +150,16 @@ export default function LoadListReceivingDetailScreen() {
       return;
     }
 
-    const saved = await saveChanges(true);
-    if (!saved) return;
-
     try {
-      await submitGrn.mutateAsync();
+      await submitGrn.mutateAsync({
+        receivingPatch: hasUnsavedChanges
+          ? {
+              receivingDate: grn.receivingDate || todayIsoDate(),
+              items: buildUpdatePayload()
+            }
+          : undefined
+      });
+      setLineEdits({});
       setActionMessage("GRN submitted to putaway.");
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Failed to submit GRN.");

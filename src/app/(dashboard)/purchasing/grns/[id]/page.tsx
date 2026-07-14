@@ -142,6 +142,8 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
         return <StatusText tone="muted">{t("draft")}</StatusText>;
       case "receiving":
         return <StatusText tone="amber">{t("receiving")}</StatusText>;
+      case "paused":
+        return <StatusText tone="blue">{t("paused")}</StatusText>;
       case "pending_approval":
         return <StatusText tone="yellow">{t("pendingApproval")}</StatusText>;
       case "approved":
@@ -255,7 +257,8 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
     return value ?? 0;
   };
 
-  const canStartReceiving = canStartGrnReceiving && grn?.status === "draft";
+  const canStartReceiving =
+    canStartGrnReceiving && (grn?.status === "draft" || grn?.status === "paused");
   const isEditable = canSaveGrnReceiving && grn?.status === "receiving";
   const canSubmit = canSubmitGrnReceiving && grn?.status === "receiving";
   const canConfirm = canConfirmGrns && grn?.status === "pending_approval";
@@ -606,9 +609,7 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                             {item.item?.name || t("noValue")}
                           </TableCell>
                           <TableCell>
-                            <div className="font-medium text-gray-900">
-                              {item.unitName}
-                            </div>
+                            <div className="font-medium text-gray-900">{item.unitName}</div>
                             <div className="text-xs text-muted-foreground">
                               {t("qtyPerUnitInlineLabel", {
                                 qty: item.qtyPerUnit.toLocaleString(locale, {

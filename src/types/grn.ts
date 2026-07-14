@@ -3,6 +3,7 @@ import type { ItemUnitOption } from "@/types/item";
 export type GRNStatus =
   | "draft"
   | "receiving"
+  | "paused"
   | "pending_approval"
   | "approved"
   | "rejected"

@@ -50,6 +50,11 @@ export type UpdateGrnReceivingPayload = {
   items: UpdateGrnLinePayload[];
 };
 
+export type SubmitGrnReceivingPayload = {
+  notes?: string;
+  receivingPatch?: UpdateGrnReceivingPayload;
+};
+
 export type GrnDetail = {
   id: string;
   grnNumber: string;

@@ -588,15 +588,15 @@ These are the records everything else in the app is built on. Before testing any
 
 **How a record starts**: automatically, when a Load List is marked **Arrived** (section 17, step 5). There is no manual "create receipt" button.
 
-**Stages**: Draft → Receiving → Pending Approval → Approved, or Rejected / Cancelled.
+**Stages**: Draft → Receiving ↔ Paused → Pending Approval → Approved, or Rejected / Cancelled.
 
 **Step-by-step workflow**:
 
 1. Created automatically in Draft when its Load List arrives.
 2. **Start Receiving** → status Receiving. Requires the linked Load List to actually be Arrived.
 3. While receiving, **Save Changes** lets you record received/damaged quantities and box counts as you go, without changing status — useful for a long receiving session done in stages.
-4. Receiving can be **paused** and resumed later without losing progress.
-5. **Submit for Approval** → status Pending Approval. Requires at least one item to actually have a received quantity greater than zero. This is the point where received stock is staged into **Putaway** (section 19) — it counts as on-hand but isn't sellable/pickable yet.
+4. Receiving can be **paused** and resumed later without losing progress. Pausing changes only the GRN to Paused; its Load List remains Receiving.
+5. **Submit for Approval** → status Pending Approval. On mobile, Submit also saves any unsaved line changes in the same transaction; a submission failure must leave those edits unsaved and must not leave stock or putaway records behind. Submit requires at least one item to actually have a received quantity greater than zero. This is the point where received stock is staged into **Putaway** (section 19) — it counts as on-hand but isn't sellable/pickable yet.
 6. **Confirm** → status Approved. Notifies whoever created the Load List that it's been received.
 7. Damaged items reported during receiving have their own small lifecycle (reported → being processed → resolved) tracked separately.
 
@@ -605,6 +605,7 @@ These are the records everything else in the app is built on. Before testing any
 **Things to test**:
 - Confirm Start Receiving is blocked if the Load List isn't actually Arrived yet.
 - Try to Submit for Approval with every line at zero received quantity — should be refused.
+- On mobile, change a line without tapping Save and then Submit; confirm the line and submission commit together. Repeat with a forced submission failure and confirm neither the line change nor any stock/putaway write is committed.
 - After Submit, confirm the received quantity shows up in on-hand stock but **not** in available/sellable stock, until Putaway (section 19) is completed for it.
 - Test with a user who has, say, Start and Save permissions but not Confirm — confirm the Confirm button/action is genuinely unavailable to them, not just hidden but still triggerable another way.
 - Report a damaged item during receiving and follow it through its own lifecycle.

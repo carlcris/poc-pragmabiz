@@ -11,6 +11,7 @@ import type {
   ReceivingLine,
   RecordDeliveryNoteReceivingScanResult,
   RecordDeliveryNoteReceivingScanPayload,
+  SubmitGrnReceivingPayload,
   SubmitDeliveryNoteReceivingPayload,
   UpdateGrnReceivingPayload,
 } from "@/contracts/receiving";
@@ -224,27 +225,15 @@ export const getLoadListReceiving = async (
   id: string,
   includeGrn: boolean
 ): Promise<LoadListReceivingDetail> => {
-  const loadListResponse = await apiRequest<unknown>(`/api/load-lists/${id}`, {
-    query: { receivingOnly: true },
-  });
-  if (!includeGrn) {
-    return {
-      loadList: normalizeLoadListDetail(loadListResponse),
-      grn: null,
-    };
-  }
-
-  const grnsResponse = await apiRequest<ListResponse>("/api/grns", {
-    query: { load_list_id: id, page: 1, limit: 1 },
-  });
-  const grnSummary = firstRecord(grnsResponse.data);
-  const grn = grnSummary.id
-    ? normalizeGrn(await apiRequest<unknown>(`/api/grns/${String(grnSummary.id)}`))
-    : null;
+  const response = asRecord(
+    await apiRequest<unknown>(`/api/load-lists/${id}/receiving-detail`, {
+      query: { includeGrn },
+    })
+  );
 
   return {
-    loadList: normalizeLoadListDetail(loadListResponse),
-    grn,
+    loadList: normalizeLoadListDetail(response.loadList),
+    grn: includeGrn && response.grn ? normalizeGrn(response.grn) : null,
   };
 };
 
@@ -252,11 +241,13 @@ export const updateGrnReceiving = async (
   id: string,
   data: UpdateGrnReceivingPayload
 ): Promise<GrnDetail> => {
-  await apiRequest<unknown>(`/api/grns/${id}`, {
-    method: "PUT",
-    body: data,
-  });
-  return normalizeGrn(await apiRequest<unknown>(`/api/grns/${id}`));
+  const response = asRecord(
+    await apiRequest<unknown>(`/api/grns/${id}`, {
+      method: "PUT",
+      body: data,
+    })
+  );
+  return normalizeGrn(response.grn);
 };
 
 export const startGrnReceiving = (id: string) =>
@@ -269,10 +260,18 @@ export const pauseGrnReceiving = (id: string) =>
     method: "POST",
   });
 
-export const submitGrnReceiving = (id: string) =>
-  apiRequest<unknown>(`/api/grns/${id}/submit`, {
-    method: "POST",
-  });
+export const submitGrnReceiving = async (
+  id: string,
+  data: SubmitGrnReceivingPayload
+): Promise<GrnDetail> => {
+  const response = asRecord(
+    await apiRequest<unknown>(`/api/grns/${id}/submit`, {
+      method: "POST",
+      body: data,
+    })
+  );
+  return normalizeGrn(response.grn);
+};
 
 export const listDeliveryNotes = async (status: string, search: string) => {
   const response = await apiRequest<ListResponse>("/api/delivery-notes", {

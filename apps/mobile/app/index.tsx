@@ -1,9 +1,11 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useRef } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Card, ErrorState, LoadingState, Screen } from "@/components/ui";
 import type { MobileUser } from "@/contracts/auth";
-import { useDashboard } from "@/hooks/queries";
+import { queryKeys, useDashboard } from "@/hooks/queries";
 import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
 import { spacing, borderRadius } from "@/theme/spacing";
@@ -24,6 +26,9 @@ const getDisplayName = (user: MobileUser | null) => {
 };
 
 export default function DashboardScreen() {
+  const hasFocusedOnce = useRef(false);
+  const refreshOnFocusRef = useRef<() => void>(() => undefined);
+  const queryClient = useQueryClient();
   const dashboard = useDashboard();
   const session = useAuthStore((state) => state.session);
   const user = session?.user ?? null;
@@ -31,6 +36,23 @@ export default function DashboardScreen() {
   const showReceiving = canAccessReceiving(session);
   const showPicking = canAccessPicking(session);
   const showQuickActions = showReceiving || showPicking;
+
+  refreshOnFocusRef.current = () => {
+    if (queryClient.getQueryState(queryKeys.dashboard)?.isInvalidated) {
+      void dashboard.refetch();
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasFocusedOnce.current) {
+        hasFocusedOnce.current = true;
+        return;
+      }
+
+      refreshOnFocusRef.current();
+    }, [])
+  );
 
   return (
     <Screen title={`Hi ${displayName}`} subtitle={`${getGreeting()}!`}>

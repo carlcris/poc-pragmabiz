@@ -1,5 +1,4 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import {
   GRN_RECEIVING_START_CAPABILITY,
@@ -14,44 +13,23 @@ const userSafeStartMessage = (message: string | undefined) => {
   const allowedMessages = new Set([
     "GRN not found",
     "Load list not found",
-    "Only draft GRNs can start receiving",
-    "Only arrived load lists can start receiving",
+    "Only draft or paused GRNs can start receiving",
+    "Only arrived or receiving load lists can start receiving",
   ]);
 
-  return message && allowedMessages.has(message)
-    ? message
-    : "Failed to start GRN receiving";
+  return message && allowedMessages.has(message) ? message : "Failed to start GRN receiving";
 };
 
 async function POSTHandler(_request: NextRequest, context: RouteContext) {
   try {
-    const unauthorized = await requireGrnReceivingOperation(GRN_RECEIVING_START_CAPABILITY);
-    if (unauthorized) return unauthorized;
+    const access = await requireGrnReceivingOperation(GRN_RECEIVING_START_CAPABILITY);
+    if (access instanceof NextResponse) return access;
     const { id } = await context.params;
-    const { supabase } = await createServerClientWithBU();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
+    const { supabase, userId, companyId } = access.context;
 
     const { error } = await supabase.rpc("start_grn_receiving", {
-      p_company_id: userData.company_id,
-      p_user_id: user.id,
+      p_company_id: companyId,
+      p_user_id: userId,
       p_grn_id: id,
     });
 

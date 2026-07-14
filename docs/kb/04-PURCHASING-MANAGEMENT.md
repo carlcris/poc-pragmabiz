@@ -664,19 +664,19 @@ Create GRN for received goods.
 
 #### POST /api/grns/[id]/start-receiving
 
-Transition a draft GRN and its linked arrived load list into `receiving` before quantities can be edited.
+Transition a draft GRN and its linked arrived load list into `receiving` before quantities can be edited, or resume a paused GRN while its linked load list remains `receiving`.
 
 **Permissions**: `view` on Goods Receipt Notes plus `goods_receipt_notes.operation.start_receiving.edit`
 
 #### PUT /api/grns/[id]
 
-Save bounded GRN header and receiving-line changes. The GRN must already be in `receiving`; dashboard, tablet, and mobile clients expose editing only after Start Receiving succeeds.
+Save bounded GRN header and receiving-line changes. The GRN must already be in `receiving`; dashboard, tablet, and mobile clients expose editing only after Start Receiving succeeds. Save does not submit the GRN and returns the authoritative updated receiving detail.
 
 **Permissions**: `view` on Goods Receipt Notes plus `goods_receipt_notes.operation.save_receiving.edit`
 
 #### POST /api/grns/[id]/submit
 
-Submit a receiving GRN for confirmation and stage its received stock for putaway.
+Submit a receiving GRN for confirmation and stage its received stock for putaway. Mobile callers may include a bounded receiving patch so unsaved lines are saved and submitted in the same database transaction; any submit failure rolls back both the save and all staging writes.
 
 **Permissions**: `view` on Goods Receipt Notes plus `goods_receipt_notes.operation.submit_receiving.edit`
 
