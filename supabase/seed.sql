@@ -492,8 +492,8 @@ BEGIN
     RAISE NOTICE 'Purchase Orders: % records', (SELECT COUNT(*) FROM purchase_orders);
     RAISE NOTICE 'Item-Warehouse Stock: % records', (SELECT COUNT(*) FROM item_warehouse);
     RAISE NOTICE '===============================================';
-    RAISE NOTICE 'Seeded users: demo@pragmatica.app, cashier@pragmatica.app, admin@pragmatica.ph';
-    RAISE NOTICE 'RBAC: demo and admin are Super Admin; cashier has Cashier role';
+    RAISE NOTICE 'Seeded core users and requested Super Admin accounts';
+    RAISE NOTICE 'RBAC: demo, admin, and requested accounts are Super Admin; cashier has Cashier role';
     RAISE NOTICE '===============================================';
 END $$;
 
@@ -531,6 +531,102 @@ VALUES
 ('1d2f3a4b-5c6d-47e8-9f01-23456789abcd','1e10e2dd-655e-41e0-a508-edfd660a9bcf','stockman','stockman@pragmatica.app','Warehouse','Stockman',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,NULL),
 ('2e3f4a5b-6c7d-48e9-af01-3456789abcde','1e10e2dd-655e-41e0-a508-edfd660a9bcf','picker','picker@pragmatica.app','Warehouse','Picker',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,NULL);
 
+-- Requested Super Admin accounts
+WITH requested_super_admins(id, email) AS (
+  VALUES
+    ('697b80c9-66ba-40bc-93e0-140ae99f005b'::UUID, 'abnerdominic0418@gmail.com'),
+    ('19ff3144-93b8-4112-8597-03313f4dbc68'::UUID, 'clariceg17@gmail.com'),
+    ('25c02782-996b-4bf7-a547-5411d8561c1c'::UUID, 'fendaya@gmail.com'),
+    ('f3de8cbf-64c1-406f-be69-fe5ee7ee1d7f'::UUID, 'gemyugo@gmail.com'),
+    ('a43706ac-6950-4e73-9e88-a23dd024fd25'::UUID, 'jasonmadrazo101@gmail.com'),
+    ('67bef70e-0045-4714-ac24-f3989d5827f6'::UUID, 'rlorengrace@gmail.com'),
+    ('5a83d7fa-da00-44ea-90d2-e4b0c2fb3aae'::UUID, 'coder387@gmail.com')
+)
+INSERT INTO auth.users (
+  instance_id,
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  confirmation_token,
+  recovery_token,
+  email_change_token_new,
+  email_change,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at,
+  is_sso_user,
+  is_anonymous
+)
+SELECT
+  '00000000-0000-0000-0000-000000000000'::UUID,
+  id,
+  'authenticated',
+  'authenticated',
+  email,
+  '$2a$10$YYm.GtSjeByIE2dBgT4qNOOf2w8IJNKE4/y/j3ihOW/sQRFHIRzO6',
+  NOW(),
+  '',
+  '',
+  '',
+  '',
+  '{"provider": "email", "providers": ["email"]}'::JSONB,
+  jsonb_build_object(
+    'sub', id::TEXT,
+    'email', email,
+    'email_verified', TRUE,
+    'phone_verified', FALSE
+  ),
+  NOW(),
+  NOW(),
+  FALSE,
+  FALSE
+FROM requested_super_admins;
+
+WITH requested_super_admins(id, username, email, first_name, last_name) AS (
+  VALUES
+    ('697b80c9-66ba-40bc-93e0-140ae99f005b'::UUID, 'abnerdominic0418', 'abnerdominic0418@gmail.com', 'Abner Dominic', 'Belotindos'),
+    ('19ff3144-93b8-4112-8597-03313f4dbc68'::UUID, 'clariceg17', 'clariceg17@gmail.com', 'Clarice', 'Manluctao'),
+    ('25c02782-996b-4bf7-a547-5411d8561c1c'::UUID, 'fendaya', 'fendaya@gmail.com', 'Franklin', 'Endaya'),
+    ('f3de8cbf-64c1-406f-be69-fe5ee7ee1d7f'::UUID, 'gemyugo', 'gemyugo@gmail.com', 'Karen', 'Go'),
+    ('a43706ac-6950-4e73-9e88-a23dd024fd25'::UUID, 'jasonmadrazo101', 'jasonmadrazo101@gmail.com', 'Jason', 'Madrazo'),
+    ('67bef70e-0045-4714-ac24-f3989d5827f6'::UUID, 'rlorengrace', 'rlorengrace@gmail.com', 'Loren Grace', 'Recolito'),
+    ('5a83d7fa-da00-44ea-90d2-e4b0c2fb3aae'::UUID, 'coder387', 'coder387@gmail.com', 'Carlito', 'Crisostomo')
+)
+INSERT INTO public.users (
+  id,
+  company_id,
+  username,
+  email,
+  first_name,
+  last_name,
+  phone,
+  is_active,
+  last_login_at,
+  created_at,
+  updated_at,
+  deleted_at,
+  van_warehouse_id
+)
+SELECT
+  id,
+  '1e10e2dd-655e-41e0-a508-edfd660a9bcf'::UUID,
+  username,
+  email,
+  first_name,
+  last_name,
+  NULL,
+  TRUE,
+  NULL,
+  NOW(),
+  NOW(),
+  NULL,
+  NULL
+FROM requested_super_admins;
+
 -- ============================================================================
 -- SEED DATA: Grant Default BU Access to Users
 -- ============================================================================
@@ -548,6 +644,35 @@ VALUES
   ('bcb8f5df-b678-4c22-ba71-59b33ba06227', 'bbce384d-dd71-441c-a5e3-2b5e5d1543ce', 'admin', false, true, now()),
   ('1d2f3a4b-5c6d-47e8-9f01-23456789abcd', 'd69c52d5-6755-4e28-87e3-24c680a5897b', 'staff', true, true, now()),
   ('2e3f4a5b-6c7d-48e9-af01-3456789abcde', 'd69c52d5-6755-4e28-87e3-24c680a5897b', 'staff', true, true, now());
+
+WITH requested_super_admins(user_id) AS (
+  VALUES
+    ('697b80c9-66ba-40bc-93e0-140ae99f005b'::UUID),
+    ('19ff3144-93b8-4112-8597-03313f4dbc68'::UUID),
+    ('25c02782-996b-4bf7-a547-5411d8561c1c'::UUID),
+    ('f3de8cbf-64c1-406f-be69-fe5ee7ee1d7f'::UUID),
+    ('a43706ac-6950-4e73-9e88-a23dd024fd25'::UUID),
+    ('67bef70e-0045-4714-ac24-f3989d5827f6'::UUID),
+    ('5a83d7fa-da00-44ea-90d2-e4b0c2fb3aae'::UUID)
+)
+INSERT INTO user_business_unit_access (
+  user_id,
+  business_unit_id,
+  role,
+  is_default,
+  is_current,
+  granted_at
+)
+SELECT
+  requested_super_admins.user_id,
+  business_units.id,
+  'admin',
+  business_units.code = 'MAIN',
+  business_units.code = 'MAIN',
+  NOW()
+FROM requested_super_admins
+CROSS JOIN business_units
+WHERE business_units.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf';
 
 -- ============================================================================
 -- SEED DATA: Cashier Role and Permissions
@@ -862,6 +987,28 @@ WHERE r.name = 'Super Admin'
       AND ur.role_id = r.id
       AND ur.business_unit_id IS NULL
   );
+
+-- Assign the requested accounts a global Super Admin role across all BUs
+WITH requested_super_admins(user_id) AS (
+  VALUES
+    ('697b80c9-66ba-40bc-93e0-140ae99f005b'::UUID),
+    ('19ff3144-93b8-4112-8597-03313f4dbc68'::UUID),
+    ('25c02782-996b-4bf7-a547-5411d8561c1c'::UUID),
+    ('f3de8cbf-64c1-406f-be69-fe5ee7ee1d7f'::UUID),
+    ('a43706ac-6950-4e73-9e88-a23dd024fd25'::UUID),
+    ('67bef70e-0045-4714-ac24-f3989d5827f6'::UUID),
+    ('5a83d7fa-da00-44ea-90d2-e4b0c2fb3aae'::UUID)
+)
+INSERT INTO user_roles (user_id, role_id, business_unit_id, created_at)
+SELECT
+  requested_super_admins.user_id,
+  roles.id,
+  NULL,
+  NOW()
+FROM requested_super_admins
+JOIN roles
+  ON roles.name = 'Super Admin'
+ AND roles.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf';
 
 -- Assign Cashier role to cashier user
 INSERT INTO user_roles (user_id, role_id, business_unit_id, created_at)
@@ -1574,6 +1721,16 @@ VALUES
 INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
 VALUES
 ('00000000-0000-0000-0000-000000000000','c313f071-c097-4a8a-9f08-b1e759dcaf12','authenticated','authenticated','lato_rosie@yahoo.com','$2a$10$fl1NcrikDWUCdcVrOa2MRebN.HByAT8m80Jk2K9P5L09INoP1omFG','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "c313f071-c097-4a8a-9f08-b1e759dcaf12", "email": "lato_rosie@yahoo.com", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
+
+-- Apply the requested development passwords after every seeded auth user exists.
+UPDATE auth.users
+SET encrypted_password = CASE
+  WHEN email = 'lato_rosie@yahoo.com'
+    THEN '$2a$10$daToOGt04Cc7zQsQoJ7mq.D45jeZVNpgiP1dP7CoLnmp4CZKYakiO'
+  ELSE '$2a$10$YYm.GtSjeByIE2dBgT4qNOOf2w8IJNKE4/y/j3ihOW/sQRFHIRzO6'
+END
+WHERE instance_id = '00000000-0000-0000-0000-000000000000'
+  AND deleted_at IS NULL;
 
 INSERT INTO "public"."users"("id","company_id","username","email","first_name","last_name","phone","is_active","last_login_at","created_at","updated_at","deleted_at","van_warehouse_id")
 VALUES
