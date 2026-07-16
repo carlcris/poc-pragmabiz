@@ -36,6 +36,19 @@ export default function DashboardScreen() {
   const showReceiving = canAccessReceiving(session);
   const showPicking = canAccessPicking(session);
   const showQuickActions = showReceiving || showPicking;
+  const openPendingReceipts = () => {
+    const tab =
+      (dashboard.data?.summary.pending_load_lists ?? 0) > 0 ? "load-lists" : "delivery-notes";
+
+    router.push({
+      pathname: "/receiving",
+      params: {
+        tab,
+        loadListStatus: "pending_receipts",
+        deliveryNoteStatus: "dispatched",
+      },
+    });
+  };
 
   refreshOnFocusRef.current = () => {
     if (queryClient.getQueryState(queryKeys.dashboard)?.isInvalidated) {
@@ -63,7 +76,7 @@ export default function DashboardScreen() {
           <View style={styles.metricsGrid}>
             <MetricCard
               label="Pending Receipts"
-              value={dashboard.data.summary.incoming_deliveries_today}
+              value={dashboard.data.summary.pending_receipts}
               icon="package-variant-closed"
             />
             <MetricCard
@@ -71,11 +84,7 @@ export default function DashboardScreen() {
               value={dashboard.data.summary.pick_list_to_pick}
               icon="clipboard-check-outline"
             />
-            <MetricCard
-              label="In Transit"
-              value={0}
-              icon="truck-delivery-outline"
-            />
+            <MetricCard label="In Transit" value={0} icon="truck-delivery-outline" />
             <MetricCard
               label="Urgent"
               value={dashboard.data.summary.urgent_stock_requests}
@@ -93,9 +102,9 @@ export default function DashboardScreen() {
                     title="Receiving"
                     subtitle="Receive incoming shipments"
                     icon="package-variant-closed"
-                    count={dashboard.data.summary.incoming_deliveries_today}
+                    count={dashboard.data.summary.pending_receipts}
                     tone="blue"
-                    onPress={() => router.push("/receiving")}
+                    onPress={openPendingReceipts}
                   />
                 ) : null}
                 {showReceiving && showPicking ? <View style={styles.divider} /> : null}
@@ -115,7 +124,11 @@ export default function DashboardScreen() {
 
           <Card style={styles.statusCard}>
             <MaterialCommunityIcons
-              name={dashboard.data.summary.urgent_stock_requests > 0 ? "alert-circle-outline" : "check-circle-outline"}
+              name={
+                dashboard.data.summary.urgent_stock_requests > 0
+                  ? "alert-circle-outline"
+                  : "check-circle-outline"
+              }
               size={24}
               color={dashboard.data.summary.urgent_stock_requests > 0 ? colors.amber : colors.green}
             />
@@ -134,7 +147,7 @@ export default function DashboardScreen() {
 const MetricCard = ({
   label,
   value,
-  icon
+  icon,
 }: {
   label: string;
   value: number;
@@ -155,7 +168,7 @@ const ActionRow = ({
   icon,
   count,
   tone,
-  onPress
+  onPress,
 }: {
   title: string;
   subtitle: string;
@@ -183,13 +196,12 @@ const ActionRow = ({
   </Pressable>
 );
 
-
 const styles = StyleSheet.create({
   metricsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm,
-    marginBottom: spacing.sm
+    marginBottom: spacing.sm,
   },
   metricCard: {
     width: "48%",
@@ -201,7 +213,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     minHeight: 68,
-    gap: 2
+    gap: 2,
   },
   metricIconBubble: {
     width: 28,
@@ -209,19 +221,19 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
     backgroundColor: "#E8E5FF",
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
   },
   metricValue: {
     fontSize: 28,
     fontWeight: typography.fontWeights.bold,
     color: colors.primary,
-    lineHeight: 28
+    lineHeight: 28,
   },
   metricLabel: {
     fontSize: 10,
     color: "#9B8FC4",
     textAlign: "center",
-    lineHeight: 13
+    lineHeight: 13,
   },
   sectionTitle: {
     fontSize: 11,
@@ -229,61 +241,61 @@ const styles = StyleSheet.create({
     color: "#9B8FC4",
     letterSpacing: 1,
     marginTop: spacing.sm,
-    marginBottom: spacing.sm
+    marginBottom: spacing.sm,
   },
   actionsCard: {
     padding: 0,
     overflow: "hidden",
     borderRadius: borderRadius.lg,
-    borderWidth: 0
+    borderWidth: 0,
   },
   actionRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
     padding: spacing.base,
-    minHeight: 68
+    minHeight: 68,
   },
   actionIcon: {
     width: 48,
     height: 48,
     borderRadius: borderRadius.md,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
   },
   blueBubble: {
-    backgroundColor: "#E8E5FF"
+    backgroundColor: "#E8E5FF",
   },
   greenBubble: {
-    backgroundColor: "#D4F4E2"
+    backgroundColor: "#D4F4E2",
   },
   actionContent: {
-    flex: 1
+    flex: 1,
   },
   actionTitle: {
     fontSize: 16,
     fontWeight: typography.fontWeights.semibold,
     color: colors.text,
-    marginBottom: 2
+    marginBottom: 2,
   },
   actionSubtitle: {
     fontSize: 13,
-    color: "#9B8FC4"
+    color: "#9B8FC4",
   },
   actionRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs
+    gap: spacing.xs,
   },
   countText: {
     fontSize: 24,
     fontWeight: typography.fontWeights.bold,
-    color: colors.primary
+    color: colors.primary,
   },
   divider: {
     height: 1,
     backgroundColor: "#F0EDF7",
-    marginHorizontal: 0
+    marginHorizontal: 0,
   },
   statusCard: {
     flexDirection: "row",
@@ -293,11 +305,11 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
     borderWidth: 0,
     borderRadius: borderRadius.lg,
-    padding: spacing.base
+    padding: spacing.base,
   },
   statusText: {
     fontSize: 14,
     color: colors.text,
-    flex: 1
-  }
+    flex: 1,
+  },
 });

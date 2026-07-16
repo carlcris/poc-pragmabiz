@@ -1,4 +1,4 @@
-export type DashboardData = {
+export type MobileWarehouseDashboardData = {
   summary: {
     pending_receipts: number;
     pending_load_lists: number;

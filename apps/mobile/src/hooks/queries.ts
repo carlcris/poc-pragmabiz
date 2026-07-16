@@ -14,7 +14,6 @@ import * as receivingApi from "@/api/receiving";
 import { getRealtimeConfig } from "@/api/realtime";
 import { useAuthStore } from "@/stores/authStore";
 import { getRealtimeClient } from "@/lib/supabase";
-import type { DashboardData } from "@/contracts/dashboard";
 import type { PickListDetail, PickListSummary } from "@/contracts/picking";
 import type {
   LoadListReceivingDetail,
@@ -131,19 +130,6 @@ const syncPickListCaches = (client: QueryClient, updated: PickListDetail) => {
       )
     );
   }
-
-  client.setQueryData<DashboardData | undefined>(queryKeys.dashboard, (cached) => {
-    if (!cached) return cached;
-    return {
-      ...cached,
-      queues: {
-        ...cached.queues,
-        pick_list: cached.queues.pick_list.map((row) =>
-          row.id === updated.id ? { ...row, status: updated.status } : row
-        ),
-      },
-    };
-  });
 };
 
 export const useDashboard = () =>

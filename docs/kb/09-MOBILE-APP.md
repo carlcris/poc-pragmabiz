@@ -144,6 +144,7 @@ apps/mobile/
 
 - Load-list based GRN receiving
 - Load-list receiving queue resolves the current business unit warehouse and fetches load lists with that `warehouseId` filter
+- `GET /api/mobile/warehouse-dashboard` returns a bounded Pending Receipts aggregate containing destination-warehouse load lists in `arrived` or `receiving`, plus dispatched delivery notes awaiting receipt by the current business unit; the dashboard action opens the first non-empty receiving tab with the load-list `pending_receipts` filter or delivery-note `dispatched` filter already applied
 - Start and pause controls for user-triggered receiving sessions
 - Per-line received and damaged quantity entry
 - Save draft receiving quantities without changing workflow status

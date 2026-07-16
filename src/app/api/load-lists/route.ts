@@ -160,7 +160,9 @@ async function GETHandler(request: NextRequest) {
 
     // Apply filters
     const status = searchParams.get("status");
-    if (status && status !== "all") {
+    if (receivingOnly && status === "pending_receipts") {
+      query = query.in("status", ["arrived", "receiving"]);
+    } else if (status && status !== "all") {
       query = query.eq("status", status);
     }
 
