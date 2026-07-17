@@ -73,23 +73,14 @@ export default function DashboardScreen() {
       {dashboard.error ? <ErrorState message="Unable to load the warehouse dashboard." /> : null}
       {dashboard.data ? (
         <>
-          <View style={styles.metricsGrid}>
-            <MetricCard
-              label="Pending Receipts"
-              value={dashboard.data.summary.pending_receipts}
-              icon="package-variant-closed"
-            />
-            <MetricCard
-              label="Ready to Pick"
-              value={dashboard.data.summary.pick_list_to_pick}
-              icon="clipboard-check-outline"
-            />
-            <MetricCard label="In Transit" value={0} icon="truck-delivery-outline" />
-            <MetricCard
-              label="Urgent"
-              value={dashboard.data.summary.urgent_stock_requests}
-              icon="alert-circle-outline"
-            />
+          <View style={styles.metricsStrip}>
+            <MetricCard label="Receipts" value={dashboard.data.summary.pending_receipts} labelColor="#6366F1" />
+            <View style={styles.metricDivider} />
+            <MetricCard label="To pick" value={dashboard.data.summary.pick_list_to_pick} labelColor="#10B981" />
+            <View style={styles.metricDivider} />
+            <MetricCard label="In transit" value={0} labelColor="#F59E0B" />
+            <View style={styles.metricDivider} />
+            <MetricCard label="Urgent" value={dashboard.data.summary.urgent_stock_requests} labelColor="#EF4444" />
           </View>
 
           {showQuickActions ? (
@@ -147,18 +138,15 @@ export default function DashboardScreen() {
 const MetricCard = ({
   label,
   value,
-  icon,
+  labelColor,
 }: {
   label: string;
   value: number;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  labelColor: string;
 }) => (
   <View style={styles.metricCard}>
-    <View style={styles.metricIconBubble}>
-      <MaterialCommunityIcons name={icon} size={16} color={colors.primary} />
-    </View>
     <Text style={styles.metricValue}>{value}</Text>
-    <Text style={styles.metricLabel}>{label}</Text>
+    <Text style={[styles.metricLabel, { color: labelColor }]}>{label}</Text>
   </View>
 );
 
@@ -197,43 +185,38 @@ const ActionRow = ({
 );
 
 const styles = StyleSheet.create({
-  metricsGrid: {
+  metricsStrip: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  metricCard: {
-    width: "48%",
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     borderWidth: 0,
-    padding: spacing.xs,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xs,
+    marginBottom: spacing.sm,
+    alignItems: "center",
+  },
+  metricCard: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 68,
     gap: 2,
   },
-  metricIconBubble: {
-    width: 28,
-    height: 28,
-    borderRadius: borderRadius.sm,
-    backgroundColor: "#E8E5FF",
-    alignItems: "center",
-    justifyContent: "center",
+  metricDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: "#F0EDF7",
   },
   metricValue: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: typography.fontWeights.bold,
-    color: colors.primary,
-    lineHeight: 28,
+    color: colors.text,
+    lineHeight: 32,
   },
   metricLabel: {
-    fontSize: 10,
-    color: "#9B8FC4",
+    fontSize: 11,
     textAlign: "center",
-    lineHeight: 13,
+    lineHeight: 14,
+    fontWeight: typography.fontWeights.medium,
   },
   sectionTitle: {
     fontSize: 11,

@@ -57,16 +57,18 @@ export default function PickingScreen() {
       {/* KPI Summary Strip */}
       <View style={styles.kpiStrip}>
         <View style={styles.kpiItem}>
-          <Text style={[styles.kpiNumber, { color: "#FCD34D" }]}>{kpis.pending}</Text>
-          <Text style={styles.kpiLabel}>PENDING</Text>
+          <Text style={styles.kpiNumber}>{kpis.pending}</Text>
+          <Text style={[styles.kpiLabel, { color: "#F59E0B" }]}>Pending</Text>
         </View>
+        <View style={styles.kpiDivider} />
         <View style={styles.kpiItem}>
-          <Text style={[styles.kpiNumber, { color: "#60A5FA" }]}>{kpis.inProgress}</Text>
-          <Text style={styles.kpiLabel}>IN PROGRESS</Text>
+          <Text style={styles.kpiNumber}>{kpis.inProgress}</Text>
+          <Text style={[styles.kpiLabel, { color: "#3B82F6" }]}>In progress</Text>
         </View>
+        <View style={styles.kpiDivider} />
         <View style={styles.kpiItem}>
-          <Text style={[styles.kpiNumber, { color: "#34D399" }]}>{kpis.done}</Text>
-          <Text style={styles.kpiLabel}>DONE</Text>
+          <Text style={styles.kpiNumber}>{kpis.done}</Text>
+          <Text style={[styles.kpiLabel, { color: "#10B981" }]}>Done</Text>
         </View>
       </View>
 
@@ -315,34 +317,37 @@ const TipCard = () => (
 const styles = StyleSheet.create({
   // KPI Strip
   kpiStrip: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
+    borderWidth: 0,
     flexDirection: "row",
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xs,
     marginBottom: spacing.base,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4
+    alignItems: "center"
   },
   kpiItem: {
     flex: 1,
     alignItems: "center",
-    gap: spacing.xs
+    justifyContent: "center",
+    gap: 2
+  },
+  kpiDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: "#F0EDF7"
   },
   kpiNumber: {
     fontSize: 32,
-    fontWeight: typography.fontWeights.extrabold,
-    lineHeight: 38
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
+    lineHeight: 32
   },
   kpiLabel: {
     fontSize: 11,
-    fontWeight: typography.fontWeights.semibold,
-    color: "#FFFFFF",
-    opacity: 0.9,
-    letterSpacing: 0.5
+    textAlign: "center",
+    lineHeight: 14,
+    fontWeight: typography.fontWeights.medium
   },
 
   // Filter Tabs

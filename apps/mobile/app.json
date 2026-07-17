@@ -3,7 +3,7 @@
     "name": "Pragmabiz Warehouse",
     "slug": "pragmabiz-warehouse-mobile",
     "version": "0.1.0",
-    "orientation": "default",
+    "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "pragmabiz-warehouse",
     "assetBundlePatterns": [
