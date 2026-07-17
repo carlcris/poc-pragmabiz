@@ -26,6 +26,7 @@ import {
   useRecordPickProgress,
   useSetPickListStatus,
 } from "@/hooks/queries";
+import { useSunmiScanner } from "@/hooks/useSunmiScanner";
 import { useAuthStore } from "@/stores/authStore";
 import {
   clearPendingPickConfirmation,
@@ -384,14 +385,6 @@ export default function PickingDetailScreen() {
     };
   }, [id, verifiedItemId]);
 
-  if (!canViewPicking) {
-    return (
-      <Screen title="Picking" subtitle="Pick list detail" back>
-        <ErrorState message="You do not have permission to access picking." />
-      </Screen>
-    );
-  }
-
   const verifyBarcode = async (value = barcode) => {
     if (!pickingActive) {
       setVerifyError("Start picking before verifying items.");
@@ -504,6 +497,25 @@ export default function PickingDetailScreen() {
       setIsVerifying(false);
     }
   };
+
+  useSunmiScanner({
+    enabled:
+      canViewPicking &&
+      pickingActive &&
+      !scannerOpen &&
+      !isVerifying &&
+      !pendingConfirmation &&
+      !verifiedItemId,
+    onScan: verifyBarcode
+  });
+
+  if (!canViewPicking) {
+    return (
+      <Screen title="Picking" subtitle="Pick list detail" back>
+        <ErrorState message="You do not have permission to access picking." />
+      </Screen>
+    );
+  }
 
   const confirmPick = async () => {
     if (!verifiedItem || !userId || !businessUnitId) return;

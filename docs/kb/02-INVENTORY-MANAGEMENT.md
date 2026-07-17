@@ -94,7 +94,7 @@ A **Warehouse** represents a physical storage location where inventory is held.
 **Warehouse Locations**:
 Each warehouse can have multiple storage locations (aisles, shelves, bins) for granular stock tracking.
 
-Users with Items view access and the `items.operation.print_batch_qr.view` capability can expand a warehouse location on an item's **Locations** tab and print 1–100 80 mm QR labels for each batch. The user selects an active item unit option, and every label's quantity is that option's `qtyPerUnit`; current batch on-hand is informational and is never divided or changed by printing. Each label and QR payload uses the same item, batch-location SKU, batch, warehouse, and location contract as completed putaway labels.
+Users with Items view access and the `items.operation.print_batch_qr.view` capability can expand a warehouse location on an item's **Locations** tab and print 1–100 4 × 4-inch (101.6 × 101.6 mm) QR labels for each batch. The user selects an active item unit option, and every label's quantity is that option's `qtyPerUnit`; current batch on-hand is informational and is never divided or changed by printing. Each label and QR payload uses the same item, batch-location SKU, batch, warehouse, and location contract as completed putaway labels.
 
 ```typescript
 // Example: Warehouse structure

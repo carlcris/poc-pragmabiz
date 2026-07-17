@@ -12,6 +12,12 @@
       "developmentClient": true,
       "distribution": "internal"
     },
+    "local-apk": {
+      "extends": "apk",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "http://192.168.1.116:3000"
+      }
+    },
     "preview": {
       "env": {
         "NODE_ENV": "production",

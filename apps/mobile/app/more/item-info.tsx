@@ -12,6 +12,7 @@ import {
 import { ActionButton, Card, ErrorState, ScannerModal, Screen } from "@/components/ui";
 import type { ScannedItemInfo } from "@/contracts/itemInfo";
 import { useScannedItemInfo } from "@/hooks/queries";
+import { useSunmiScanner } from "@/hooks/useSunmiScanner";
 import { colors } from "@/theme/colors";
 import { spacing, borderRadius } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
@@ -42,6 +43,14 @@ export default function ItemInfoScreen() {
     setInput("");
     setSubmittedPayload("");
   };
+
+  useSunmiScanner({
+    enabled: !scannerOpen,
+    onScan: (value) => {
+      setInput("");
+      submitPayload(value);
+    }
+  });
 
   return (
     <Screen title="Scan Item Info" subtitle="Read-only product lookup" back>

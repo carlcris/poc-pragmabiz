@@ -20,9 +20,34 @@ Run EAS from this `apps/mobile` directory so it uses this app's Expo project and
 ```sh
 npm run build:android:local
 npm run build:android:apk:local
+eas build --platform android --profile local-apk --local
 ```
 
-All EAS profiles use the public HTTPS API at `https://achlers.onrender.com`. Private LAN API addresses are only for the explicit local development command above and must not be embedded in preview, APK, or production builds.
+The `local-apk` profile embeds the private LAN API address configured in `eas.json` and enables
+Android cleartext traffic only for that HTTP build. Confirm that the address belongs to the API
+server on the current network before building. The device and API server must be on the same LAN,
+and the API server must listen on a non-loopback interface.
+
+All other EAS profiles use the public HTTPS API at `https://achlers.onrender.com` and retain
+Android's default cleartext-traffic restriction.
+
+## SUNMI Hardware Scanner
+
+Android builds include a local Expo module that receives scans from the integrated SUNMI scan
+head. On picking, delivery-note receiving, and item-info screens, pressing the device's physical
+scan key sends the captured value directly to the same processing path as a camera scan. The
+hardware value is not copied into the manual-entry field, and the receiver is inactive while the
+camera scanner is open.
+
+Configure the SUNMI ScannerHead data output mode before deployment:
+
+- Enable broadcast output for `com.sunmi.scanner.ACTION_DATA_CODE_RECEIVED`.
+- Disable simulated-keyboard and direct-fill output so scans do not type into the focused field.
+- Keep the scanner output encoding aligned with the barcode payload; UTF-8 is the normal default.
+
+The native scanner module is unavailable in Expo Go. Use an Android development, APK, preview,
+or production build when testing the physical scan head. Camera scanning remains available on
+SUNMI devices without a compatible scan head and on other supported platforms.
 
 ## Boundaries
 

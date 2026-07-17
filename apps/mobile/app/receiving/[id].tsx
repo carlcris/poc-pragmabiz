@@ -27,6 +27,7 @@ import {
   useStartReceiving,
   useSubmitReceiving
 } from "@/hooks/queries";
+import { useSunmiScanner } from "@/hooks/useSunmiScanner";
 import { useAuthStore } from "@/stores/authStore";
 import type { ReceivingLine, RecordDeliveryNoteReceivingScanPayload } from "@/contracts/receiving";
 import { colors } from "@/theme/colors";
@@ -244,14 +245,6 @@ export default function ReceivingDetailScreen() {
     [deliveryNote.data]
   );
 
-  if (!canViewDeliveryNoteReceiving) {
-    return (
-      <Screen title="Receiving" subtitle="Delivery note receiving" back>
-        <ErrorState message="You do not have permission to access receiving." />
-      </Screen>
-    );
-  }
-
   const submitReceivingWithNotes = async (notes: string) => {
     setSubmitError("");
 
@@ -368,6 +361,24 @@ export default function ReceivingDetailScreen() {
 
     await commitReceivingScan(payload);
   };
+
+  useSunmiScanner({
+    enabled:
+      canManageReceiving &&
+      isReceiving &&
+      !scannerOpen &&
+      !recordScan.isPending &&
+      !scanConfirmation,
+    onScan: processScan
+  });
+
+  if (!canViewDeliveryNoteReceiving) {
+    return (
+      <Screen title="Receiving" subtitle="Delivery note receiving" back>
+        <ErrorState message="You do not have permission to access receiving." />
+      </Screen>
+    );
+  }
 
   return (
     <Screen title={deliveryNote.data?.code || "Delivery Note"} subtitle="Scan and verify items">

@@ -157,51 +157,22 @@ apps/mobile/
 
 ### Barcode/QR Scanning
 
-```typescript
-import { Camera } from 'expo-camera'
+The shared camera scanner uses `expo-camera` and remains the cross-platform scan path. Its result
+is passed directly to the active item lookup, picking verification, or delivery-note receiving
+handler instead of being staged in the manual-entry field.
 
-function BarcodeScannerScreen() {
-  const [hasPermission, setHasPermission] = useState(null)
+Android builds also include a local Expo module for integrated SUNMI scan heads. A focused
+scan-capable screen listens for `com.sunmi.scanner.ACTION_DATA_CODE_RECEIVED` while the camera
+scanner is closed. Pressing the physical device scan key therefore processes the broadcast
+`data` value through the same handler as a camera scan, without adding SUNMI-specific scan controls
+to the UI. The listener pauses while a camera scan, verification request, or required confirmation
+is active, and it is removed when the screen loses focus.
 
-  // Request camera permission
-  useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync()
-      setHasPermission(status === 'granted')
-    })()
-  }, [])
-
-  const handleBarCodeScanned = ({ type, data }) => {
-    console.log(`Scanned barcode: ${data}`)
-    // Look up item by barcode
-    // Validate against expected item
-    // Add to pick list / receive list
-  }
-
-  if (hasPermission === null) {
-    return <Text>Requesting camera permission...</Text>
-  }
-
-  if (hasPermission === false) {
-    return <Text>No access to camera</Text>
-  }
-
-  return (
-    <Camera
-      onBarCodeScanned={handleBarCodeScanned}
-      barCodeScannerSettings={{
-        barCodeTypes: [
-          BarCodeScanner.Constants.BarCodeType.qr,
-          BarCodeScanner.Constants.BarCodeType.ean13,
-          BarCodeScanner.Constants.BarCodeType.ean8,
-          BarCodeScanner.Constants.BarCodeType.code128,
-        ],
-      }}
-      style={StyleSheet.absoluteFillObject}
-    />
-  )
-}
-```
+SUNMI devices must be configured with broadcast output enabled and simulated-keyboard/direct-fill
+output disabled. This broadcast-only setup prevents the scan head from typing into a focused
+manual-entry field. Because the receiver is native Android code, physical scanner testing requires
+a development, APK, preview, or production build; Expo Go continues to support only the camera
+fallback.
 
 ### Camera for Damage Photos
 
@@ -630,7 +601,7 @@ Search items for mobile (autocomplete).
 
 ### Issue: Mobile barcode scanner not working
 
-**Symptoms**: Camera not opening or barcodes not scanned
+**Symptoms**: Camera not opening, SUNMI scan key has no effect, or barcodes are typed into an input
 **Solution**:
 
 1. Check camera permissions granted in app settings
@@ -639,6 +610,9 @@ Search items for mobile (autocomplete).
 4. Check lighting conditions (too dark/bright)
 5. Update Expo Camera library
 6. Clear app cache and restart
+7. On SUNMI hardware, verify ScannerHead broadcast output is enabled
+8. Disable SUNMI simulated-keyboard/direct-fill output to keep hardware scans silent
+9. Install a native Android build instead of Expo Go when testing the SUNMI scan head
 
 ### Issue: Mobile app offline mode issues
 

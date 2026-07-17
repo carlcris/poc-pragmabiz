@@ -43,7 +43,7 @@ export async function generateQRCode(data: BarcodeData): Promise<string> {
     const qrCodeDataURL = await QRCode.toDataURL(qrData, {
       errorCorrectionLevel: "H",
       type: "image/png",
-      width: 256, // Slightly larger for better scanning on 80mm labels
+      width: 256,
       margin: 1,
     });
 
@@ -55,7 +55,7 @@ export async function generateQRCode(data: BarcodeData): Promise<string> {
 }
 
 /**
- * Generate printable barcode labels as PDF optimized for 80mm paper
+ * Generate printable barcode labels as a PDF with one 4-by-4-inch label per page.
  */
 export async function generateBarcodeLabelsPDF(
   boxes: BarcodeData[],
@@ -66,30 +66,27 @@ export async function generateBarcodeLabelsPDF(
   }
 ): Promise<Blob> {
   const {
-    labelWidth = 74, // mm (80mm paper with margins)
-    labelHeight = 58, // mm (compact but professional)
+    labelWidth = 101.6, // 4 inches in millimeters
+    labelHeight = 101.6, // 4 inches in millimeters
     margin = 3, // mm
   } = options || {};
 
-  // Create PDF sized for 80mm paper
+  // Match the PDF page to the physical label so printers do not scale the output.
   const pdf = new jsPDF({
     orientation: "portrait",
     unit: "mm",
-    format: [80, 297], // 80mm width, long roll
+    format: [labelWidth, labelHeight],
   });
 
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  let yOffset = margin;
-  let isFirstLabel = true;
+  const contentWidth = labelWidth - margin * 2;
+  const contentHeight = labelHeight - margin * 2;
 
-  for (const box of boxes) {
-    // Add new page if needed
-    if (!isFirstLabel && yOffset + labelHeight + margin > pageHeight) {
+  for (const [boxIndex, box] of boxes.entries()) {
+    if (boxIndex > 0) {
       pdf.addPage();
-      yOffset = margin;
     }
 
-    isFirstLabel = false;
+    const yOffset = margin;
 
     // Generate QR code for this box
     const qrCodeDataURL = await generateQRCode(box);
@@ -97,7 +94,7 @@ export async function generateBarcodeLabelsPDF(
     // Draw label border
     pdf.setDrawColor(200, 200, 200);
     pdf.setLineWidth(0.2);
-    pdf.rect(margin, yOffset, labelWidth, labelHeight);
+    pdf.rect(margin, yOffset, contentWidth, contentHeight);
 
     // Add QR code (left side, compact)
     const qrSize = 35;
@@ -106,7 +103,7 @@ export async function generateBarcodeLabelsPDF(
     // Add text information (right side of QR)
     const textX = margin + qrSize + 5;
     const textRightPadding = 3;
-    const textMaxWidth = margin + labelWidth - textX - textRightPadding;
+    const textMaxWidth = margin + contentWidth - textX - textRightPadding;
     let textY = yOffset + 6;
 
     // GRN Number - prominent
@@ -171,9 +168,6 @@ export async function generateBarcodeLabelsPDF(
       const skuX = qrX + Math.max(0, (qrSize - skuTextWidth) / 2);
       pdf.text(skuText, skuX, textY);
     }
-
-    // Move to next label position
-    yOffset += labelHeight + margin;
   }
 
   return pdf.output("blob");
