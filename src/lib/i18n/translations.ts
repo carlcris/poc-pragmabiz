@@ -197,7 +197,6 @@ export type TranslationKeys = {
     printLabelsError: string;
     reprintLabels: string;
     noLabelsToPrint: string;
-    labelCountTooSmall: string;
     reprintLabelsSuccess: string;
     reprintLabelsError: string;
     selectTask: string;
@@ -3018,7 +3017,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       printLabelsError: "Putaway was posted, but labels failed to print",
       reprintLabels: "Print Labels",
       noLabelsToPrint: "No posted labels found for this putaway",
-      labelCountTooSmall: "Print at least {count} labels to cover each posted batch/location",
       reprintLabelsSuccess: "Box labels sent to printer",
       reprintLabelsError: "Failed to print putaway labels",
       selectTask: "Select a putaway task to post it into a final location.",
@@ -8590,7 +8588,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       printLabelsError: "上架已过账，但标签打印失败",
       reprintLabels: "打印标签",
       noLabelsToPrint: "未找到此上架任务的已过账标签",
-      labelCountTooSmall: "至少打印 {count} 个标签，以覆盖每个已过账批次/库位",
       reprintLabelsSuccess: "箱标签已发送到打印机",
       reprintLabelsError: "打印上架标签失败",
       selectTask: "选择一个上架任务并过账到最终库位。",

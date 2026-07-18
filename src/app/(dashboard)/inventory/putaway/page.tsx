@@ -65,31 +65,16 @@ const createPutawayLabelId = (taskId: string, labelNumber: number) => {
   return `putaway-${taskId}-${randomId}`;
 };
 
-const distributeLabelCopies = (sourceCount: number, totalLabelCount: number) => {
-  if (sourceCount <= 0) return [];
-
-  const copiesPerSource = Math.floor(totalLabelCount / sourceCount);
-  const extraCopies = totalLabelCount % sourceCount;
-
-  return Array.from(
-    { length: sourceCount },
-    (_, sourceIndex) => copiesPerSource + (sourceIndex < extraCopies ? 1 : 0)
-  );
-};
-
 const buildPutawayBarcodeLabels = (
   taskId: string,
   sources: PutawayTaskLabel[],
   qtyPerUnit: number,
-  totalLabelCount: number
+  copiesPerLabel: number
 ): BarcodeData[] => {
-  const labelCounts = distributeLabelCopies(sources.length, totalLabelCount);
   let nextBoxNumber = 1;
 
-  return sources.flatMap((source, sourceIndex) => {
-    const sourceLabelCount = labelCounts[sourceIndex] || 0;
-
-    return Array.from({ length: sourceLabelCount }, () => {
+  return sources.flatMap((source) => {
+    return Array.from({ length: copiesPerLabel }, () => {
       const boxNumber = nextBoxNumber;
       nextBoxNumber += 1;
 
@@ -196,13 +181,20 @@ export default function PutawayStationPage() {
   );
 
   const selectTask = (task: PutawayTask) => {
-    const selectedQuantity = task.status === "completed" ? task.postedQuantity : task.pendingQuantity;
+    const selectedBaseQuantity =
+      task.status === "completed" ? task.postedQuantity : task.pendingQuantity;
+    const selectedItemQuantity = selectedBaseQuantity / task.sourceQtyPerUnit;
     setSelectedTask(task);
     setLocationId(task.suggestedLocationId ?? "");
-    setQuantity(String(selectedQuantity));
+    setQuantity(String(selectedItemQuantity));
     setBatchCode(task.sourceBatchCode ?? "");
     setShouldPrintLabels(true);
-    setLabelCount("1");
+    setLabelCount(String(selectedItemQuantity));
+  };
+
+  const handleQuantityChange = (nextQuantity: string) => {
+    setQuantity(nextQuantity);
+    setLabelCount(nextQuantity);
   };
 
   const handleApplySearch = () => {
@@ -221,11 +213,6 @@ export default function PutawayStationPage() {
         toast.error(t("noLabelsToPrint"));
         return;
       }
-      if (parsedLabelCount < response.data.length) {
-        toast.error(t("labelCountTooSmall", { count: response.data.length }));
-        return;
-      }
-
       const { printBarcodeLabels } = await import("@/lib/barcode");
       const labels = buildPutawayBarcodeLabels(
         task.id,
@@ -247,14 +234,18 @@ export default function PutawayStationPage() {
   const handlePost = async () => {
     if (!selectedTask) return;
 
-    const parsedQuantity = Number(quantity);
+    const parsedItemQuantity = Number(quantity);
+    const parsedBaseQuantity = parsedItemQuantity * selectedTask.sourceQtyPerUnit;
     const parsedLabelCount = Number.parseInt(labelCount, 10);
     const selectedLocation = storableLocations.find((location) => location.id === locationId);
 
     if (
       !locationId ||
       !batchCode.trim() ||
-      !Number.isFinite(parsedQuantity) ||
+      !Number.isFinite(parsedItemQuantity) ||
+      parsedItemQuantity <= 0 ||
+      !Number.isFinite(parsedBaseQuantity) ||
+      parsedBaseQuantity > selectedTask.pendingQuantity ||
       !selectedLocation ||
       (shouldPrintLabels && (!Number.isFinite(parsedLabelCount) || parsedLabelCount <= 0))
     ) {
@@ -267,7 +258,7 @@ export default function PutawayStationPage() {
         id: selectedTask.id,
         data: {
           locationId,
-          quantity: parsedQuantity,
+          quantity: parsedBaseQuantity,
           batchCode: batchCode.trim(),
         },
       });
@@ -317,15 +308,19 @@ export default function PutawayStationPage() {
     setLabelCount("1");
   };
 
-  const quantityNumber = Number(quantity);
+  const itemQuantityNumber = Number(quantity);
+  const baseQuantityNumber = selectedTask
+    ? itemQuantityNumber * selectedTask.sourceQtyPerUnit
+    : Number.NaN;
   const labelCountNumber = Number.parseInt(labelCount, 10);
   const canPost =
     !!selectedTask &&
     !!locationId &&
     !!batchCode.trim() &&
-    Number.isFinite(quantityNumber) &&
-    quantityNumber > 0 &&
-    quantityNumber <= selectedTask.pendingQuantity &&
+    Number.isFinite(itemQuantityNumber) &&
+    itemQuantityNumber > 0 &&
+    Number.isFinite(baseQuantityNumber) &&
+    baseQuantityNumber <= selectedTask.pendingQuantity &&
     (!shouldPrintLabels || (Number.isFinite(labelCountNumber) && labelCountNumber > 0)) &&
     !postPutaway.isPending &&
     !isPrintingLabels;
@@ -610,14 +605,20 @@ export default function PutawayStationPage() {
 
                 <div className="space-y-2">
                   <Label>{t("quantity")}</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    max={selectedTask.pendingQuantity}
-                    value={quantity}
-                    onChange={(event) => setQuantity(event.target.value)}
-                  />
+                  <div className="relative">
+                    <Input
+                      className="pr-32"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      max={selectedTask.pendingQuantity / selectedTask.sourceQtyPerUnit}
+                      value={quantity}
+                      onChange={(event) => handleQuantityChange(event.target.value)}
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm font-medium text-muted-foreground">
+                      {selectedTask.sourceUnitName}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-3 rounded-md border p-3">

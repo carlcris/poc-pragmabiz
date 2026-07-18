@@ -635,7 +635,7 @@ These are the records everything else in the app is built on. Before testing any
 - Post a task partially, confirm the remaining quantity is correct and the task stays open, then post the remainder and confirm it completes.
 - Try to post more than the pending quantity — should be refused.
 - For a receiving-sourced task, check whether a batch code is pre-filled/suggested from the receiving batch, and confirm the destination *location* can still be freely chosen regardless.
-- Set a putaway quantity that differs from the task's quantity per unit, choose several label copies, and confirm the copy count remains exactly what was entered while every printed and reprinted label uses the task's quantity per unit.
+- Confirm the posting field uses the task's source unit rather than its base unit (for example, entering 5 BOX for a task with 144 STICK per box posts 720 STICK). Change the source-unit posting quantity for a partial putaway and verify the label default follows it, then enter a different whole-number copy count and verify each applicable posted batch/location label prints exactly that many copies while every label's quantity remains the task's quantity per unit.
 - For a transformation with only wasted/scrap output, see whether a putaway task still gets created for it (cross-reference the note under Stock Transformations, section 15 — this is a known area of concern).
 
 ---
