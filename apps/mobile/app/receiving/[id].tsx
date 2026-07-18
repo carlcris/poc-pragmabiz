@@ -3,6 +3,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  BackHandler,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -10,22 +11,15 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  Card,
-  ErrorState,
-  LoadingState,
-  ScannerModal,
-  Screen,
-  StatusBadge
-} from "@/components/ui";
+import { Card, ErrorState, LoadingState, ScannerModal, Screen, StatusBadge } from "@/components/ui";
 import {
   useDeliveryNote,
   useRecordDeliveryNoteReceivingScan,
   useStartReceiving,
-  useSubmitReceiving
+  useSubmitReceiving,
 } from "@/hooks/queries";
 import { useSunmiScanner } from "@/hooks/useSunmiScanner";
 import { useAuthStore } from "@/stores/authStore";
@@ -35,10 +29,11 @@ import { spacing, borderRadius, shadows } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
 import {
   canAccessDeliveryNoteReceiving,
-  canManageDeliveryNoteReceiving
+  canManageDeliveryNoteReceiving,
 } from "@/utils/permissions";
 
 const normalizeScanValue = (value: string) => value.trim().toLowerCase();
+const keepReceivingDialogOpen = () => undefined;
 
 const extractScanCandidates = (rawScan: string) => {
   const cleaned = rawScan.trim();
@@ -138,7 +133,7 @@ const parseReceivingScan = (rawScan: string): ParsedReceivingScan => {
         itemUnitOptionId,
         qty: qty > 0 ? qty : null,
         batchNumber,
-        locationId
+        locationId,
       };
     } catch {}
   }
@@ -150,11 +145,15 @@ const parseReceivingScan = (rawScan: string): ParsedReceivingScan => {
     itemUnitOptionId: null,
     qty: null,
     batchNumber: null,
-    locationId: null
+    locationId: null,
   };
 };
 
-const resolveLineFromScan = (lines: ReceivingLine[], rawScan: string, parsed: ParsedReceivingScan) => {
+const resolveLineFromScan = (
+  lines: ReceivingLine[],
+  rawScan: string,
+  parsed: ParsedReceivingScan
+) => {
   if (parsed.itemId) {
     return lines.find((line) => {
       if (line.itemId !== parsed.itemId) return false;
@@ -169,7 +168,7 @@ const resolveLineFromScan = (lines: ReceivingLine[], rawScan: string, parsed: Pa
       line.itemId,
       line.code,
       line.barcode,
-      line.itemUnitOptionId
+      line.itemUnitOptionId,
     ]
       .filter(Boolean)
       .map((value) => normalizeScanValue(String(value)));
@@ -191,6 +190,8 @@ export default function ReceivingDetailScreen() {
   const [scanConfirmation, setScanConfirmation] = useState<ScanConfirmation | null>(null);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const discrepancyBackdropOpacity = useRef(new Animated.Value(0)).current;
+  const hardwareScanBlockedRef = useRef(false);
+  const pendingScanConfirmationRef = useRef<ScanConfirmation | null>(null);
   const deliveryNote = useDeliveryNote(id, canViewDeliveryNoteReceiving);
   const startReceiving = useStartReceiving(id);
   const recordScan = useRecordDeliveryNoteReceivingScan(id);
@@ -202,17 +203,35 @@ export default function ReceivingDetailScreen() {
     isReceiving && isReceivingStarted ? "receiving" : deliveryNote.data?.status || "unknown";
 
   useEffect(() => {
+    if (
+      !scanConfirmation &&
+      !discrepancySheetOpen &&
+      !recordScan.isPending &&
+      !submitReceiving.isPending
+    ) {
+      hardwareScanBlockedRef.current = false;
+    }
+  }, [discrepancySheetOpen, recordScan.isPending, scanConfirmation, submitReceiving.isPending]);
+
+  useEffect(() => {
+    if (!scanConfirmation) return;
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => true);
+    return () => subscription.remove();
+  }, [scanConfirmation]);
+
+  useEffect(() => {
     if (scanConfirmation) {
       Animated.timing(backdropOpacity, {
         toValue: 1,
         duration: 200,
-        useNativeDriver: true
+        useNativeDriver: true,
       }).start();
     } else {
       Animated.timing(backdropOpacity, {
         toValue: 0,
         duration: 200,
-        useNativeDriver: true
+        useNativeDriver: true,
       }).start();
     }
   }, [scanConfirmation, backdropOpacity]);
@@ -222,13 +241,13 @@ export default function ReceivingDetailScreen() {
       Animated.timing(discrepancyBackdropOpacity, {
         toValue: 1,
         duration: 200,
-        useNativeDriver: true
+        useNativeDriver: true,
       }).start();
     } else {
       Animated.timing(discrepancyBackdropOpacity, {
         toValue: 0,
         duration: 200,
-        useNativeDriver: true
+        useNativeDriver: true,
       }).start();
     }
   }, [discrepancySheetOpen, discrepancyBackdropOpacity]);
@@ -237,7 +256,7 @@ export default function ReceivingDetailScreen() {
     const items = deliveryNote.data?.items || [];
     return {
       total: items.reduce((sum, item) => sum + item.allocatedQty, 0),
-      received: items.reduce((sum, item) => sum + item.receivedQty, 0)
+      received: items.reduce((sum, item) => sum + item.receivedQty, 0),
     };
   }, [deliveryNote.data]);
   const hasVariance = useMemo(
@@ -262,7 +281,7 @@ export default function ReceivingDetailScreen() {
       await submitReceiving.mutateAsync({
         receivedDate: new Date().toISOString().split("T")[0],
         acknowledgeDiscrepancy: hasVariance,
-        discrepancyNotes: hasVariance ? notes.trim() : undefined
+        discrepancyNotes: hasVariance ? notes.trim() : undefined,
       });
       setDiscrepancySheetOpen(false);
     } catch (error) {
@@ -279,24 +298,46 @@ export default function ReceivingDetailScreen() {
     }
 
     if (hasVariance) {
+      hardwareScanBlockedRef.current = true;
       setDiscrepancySheetOpen(true);
       return;
     }
 
+    hardwareScanBlockedRef.current = true;
     void submitReceivingWithNotes("");
   };
 
-  const commitReceivingScan = async (payload: RecordDeliveryNoteReceivingScanPayload) => {
+  const openScanConfirmation = (confirmation: ScanConfirmation) => {
+    hardwareScanBlockedRef.current = true;
+    pendingScanConfirmationRef.current = confirmation;
+    setScanConfirmation(confirmation);
+  };
+
+  const dismissScanConfirmation = () => {
+    pendingScanConfirmationRef.current = null;
+    setScanConfirmation(null);
+    setBarcode("");
+  };
+
+  const commitReceivingScan = async (
+    payload: RecordDeliveryNoteReceivingScanPayload,
+    closeConfirmationOnSuccess = false
+  ) => {
     try {
       await recordScan.mutateAsync(payload);
       setBarcode("");
-      setScanConfirmation(null);
+      if (closeConfirmationOnSuccess) {
+        pendingScanConfirmationRef.current = null;
+        setScanConfirmation(null);
+      }
     } catch (error) {
       setScanError(error instanceof Error ? error.message : "Failed to record receiving scan.");
     }
   };
 
   const processScan = async (rawScan: string) => {
+    if (hardwareScanBlockedRef.current || pendingScanConfirmationRef.current) return;
+
     const cleaned = rawScan.trim();
     setScanError("");
 
@@ -330,7 +371,7 @@ export default function ReceivingDetailScreen() {
       itemUnitOptionId,
       qty: quantity,
       batchNumber: parsed.batchNumber,
-      locationId: parsed.locationId
+      locationId: parsed.locationId,
     };
     const isUnexpected = !matchedLine;
     const isOverage = matchedLine
@@ -338,23 +379,23 @@ export default function ReceivingDetailScreen() {
       : false;
 
     if (isUnexpected) {
-      setScanConfirmation({
+      openScanConfirmation({
         title: "Confirm unexpected item",
         message:
           "This scan does not match the delivery note items. Confirm only if you want to record it for receiving review.",
         tone: "warning",
-        payload
+        payload,
       });
       return;
     }
 
     if (isOverage) {
-      setScanConfirmation({
+      openScanConfirmation({
         title: "Confirm overage",
         message:
           "This scan will put the item over the dispatched quantity. Confirm only if you want to record the overage.",
         tone: "warning",
-        payload
+        payload,
       });
       return;
     }
@@ -368,8 +409,10 @@ export default function ReceivingDetailScreen() {
       isReceiving &&
       !scannerOpen &&
       !recordScan.isPending &&
-      !scanConfirmation,
-    onScan: processScan
+      !scanConfirmation &&
+      !discrepancySheetOpen &&
+      !submitReceiving.isPending,
+    onScan: processScan,
   });
 
   if (!canViewDeliveryNoteReceiving) {
@@ -381,344 +424,346 @@ export default function ReceivingDetailScreen() {
   }
 
   return (
-    <Screen title={deliveryNote.data?.code || "Delivery Note"} subtitle="Scan and verify items">
-      {deliveryNote.isLoading ? <LoadingState /> : null}
-      {deliveryNote.error ? <ErrorState message="Unable to load the delivery note." /> : null}
-      {deliveryNote.data ? (
-        <>
-          <Card style={styles.heroCard}>
-            <Text style={styles.heroCode}>{deliveryNote.data.code}</Text>
-            <Text style={styles.heroSubtitle}>
-              {deliveryNote.data.items.length} items expected
-            </Text>
-            <View style={styles.progressRow}>
-              <Text style={styles.progressLabel}>Receiving progress</Text>
-              <Text style={styles.progressValue}>
-                {totals.received} / {totals.total}
+    <View style={styles.screenRoot}>
+      <Screen title={deliveryNote.data?.code || "Delivery Note"} subtitle="Scan and verify items">
+        {deliveryNote.isLoading ? <LoadingState /> : null}
+        {deliveryNote.error ? <ErrorState message="Unable to load the delivery note." /> : null}
+        {deliveryNote.data ? (
+          <>
+            <Card style={styles.heroCard}>
+              <Text style={styles.heroCode}>{deliveryNote.data.code}</Text>
+              <Text style={styles.heroSubtitle}>
+                {deliveryNote.data.items.length} items expected
               </Text>
-            </View>
-            <StatusBadge status={displayStatus} />
-          </Card>
+              <View style={styles.progressRow}>
+                <Text style={styles.progressLabel}>Receiving progress</Text>
+                <Text style={styles.progressValue}>
+                  {totals.received} / {totals.total}
+                </Text>
+              </View>
+              <StatusBadge status={displayStatus} />
+            </Card>
 
-          {isReceiving && canManageReceiving ? (
-            <View style={styles.actionRow}>
-              {!isReceivingStarted ? (
+            {isReceiving && canManageReceiving ? (
+              <View style={styles.actionRow}>
+                {!isReceivingStarted ? (
+                  <Pressable
+                    onPress={() => startReceiving.mutate()}
+                    disabled={startReceiving.isPending}
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      pressed && styles.actionButtonPressed,
+                    ]}
+                  >
+                    <Ionicons name="scan-outline" size={18} color="#fff" />
+                    <Text style={styles.actionButtonText}>Start Receiving</Text>
+                  </Pressable>
+                ) : (
+                  <View style={[styles.actionButton, styles.actionButtonStarted]}>
+                    <Ionicons name="checkmark-circle-outline" size={18} color={colors.greenDark} />
+                    <Text style={styles.actionButtonTextStarted}>Receiving Started</Text>
+                  </View>
+                )}
                 <Pressable
-                  onPress={() => startReceiving.mutate()}
-                  disabled={startReceiving.isPending}
+                  onPress={handleSubmitReceiving}
+                  disabled={submitReceiving.isPending}
                   style={({ pressed }) => [
                     styles.actionButton,
-                    pressed && styles.actionButtonPressed
+                    styles.actionButtonSecondary,
+                    pressed && styles.actionButtonSecondaryPressed,
                   ]}
                 >
-                  <Ionicons name="scan-outline" size={18} color="#fff" />
-                  <Text style={styles.actionButtonText}>Start Receiving</Text>
-                </Pressable>
-              ) : (
-                <View style={[styles.actionButton, styles.actionButtonStarted]}>
-                  <Ionicons name="checkmark-circle-outline" size={18} color={colors.greenDark} />
-                  <Text style={styles.actionButtonTextStarted}>Receiving Started</Text>
-                </View>
-              )}
-              <Pressable
-                onPress={handleSubmitReceiving}
-                disabled={submitReceiving.isPending}
-                style={({ pressed }) => [
-                  styles.actionButton,
-                  styles.actionButtonSecondary,
-                  pressed && styles.actionButtonSecondaryPressed
-                ]}
-              >
-                <Ionicons name="paper-plane-outline" size={18} color={colors.text} />
-                <Text style={styles.actionButtonTextSecondary}>
-                  {submitReceiving.isPending ? "Submitting..." : "Submit"}
-                </Text>
-              </Pressable>
-            </View>
-          ) : isReceived ? (
-            <Card style={styles.receivedCard}>
-              <Ionicons name="checkmark-circle-outline" size={18} color={colors.greenDark} />
-              <View style={styles.receivedCardText}>
-                <Text style={styles.receivedTitle}>Receiving completed</Text>
-                <Text style={styles.receivedSubtitle}>
-                  This delivery note has already been submitted.
-                </Text>
-              </View>
-            </Card>
-          ) : null}
-          {submitError ? <Text style={styles.submitErrorText}>{submitError}</Text> : null}
-
-          {isReceiving && canManageReceiving ? (
-            <>
-              <Text style={styles.sectionTitle}>QR / BARCODE</Text>
-
-              <Card style={styles.scanCard}>
-                <View style={styles.inputRow}>
-                  <Ionicons name="scan-outline" size={18} color="#9B8FC4" style={styles.inputIcon} />
-                  <TextInput
-                    value={barcode}
-                    onChangeText={setBarcode}
-                    placeholder="Enter barcode..."
-                    placeholderTextColor="#9B8FC4"
-                    style={styles.input}
-                  />
-                </View>
-                <Pressable
-                  onPress={() => setScannerOpen(true)}
-                  style={({ pressed }) => [
-                    styles.scanButton,
-                    pressed && styles.scanButtonPressed
-                  ]}
-                >
-                  <Ionicons name="camera-outline" size={18} color="#fff" />
-                  <Text style={styles.scanButtonText}>Scan</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => void processScan(barcode)}
-                  disabled={!barcode.trim() || recordScan.isPending}
-                  style={({ pressed }) => [
-                    styles.verifyButton,
-                    (!barcode.trim() || recordScan.isPending) && styles.verifyButtonDisabled,
-                    pressed && !(!barcode.trim() || recordScan.isPending) && styles.verifyButtonPressed
-                  ]}
-                >
-                  <Ionicons name="checkmark-circle-outline" size={18} color={colors.text} />
-                  <Text style={styles.verifyButtonText}>
-                    {recordScan.isPending ? "Verifying..." : "Verify Item"}
-                  </Text>
-                </Pressable>
-                {scanError ? <Text style={styles.scanErrorText}>{scanError}</Text> : null}
-              </Card>
-            </>
-          ) : null}
-
-          {isReceiving && canManageReceiving && hasVariance ? (
-            <>
-              <Card style={styles.warningCard}>
-                <Ionicons name="alert-circle-outline" size={18} color={colors.amberDark} />
-                <Text style={styles.warningText}>Acknowledgement required</Text>
-              </Card>
-              <Text style={styles.warningSubtext}>
-                Shortage or overage must be noted during submit.
-              </Text>
-            </>
-          ) : null}
-
-          <View style={styles.itemsSection}>
-            {deliveryNote.data.items.map((item) => {
-              const complete = item.receivedQty >= item.allocatedQty && item.allocatedQty > 0;
-              const progressPercent =
-                item.allocatedQty > 0 ? (item.receivedQty / item.allocatedQty) * 100 : 0;
-              return (
-                <Card key={item.id} style={styles.itemCard}>
-                  <View style={styles.itemHeader}>
-                    <View
-                      style={[
-                        styles.itemIconContainer,
-                        complete && styles.itemIconContainerComplete
-                      ]}
-                    >
-                      <Ionicons
-                        name={complete ? "checkmark-circle" : "cube-outline"}
-                        size={24}
-                        color={complete ? colors.greenDark : colors.primary}
-                      />
-                    </View>
-                    <View style={styles.itemHeaderContent}>
-                      <Text style={styles.itemName} numberOfLines={2}>
-                        {item.name}
-                      </Text>
-                      <Text style={styles.itemMeta}>
-                        {item.code} • {item.uom}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.itemProgressSection}>
-                    <View style={styles.itemProgressHeader}>
-                      <Text style={styles.itemProgressLabel}>Progress</Text>
-                      <Text style={styles.itemProgressValue}>
-                        {item.receivedQty} / {item.allocatedQty}
-                      </Text>
-                    </View>
-                    <View style={styles.itemProgressBarBackground}>
-                      <View
-                        style={[
-                          styles.itemProgressBarFill,
-                          {
-                            width: `${Math.min(progressPercent, 100)}%`,
-                            backgroundColor:
-                              item.receivingStatus === "exact"
-                                ? colors.green
-                                : item.receivingStatus === "short"
-                                  ? colors.amber
-                                  : item.receivingStatus === "over"
-                                    ? colors.danger
-                                    : colors.primary
-                          }
-                        ]}
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.itemFooter}>
-                    <View
-                      style={[
-                        styles.itemStatusBadge,
-                        item.receivingStatus === "short" && styles.itemStatusBadgeWarning,
-                        item.receivingStatus === "over" && styles.itemStatusBadgeDanger,
-                        item.receivingStatus === "exact" && styles.itemStatusBadgeSuccess
-                      ]}
-                    >
-                      <Ionicons
-                        name={
-                          item.receivingStatus === "exact"
-                            ? "checkmark-circle"
-                            : item.receivingStatus === "short"
-                              ? "alert-circle"
-                              : item.receivingStatus === "over"
-                                ? "warning"
-                                : "ellipse"
-                        }
-                        size={14}
-                        color={
-                          item.receivingStatus === "exact"
-                            ? colors.greenDark
-                            : item.receivingStatus === "short"
-                              ? colors.amberDark
-                              : item.receivingStatus === "over"
-                                ? colors.dangerDark
-                                : colors.textSecondary
-                        }
-                      />
-                      <Text
-                        style={[
-                          styles.itemStatusBadgeText,
-                          item.receivingStatus === "short" && styles.itemStatusBadgeTextWarning,
-                          item.receivingStatus === "over" && styles.itemStatusBadgeTextDanger,
-                          item.receivingStatus === "exact" && styles.itemStatusBadgeTextSuccess
-                        ]}
-                      >
-                        {item.receivingStatus === "exact"
-                          ? "Complete"
-                          : item.receivingStatus === "short"
-                            ? "Shortage"
-                            : item.receivingStatus === "over"
-                              ? "Overage"
-                              : "Pending"}
-                      </Text>
-                    </View>
-                    {item.varianceQty !== 0 ? (
-                      <View style={styles.itemVarianceBadge}>
-                        <Text style={styles.itemVarianceText}>
-                          {item.varianceQty > 0 ? "+" : ""}
-                          {item.varianceQty}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                </Card>
-              );
-            })}
-          </View>
-        </>
-      ) : null}
-      <ScannerModal
-        visible={canManageReceiving && scannerOpen}
-        onClose={() => setScannerOpen(false)}
-        onScan={(value) => {
-          void processScan(value);
-        }}
-      />
-      <Modal
-        visible={canManageReceiving && discrepancySheetOpen}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setDiscrepancySheetOpen(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.discrepancyRoot}
-        >
-          <Animated.View
-            style={[
-              styles.discrepancyBackdrop,
-              {
-                opacity: discrepancyBackdropOpacity
-              }
-            ]}
-          />
-          <SafeAreaView edges={["bottom"]} style={styles.discrepancySafeArea}>
-            <View style={styles.discrepancySheet}>
-              <View style={styles.discrepancyHandle} />
-              <View style={styles.discrepancyIconCircle}>
-                <Ionicons name="alert-circle" size={40} color={colors.amberDark} />
-              </View>
-              <Text style={styles.discrepancyTitle}>Discrepancy notes</Text>
-              <Text style={styles.discrepancyMessage}>
-                Add the shortage or overage reason before submitting this delivery note.
-              </Text>
-              <TextInput
-                value={discrepancyNotes}
-                onChangeText={setDiscrepancyNotes}
-                placeholder="Enter discrepancy reason or receiving notes..."
-                placeholderTextColor="#9B8FC4"
-                multiline
-                style={styles.discrepancyInput}
-                autoFocus
-              />
-              {submitError ? <Text style={styles.discrepancyErrorText}>{submitError}</Text> : null}
-              <View style={styles.discrepancyActions}>
-                <Pressable
-                  onPress={() => setDiscrepancySheetOpen(false)}
-                  disabled={submitReceiving.isPending}
-                  style={({ pressed }) => [
-                    styles.discrepancyButton,
-                    styles.discrepancyButtonSecondary,
-                    submitReceiving.isPending && styles.discrepancyButtonDisabled,
-                    pressed && !submitReceiving.isPending && styles.discrepancyButtonSecondaryPressed
-                  ]}
-                >
-                  <Text style={styles.discrepancyButtonSecondaryText}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => void submitReceivingWithNotes(discrepancyNotes)}
-                  disabled={submitReceiving.isPending}
-                  style={({ pressed }) => [
-                    styles.discrepancyButton,
-                    styles.discrepancyButtonPrimary,
-                    submitReceiving.isPending && styles.discrepancyButtonDisabled,
-                    pressed && !submitReceiving.isPending && styles.discrepancyButtonPressed
-                  ]}
-                >
-                  <Text style={styles.discrepancyButtonText}>
+                  <Ionicons name="paper-plane-outline" size={18} color={colors.text} />
+                  <Text style={styles.actionButtonTextSecondary}>
                     {submitReceiving.isPending ? "Submitting..." : "Submit"}
                   </Text>
                 </Pressable>
               </View>
+            ) : isReceived ? (
+              <Card style={styles.receivedCard}>
+                <Ionicons name="checkmark-circle-outline" size={18} color={colors.greenDark} />
+                <View style={styles.receivedCardText}>
+                  <Text style={styles.receivedTitle}>Receiving completed</Text>
+                  <Text style={styles.receivedSubtitle}>
+                    This delivery note has already been submitted.
+                  </Text>
+                </View>
+              </Card>
+            ) : null}
+            {submitError ? <Text style={styles.submitErrorText}>{submitError}</Text> : null}
+
+            {isReceiving && canManageReceiving ? (
+              <>
+                <Text style={styles.sectionTitle}>QR / BARCODE</Text>
+
+                <Card style={styles.scanCard}>
+                  <View style={styles.inputRow}>
+                    <Ionicons
+                      name="scan-outline"
+                      size={18}
+                      color="#9B8FC4"
+                      style={styles.inputIcon}
+                    />
+                    <TextInput
+                      value={barcode}
+                      onChangeText={setBarcode}
+                      placeholder="Enter barcode..."
+                      placeholderTextColor="#9B8FC4"
+                      style={styles.input}
+                    />
+                  </View>
+                  <Pressable
+                    onPress={() => setScannerOpen(true)}
+                    style={({ pressed }) => [
+                      styles.scanButton,
+                      pressed && styles.scanButtonPressed,
+                    ]}
+                  >
+                    <Ionicons name="camera-outline" size={18} color="#fff" />
+                    <Text style={styles.scanButtonText}>Scan</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => void processScan(barcode)}
+                    disabled={!barcode.trim() || recordScan.isPending}
+                    style={({ pressed }) => [
+                      styles.verifyButton,
+                      (!barcode.trim() || recordScan.isPending) && styles.verifyButtonDisabled,
+                      pressed &&
+                        !(!barcode.trim() || recordScan.isPending) &&
+                        styles.verifyButtonPressed,
+                    ]}
+                  >
+                    <Ionicons name="checkmark-circle-outline" size={18} color={colors.text} />
+                    <Text style={styles.verifyButtonText}>
+                      {recordScan.isPending ? "Verifying..." : "Verify Item"}
+                    </Text>
+                  </Pressable>
+                  {scanError ? <Text style={styles.scanErrorText}>{scanError}</Text> : null}
+                </Card>
+              </>
+            ) : null}
+
+            {isReceiving && canManageReceiving && hasVariance ? (
+              <>
+                <Card style={styles.warningCard}>
+                  <Ionicons name="alert-circle-outline" size={18} color={colors.amberDark} />
+                  <Text style={styles.warningText}>Acknowledgement required</Text>
+                </Card>
+                <Text style={styles.warningSubtext}>
+                  Shortage or overage must be noted during submit.
+                </Text>
+              </>
+            ) : null}
+
+            <View style={styles.itemsSection}>
+              {deliveryNote.data.items.map((item) => {
+                const complete = item.receivedQty >= item.allocatedQty && item.allocatedQty > 0;
+                const progressPercent =
+                  item.allocatedQty > 0 ? (item.receivedQty / item.allocatedQty) * 100 : 0;
+                return (
+                  <Card key={item.id} style={styles.itemCard}>
+                    <View style={styles.itemHeader}>
+                      <View
+                        style={[
+                          styles.itemIconContainer,
+                          complete && styles.itemIconContainerComplete,
+                        ]}
+                      >
+                        <Ionicons
+                          name={complete ? "checkmark-circle" : "cube-outline"}
+                          size={24}
+                          color={complete ? colors.greenDark : colors.primary}
+                        />
+                      </View>
+                      <View style={styles.itemHeaderContent}>
+                        <Text style={styles.itemName} numberOfLines={2}>
+                          {item.name}
+                        </Text>
+                        <Text style={styles.itemMeta}>
+                          {item.code} • {item.uom}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.itemProgressSection}>
+                      <View style={styles.itemProgressHeader}>
+                        <Text style={styles.itemProgressLabel}>Progress</Text>
+                        <Text style={styles.itemProgressValue}>
+                          {item.receivedQty} / {item.allocatedQty}
+                        </Text>
+                      </View>
+                      <View style={styles.itemProgressBarBackground}>
+                        <View
+                          style={[
+                            styles.itemProgressBarFill,
+                            {
+                              width: `${Math.min(progressPercent, 100)}%`,
+                              backgroundColor:
+                                item.receivingStatus === "exact"
+                                  ? colors.green
+                                  : item.receivingStatus === "short"
+                                    ? colors.amber
+                                    : item.receivingStatus === "over"
+                                      ? colors.danger
+                                      : colors.primary,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+
+                    <View style={styles.itemFooter}>
+                      <View
+                        style={[
+                          styles.itemStatusBadge,
+                          item.receivingStatus === "short" && styles.itemStatusBadgeWarning,
+                          item.receivingStatus === "over" && styles.itemStatusBadgeDanger,
+                          item.receivingStatus === "exact" && styles.itemStatusBadgeSuccess,
+                        ]}
+                      >
+                        <Ionicons
+                          name={
+                            item.receivingStatus === "exact"
+                              ? "checkmark-circle"
+                              : item.receivingStatus === "short"
+                                ? "alert-circle"
+                                : item.receivingStatus === "over"
+                                  ? "warning"
+                                  : "ellipse"
+                          }
+                          size={14}
+                          color={
+                            item.receivingStatus === "exact"
+                              ? colors.greenDark
+                              : item.receivingStatus === "short"
+                                ? colors.amberDark
+                                : item.receivingStatus === "over"
+                                  ? colors.dangerDark
+                                  : colors.textSecondary
+                          }
+                        />
+                        <Text
+                          style={[
+                            styles.itemStatusBadgeText,
+                            item.receivingStatus === "short" && styles.itemStatusBadgeTextWarning,
+                            item.receivingStatus === "over" && styles.itemStatusBadgeTextDanger,
+                            item.receivingStatus === "exact" && styles.itemStatusBadgeTextSuccess,
+                          ]}
+                        >
+                          {item.receivingStatus === "exact"
+                            ? "Complete"
+                            : item.receivingStatus === "short"
+                              ? "Shortage"
+                              : item.receivingStatus === "over"
+                                ? "Overage"
+                                : "Pending"}
+                        </Text>
+                      </View>
+                      {item.varianceQty !== 0 ? (
+                        <View style={styles.itemVarianceBadge}>
+                          <Text style={styles.itemVarianceText}>
+                            {item.varianceQty > 0 ? "+" : ""}
+                            {item.varianceQty}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </Card>
+                );
+              })}
             </View>
-          </SafeAreaView>
-        </KeyboardAvoidingView>
-      </Modal>
-      <Modal
-        visible={canManageReceiving && Boolean(scanConfirmation)}
-        transparent
-        animationType="slide"
-        onRequestClose={() => {
-          setScanConfirmation(null);
-          setBarcode("");
-        }}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.confirmationRoot}
+          </>
+        ) : null}
+        <ScannerModal
+          visible={canManageReceiving && scannerOpen}
+          onClose={() => setScannerOpen(false)}
+          onScan={(value) => {
+            void processScan(value);
+          }}
+        />
+        <Modal
+          visible={canManageReceiving && discrepancySheetOpen}
+          transparent
+          animationType="slide"
+          onRequestClose={keepReceivingDialogOpen}
         >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={styles.discrepancyRoot}
+          >
+            <Animated.View
+              style={[
+                styles.discrepancyBackdrop,
+                {
+                  opacity: discrepancyBackdropOpacity,
+                },
+              ]}
+            />
+            <SafeAreaView edges={["bottom"]} style={styles.discrepancySafeArea}>
+              <View style={styles.discrepancySheet}>
+                <View style={styles.discrepancyHandle} />
+                <View style={styles.discrepancyIconCircle}>
+                  <Ionicons name="alert-circle" size={40} color={colors.amberDark} />
+                </View>
+                <Text style={styles.discrepancyTitle}>Discrepancy notes</Text>
+                <Text style={styles.discrepancyMessage}>
+                  Add the shortage or overage reason before submitting this delivery note.
+                </Text>
+                <TextInput
+                  value={discrepancyNotes}
+                  onChangeText={setDiscrepancyNotes}
+                  placeholder="Enter discrepancy reason or receiving notes..."
+                  placeholderTextColor="#9B8FC4"
+                  multiline
+                  style={styles.discrepancyInput}
+                  autoFocus
+                />
+                {submitError ? (
+                  <Text style={styles.discrepancyErrorText}>{submitError}</Text>
+                ) : null}
+                <View style={styles.discrepancyActions}>
+                  <Pressable
+                    onPress={() => setDiscrepancySheetOpen(false)}
+                    disabled={submitReceiving.isPending}
+                    style={({ pressed }) => [
+                      styles.discrepancyButton,
+                      styles.discrepancyButtonSecondary,
+                      submitReceiving.isPending && styles.discrepancyButtonDisabled,
+                      pressed &&
+                        !submitReceiving.isPending &&
+                        styles.discrepancyButtonSecondaryPressed,
+                    ]}
+                  >
+                    <Text style={styles.discrepancyButtonSecondaryText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => void submitReceivingWithNotes(discrepancyNotes)}
+                    disabled={submitReceiving.isPending}
+                    style={({ pressed }) => [
+                      styles.discrepancyButton,
+                      styles.discrepancyButtonPrimary,
+                      submitReceiving.isPending && styles.discrepancyButtonDisabled,
+                      pressed && !submitReceiving.isPending && styles.discrepancyButtonPressed,
+                    ]}
+                  >
+                    <Text style={styles.discrepancyButtonText}>
+                      {submitReceiving.isPending ? "Submitting..." : "Submit"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </SafeAreaView>
+          </KeyboardAvoidingView>
+        </Modal>
+      </Screen>
+      {scanConfirmation ? (
+        <View style={styles.confirmationRoot}>
           <Animated.View
             style={[
               styles.confirmationBackdrop,
               {
-                opacity: backdropOpacity
-              }
+                opacity: backdropOpacity,
+              },
             ]}
           />
           <SafeAreaView edges={["bottom"]} style={styles.confirmationSafeArea}>
@@ -729,42 +774,35 @@ export default function ReceivingDetailScreen() {
                   styles.confirmationIconCircle,
                   scanConfirmation?.tone === "warning"
                     ? styles.confirmationIconWarning
-                    : styles.confirmationIconSuccess
+                    : styles.confirmationIconSuccess,
                 ]}
               >
                 <Ionicons
-                  name={
-                    scanConfirmation?.tone === "warning"
-                      ? "alert-circle"
-                      : "checkmark-circle"
-                  }
+                  name={scanConfirmation?.tone === "warning" ? "alert-circle" : "checkmark-circle"}
                   size={40}
-                  color={
-                    scanConfirmation?.tone === "warning" ? colors.amberDark : colors.greenDark
-                  }
+                  color={scanConfirmation?.tone === "warning" ? colors.amberDark : colors.greenDark}
                 />
               </View>
               <Text style={styles.confirmationTitle}>{scanConfirmation?.title}</Text>
               <Text style={styles.confirmationMessage}>{scanConfirmation?.message}</Text>
               <View style={styles.confirmationActions}>
                 <Pressable
-                  onPress={() => {
-                    setScanConfirmation(null);
-                    setBarcode("");
-                  }}
+                  onPress={dismissScanConfirmation}
                   disabled={recordScan.isPending}
                   style={({ pressed }) => [
                     styles.confirmationButton,
                     styles.confirmationButtonSecondary,
                     recordScan.isPending && styles.confirmationButtonDisabled,
-                    pressed && !recordScan.isPending && styles.confirmationButtonSecondaryPressed
+                    pressed && !recordScan.isPending && styles.confirmationButtonSecondaryPressed,
                   ]}
                 >
                   <Text style={styles.confirmationButtonSecondaryText}>Cancel</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => {
-                    if (scanConfirmation) void commitReceivingScan(scanConfirmation.payload);
+                    if (scanConfirmation) {
+                      void commitReceivingScan(scanConfirmation.payload, true);
+                    }
                   }}
                   disabled={recordScan.isPending}
                   style={({ pressed }) => [
@@ -772,7 +810,7 @@ export default function ReceivingDetailScreen() {
                     styles.confirmationButtonPrimary,
                     scanConfirmation?.tone === "warning" && styles.confirmationButtonWarning,
                     recordScan.isPending && styles.confirmationButtonDisabled,
-                    pressed && !recordScan.isPending && styles.confirmationButtonPressed
+                    pressed && !recordScan.isPending && styles.confirmationButtonPressed,
                   ]}
                 >
                   <Text style={styles.confirmationButtonText}>
@@ -782,47 +820,50 @@ export default function ReceivingDetailScreen() {
               </View>
             </View>
           </SafeAreaView>
-        </KeyboardAvoidingView>
-      </Modal>
-    </Screen>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screenRoot: {
+    flex: 1,
+  },
   heroCard: {
     gap: spacing.xs,
     position: "relative",
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
-    paddingBottom: spacing.md
+    paddingBottom: spacing.md,
   },
   heroCode: {
     fontSize: 20,
     fontWeight: typography.fontWeights.bold,
-    color: colors.text
+    color: colors.text,
   },
   heroSubtitle: {
     fontSize: 13,
-    color: "#9B8FC4"
+    color: "#9B8FC4",
   },
   progressRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: spacing.xs
+    marginTop: spacing.xs,
   },
   progressLabel: {
     fontSize: 13,
-    color: "#9B8FC4"
+    color: "#9B8FC4",
   },
   progressValue: {
     fontSize: 18,
     color: colors.primary,
-    fontWeight: typography.fontWeights.bold
+    fontWeight: typography.fontWeights.bold,
   },
   actionRow: {
     flexDirection: "row",
-    gap: spacing.sm
+    gap: spacing.sm,
   },
   actionButton: {
     flex: 1,
@@ -832,38 +873,38 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.xs
+    gap: spacing.xs,
   },
   actionButtonSecondary: {
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border
+    borderColor: colors.border,
   },
   actionButtonStarted: {
     backgroundColor: colors.greenSoft,
     borderWidth: 1,
-    borderColor: colors.green
+    borderColor: colors.green,
   },
   actionButtonText: {
     fontSize: 14,
     fontWeight: typography.fontWeights.semibold,
-    color: "#fff"
+    color: "#fff",
   },
   actionButtonTextSecondary: {
     fontSize: 14,
     fontWeight: typography.fontWeights.semibold,
-    color: colors.text
+    color: colors.text,
   },
   actionButtonTextStarted: {
     fontSize: 14,
     fontWeight: typography.fontWeights.semibold,
-    color: colors.greenDark
+    color: colors.greenDark,
   },
   actionButtonPressed: {
-    opacity: 0.7
+    opacity: 0.7,
   },
   actionButtonSecondaryPressed: {
-    backgroundColor: colors.backgroundSecondary
+    backgroundColor: colors.backgroundSecondary,
   },
   receivedCard: {
     flexDirection: "row",
@@ -872,39 +913,39 @@ const styles = StyleSheet.create({
     backgroundColor: colors.greenSoft,
     borderColor: colors.green,
     borderWidth: 1,
-    borderRadius: borderRadius.md
+    borderRadius: borderRadius.md,
   },
   receivedCardText: {
     flex: 1,
-    gap: 2
+    gap: 2,
   },
   receivedTitle: {
     fontSize: 14,
     fontWeight: typography.fontWeights.semibold,
-    color: colors.greenDark
+    color: colors.greenDark,
   },
   receivedSubtitle: {
     fontSize: 12,
     lineHeight: 16,
-    color: colors.textSecondary
+    color: colors.textSecondary,
   },
   submitErrorText: {
     fontSize: 12,
     lineHeight: 16,
     color: colors.danger,
-    paddingHorizontal: spacing.xs
+    paddingHorizontal: spacing.xs,
   },
   sectionTitle: {
     fontSize: 11,
     fontWeight: typography.fontWeights.semibold,
     color: "#9B8FC4",
     letterSpacing: 1,
-    marginTop: spacing.sm
+    marginTop: spacing.sm,
   },
   scanCard: {
     gap: spacing.sm,
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg
+    borderRadius: borderRadius.lg,
   },
   inputRow: {
     flexDirection: "row",
@@ -914,16 +955,16 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface
+    backgroundColor: colors.surface,
   },
   inputIcon: {
-    marginRight: spacing.xs
+    marginRight: spacing.xs,
   },
   input: {
     flex: 1,
     fontSize: 14,
     color: colors.text,
-    padding: 0
+    padding: 0,
   },
   scanButton: {
     minHeight: 44,
@@ -933,15 +974,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xs,
-    ...shadows.sm
+    ...shadows.sm,
   },
   scanButtonText: {
     fontSize: 14,
     fontWeight: typography.fontWeights.semibold,
-    color: "#fff"
+    color: "#fff",
   },
   scanButtonPressed: {
-    opacity: 0.7
+    opacity: 0.7,
   },
   verifyButton: {
     minHeight: 44,
@@ -952,23 +993,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.xs
+    gap: spacing.xs,
   },
   verifyButtonDisabled: {
-    opacity: 0.5
+    opacity: 0.5,
   },
   verifyButtonPressed: {
-    backgroundColor: colors.backgroundSecondary
+    backgroundColor: colors.backgroundSecondary,
   },
   verifyButtonText: {
     fontSize: 14,
     fontWeight: typography.fontWeights.semibold,
-    color: colors.text
+    color: colors.text,
   },
   scanErrorText: {
     fontSize: 12,
     lineHeight: 16,
-    color: colors.danger
+    color: colors.danger,
   },
   warningCard: {
     flexDirection: "row",
@@ -979,32 +1020,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: borderRadius.md,
     padding: spacing.md,
-    marginBottom: 0
+    marginBottom: 0,
   },
   warningText: {
     fontSize: 14,
     fontWeight: typography.fontWeights.semibold,
     color: colors.amberDark,
-    flex: 1
+    flex: 1,
   },
   warningSubtext: {
     fontSize: 12,
     color: colors.textSecondary,
     marginTop: -spacing.xs,
-    paddingHorizontal: spacing.md
+    paddingHorizontal: spacing.md,
   },
   discrepancyRoot: {
     flex: 1,
-    justifyContent: "flex-end"
+    justifyContent: "flex-end",
   },
   discrepancyBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(17, 24, 39, 0.5)"
+    backgroundColor: "rgba(17, 24, 39, 0.5)",
   },
   discrepancySafeArea: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl
+    borderTopRightRadius: borderRadius.xl,
   },
   discrepancySheet: {
     backgroundColor: colors.surface,
@@ -1014,14 +1055,14 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
     alignItems: "center",
-    ...shadows.xl
+    ...shadows.xl,
   },
   discrepancyHandle: {
     width: 40,
     height: 4,
     borderRadius: 2,
     backgroundColor: colors.border,
-    marginBottom: spacing.lg
+    marginBottom: spacing.lg,
   },
   discrepancyIconCircle: {
     width: 64,
@@ -1030,14 +1071,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.md,
-    backgroundColor: colors.amberSoft
+    backgroundColor: colors.amberSoft,
   },
   discrepancyTitle: {
     fontSize: 20,
     fontWeight: typography.fontWeights.bold,
     color: colors.text,
     textAlign: "center",
-    marginBottom: spacing.xs
+    marginBottom: spacing.xs,
   },
   discrepancyMessage: {
     fontSize: 15,
@@ -1045,7 +1086,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: "center",
     marginBottom: spacing.lg,
-    paddingHorizontal: spacing.sm
+    paddingHorizontal: spacing.sm,
   },
   discrepancyInput: {
     width: "100%",
@@ -1060,68 +1101,70 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     padding: spacing.md,
     textAlignVertical: "top",
-    marginBottom: spacing.md
+    marginBottom: spacing.md,
   },
   discrepancyErrorText: {
     fontSize: 13,
     lineHeight: 18,
     color: colors.danger,
     textAlign: "center",
-    marginBottom: spacing.sm
+    marginBottom: spacing.sm,
   },
   discrepancyActions: {
     flexDirection: "row",
     width: "100%",
-    gap: spacing.md
+    gap: spacing.md,
   },
   discrepancyButton: {
     flex: 1,
     minHeight: 50,
     borderRadius: borderRadius.lg,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
   },
   discrepancyButtonPrimary: {
     backgroundColor: colors.primary,
-    ...shadows.sm
+    ...shadows.sm,
   },
   discrepancyButtonSecondary: {
     backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: colors.border
+    borderColor: colors.border,
   },
   discrepancyButtonDisabled: {
-    opacity: 0.5
+    opacity: 0.5,
   },
   discrepancyButtonPressed: {
-    opacity: 0.85
+    opacity: 0.85,
   },
   discrepancyButtonSecondaryPressed: {
     backgroundColor: colors.backgroundSecondary,
-    borderColor: colors.textSecondary
+    borderColor: colors.textSecondary,
   },
   discrepancyButtonText: {
     fontSize: 16,
     fontWeight: typography.fontWeights.semibold,
-    color: "#fff"
+    color: "#fff",
   },
   discrepancyButtonSecondaryText: {
     fontSize: 16,
     fontWeight: typography.fontWeights.semibold,
-    color: colors.text
+    color: colors.text,
   },
   confirmationRoot: {
-    flex: 1,
-    justifyContent: "flex-end"
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "flex-end",
+    zIndex: 1,
+    elevation: 1,
   },
   confirmationBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(17, 24, 39, 0.5)"
+    backgroundColor: "rgba(17, 24, 39, 0.5)",
   },
   confirmationSafeArea: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl
+    borderTopRightRadius: borderRadius.xl,
   },
   confirmationSheet: {
     backgroundColor: colors.surface,
@@ -1131,14 +1174,14 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
     alignItems: "center",
-    ...shadows.xl
+    ...shadows.xl,
   },
   confirmationHandle: {
     width: 40,
     height: 4,
     borderRadius: 2,
     backgroundColor: colors.border,
-    marginBottom: spacing.lg
+    marginBottom: spacing.lg,
   },
   confirmationIconCircle: {
     width: 64,
@@ -1146,20 +1189,20 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.md
+    marginBottom: spacing.md,
   },
   confirmationIconSuccess: {
-    backgroundColor: colors.greenSoft
+    backgroundColor: colors.greenSoft,
   },
   confirmationIconWarning: {
-    backgroundColor: colors.amberSoft
+    backgroundColor: colors.amberSoft,
   },
   confirmationTitle: {
     fontSize: 20,
     fontWeight: typography.fontWeights.bold,
     color: colors.text,
     textAlign: "center",
-    marginBottom: spacing.xs
+    marginBottom: spacing.xs,
   },
   confirmationMessage: {
     fontSize: 15,
@@ -1167,57 +1210,57 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: "center",
     marginBottom: spacing.lg,
-    paddingHorizontal: spacing.sm
+    paddingHorizontal: spacing.sm,
   },
   confirmationActions: {
     flexDirection: "row",
     width: "100%",
-    gap: spacing.md
+    gap: spacing.md,
   },
   confirmationButton: {
     flex: 1,
     minHeight: 50,
     borderRadius: borderRadius.lg,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
   },
   confirmationButtonPrimary: {
     backgroundColor: colors.primary,
-    ...shadows.sm
+    ...shadows.sm,
   },
   confirmationButtonWarning: {
     backgroundColor: colors.amberDark,
-    ...shadows.sm
+    ...shadows.sm,
   },
   confirmationButtonSecondary: {
     backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: colors.border
+    borderColor: colors.border,
   },
   confirmationButtonDisabled: {
-    opacity: 0.5
+    opacity: 0.5,
   },
   confirmationButtonPressed: {
-    opacity: 0.85
+    opacity: 0.85,
   },
   confirmationButtonSecondaryPressed: {
     backgroundColor: colors.backgroundSecondary,
-    borderColor: colors.textSecondary
+    borderColor: colors.textSecondary,
   },
   confirmationButtonText: {
     fontSize: 16,
     fontWeight: typography.fontWeights.semibold,
-    color: "#fff"
+    color: "#fff",
   },
   confirmationButtonSecondaryText: {
     fontSize: 16,
     fontWeight: typography.fontWeights.semibold,
-    color: colors.text
+    color: colors.text,
   },
   sheetActions: {
     flexDirection: "row",
     gap: spacing.sm,
-    marginTop: spacing.xs
+    marginTop: spacing.xs,
   },
   sheetButton: {
     flex: 1,
@@ -1225,43 +1268,43 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     backgroundColor: colors.primary,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
   },
   sheetButtonSecondary: {
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border
+    borderColor: colors.border,
   },
   sheetButtonText: {
     fontSize: 14,
     fontWeight: typography.fontWeights.semibold,
-    color: "#fff"
+    color: "#fff",
   },
   sheetButtonSecondaryText: {
     fontSize: 14,
     fontWeight: typography.fontWeights.semibold,
-    color: colors.text
+    color: colors.text,
   },
   sheetButtonPressed: {
-    opacity: 0.7
+    opacity: 0.7,
   },
   sheetButtonSecondaryPressed: {
-    backgroundColor: colors.backgroundSecondary
+    backgroundColor: colors.backgroundSecondary,
   },
   itemsSection: {
-    gap: spacing.md
+    gap: spacing.md,
   },
   itemCard: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
     gap: spacing.md,
-    ...shadows.sm
+    ...shadows.sm,
   },
   itemHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: spacing.md
+    gap: spacing.md,
   },
   itemIconContainer: {
     width: 44,
@@ -1269,59 +1312,59 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     backgroundColor: colors.primarySoft,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
   },
   itemIconContainerComplete: {
-    backgroundColor: colors.greenSoft
+    backgroundColor: colors.greenSoft,
   },
   itemHeaderContent: {
     flex: 1,
-    gap: 4
+    gap: 4,
   },
   itemName: {
     fontSize: 16,
     lineHeight: 22,
     fontWeight: typography.fontWeights.bold,
-    color: colors.text
+    color: colors.text,
   },
   itemMeta: {
     fontSize: 13,
     lineHeight: 18,
-    color: colors.textSecondary
+    color: colors.textSecondary,
   },
   itemProgressSection: {
-    gap: spacing.xs
+    gap: spacing.xs,
   },
   itemProgressHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center"
+    alignItems: "center",
   },
   itemProgressLabel: {
     fontSize: 13,
     fontWeight: typography.fontWeights.medium,
-    color: colors.textSecondary
+    color: colors.textSecondary,
   },
   itemProgressValue: {
     fontSize: 15,
     fontWeight: typography.fontWeights.bold,
-    color: colors.text
+    color: colors.text,
   },
   itemProgressBarBackground: {
     height: 8,
     backgroundColor: colors.backgroundSecondary,
     borderRadius: borderRadius.full,
-    overflow: "hidden"
+    overflow: "hidden",
   },
   itemProgressBarFill: {
     height: "100%",
     borderRadius: borderRadius.full,
-    backgroundColor: colors.primary
+    backgroundColor: colors.primary,
   },
   itemFooter: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between"
+    justifyContent: "space-between",
   },
   itemStatusBadge: {
     flexDirection: "row",
@@ -1330,30 +1373,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.backgroundSecondary
+    backgroundColor: colors.backgroundSecondary,
   },
   itemStatusBadgeWarning: {
-    backgroundColor: colors.amberSoft
+    backgroundColor: colors.amberSoft,
   },
   itemStatusBadgeDanger: {
-    backgroundColor: colors.dangerSoft
+    backgroundColor: colors.dangerSoft,
   },
   itemStatusBadgeSuccess: {
-    backgroundColor: colors.greenSoft
+    backgroundColor: colors.greenSoft,
   },
   itemStatusBadgeText: {
     fontSize: 13,
     fontWeight: typography.fontWeights.semibold,
-    color: colors.textSecondary
+    color: colors.textSecondary,
   },
   itemStatusBadgeTextWarning: {
-    color: colors.amberDark
+    color: colors.amberDark,
   },
   itemStatusBadgeTextDanger: {
-    color: colors.dangerDark
+    color: colors.dangerDark,
   },
   itemStatusBadgeTextSuccess: {
-    color: colors.greenDark
+    color: colors.greenDark,
   },
   itemVarianceBadge: {
     paddingHorizontal: spacing.md,
@@ -1361,11 +1404,11 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     backgroundColor: colors.backgroundSecondary,
     borderWidth: 1,
-    borderColor: colors.border
+    borderColor: colors.border,
   },
   itemVarianceText: {
     fontSize: 13,
     fontWeight: typography.fontWeights.semibold,
-    color: colors.text
-  }
+    color: colors.text,
+  },
 });

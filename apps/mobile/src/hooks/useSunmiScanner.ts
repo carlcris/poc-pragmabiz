@@ -1,5 +1,6 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState } from "react-native";
 import { sunmiScannerModule, type SunmiScanEvent } from "@/native/sunmi-scanner";
 
 const DUPLICATE_SCAN_WINDOW_MS = 350;
@@ -18,18 +19,32 @@ export const useSunmiScanner = ({ enabled = true, onScan }: UseSunmiScannerOptio
   const onScanRef = useRef(onScan);
   const processingRef = useRef(false);
   const lastScanRef = useRef<LastScan | null>(null);
+  const appIsActiveRef = useRef(AppState.currentState === "active");
+  const [appIsActive, setAppIsActive] = useState(appIsActiveRef.current);
 
   useEffect(() => {
     onScanRef.current = onScan;
   }, [onScan]);
 
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      const isActive = nextAppState === "active";
+      appIsActiveRef.current = isActive;
+      setAppIsActive(isActive);
+    });
+
+    return () => subscription.remove();
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      if (!enabled || !sunmiScannerModule) return;
+      if (!enabled || !appIsActive || !sunmiScannerModule) return;
 
       const subscription = sunmiScannerModule.addListener(
         "onScan",
         (event: SunmiScanEvent) => {
+          if (!appIsActiveRef.current) return;
+
           const value = typeof event.value === "string" ? event.value.trim() : "";
           if (!value || processingRef.current) return;
 
@@ -61,6 +76,6 @@ export const useSunmiScanner = ({ enabled = true, onScan }: UseSunmiScannerOptio
         processingRef.current = false;
         lastScanRef.current = null;
       };
-    }, [enabled]),
+    }, [appIsActive, enabled]),
   );
 };

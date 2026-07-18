@@ -165,8 +165,13 @@ Android builds also include a local Expo module for integrated SUNMI scan heads.
 scan-capable screen listens for `com.sunmi.scanner.ACTION_DATA_CODE_RECEIVED` while the camera
 scanner is closed. Pressing the physical device scan key therefore processes the broadcast
 `data` value through the same handler as a camera scan, without adding SUNMI-specific scan controls
-to the UI. The listener pauses while a camera scan, verification request, or required confirmation
-is active, and it is removed when the screen loses focus.
+to the UI. The listener pauses while a camera scan, verification request, required confirmation,
+receiving discrepancy dialog, or receiving submission is active. It is removed when the screen
+loses focus or the app leaves the foreground.
+
+Receiving confirmation and discrepancy dialogs remain open until the user chooses one of the
+visible dialog actions. The scan confirmation is rendered in the receiving screen rather than an
+Android native modal, and hardware back-key events are consumed while that confirmation is active.
 
 SUNMI devices must be configured with broadcast output enabled and simulated-keyboard/direct-fill
 output disabled. This broadcast-only setup prevents the scan head from typing into a focused
