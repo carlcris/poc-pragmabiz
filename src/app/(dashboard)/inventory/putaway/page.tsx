@@ -43,9 +43,6 @@ const formatQty = (value: number) =>
     maximumFractionDigits: 2,
   }).format(value);
 
-const formatInputQuantity = (value: number) =>
-  Number.isFinite(value) ? String(Math.ceil(Math.max(1, value))) : "1";
-
 const sourceLabel = (sourceType: string) =>
   sourceType
     .split("_")
@@ -68,54 +65,29 @@ const createPutawayLabelId = (taskId: string, labelNumber: number) => {
   return `putaway-${taskId}-${randomId}`;
 };
 
-const allocateLabelCounts = (quantities: number[], totalLabelCount: number) => {
-  if (quantities.length === 0) return [];
-  if (quantities.length === 1) return [totalLabelCount];
+const distributeLabelCopies = (sourceCount: number, totalLabelCount: number) => {
+  if (sourceCount <= 0) return [];
 
-  const totalQuantity = quantities.reduce((sum, quantity) => sum + quantity, 0);
-  const baseCounts = quantities.map(() => 1);
-  let remainingLabels = totalLabelCount - quantities.length;
+  const copiesPerSource = Math.floor(totalLabelCount / sourceCount);
+  const extraCopies = totalLabelCount % sourceCount;
 
-  if (remainingLabels <= 0 || totalQuantity <= 0) return baseCounts;
-
-  const weighted = quantities.map((quantity, index) => {
-    const exact = (quantity / totalQuantity) * remainingLabels;
-    return {
-      index,
-      whole: Math.floor(exact),
-      remainder: exact - Math.floor(exact),
-    };
-  });
-
-  for (const item of weighted) {
-    baseCounts[item.index] += item.whole;
-    remainingLabels -= item.whole;
-  }
-
-  weighted
-    .sort((a, b) => b.remainder - a.remainder)
-    .slice(0, remainingLabels)
-    .forEach((item) => {
-      baseCounts[item.index] += 1;
-    });
-
-  return baseCounts;
+  return Array.from(
+    { length: sourceCount },
+    (_, sourceIndex) => copiesPerSource + (sourceIndex < extraCopies ? 1 : 0)
+  );
 };
 
 const buildPutawayBarcodeLabels = (
   taskId: string,
   sources: PutawayTaskLabel[],
+  qtyPerUnit: number,
   totalLabelCount: number
 ): BarcodeData[] => {
-  const labelCounts = allocateLabelCounts(
-    sources.map((source) => source.quantity),
-    totalLabelCount
-  );
+  const labelCounts = distributeLabelCopies(sources.length, totalLabelCount);
   let nextBoxNumber = 1;
 
   return sources.flatMap((source, sourceIndex) => {
     const sourceLabelCount = labelCounts[sourceIndex] || 0;
-    const qtyPerLabel = source.quantity / sourceLabelCount;
 
     return Array.from({ length: sourceLabelCount }, () => {
       const boxNumber = nextBoxNumber;
@@ -130,7 +102,7 @@ const buildPutawayBarcodeLabels = (
         itemCode: source.itemCode,
         itemName: source.itemName,
         boxNumber,
-        qtyPerBox: qtyPerLabel,
+        qtyPerBox: qtyPerUnit,
         deliveryDate: source.postedDate,
         warehouseCode: source.warehouseCode || undefined,
         locationId: source.locationId,
@@ -225,13 +197,12 @@ export default function PutawayStationPage() {
 
   const selectTask = (task: PutawayTask) => {
     const selectedQuantity = task.status === "completed" ? task.postedQuantity : task.pendingQuantity;
-    const sourceQuantity = selectedQuantity / task.sourceQtyPerUnit;
     setSelectedTask(task);
     setLocationId(task.suggestedLocationId ?? "");
     setQuantity(String(selectedQuantity));
     setBatchCode(task.sourceBatchCode ?? "");
     setShouldPrintLabels(true);
-    setLabelCount(formatInputQuantity(sourceQuantity));
+    setLabelCount("1");
   };
 
   const handleApplySearch = () => {
@@ -256,7 +227,12 @@ export default function PutawayStationPage() {
       }
 
       const { printBarcodeLabels } = await import("@/lib/barcode");
-      const labels = buildPutawayBarcodeLabels(task.id, response.data, parsedLabelCount);
+      const labels = buildPutawayBarcodeLabels(
+        task.id,
+        response.data,
+        task.sourceQtyPerUnit,
+        parsedLabelCount
+      );
 
       await printBarcodeLabels(labels);
       toast.success(t("reprintLabelsSuccess"));
@@ -305,7 +281,6 @@ export default function PutawayStationPage() {
       try {
         setIsPrintingLabels(true);
         const { printBarcodeLabels } = await import("@/lib/barcode");
-        const qtyPerLabel = parsedQuantity / parsedLabelCount;
         const labels: BarcodeData[] = Array.from({ length: parsedLabelCount }, (_, index) => ({
           boxId: createPutawayLabelId(selectedTask.id, index + 1),
           itemId: selectedTask.itemId,
@@ -315,7 +290,7 @@ export default function PutawayStationPage() {
           itemCode: selectedTask.itemCode || "",
           itemName: selectedTask.itemName || "",
           boxNumber: index + 1,
-          qtyPerBox: qtyPerLabel,
+          qtyPerBox: selectedTask.sourceQtyPerUnit,
           deliveryDate: postResult.postedDate,
           warehouseCode: selectedTask.warehouseCode || undefined,
           locationId: postResult.locationId,
@@ -570,7 +545,7 @@ export default function PutawayStationPage() {
                   {Number.isFinite(labelCountNumber) && labelCountNumber > 0 ? (
                     <p className="text-xs text-muted-foreground">
                       {t("qtyPerLabel", {
-                        count: formatQty(selectedTask.postedQuantity / labelCountNumber || 0),
+                        count: formatQty(selectedTask.sourceQtyPerUnit),
                       })}
                     </p>
                   ) : null}
@@ -670,7 +645,7 @@ export default function PutawayStationPage() {
                       {Number.isFinite(labelCountNumber) && labelCountNumber > 0 ? (
                         <p className="text-xs text-muted-foreground">
                           {t("qtyPerLabel", {
-                            count: formatQty(quantityNumber / labelCountNumber || 0),
+                            count: formatQty(selectedTask.sourceQtyPerUnit),
                           })}
                         </p>
                       ) : null}

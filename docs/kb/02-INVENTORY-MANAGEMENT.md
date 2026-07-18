@@ -127,7 +127,7 @@ Company Level
 
 Stock-aware item lists subscribe to `item_warehouse` realtime changes. Stock movement screens also subscribe to `stock_transactions` and `stock_transaction_items` realtime changes. Posted stock adjustments, GRN receiving submissions, putaway postings, and other stock movements invalidate the loaded items, item statistics, stock transaction, stock balance, dashboard, and reorder queries so on-hand, reserved, putaway, available, and movement history refresh without leaving the page. Putaway posting also invalidates item-location and batch selectors, delivery-note allocation availability, stock requests, reorder notifications, and inventory, batch-location, aging, stock-movement, product-movement, and ledger reports because final placement makes staged stock available at a specific batch and location.
 
-Putaway tasks store their own source-unit name and quantity-per-unit conversion when they are created. The Putaway Station derives source quantities and label defaults from that immutable task snapshot rather than re-reading a live item unit option or upstream GRN line.
+Putaway tasks store their own source-unit name and quantity-per-unit conversion when they are created. The Putaway Station derives source quantities and every printed label's quantity from that immutable task snapshot rather than re-reading a live item unit option or upstream GRN line. Label copies are selected independently and default to one; putaway quantity is never divided across the requested copies.
 
 ### 4. Stock Transactions
 
