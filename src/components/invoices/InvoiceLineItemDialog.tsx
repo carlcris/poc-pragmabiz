@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
@@ -36,21 +36,27 @@ import {
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { Textarea } from "@/components/ui/textarea";
 import { useItem, useItems } from "@/hooks/useItems";
+import { useResolvedCustomerPricing } from "@/hooks/useCustomerPricing";
 import { useCurrency } from "@/hooks/useCurrency";
 import { createInvoiceLineItemSchema, invoiceLineItemSchema } from "@/lib/validations/invoice";
-import { getDefaultPriceTierCode, getItemPriceTierOptions, resolvePriceTierSelection } from "@/lib/pricing/itemPriceTiers";
+import {
+  getDefaultPriceTierCode,
+  getItemPriceTierOptions,
+  resolvePriceTierSelection,
+} from "@/lib/pricing/itemPriceTiers";
 
 export type LineItemFormValues = z.output<typeof invoiceLineItemSchema> & {
   lineTotal?: number;
 };
 
-interface InvoiceLineItemDialogProps {
+type InvoiceLineItemDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (item: LineItemFormValues) => void;
   item?: LineItemFormValues | null;
   mode?: "add" | "edit";
-}
+  customerId?: string;
+};
 
 export function InvoiceLineItemDialog({
   open,
@@ -58,9 +64,11 @@ export function InvoiceLineItemDialog({
   onSave,
   item,
   mode = "add",
+  customerId,
 }: InvoiceLineItemDialogProps) {
   const t = useTranslations("invoiceLineItemDialog");
   const [itemSearch, setItemSearch] = useState("");
+  const [pendingCustomerPriceItemId, setPendingCustomerPriceItemId] = useState<string | null>(null);
   const debouncedItemSearch = useDebouncedValue(itemSearch.trim());
   const { data: itemsData, isLoading: isItemsLoading } = useItems({
     search: debouncedItemSearch || undefined,
@@ -92,6 +100,21 @@ export function InvoiceLineItemDialog({
   const { data: selectedItemResponse } = useItem(selectedItemId);
   const selectedItem =
     items.find((entry) => entry.id === selectedItemId) ?? selectedItemResponse?.data ?? null;
+  const { data: resolvedCustomerPricing } = useResolvedCustomerPricing({
+    customerId,
+    itemIds: selectedItemId ? [selectedItemId] : [],
+    enabled: open,
+  });
+  const resolvedPriceTiers = resolvedCustomerPricing?.data.find(
+    (entry) => entry.itemId === selectedItemId
+  )?.priceTiers;
+  const pricingItem = useMemo(
+    () =>
+      selectedItem && resolvedPriceTiers
+        ? { ...selectedItem, priceTiers: resolvedPriceTiers }
+        : selectedItem,
+    [resolvedPriceTiers, selectedItem]
+  );
 
   useEffect(() => {
     if (open && item) {
@@ -129,11 +152,12 @@ export function InvoiceLineItemDialog({
     form.setValue("unitPrice", priceSelection.price);
     form.setValue("uomId", selectedItem.uomId);
     form.setValue("uomCode", selectedItem.uom);
+    setPendingCustomerPriceItemId(customerId ? selectedItem.id : null);
   };
 
   const handlePricingTierChange = (priceTier: string) => {
-    if (!selectedItem) return;
-    const priceSelection = resolvePriceTierSelection(selectedItem, priceTier);
+    if (!pricingItem) return;
+    const priceSelection = resolvePriceTierSelection(pricingItem, priceTier);
     form.setValue("pricingTier", priceSelection.priceTier);
     form.setValue("pricingTierName", priceSelection.priceTierName);
     form.setValue("unitPrice", priceSelection.price);
@@ -152,10 +176,24 @@ export function InvoiceLineItemDialog({
   const unitPrice = form.watch("unitPrice");
   const discount = form.watch("discount");
   const taxRate = form.watch("taxRate");
-  const priceTierOptions = selectedItem ? getItemPriceTierOptions(selectedItem) : [];
+  const priceTierOptions = pricingItem ? getItemPriceTierOptions(pricingItem) : [];
   const selectedPricingTier =
-    form.watch("pricingTier") ||
-    (selectedItem ? getDefaultPriceTierCode(selectedItem) : undefined);
+    form.watch("pricingTier") || (pricingItem ? getDefaultPriceTierCode(pricingItem) : undefined);
+
+  useEffect(() => {
+    if (!pricingItem || !resolvedPriceTiers || pendingCustomerPriceItemId !== selectedItemId) {
+      return;
+    }
+
+    const priceSelection = resolvePriceTierSelection(
+      pricingItem,
+      form.getValues("pricingTier")
+    );
+    form.setValue("pricingTier", priceSelection.priceTier);
+    form.setValue("pricingTierName", priceSelection.priceTierName);
+    form.setValue("unitPrice", priceSelection.price);
+    setPendingCustomerPriceItemId(null);
+  }, [form, pendingCustomerPriceItemId, pricingItem, resolvedPriceTiers, selectedItemId]);
   const lineSubtotal = (quantity || 0) * (unitPrice || 0);
   const discountAmount = (lineSubtotal * (discount || 0)) / 100;
   const taxableAmount = lineSubtotal - discountAmount;
@@ -274,10 +312,10 @@ export function InvoiceLineItemDialog({
                         onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                       />
                     </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

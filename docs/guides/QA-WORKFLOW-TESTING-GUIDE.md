@@ -93,6 +93,7 @@ These are the records everything else in the app is built on. Before testing any
 **Entry point**: Inventory → Items → **New Item**.
 
 **Required fields**:
+
 - **Item Code** — you type this yourself; it is **not** auto-generated. Letters, numbers, spaces, and hyphens only — the field automatically converts what you type to uppercase as you go. Must be unique; a duplicate code is rejected with a clear "already exists" error.
 - **Item Name**.
 - **Item Type** — Raw Material, Finished Good, Asset, or Service. Choosing Service means the item is treated as non-stock (it never carries a quantity).
@@ -103,10 +104,12 @@ These are the records everything else in the app is built on. Before testing any
 **Optional fields**: supplier's own code for the item, a Chinese name, description, dimensions, purchase price, import cost and import currency, reorder level/quantity, and a "standard order/production quantity" field that's only visible to certain roles (see below).
 
 **Validation rules**:
+
 - If you fill in an Import Cost, Import Currency becomes required too (a 3-letter currency code).
 - The "standard order/production quantity" field only appears for users with a specific extra permission — if a tester without that permission is somehow given a value for this field (e.g., by another means), the system will refuse it.
 
 **Extra units / packaging (e.g. "BOX (144)")**:
+
 - Every item automatically gets one "base" unit option the moment it's created — this is just its base unit of measure at a 1:1 ratio, marked as the default.
 - From the item's own detail page, you can add more unit options — e.g. add "BOX" with a conversion of 144 to the base unit. The system automatically labels this as something like **"BOX (144 PCS)"** unless you type your own label. This is what lets a purchase be entered "in boxes" while stock is tracked in pieces underneath.
 - Only one unit option can be the default at a time — setting a new default un-sets the previous one automatically.
@@ -119,12 +122,14 @@ These are the records everything else in the app is built on. Before testing any
 **What's required before an item can actually be used in a transaction**: nothing extra — as soon as an item is saved with the fields above, it can immediately be added as a line on a Purchase Order, Stock Request, etc. However, a brand-new item will show **zero on-hand and zero available stock** in every warehouse until it's actually received or adjusted into stock somewhere for the first time — there's no separate "activate this item for this warehouse" step; the stock record is created automatically the first time stock actually moves for it.
 
 **Edit / deactivate / delete behavior**:
+
 - Deactivating an item (toggling it off) is instant — **there is no warning shown even if the item has open orders, requests, or existing stock.** Once deactivated, the item stops appearing in new-transaction pickers/search, but anything already referencing it (existing orders, historical transactions) is unaffected and can still be processed normally.
 - Deleting an item is also allowed with **no check at all** for whether it's currently in use — you can delete an item that has active stock or open orders referencing it. It disappears from all "create new" flows immediately; existing historical records that reference it should be unaffected, but this is exactly the kind of thing worth deliberately testing (delete an item that has an open Purchase Order line, then check whether that PO still displays/behaves correctly).
 - Once created, the item code **cannot be changed**.
 - Depending on the tester's role, pricing fields (purchase price, import cost, list price) may show as blank/hidden even when the item actually has values set — this is intentional data-hiding for roles without a pricing-visibility permission, not a bug, but confirm it's actually hidden rather than just visually blank.
 
 **Things to test**:
+
 - Try to save an item code with lowercase letters or punctuation other than a hyphen — should be rejected or auto-corrected.
 - Try to create two items with the same code — second one should be refused.
 - Add a second unit option to an item (e.g. "BOX" = 144 base units) and confirm the auto-generated label looks right, and that switching the default unit option actually changes which one shows as default elsewhere.
@@ -138,11 +143,12 @@ These are the records everything else in the app is built on. Before testing any
 
 **Purpose**: groups items for filtering/searching and reporting.
 
-**Entry point**: **There isn't one.** There is no screen anywhere in the app to create, rename, or remove a category — the only thing the app does with categories is let you *pick* an existing one when creating/editing an Item, and filter by it in lists.
+**Entry point**: **There isn't one.** There is no screen anywhere in the app to create, rename, or remove a category — the only thing the app does with categories is let you _pick_ an existing one when creating/editing an Item, and filter by it in lists.
 
-**What this means for testing**: if your test plan calls for "create a new category," that's not something you can do through the product today — categories have to already exist (set up by whoever configures the environment) before testing starts. What you *can* test: that the Item form requires you to pick a category, and that the item list correctly filters by category.
+**What this means for testing**: if your test plan calls for "create a new category," that's not something you can do through the product today — categories have to already exist (set up by whoever configures the environment) before testing starts. What you _can_ test: that the Item form requires you to pick a category, and that the item list correctly filters by category.
 
 **Things to test**:
+
 - Confirm the category dropdown on the Item form only lets you pick from existing categories (no free-text/"create new" option).
 - Filter the Items list by category and confirm only matching items show.
 
@@ -157,8 +163,9 @@ These are the records everything else in the app is built on. Before testing any
 **Important distinction**: there is no separate "purchase unit" vs. "sales unit" concept at the item level — an item has exactly one base unit. Anything like "buy in boxes, track in pieces" is handled entirely through the item's own unit options (section 1), not through a second unit assigned to the item itself.
 
 **Things to test**:
+
 - Confirm the Unit of Measure dropdown on the Item form only offers existing, active units.
-- If you're able to deactivate a unit of measure in the environment's setup data, confirm it disappears from the dropdown for *new* items but doesn't break any *existing* item that already uses it.
+- If you're able to deactivate a unit of measure in the environment's setup data, confirm it disappears from the dropdown for _new_ items but doesn't break any _existing_ item that already uses it.
 
 ---
 
@@ -173,6 +180,7 @@ These are the records everything else in the app is built on. Before testing any
 **Optional fields**: mobile number, website, tax ID, a separate shipping address, credit limit, bank details, notes.
 
 **Validation rules**:
+
 - The New Supplier form requires a Code. Leaving it blank prevents submission, so code generation cannot be tested through this pop-up.
 - The New Supplier form also requires a valid Email. Blank or malformed email values are rejected before submission.
 - **Important gap to test**: the required-field list above is enforced by the on-screen form, but if a request were made a different way (bypassing the form), most of those "required" fields aren't actually double-checked — meaning it may be possible to end up with a supplier missing a contact person or address if something submits data outside the normal screen. Worth flagging if you find a way to reproduce this (e.g. via an import tool, if one exists).
@@ -180,12 +188,14 @@ These are the records everything else in the app is built on. Before testing any
 **Why the supplier's email and language matter**: when a Stock Requisition (section 17b) is sent, the app emails that supplier the itemized request, using whichever language is set on the supplier record.
 
 **Bypass-only checks (not New Supplier form tests)**:
+
 - The supplier API contains a fallback that generates a sequential Code when a direct request omits it. Test this only when direct API testing is in scope; the form cannot reach this path.
 - A supplier with an empty Email can only be introduced through a direct request or preconfigured test data. With such a supplier, sending a Stock Requisition still succeeds without sending an email or warning the user. Test this only with bypass-created data, not through the form.
 
 **What must already exist first**: nothing — a supplier can be the very first record you create in a fresh environment.
 
 **Edit / deactivate / delete behavior**:
+
 - **Delete is correctly blocked if the supplier has any existing Purchase Orders** — you'll get a clear error telling you to delete/reassign those orders first. This is one of the few master-data types in this app that actually protects itself this way.
 - If a supplier has no Purchase Orders at all, deleting it succeeds (and can't be undone from the UI).
 - Editing a supplier — including changing payment terms or credit limit — is never blocked, even while it has open orders.
@@ -193,6 +203,7 @@ These are the records everything else in the app is built on. Before testing any
 - Setting status to Inactive or Blacklisted removes it from the normal supplier picker used when creating new Purchase Orders, but has no effect on POs already open against it.
 
 **Things to test**:
+
 - Try to delete a supplier that has an open Purchase Order — confirm it's refused with a clear message.
 - Delete a supplier with no orders — confirm it succeeds.
 - Set a supplier to Blacklisted and confirm it disappears from the picker on new Purchase Orders, while an already-open PO against it is untouched.
@@ -208,6 +219,7 @@ These are the records everything else in the app is built on. Before testing any
 **Required fields**: Customer Type (Individual, Company, or Government), Code (letters/numbers/hyphens only), Name, Email, Phone, full billing **and** shipping address (both required — unlike Suppliers, where shipping address is optional), Payment Terms (Cash, Net 30/60/90, Due on Receipt, or Cash on Delivery — a different list from Supplier payment terms), and Credit Limit (a number, zero or more).
 
 **Validation rules**:
+
 - Customer Code must be unique — duplicates are rejected.
 - Setting a Credit Limit above zero automatically sets Credit Days to 30; a Credit Limit of exactly zero sets Credit Days to 0.
 - **Credit Limit is not actually enforced anywhere** — a customer with a $0 limit and existing unpaid invoices can still have new quotations, orders, and invoices created against them with no warning shown. If you expected a credit-limit block, this is a documented gap, not something you're missing.
@@ -216,13 +228,19 @@ These are the records everything else in the app is built on. Before testing any
 **What must already exist first**: nothing.
 
 **Edit / deactivate / delete behavior**:
+
 - **Delete has no protection at all** — unlike Suppliers, you can delete a customer that has open quotations, orders, or unpaid invoices referencing it, with no warning. This is an inconsistency worth calling out explicitly: Suppliers block deletion when in use, Customers do not.
 - Deactivating removes the customer from new-transaction pickers but doesn't affect anything already created against them.
 - The customer's running balance shown on their record is calculated live from their unpaid invoices — it isn't something you set directly, and it updates automatically as invoices are paid or added.
+- Users with **View Customer Special Prices** can open the customer's **Special Prices** tab. Users with **Manage Customer Special Prices** plus customer edit access can create, edit, deactivate, and delete an item-tier override. Item and tier cannot be changed after creation; create a new record if that identity must change.
 
 **Things to test**:
+
 - Create an invoice for a customer, then delete that customer, and confirm what happens — expect no error or block, then check whether the existing invoice still displays correctly.
 - Set a very low or zero credit limit on a customer with existing unpaid invoices and confirm new sales orders/invoices can still be created for them without any warning.
+- Configure Customer A with Item A WS 35 and SRP 40, and Customer B with Item A WS 45 and SRP 55. Confirm each customer's Special Prices list is isolated and server-side search/status/tier filters return only matching records.
+- Try to create overlapping active date ranges for the same customer, item, and tier; the second record must be rejected. Confirm a future, expired, inactive, or deleted override is not used for today's sale.
+- Verify a role with View but not Manage can see the tab without mutation controls. A sales user without View must not see the configuration tab, but customer-specific prices should still resolve in authorized sales entry screens.
 - Confirm the customer's balance shown on their record updates correctly after recording a payment on one of their invoices.
 
 ---
@@ -237,18 +255,20 @@ These are the records everything else in the app is built on. Before testing any
 
 **Optional fields**: address, city, state, postal code, country, phone, email, manager name.
 
-**Business unit note**: a warehouse is created under whichever business unit/branch is currently active for the user creating it, and **this cannot be changed afterward** — there's no field anywhere to move a warehouse to a different business unit once it exists. If you need a warehouse under a different business unit for testing, you must switch your active business unit *before* creating it.
+**Business unit note**: a warehouse is created under whichever business unit/branch is currently active for the user creating it, and **this cannot be changed afterward** — there's no field anywhere to move a warehouse to a different business unit once it exists. If you need a warehouse under a different business unit for testing, you must switch your active business unit _before_ creating it.
 
 **Automatic setup**: every new warehouse automatically gets one default storage location called "Main" — a general-purpose bin marked as active, pickable, and storable. Any stock movement that doesn't specify an exact shelf/location lands here by default. You don't create this yourself; it's there the moment the warehouse is.
 
 **What must already exist first**: you must have an active business unit context selected (the app will refuse to create a warehouse otherwise).
 
 **Edit / deactivate / delete behavior**:
+
 - **Delete has no protection at all** — a warehouse can be deleted even while it has current stock, open Stock Requests, or an active pick list pointing at it. This is the same gap as Customers. Worth deliberately testing: put some stock in a warehouse, delete the warehouse, and see what the stock/inventory reports do afterward.
 - Deactivating removes it from the warehouse picker on new transactions but doesn't affect anything already scoped to it.
 - The warehouse code cannot be changed once created.
 
 **Things to test**:
+
 - Create stock in a warehouse (receive something into it), then delete the warehouse, and check whether stock reports/item detail pages still behave sensibly afterward.
 - Confirm a warehouse created while Business Unit A is active cannot later be reassigned to Business Unit B.
 - Confirm the automatic "Main" location exists immediately after creating a new warehouse, without any extra setup step.
@@ -265,22 +285,25 @@ These are the records everything else in the app is built on. Before testing any
 
 **Optional fields**: Name, a parent location (for nesting, e.g. a shelf inside a rack), Location Type (Bin, Zone, Aisle, Rack, Shelf, Crate, Staging — defaults to Bin), and three switches that all default to "on": Active, Pickable, Storable.
 
-**Validation rules**: the location code only needs to be unique *within its own warehouse* — the same code (e.g. "A1") can exist in two different warehouses without conflict. A duplicate within the same warehouse is rejected.
+**Validation rules**: the location code only needs to be unique _within its own warehouse_ — the same code (e.g. "A1") can exist in two different warehouses without conflict. A duplicate within the same warehouse is rejected.
 
 **What the Pickable/Storable switches actually do — important, and not what you might expect**:
+
 - **Storable** is checked by the screens that let you choose a destination when placing stock (Putaway, and box handling during goods receiving) — turning it off removes the location from those destination pickers **on screen**. However, this has not been confirmed to be enforced anywhere beneath the screen — if there's a way to submit a placement request that bypasses the picker, it's worth testing whether a non-storable location is still silently accepted.
 - **Pickable does not currently do anything.** Despite the name and despite it being a real switch on the location form, the actual picking logic used by Pick Lists does not check this flag at all — a location marked "not pickable" is still fully usable as a picking source today. This is a confirmed defect, not a hedge: mark a location not-pickable and it will still be offered and usable in a real Pick List. Report it as a bug if you confirm the same in your test environment; don't treat "not pickable" as meaning what it sounds like it means.
 
 **What must already exist first**: the warehouse it belongs to.
 
 **Edit / deactivate / delete behavior**:
+
 - **There is no delete for a location at all** — only editing, including toggling it inactive. If your test plan calls for "delete a location," that action doesn't exist in this app; deactivating is as close as it gets.
 - Deactivating a location that currently holds stock has **no special handling or warning** — nothing stops you, and it's not clear the stock is protected in any way afterward. Worth testing directly: put stock in a location, deactivate the location, and see what shows up in stock views afterward.
 
 **Things to test**:
+
 - Mark a location as not-pickable, try to pick against it in a real Pick List, and confirm it's incorrectly still usable — file this as a defect, since it's already been confirmed to reproduce.
 - Mark a location as not-storable and confirm it disappears from the Putaway destination picker; if you have any way to submit a placement directly rather than through the picker, test whether that bypass still succeeds.
-- Create two locations with the same code in two different warehouses — should be allowed. Try the same code twice in the *same* warehouse — should be refused.
+- Create two locations with the same code in two different warehouses — should be allowed. Try the same code twice in the _same_ warehouse — should be refused.
 - Put stock into a location, deactivate it, and see whether the stock is still shown/handled sensibly.
 
 ---
@@ -289,11 +312,12 @@ These are the records everything else in the app is built on. Before testing any
 
 **Purpose**: the top-level "branch/division" scope that warehouses, customers, and most permissions sit underneath. Most of what a user sees in the app is implicitly filtered by whichever business unit they currently have active.
 
-**Entry point**: **There isn't one for creating a business unit itself.** The only screen related to business units lets you edit *settings* for the currently active one (Admin → Settings → Business Unit) — it does not create new business units or edit which ones exist. New business units, and which users are allowed into them, must be set up outside the app (by whoever administers the environment) before testing.
+**Entry point**: **There isn't one for creating a business unit itself.** The only screen related to business units lets you edit _settings_ for the currently active one (Admin → Settings → Business Unit) — it does not create new business units or edit which ones exist. New business units, and which users are allowed into them, must be set up outside the app (by whoever administers the environment) before testing.
 
 **Switching business units**: there is a switcher in the app that lets a user with access to more than one business unit change which one is currently active. This is a genuinely testable action.
 
 **Things to test**:
+
 - Switch your active business unit and confirm that item lists, warehouse lists, etc. immediately reflect the new business unit's data without needing to fully reload the app.
 - Try to switch into a business unit you don't have access to (if you can simulate this) and confirm it's refused.
 - Confirm a user only ever sees the business units they've actually been granted, not every business unit in the company.
@@ -305,6 +329,7 @@ These are the records everything else in the app is built on. Before testing any
 **Purpose**: controls who can see and do what, across every module in this guide. This is directly testable and important — most of the "who can do it" sections throughout this guide depend on getting this right.
 
 **Creating a new user account**: **this cannot be done from within the app.** There is no "Create User" button anywhere. Self-service sign-up is also explicitly turned off — attempting it shows a message saying to contact an administrator. New user accounts have to be provisioned by whoever administers the environment, outside the normal app screens, before a tester can log in as that user. Once an account exists, the Admin → Users screen lets you:
+
 - Search/filter existing users by active/inactive.
 - Assign or remove roles for a user.
 - View (read-only) exactly what permissions a user currently has, as a result of their role(s).
@@ -313,11 +338,13 @@ These are the records everything else in the app is built on. Before testing any
 **Creating/managing Roles**: Admin → Roles → **New Role**. Only a Name is required; Description and an initial set of permissions to attach are optional.
 
 **Validation rules**:
+
 - Role names must be unique.
 - **Built-in system roles cannot be edited or deleted** — the app blocks this both by disabling the buttons and by refusing the action if attempted anyway.
 - **A role cannot be deleted while any user still has it assigned** — you'll get a clear error telling you to remove it from all users first. This one is properly protected, unlike several of the master-data types above.
 
 **Things to test**:
+
 - Confirm there's genuinely no way to self-register or create a user from inside the app — this should be treated as expected behavior, not a bug to report.
 - Build a custom role with a narrow set of permissions, assign it to a test user, and confirm that user only sees the menu items and can only perform the actions that role actually grants — including trying the restricted actions directly, not just checking that buttons are hidden.
 - Try to delete a system role — should be blocked.
@@ -334,12 +361,14 @@ These are the records everything else in the app is built on. Before testing any
 **Entry point**: Manufacturing → Transformations → Templates → **New Template**, or the visual Designer for sheet-layout templates.
 
 **Required fields**:
+
 - Template Name, always.
 - Template Code — you must supply one for a plain recipe; for a sheet-layout template, if you leave it blank the system generates one automatically.
 - **For a recipe**: at least one input item (with quantity and unit) and at least one output item (with quantity, unit, and whether it's flagged as scrap).
 - **For a sheet layout**: the sheet's width, height, and unit of measurement, plus at least one mapped section in the visual layout. The "input" is the sheet item itself; outputs are built automatically from however you've mapped pieces in the layout.
 
 **Validation rules**:
+
 - The same item cannot appear as both an input and an output on the same template.
 - You cannot list the same item twice within inputs, or twice within outputs.
 - Template codes must be unique.
@@ -348,11 +377,13 @@ These are the records everything else in the app is built on. Before testing any
 **What must already exist first**: the items used as inputs/outputs.
 
 **Locking behavior once a template has actually been used**:
+
 - The first time a template is used in an actual Transformation order, it becomes **locked**. From then on, you can no longer change its name, description, image, or its input/output list — attempting to will show a clear message explaining it's locked because it's in use, and telling you how many orders are using it. **The only thing you can still change on a locked template is whether it's active or inactive.**
 - **Deleting a template that's been used at least once is blocked outright**, with a message naming how many orders use it.
 - A template that has never been used can still be freely edited or deleted.
 
 **Things to test**:
+
 - Create a template, use it once in a real Transformation, then try to edit its input/output list — should be refused with a message explaining it's locked.
 - Try to delete that same used template — should be refused, naming how many orders reference it.
 - Confirm you can still toggle a used/locked template active/inactive without issue.
@@ -368,12 +399,14 @@ These are the records everything else in the app is built on. Before testing any
 **Entry point**: Admin → Settings, with separate tabs per settings group (Company, Inventory, Financial, Security, etc.).
 
 **Fields worth knowing about for testing**:
+
 - Company Code cannot be changed once set (same immutable-code pattern as Items/Suppliers/Warehouses).
 - The Inventory settings group includes things like a company-wide default unit of measure, low-stock and critical-stock thresholds, how stock is valued, whether negative stock is allowed, and — worth calling out specifically — a **default pricing tier** setting. This setting decides which price actually shows as an item's "list price" when that item has multiple price tiers configured; if there's no matching tier price, it falls back to the item's own plain sales price.
 - The **Workflow** settings tab has toggles that look like they should require manager approval before certain documents can proceed — specifically "require approval" switches for Purchase Orders, Stock Requests, and Delivery Notes, plus a numeric approval threshold for Stock Requests. **None of these toggles are actually checked anywhere in the app.** Turning "Stock Request approval required" on or off has no effect on the real Stock Request workflow documented in section 12 — a Stock Request follows the same Submit → Approve path either way. Treat this as a confirmed gap, not something to keep re-testing hoping for a different result.
 - The **POS** settings tab (receipt header/footer text, whether to show the logo on receipts, auto-print, discount limits, a manager-approval discount threshold, cash drawer toggle, default payment method) is real and does feed into the POS screens — this one is worth testing for effect, unlike Workflow settings above.
 
 **Things to test**:
+
 - Change the default pricing tier setting and confirm the Items list/detail pages correctly reflect the new tier's price for items that have tiered pricing set up.
 - Confirm the Company Code field is genuinely locked/uneditable once a company profile has been saved.
 - If negative stock is toggled off, confirm the app actually blocks a transaction that would take an item below zero somewhere; if toggled on, confirm it's actually allowed.
@@ -381,7 +414,6 @@ These are the records everything else in the app is built on. Before testing any
 - Change a POS setting (e.g. the discount limit or receipt header text) and confirm it actually shows up in the POS sale screen / printed receipt.
 
 ---
-
 
 # Part 2 — Transactional Workflows
 
@@ -399,15 +431,16 @@ These are the records everything else in the app is built on. Before testing any
 
 1. **Create** → status Draft. Nothing has moved yet; freely editable.
 2. **Submit** → status Submitted. Locks the request for editing and sends it for approval.
-3. **Approve** (done by someone at the *fulfilling* warehouse/branch) → status Approved. This is the point where the request becomes actionable.
+3. **Approve** (done by someone at the _fulfilling_ warehouse/branch) → status Approved. This is the point where the request becomes actionable.
    - **Reject** is the alternative to Approve at this stage — sends it back, does not delete it.
 4. From here, the actual picking and delivery happen through a linked **Delivery Note** (section 13) and **Pick List** (section 14) — not through buttons on the Stock Request itself. The status shown on the Stock Request is a read-out of how far the linked delivery has progressed, not something you click through directly.
 5. **Complete** → status Completed, once the linked delivery has been received.
 6. **Cancel** is available any time before Completed.
 
-**Who can do it**: users with edit access to Stock Requests; Approve additionally requires the approving user to belong to the *fulfilling* warehouse/branch (a user at the *requesting* side cannot approve their own request).
+**Who can do it**: users with edit access to Stock Requests; Approve additionally requires the approving user to belong to the _fulfilling_ warehouse/branch (a user at the _requesting_ side cannot approve their own request).
 
 **Things to test**:
+
 - **Completing a Stock Request does not move any inventory.** Test that stock quantities are unaffected by clicking Complete — this action currently only changes the status. If your test expects Complete to actually deduct/transfer stock, that's a documented gap, not something you're missing.
 - Confirm a user at the requesting side cannot see or click Approve/Reject.
 - Confirm the status shown on the Stock Request updates correctly as the linked pick list moves through its own stages (in progress, paused, done).
@@ -419,7 +452,7 @@ These are the records everything else in the app is built on. Before testing any
 
 **What it's for**: the actual dispatch-and-receive workflow — physically moving goods out of one warehouse and into another warehouse or to a customer.
 
-**How a record starts**: on the Delivery Notes list, click **New**, then select one or more *approved* Stock Requests to bundle into it.
+**How a record starts**: on the Delivery Notes list, click **New**, then select one or more _approved_ Stock Requests to bundle into it.
 
 **Stages**: Draft → Confirmed → Queued for Picking → Picking in Progress → Dispatch Ready → Dispatched → Received, or Voided.
 
@@ -431,7 +464,7 @@ These are the records everything else in the app is built on. Before testing any
 4. Once the pick list is fully picked and marked done, the delivery automatically becomes Dispatch Ready — there is no separate button for this.
 5. **Confirm Dispatch** → opens a dialog to capture driver name, signature, helper name, plate number, and delivery time. Status becomes Dispatched. This is the point of no return for most edits.
 6. **Receiving** — depends on how the delivery is set up:
-   - **Warehouse-to-warehouse transfer**: on the *receiving* side, a user (usually on a tablet) clicks **Start Receiving**, then scans each box as it arrives, then clicks **Submit Receiving**. If what's scanned doesn't match what was dispatched (short, over, or damaged), the app requires the user to explicitly acknowledge the discrepancy before it lets them submit.
+   - **Warehouse-to-warehouse transfer**: on the _receiving_ side, a user (usually on a tablet) clicks **Start Receiving**, then scans each box as it arrives, then clicks **Submit Receiving**. If what's scanned doesn't match what was dispatched (short, over, or damaged), the app requires the user to explicitly acknowledge the discrepancy before it lets them submit.
    - **Customer pickup at the warehouse**: instead of scan-based receiving, there's a direct "confirm the customer picked this up" action — no destination-inventory receipt is posted, because the goods left the warehouse directly into the customer's hands.
 7. **Void** — available any time before Dispatched. This is a hard stop; it will refuse if anything has already been dispatched.
 8. **Add Items** — even after a delivery is Dispatched, more line items can still be added to it (useful for topping up a delivery in flight). Worth testing as a deliberate edge case.
@@ -439,10 +472,11 @@ These are the records everything else in the app is built on. Before testing any
 **Who can do it**: edit access to Stock Requests covers Confirm/Queue/Dispatch/Void; receiving actions require a separate receiving permission scoped to whichever warehouse/branch is actually receiving the goods.
 
 **Things to test**:
+
 - Try to dispatch more than what was actually picked — should be blocked.
 - Confirm a user cannot Start Receiving on a delivery that isn't Dispatched yet.
 - Test the discrepancy path deliberately: receive fewer (or more, or damaged) units than dispatched and confirm the app requires an acknowledgement/reason before letting the submit go through.
-- Cancelling the linked pick list *before* dispatch should roll the delivery's status back down to Confirmed — test this reversal explicitly.
+- Cancelling the linked pick list _before_ dispatch should roll the delivery's status back down to Confirmed — test this reversal explicitly.
 - Test both receiving paths (scan-based vs. customer-pickup) since they behave very differently.
 
 ---
@@ -468,6 +502,7 @@ These are the records everything else in the app is built on. Before testing any
 **Who can do it**: edit access to Stock Requests; on top of that, some users are restricted to only see/act on pick lists specifically assigned to them (check whether the test user has this restriction before assuming they should see every open pick list).
 
 **Things to test**:
+
 - Two pickers, one line: confirm the second picker sees the line as "claimed by someone else" and cannot pick it themselves.
 - Let a claim sit idle past its expiry and confirm it becomes available to claim again.
 - Try to Complete Picking first while the current picker still holds an active claim, then while another picker holds one — both attempts should be refused with a clear error, not silently completed.
@@ -488,7 +523,7 @@ These are the records everything else in the app is built on. Before testing any
 
 1. **Create** → status Draft. The system calculates expected input consumption and output quantities from the recipe.
 2. **Prepare** → status Preparing. Before allowing this, the app re-checks the recipe is still active and that there's enough stock on hand for every input — if any input is short, it lists exactly which items and by how much, and refuses the transition.
-3. **Complete** → status Completed. The user enters the *actual* consumed input quantities and *actual* produced output quantities (which can differ from planned), plus an optional wasted quantity and reason per output line. On completing:
+3. **Complete** → status Completed. The user enters the _actual_ consumed input quantities and _actual_ produced output quantities (which can differ from planned), plus an optional wasted quantity and reason per output line. On completing:
    - Input stock is deducted.
    - Output stock is produced — but it does **not** immediately become available for picking/sale. It lands in the shared **Putaway** queue (section 19) and a warehouse user has to place it into a real location before it's sellable/pickable.
    - Cost and full input-to-output traceability are recorded.
@@ -497,6 +532,7 @@ These are the records everything else in the app is built on. Before testing any
 **Who can do it**: edit access to Stock Transformations.
 
 **Things to test**:
+
 - Try to Prepare an order when stock is insufficient — confirm the exact shortfall is shown per item.
 - Complete an order with a wasted quantity on one output and confirm the wasted portion is excluded from cost/inventory but still logged with its reason.
 - Confirm output stock shows up in on-hand totals immediately after Complete, but is **not** available for picking/sale until it's placed via Putaway.
@@ -522,6 +558,7 @@ These are the records everything else in the app is built on. Before testing any
 **Who can do it**: edit access to Stock Adjustments (posting uses the same permission as editing).
 
 **Things to test**:
+
 - Confirm Post only ever appears as an option while status is Draft.
 - **Do not test for an approval step.** Pending, Approved, and Rejected exist as filter options and as designed stages, but there is no button anywhere in the app that sets them. If you find a status filter for "Pending Approval" and can't get a record into that state, this is why — flag it to the product team as a design-vs-implementation gap, not a bug you need to chase.
 - Confirm posting correctly updates the item's on-hand quantity by exactly the adjusted amount, and that a corresponding stock transaction appears in the stock ledger.
@@ -551,10 +588,11 @@ These are the records everything else in the app is built on. Before testing any
 **Who can do it**: edit access to Load Lists; Mark In Transit and Mark Arrived each require their own separate, more specific permission on top of that.
 
 **Things to test**:
+
 - Confirm Mark Arrived actually creates a receipt and that its number matches what appears in the receipts list.
 - Try to cancel an Arrived Load List directly — should be refused with guidance to reverse first.
 - Test Reverse Arrival and confirm it doesn't leave a duplicate/orphaned receipt behind.
-- Confirm a user with base Load List edit access but *not* the Mark Arrived permission cannot see/click that button.
+- Confirm a user with base Load List edit access but _not_ the Mark Arrived permission cannot see/click that button.
 
 ---
 
@@ -576,6 +614,7 @@ These are the records everything else in the app is built on. Before testing any
 **Who can do it**: edit access to Stock Requisitions.
 
 **Things to test**:
+
 - Send a requisition and verify the supplier actually receives an email with the correct line items, in the expected language.
 - Link a Load List that only partially covers the requisitioned quantity and confirm it becomes Partially Fulfilled, not Fulfilled.
 - Try to cancel a Fulfilled requisition — should be refused.
@@ -603,6 +642,7 @@ These are the records everything else in the app is built on. Before testing any
 **Who can do it**: base view access, plus separate specific permissions for starting, saving, submitting, and confirming — a user could have some of these and not others, so buttons may appear/disappear per user.
 
 **Things to test**:
+
 - Confirm Start Receiving is blocked if the Load List isn't actually Arrived yet.
 - Try to Submit for Approval with every line at zero received quantity — should be refused.
 - On mobile, change a line without tapping Save and then Submit; confirm the line and submission commit together. Repeat with a forced submission failure and confirm neither the line change nor any stock/putaway write is committed.
@@ -631,10 +671,11 @@ These are the records everything else in the app is built on. Before testing any
 **Who can do it**: edit access to Warehouses.
 
 **Things to test**:
+
 - Confirm stock that's sitting in Putaway (not yet posted) shows up in on-hand totals but is genuinely excluded from available-to-sell/available-to-pick stock everywhere this is shown (item detail, inventory reports, reorder calculations) — this is called out as not fully verified yet, so it's a good area to spend extra time on.
 - Post a task partially, confirm the remaining quantity is correct and the task stays open, then post the remainder and confirm it completes.
 - Try to post more than the pending quantity — should be refused.
-- For a receiving-sourced task, check whether a batch code is pre-filled/suggested from the receiving batch, and confirm the destination *location* can still be freely chosen regardless.
+- For a receiving-sourced task, check whether a batch code is pre-filled/suggested from the receiving batch, and confirm the destination _location_ can still be freely chosen regardless.
 - Confirm the posting field uses the task's source unit rather than its base unit (for example, entering 5 BOX for a task with 144 STICK per box posts 720 STICK). Change the source-unit posting quantity for a partial putaway and verify the label default follows it, then enter a different whole-number copy count and verify each applicable posted batch/location label prints exactly that many copies while every label's quantity remains the task's quantity per unit.
 - For a transformation with only wasted/scrap output, see whether a putaway task still gets created for it (cross-reference the note under Stock Transformations, section 15 — this is a known area of concern).
 
@@ -657,6 +698,7 @@ A rule ties one item to one warehouse with a reorder point, a min/max quantity, 
 ### Alerts tab — real and working
 
 When an item/warehouse with a rule drops below its reorder point, an alert appears here automatically. This tab is fully functional:
+
 - **Acknowledge** — dismisses an active alert (moves it to the "acknowledged" list). **Unacknowledge** reverses this.
 - **Create Stock Requisition** — select one or more alerts with the checkboxes, then click this button. It opens the Stock Requisition form pre-filled with a line per selected item, using the rule's reorder quantity (or a calculated fallback if that's zero) as the requested quantity. This is the real, working path from "stock is low" to "an order request exists" — use this, not the Suggestions tab, for that flow.
 
@@ -667,6 +709,7 @@ The Suggestions endpoint currently returns an empty list unconditionally, so sto
 **Who can do it**: edit access to Reorder Management for rules and alerts. The Suggestions workflow is not implemented.
 
 **Things to test**:
+
 - Create a rule for an item/warehouse, drop that item's stock below the reorder point (via a Stock Adjustment, for example), and confirm an alert appears on the Alerts tab.
 - Try to create a second rule for the same item + warehouse — should be refused.
 - Acknowledge an alert, confirm it moves to the acknowledged list, then unacknowledge it and confirm it reappears as active.
@@ -692,9 +735,13 @@ The Suggestions endpoint currently returns an empty list unconditionally, so sto
 **Who can do it**: edit access to Sales Quotations.
 
 **Things to test**:
+
 - Try to manually set a quotation's status to Ordered via the status menu — should be refused with a clear message.
 - Confirm a quotation, then create a Sales Order referencing only some of its lines/quantities, and confirm the quotation becomes Partially Ordered, not Ordered.
 - Fully draw down all quotation lines via Sales Orders and confirm it then becomes Ordered.
+- Select a customer before adding a line, then select an item and WS/SRP tiers. Confirm a matching customer override is used and an unconfigured tier falls back to the standard item-tier price. Repeat on a standalone Sales Order and Sales Invoice.
+- Confirm an already saved line keeps its captured price when the customer or special-price setup later changes; explicitly reselecting the item or tier should resolve the current customer's effective price.
+- Accept a quotation containing a customer-specific tier price, add that quotation line to a Sales Order, and confirm the tier code, tier name, and quoted unit price are copied unchanged rather than recalculated from current pricing.
 
 ---
 
@@ -718,6 +765,7 @@ The Suggestions endpoint currently returns an empty list unconditionally, so sto
 **Who can do it**: edit access to Sales Orders (this also covers creating a linked Frame Job Order — no separate manufacturing permission is needed for that step).
 
 **Things to test**:
+
 - Try to cancel an already-invoiced order — should be refused.
 - Confirm the "Create Job Order" button only shows for orders that actually need production, and correctly flips to "View Job Order" once one exists.
 - Invoice an order and confirm stock is correctly reserved/deducted at the chosen warehouse, and that the resulting invoice is linked back to this order.
@@ -745,9 +793,10 @@ The Suggestions endpoint currently returns an empty list unconditionally, so sto
 
 ### Recording a payment
 
-Clicking **Record Payment** opens a dialog with the amount pre-filled to the *full remaining balance due* — a tester has to deliberately change it to test a partial payment, so don't assume the default behavior tests partial payments for you. Required fields: Amount (must be greater than zero and cannot exceed the amount currently due — both enforced), Payment Date, and Payment Method (a dropdown, e.g. bank transfer). Reference and Notes are optional.
+Clicking **Record Payment** opens a dialog with the amount pre-filled to the _full remaining balance due_ — a tester has to deliberately change it to test a partial payment, so don't assume the default behavior tests partial payments for you. Required fields: Amount (must be greater than zero and cannot exceed the amount currently due — both enforced), Payment Date, and Payment Method (a dropdown, e.g. bank transfer). Reference and Notes are optional.
 
 What happens when you submit:
+
 - A payment record is saved against the invoice, and the invoice's Amount Paid / Amount Due are recalculated.
 - If the new Amount Due reaches exactly zero, the invoice becomes **Paid**. If some but not all of the total has been paid, it becomes **Partially Paid**.
 - The payment is also posted to the accounting ledger as an AR (accounts receivable) entry.
@@ -755,6 +804,7 @@ What happens when you submit:
 - A full payment history for the invoice (each individual payment, its date, method, and amount) is available and worth checking after multiple partial payments to confirm they all show up correctly rather than only the most recent one.
 
 **Things to test**:
+
 - Try to cancel a Paid invoice — should be refused.
 - Record a partial payment and confirm the invoice correctly shows Partially Paid, not Paid, until the full amount is covered.
 - Try to record a payment for more than the current amount due — should be refused.
@@ -784,6 +834,7 @@ What happens when you submit:
 **Who can do it**: pushing to production requires manufacturing or transformation-level create access. There is a known permission mix-up on the Complete action — its endpoint currently requires Sales Quotations edit permission rather than a job-order or manufacturing permission. Test the mismatch in both reachable directions: a user with quotation edit access but without the intended job/manufacturing access may be allowed to complete, while an intended job/manufacturing operator without quotation edit access is denied. Either result exposes the permission defect; it is not expected behavior to validate.
 
 **Things to test**:
+
 - Try to Complete a job order while its linked manufacturing order is still In Progress — should be refused.
 - Push a job order to production and confirm a Manufacturing Order actually gets created and linked correctly.
 - Confirm status changes on the manufacturing side (hold, resume, complete a step) are reflected back on the job order's own status.
@@ -812,6 +863,7 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 **Who can do it**: manufacturing or transformation-level edit access (either is sufficient).
 
 **Things to test**:
+
 - Try to Hold a Queued order that was never started — should be refused.
 - Step through a multi-step order and confirm the button label correctly changes from "Complete Step" to "Complete Job" on the final step.
 - Confirm the direct **Complete** action is absent while In Progress or Quality Check, then appears after the order is placed On Hold.
@@ -827,7 +879,10 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 **Stages supported by the current UI and API**: Completed, then optionally Voided.
 
 **Things to test**:
+
 - Void a completed transaction and confirm stock/payment are correctly reversed.
+- Add Item A to a walk-in cart, select Customer A, then Customer B, then return to walk-in. Confirm the open cart reprices from the standard tier to each customer's matching override and finally restores the standard tier, including correct line and transaction totals.
+- Add more than one item where only some item-tier combinations have customer overrides. Confirm overridden tiers and standard fallback tiers can be selected independently and that checkout persists the displayed price.
 - Refunds and register/cash-drawer session opening or closing are not wired into the current UI or API. Record them as product gaps rather than executable QA paths.
 
 ---
@@ -847,6 +902,7 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 **Stages**: Draft → Posted, or Cancelled.
 
 **Required fields / rules to create a valid entry**:
+
 - A posting date and at least **two lines**.
 - Each line must have either a debit amount or a credit amount — never both on the same line, and never neither.
 - Debit and credit amounts on every line must be positive.
@@ -862,6 +918,7 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 **Who can do it**: separate view/create/edit permissions specifically for Journal Entries.
 
 **Things to test**:
+
 - Try to save an entry with only one line — should be refused.
 - Try to save a line with both a debit and a credit amount filled in — should be refused.
 - Try to save an unbalanced entry (debits ≠ credits) — should be refused, and the message should show both totals.
@@ -878,11 +935,13 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 **Required fields**: Account Number, Account Name, Account Type.
 
 **Edit / delete behavior — one of the better-protected master-data types in this app**:
+
 - **System accounts cannot be deleted at all** — refused outright, regardless of whether they're in use.
 - **A non-system account cannot be deleted if it has any posted transactions against it** — refused with a clear message. This is a real, enforced check, not just a UI warning.
 - An account with no posted transactions and that isn't a system account can be deleted normally.
 
 **Things to test**:
+
 - Try to delete a system account — should be refused regardless of use.
 - Try to delete a regular account that has at least one posted Journal Entry line against it — should be refused.
 - Delete a regular, never-used account — should succeed.
@@ -897,6 +956,7 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 **Nature of these screens**: both are pure reporting — there's no workflow, no stages, no buttons that change data. Testing here is about correctness of the numbers shown (do they reconcile against what you'd expect from the Journal Entries you've posted) and correctness of the filters (date range, account selection).
 
 **Things to test**:
+
 - Post a few Journal Entries, then confirm they appear correctly in the General Ledger drill-down for the accounts involved.
 - Confirm the Trial Balance's total debits equal total credits company-wide (this should always be true if every posted entry was itself balanced).
 - Filter the General Ledger by a date range that excludes a transaction you just posted and confirm it correctly disappears from the view.
@@ -905,11 +965,12 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 
 ## 29. Stock Ledger
 
-**What it's for**: a complete, filterable audit trail of every stock movement (in, out, transfer, adjustment) per item and warehouse. This is less a "workflow to test" and more a tool *you'll use constantly* to verify other modules did what they claimed — e.g. after completing a Stock Transformation or posting a Goods Receipt, this is where you'd go to confirm the exact quantity and cost actually moved as expected.
+**What it's for**: a complete, filterable audit trail of every stock movement (in, out, transfer, adjustment) per item and warehouse. This is less a "workflow to test" and more a tool _you'll use constantly_ to verify other modules did what they claimed — e.g. after completing a Stock Transformation or posting a Goods Receipt, this is where you'd go to confirm the exact quantity and cost actually moved as expected.
 
 **Reachability note**: this page exists, works, and is not a placeholder — but like the Accounting section, **nothing in the app's navigation links to it**; it's reachable only by direct URL. This is a different page from the "Stock Transactions" item that does appear in the Inventory menu — don't assume they're the same screen, and confirm which one your test scope actually expects you to use.
 
 **Things to test**:
+
 - After completing any stock-moving action elsewhere (a Goods Receipt, a Transformation, an Adjustment, a Putaway posting), confirm the corresponding entry shows up here with the correct item, warehouse, quantity, and direction.
 - Filter by item, warehouse, and voucher/transaction type and confirm the results narrow correctly.
 
@@ -924,6 +985,7 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 **Reports explicitly marked "coming soon" (do not file bugs against these — they're not built yet)**: Stock Turnover, Reorder Analysis, Warehouse Utilization, Stock Variance, Batch Traceability, Profit & Loss Statement, Balance Sheet, Cash Flow, AP Aging, Sales Profitability, COGS Analysis, Supplier Scorecard, PO Variance, Supplier Spend, Price Variance, Delivery Performance, Stock Transfer report, Return-to-Supplier Analysis, Executive Summary, Period Comparison, Budget vs. Actual, Audit Trail, Document Status, User Activity, Demand Forecast, What-If Analysis.
 
 **Things to test**:
+
 - Confirm every report marked "implemented" actually opens and renders data, not just the catalog tile.
 - Confirm reports marked "coming soon" show a clear "not yet available" state rather than a broken/blank screen if clicked.
 - Some reports are gated behind extra permissions beyond basic Reports access (e.g. certain financial figures require a pricing/valuation-visibility permission) — test with a restricted role to confirm those specific numbers are hidden rather than the whole report failing.
@@ -937,6 +999,7 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 **Nature of this screen**: read-only, and every widget on it is independently permission-gated — a user might see some cards and not others depending on their role.
 
 **Things to test**:
+
 - Log in as users with different roles and confirm each only sees the summary widgets their permissions actually allow, rather than either seeing everything or seeing a broken/empty dashboard.
 - Confirm the numbers shown (open stock requests, active pick lists, etc.) match what you can independently count from those modules' own list screens.
 
@@ -947,6 +1010,7 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 **What it's for**: an admin-only audit trail of user actions across the app (who did what, when) — useful for confirming that actions you've tested elsewhere in this guide were actually logged.
 
 **Things to test**:
+
 - Perform a few actions elsewhere in the app (e.g. approve a Stock Request, post a Stock Adjustment) and confirm each shows up here with the correct user, action, and timestamp.
 - Confirm this screen itself is only reachable by users with the appropriate admin permission.
 
@@ -954,10 +1018,10 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 
 ## Things every tester should check on every module
 
-These apply across *every* module above, so check them once per module rather than assuming they were covered elsewhere:
+These apply across _every_ module above, so check them once per module rather than assuming they were covered elsewhere:
 
 1. **Two layers of permission.** Most actions first check a broad "can this user use this module at all" permission, and some actions then check a second, narrower permission on top (e.g. a user might be able to edit receipts generally but specifically lack the ability to Confirm one). When testing with a restricted-permission user, check that the specific button is actually blocked, not just that it's hidden.
-2. **Warehouse/branch matters.** Several transitions require the acting user to belong to a *specific* warehouse or branch relative to the transaction — e.g. only the fulfilling side can approve a Stock Request, only the receiving side can start receiving a delivery. A good negative test for almost every module is: "log in as a user on the *wrong* side of the transaction and confirm the action is refused."
+2. **Warehouse/branch matters.** Several transitions require the acting user to belong to a _specific_ warehouse or branch relative to the transaction — e.g. only the fulfilling side can approve a Stock Request, only the receiving side can start receiving a delivery. A good negative test for almost every module is: "log in as a user on the _wrong_ side of the transaction and confirm the action is refused."
 3. **Known placeholder screens — don't test these as real workflows:**
    - The "pick" screen reachable from Stock Requests — it uses sample data and isn't connected to anything real.
    - Older receiving screens that exist in the app but aren't reachable from any real navigation path.

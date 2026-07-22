@@ -35,6 +35,7 @@ Sales Order(s) ─────→ Delivery Note ─────→ Invoice ─�
 A **Quotation** is a sales proposal sent to customers with pricing and terms.
 
 **Key Features**:
+
 - Draft and confirmed status
 - **Partial fulfillment tracking** - Quotations can spawn multiple sales orders
 - Line-item level fulfillment quantities
@@ -43,6 +44,7 @@ A **Quotation** is a sales proposal sent to customers with pricing and terms.
 - PDF generation for customer
 
 **Fulfillment Tracking**:
+
 ```typescript
 // Each quotation line tracks:
 {
@@ -57,6 +59,7 @@ A **Quotation** is a sales proposal sent to customers with pricing and terms.
 A **Sales Order** is a confirmed order from a customer to supply goods.
 
 **Key Features**:
+
 - Linked to quotation (optional)
 - Can be created independently
 - Status workflow: Draft → Confirmed → In Delivery → Completed
@@ -72,6 +75,7 @@ When a sales order is confirmed, inventory is **reserved** (not removed). Stock 
 A **Delivery Note** documents the shipment of goods to customers.
 
 **Key Features**:
+
 - Picking workflow (mobile app optimized)
 - **Scan receiving with variance** workflow
 - Exception handling (shortages, overages, damages)
@@ -81,11 +85,13 @@ A **Delivery Note** documents the shipment of goods to customers.
 - Multiple delivery notes per sales order
 
 **Delivery Workflow**:
+
 ```
 Draft → Start Picking → Queue Picking → Dispatch → Received
 ```
 
 **Scan Receiving (June 2025)**:
+
 - Scan each item at receiving
 - Compare scanned vs expected quantities
 - Handle variances (short, over, damaged)
@@ -97,6 +103,7 @@ Draft → Start Picking → Queue Picking → Dispatch → Received
 An **Invoice** is a bill sent to customers for payment.
 
 **Key Features**:
+
 - Linked to sales order or created standalone
 - Automatic GL posting (AR)
 - Payment recording
@@ -105,6 +112,7 @@ An **Invoice** is a bill sent to customers for payment.
 - Email delivery
 
 **GL Posting** (automatic):
+
 ```
 DR  Accounts Receivable (Customer)    1,000
   CR  Sales Revenue                          1,000
@@ -115,6 +123,7 @@ DR  Accounts Receivable (Customer)    1,000
 A **Customer** represents a buyer in the system.
 
 **Key Features**:
+
 - Contact information
 - Credit limit management
 - Payment terms
@@ -127,6 +136,7 @@ A **Customer** represents a buyer in the system.
 ### Core Tables
 
 #### customers
+
 ```sql
 CREATE TABLE customers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -146,9 +156,16 @@ CREATE TABLE customers (
 );
 ```
 
-Sales line entry uses active item price tiers as the selling price source. Quotations, sales orders, invoices, and POS lines default to the configured inventory default pricing tier and allow users to select another available tier; the selected tier code/name and resolved selling price are persisted on the line.
+Sales line entry uses active item price tiers as the selling price source. A customer can override the price for a specific item and tier in the customer's **Special Prices** tab. At pricing time, an active customer-specific price whose effective date range includes today replaces only the matching standard item tier; tiers without an override continue to use the standard item price. Quotations, sales orders, invoices, and POS lines default to the configured inventory default pricing tier and allow users to select another available tier; the selected tier code/name and resolved selling price are persisted on the line as a price snapshot.
+
+Special-price date ranges for the same customer, item, and tier cannot overlap. The special-price list is server-filtered and paginated. Viewing it requires `customers.tab.special_prices.view`; creating, editing, or deactivating a price additionally requires `customers.operation.special_prices.edit` and the corresponding customer edit permission. Admin and Super Admin roles receive both granular permissions by default.
+
+Changing a customer does not rewrite prices already saved on quotation, sales-order, or invoice lines. Selecting an item or tier resolves pricing for the currently selected customer. POS additionally reprices its open cart when the selected customer changes and restores standard pricing for a walk-in customer.
+
+When a sales-order line is added from an accepted quotation, the quotation's captured pricing tier, tier name, and unit price are copied unchanged into the sales order. The import does not reprice the line against current item or customer pricing.
 
 #### quotations
+
 ```sql
 CREATE TABLE quotations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -170,6 +187,7 @@ CREATE TABLE quotations (
 ```
 
 #### quotation_lines
+
 ```sql
 CREATE TABLE quotation_lines (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -187,6 +205,7 @@ CREATE TABLE quotation_lines (
 ```
 
 #### sales_orders
+
 ```sql
 CREATE TABLE sales_orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -208,6 +227,7 @@ CREATE TABLE sales_orders (
 ```
 
 #### sales_order_lines
+
 ```sql
 CREATE TABLE sales_order_lines (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -226,6 +246,7 @@ CREATE TABLE sales_order_lines (
 ```
 
 #### delivery_notes
+
 ```sql
 CREATE TABLE delivery_notes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -247,6 +268,7 @@ CREATE TABLE delivery_notes (
 ```
 
 #### delivery_note_items
+
 ```sql
 CREATE TABLE delivery_note_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -265,6 +287,7 @@ CREATE TABLE delivery_note_items (
 ```
 
 #### invoices
+
 ```sql
 CREATE TABLE invoices (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -289,6 +312,7 @@ CREATE TABLE invoices (
 ```
 
 #### invoice_items
+
 ```sql
 CREATE TABLE invoice_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -305,6 +329,7 @@ CREATE TABLE invoice_items (
 ```
 
 #### invoice_payments
+
 ```sql
 CREATE TABLE invoice_payments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -320,6 +345,7 @@ CREATE TABLE invoice_payments (
 ```
 
 #### employees
+
 ```sql
 CREATE TABLE employees (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -337,6 +363,7 @@ CREATE TABLE employees (
 ```
 
 #### commissions
+
 ```sql
 CREATE TABLE commissions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -357,11 +384,13 @@ CREATE TABLE commissions (
 ### Customer Management
 
 #### GET /api/customers
+
 List all customers.
 
 **Permissions**: `view` on `customers`
 
 **Response**:
+
 ```json
 {
   "customers": [
@@ -373,7 +402,7 @@ List all customers.
       "phone": "555-1234",
       "credit_limit": 50000,
       "payment_terms_days": 30,
-      "balance": 12500.00,
+      "balance": 12500.0,
       "is_active": true
     }
   ]
@@ -381,16 +410,49 @@ List all customers.
 ```
 
 #### POST /api/customers
+
 Create new customer.
 
 **Permissions**: `create` on `customers`
 
+#### GET /api/customers/[id]/special-prices
+
+List a customer's special item-tier prices with bounded server-side search, status filtering, tier filtering, sorting, and pagination.
+
+**Permissions**: `view` on `customers` and `customers.tab.special_prices.view`
+
+#### POST /api/customers/[id]/special-prices
+
+Create a customer-specific price for one item and one configured price tier. Effective date ranges cannot overlap another active record for the same customer, item, and tier.
+
+**Permissions**: `edit` on `customers` and `customers.operation.special_prices.edit`
+
+#### PATCH /api/customers/[id]/special-prices/[priceId]
+
+Update the price, currency, effective dates, active state, or notes. Customer, item, and tier identity are immutable after creation.
+
+**Permissions**: `edit` on `customers` and `customers.operation.special_prices.edit`
+
+#### DELETE /api/customers/[id]/special-prices/[priceId]
+
+Soft-delete a customer-specific price.
+
+**Permissions**: `edit` on `customers` and `customers.operation.special_prices.edit`
+
+#### POST /api/pricing/resolve
+
+Resolve effective tier prices for one customer and up to 50 item IDs. Customer-specific prices replace matching standard tiers; the response identifies whether each resolved tier came from the standard item price or a customer override. The Special Prices tab permission controls access to the configuration screen, not whether an authorized sales user receives the customer's effective selling price.
+
+**Permissions**: `view` on `customers` and `view` on `items`
+
 #### GET /api/customers/[id]/ledger
+
 Get customer ledger (all transactions).
 
 **Permissions**: `view_customer_ledger` capability
 
 **Response**:
+
 ```json
 {
   "customer": { "id": "uuid", "name": "Acme Corp" },
@@ -399,17 +461,17 @@ Get customer ledger (all transactions).
       "date": "2025-06-01",
       "type": "invoice",
       "reference": "INV-001",
-      "debit": 1000.00,
+      "debit": 1000.0,
       "credit": 0,
-      "balance": 1000.00
+      "balance": 1000.0
     },
     {
       "date": "2025-06-10",
       "type": "payment",
       "reference": "PAY-001",
       "debit": 0,
-      "credit": 500.00,
-      "balance": 500.00
+      "credit": 500.0,
+      "balance": 500.0
     }
   ]
 }
@@ -418,16 +480,19 @@ Get customer ledger (all transactions).
 ### Quotation Management
 
 #### GET /api/quotations
+
 List quotations.
 
 **Permissions**: `view` on `sales_quotations`
 
 #### POST /api/quotations
+
 Create new quotation.
 
 **Permissions**: `create` on `sales_quotations`
 
 **Request**:
+
 ```json
 {
   "customer_id": "uuid",
@@ -438,7 +503,7 @@ Create new quotation.
       "item_id": "uuid",
       "quantity": 100,
       "unit_id": "uuid",
-      "unit_price": 10.50,
+      "unit_price": 10.5,
       "discount_percent": 5
     }
   ],
@@ -447,6 +512,7 @@ Create new quotation.
 ```
 
 #### POST /api/quotations/[id]/confirm
+
 Confirm quotation.
 
 **Permissions**: `edit` on `sales_quotations`
@@ -454,11 +520,13 @@ Confirm quotation.
 **Effect**: Changes status to 'confirmed', quotation can now spawn sales orders
 
 #### GET /api/quotations/[id]/fulfillment
+
 Get fulfillment status.
 
 **Permissions**: `view` on `sales_quotations`
 
 **Response**:
+
 ```json
 {
   "quotation_id": "uuid",
@@ -480,62 +548,69 @@ Get fulfillment status.
 ### Sales Order Management
 
 #### POST /api/sales-orders
+
 Create sales order.
 
 **Permissions**: `create` on `sales_orders`
 
 **Request**:
+
 ```json
 {
-  "quotation_id": "uuid",  // Optional
+  "quotation_id": "uuid", // Optional
   "customer_id": "uuid",
   "order_date": "2025-06-14",
   "delivery_date": "2025-06-21",
   "lines": [
     {
-      "quotation_line_id": "uuid",  // If from quotation
+      "quotation_line_id": "uuid", // If from quotation
       "item_id": "uuid",
-      "quantity": 50,  // Cannot exceed quotation remaining
+      "quantity": 50, // Cannot exceed quotation remaining
       "unit_id": "uuid",
-      "unit_price": 10.00
+      "unit_price": 10.0
     }
   ]
 }
 ```
 
 **Validation** (if from quotation):
+
 - Line quantities cannot exceed remaining quotation quantities
 - Updates quotation line `fulfilled_quantity`
 
 #### POST /api/sales-orders/[id]/confirm
+
 Confirm sales order.
 
 **Permissions**: `edit` on `sales_orders`
 
 **Effect**:
+
 1. Changes status to 'confirmed'
 2. **Reserves inventory** in warehouse
 3. Creates inventory reservations
 4. Cannot be cancelled without releasing reservations
 
 #### GET /api/sales-orders/[id]/payment-summary
+
 Get payment summary for sales order.
 
 **Permissions**: `view` on `sales_orders`
 
 **Response**:
+
 ```json
 {
-  "order_total": 1000.00,
-  "invoiced_amount": 800.00,
-  "paid_amount": 500.00,
-  "balance": 300.00,
+  "order_total": 1000.0,
+  "invoiced_amount": 800.0,
+  "paid_amount": 500.0,
+  "balance": 300.0,
   "invoices": [
     {
       "invoice_number": "INV-001",
-      "amount": 800.00,
-      "paid": 500.00,
-      "balance": 300.00,
+      "amount": 800.0,
+      "paid": 500.0,
+      "balance": 300.0,
       "status": "posted"
     }
   ]
@@ -545,11 +620,13 @@ Get payment summary for sales order.
 ### Delivery Note Management
 
 #### POST /api/delivery-notes
+
 Create delivery note.
 
 **Permissions**: `create` on `delivery_notes`
 
 **Request**:
+
 ```json
 {
   "sales_order_id": "uuid",
@@ -568,6 +645,7 @@ Create delivery note.
 ```
 
 #### POST /api/delivery-notes/[id]/start-picking
+
 Start picking process.
 
 **Permissions**: `edit` on `delivery_notes`
@@ -575,6 +653,7 @@ Start picking process.
 **Effect**: Status changes to 'picking', mobile app can scan items
 
 #### POST /api/delivery-notes/[id]/queue-picking
+
 Queue for picking.
 
 **Permissions**: `edit` on `delivery_notes`
@@ -582,11 +661,13 @@ Queue for picking.
 **Effect**: Status changes to 'queued', ready for warehouse team
 
 #### POST /api/delivery-notes/[id]/dispatch
+
 Dispatch delivery note.
 
 **Permissions**: `edit` on `delivery_notes`
 
 **Effect**:
+
 1. Status changes to 'dispatched'
 2. **Removes inventory** from warehouse
 3. Creates stock transactions
@@ -598,11 +679,13 @@ Dispatch delivery note.
 All inventory updates happen in a single database transaction for data integrity.
 
 #### POST /api/delivery-notes/[id]/receive
+
 Record delivery receipt with scanned quantities.
 
 **Permissions**: `edit` on `delivery_notes`
 
 **Request**:
+
 ```json
 {
   "received_at": "2025-06-14T14:30:00Z",
@@ -611,7 +694,7 @@ Record delivery receipt with scanned quantities.
   "items": [
     {
       "delivery_note_item_id": "uuid",
-      "received_quantity": 48,  // Scanned quantity
+      "received_quantity": 48, // Scanned quantity
       "notes": "2 units damaged in transit"
     }
   ]
@@ -619,6 +702,7 @@ Record delivery receipt with scanned quantities.
 ```
 
 **Variance Handling**:
+
 - If received_quantity < quantity: Create variance transaction (shortage)
 - If received_quantity > quantity: Create variance transaction (overage)
 - Records variance in delivery_note_items.variance_quantity
@@ -626,14 +710,16 @@ Record delivery receipt with scanned quantities.
 ### Invoice Management
 
 #### POST /api/invoices
+
 Create invoice.
 
 **Permissions**: `create` on `invoices`
 
 **Request**:
+
 ```json
 {
-  "sales_order_id": "uuid",  // Optional
+  "sales_order_id": "uuid", // Optional
   "customer_id": "uuid",
   "invoice_date": "2025-06-14",
   "due_date": "2025-07-14",
@@ -642,18 +728,20 @@ Create invoice.
       "item_id": "uuid",
       "quantity": 50,
       "unit_id": "uuid",
-      "unit_price": 10.00
+      "unit_price": 10.0
     }
   ]
 }
 ```
 
 #### POST /api/invoices/[id]/post
+
 Post invoice (finalize and create GL entries).
 
 **Permissions**: `edit` on `invoices`
 
 **Effect**:
+
 1. Status changes to 'posted'
 2. **Creates GL entries** (AR posting):
    ```
@@ -666,21 +754,24 @@ Post invoice (finalize and create GL entries).
 **See**: `src/services/accounting/arPosting.ts`
 
 #### POST /api/invoices/[id]/payments
+
 Record payment.
 
 **Permissions**: `create` on `invoice_payments`
 
 **Request**:
+
 ```json
 {
   "payment_date": "2025-06-20",
-  "amount": 500.00,
+  "amount": 500.0,
   "payment_method": "check",
   "reference": "CHK-12345"
 }
 ```
 
 **Effect**:
+
 1. Creates payment record
 2. Updates invoice `paid_amount`
 3. **Creates GL entries** (AR payment):
@@ -690,11 +781,13 @@ Record payment.
    ```
 
 #### POST /api/invoices/[id]/cancel
+
 Cancel invoice.
 
 **Permissions**: `delete` on `invoices`
 
 **Effect**:
+
 1. Status changes to 'cancelled'
 2. **Reverses GL entries** if posted
 
@@ -775,24 +868,31 @@ class ARPostingService {
 ### Key Components
 
 #### CustomerList
+
 **Location**: `src/components/sales/CustomerList.tsx`
 
 #### QuotationForm
+
 **Location**: `src/components/sales/QuotationForm.tsx`
 
 #### SalesOrderForm
+
 **Location**: `src/components/sales/SalesOrderForm.tsx`
 
 #### DeliveryNotePickingUI
+
 **Location**: `src/components/sales/DeliveryNotePickingUI.tsx`
+
 - Mobile-optimized picking interface
 - Barcode scanning
 - Location-based picking
 
 #### InvoiceForm
+
 **Location**: `src/components/sales/InvoiceForm.tsx`
 
 #### PaymentDialog
+
 **Location**: `src/components/sales/PaymentDialog.tsx`
 
 ## Related Documentation

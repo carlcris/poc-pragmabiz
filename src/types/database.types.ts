@@ -250,6 +250,109 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_item_prices: {
+        Row: {
+          business_unit_id: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          currency_code: string
+          customer_id: string
+          deleted_at: string | null
+          effective_from: string
+          effective_to: string | null
+          id: string
+          is_active: boolean
+          item_id: string
+          price: number
+          price_tier: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          business_unit_id: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          currency_code?: string
+          customer_id: string
+          deleted_at?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean
+          item_id: string
+          price: number
+          price_tier: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          business_unit_id?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          currency_code?: string
+          customer_id?: string
+          deleted_at?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean
+          item_id?: string
+          price?: number
+          price_tier?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_item_prices_business_unit_id_fkey"
+            columns: ["business_unit_id"]
+            isOneToOne: false
+            referencedRelation: "business_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_item_prices_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_item_prices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_item_prices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_item_prices_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_item_prices_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           billing_address_line1: string | null
@@ -11109,6 +11212,8 @@ export type Database = {
           item_name: string
           line_total: number
           ordered_quantity: number
+          pricing_tier: string
+          pricing_tier_name: string
           quantity: number
           quotation_code: string
           quotation_date: string

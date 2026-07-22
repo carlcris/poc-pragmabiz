@@ -654,6 +654,7 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
         onSave={handleSaveItem}
         item={editingItem?.item || null}
         mode={editingItem ? "edit" : "add"}
+        customerId={selectedCustomerId}
       />
     </>
   );

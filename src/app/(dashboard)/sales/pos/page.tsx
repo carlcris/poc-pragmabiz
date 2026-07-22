@@ -8,6 +8,7 @@ import { useItems } from "@/hooks/useItems";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useCustomer, useCustomers } from "@/hooks/useCustomers";
 import { useCreatePOSTransaction } from "@/hooks/usePos";
+import { useResolvedCustomerPricing } from "@/hooks/useCustomerPricing";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
@@ -40,10 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  getItemPriceTierOptions,
-  resolvePriceTierSelection,
-} from "@/lib/pricing/itemPriceTiers";
+import { getItemPriceTierOptions, resolvePriceTierSelection } from "@/lib/pricing/itemPriceTiers";
 import type { ItemWithStock } from "@/app/api/items/route";
 import type { Customer } from "@/types/customer";
 import type { ItemPriceTier } from "@/types/item";
@@ -57,6 +55,7 @@ type POSCartLine = POSCartItem & {
   listPrice: number;
   defaultPriceTier?: string | null;
   priceTiers?: ItemPriceTier[];
+  standardPriceTiers?: ItemPriceTier[];
 };
 
 export default function POSPage() {
@@ -148,6 +147,29 @@ export default function POSPage() {
   });
 
   const items = useMemo(() => (itemsData?.data || []) as ItemWithStock[], [itemsData]);
+  const pricingItemIds = useMemo(
+    () =>
+      [...new Set([...items.map((item) => item.id), ...cart.map((item) => item.itemId)])].slice(
+        0,
+        50
+      ),
+    [cart, items]
+  );
+  const { data: resolvedCustomerPricing } = useResolvedCustomerPricing({
+    customerId: selectedCustomerId,
+    itemIds: pricingItemIds,
+    enabled: areItemQueriesEnabled,
+  });
+  const pricedItems = useMemo(() => {
+    const resolvedByItemId = new Map(
+      (resolvedCustomerPricing?.data || []).map((entry) => [entry.itemId, entry.priceTiers])
+    );
+
+    return items.map((item) => {
+      const priceTiers = resolvedByItemId.get(item.id);
+      return priceTiers ? { ...item, priceTiers } : item;
+    });
+  }, [items, resolvedCustomerPricing?.data]);
   const customers = useMemo(() => customersData?.data || [], [customersData]);
   const customerOptions = useMemo(
     () => [
@@ -262,6 +284,7 @@ export default function POSPage() {
           listPrice: item.listPrice,
           defaultPriceTier: item.defaultPriceTier,
           priceTiers: item.priceTiers,
+          standardPriceTiers: items.find((sourceItem) => sourceItem.id === item.id)?.priceTiers,
           pricingTier: priceSelection.priceTier,
           pricingTierName: priceSelection.priceTierName,
           unitPrice: priceSelection.price,
@@ -328,7 +351,7 @@ export default function POSPage() {
 
   const updatePricingTier = (index: number, pricingTier: string) => {
     const cartItem = cart[index];
-    const sourceItem = items.find((item) => item.id === cartItem.itemId) || cartItem;
+    const sourceItem = pricedItems.find((item) => item.id === cartItem.itemId) || cartItem;
     if (!sourceItem) return;
 
     const priceSelection = resolvePriceTierSelection(sourceItem, pricingTier);
@@ -346,6 +369,46 @@ export default function POSPage() {
     };
     setCart(newCart);
   };
+
+  useEffect(() => {
+    const resolvedByItemId = new Map(
+      (resolvedCustomerPricing?.data || []).map((entry) => [entry.itemId, entry.priceTiers])
+    );
+
+    if (selectedCustomerId !== "walk-in" && resolvedByItemId.size === 0) return;
+
+    setCart((currentCart) =>
+      currentCart.map((cartItem) => {
+        const priceTiers =
+          selectedCustomerId === "walk-in"
+            ? cartItem.standardPriceTiers
+            : resolvedByItemId.get(cartItem.itemId);
+        if (!priceTiers || priceTiers.length === 0) return cartItem;
+
+        const selection = resolvePriceTierSelection(
+          {
+            listPrice: cartItem.listPrice,
+            defaultPriceTier: cartItem.defaultPriceTier,
+            priceTiers,
+          },
+          cartItem.pricingTier
+        );
+
+        return {
+          ...cartItem,
+          priceTiers,
+          pricingTier: selection.priceTier,
+          pricingTierName: selection.priceTierName,
+          unitPrice: selection.price,
+          lineTotal: calculatePOSLineTotal({
+            quantity: cartItem.quantity,
+            unitPrice: selection.price,
+            discount: cartItem.discount,
+          }),
+        };
+      })
+    );
+  }, [resolvedCustomerPricing?.data, selectedCustomerId]);
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
@@ -380,14 +443,25 @@ export default function POSPage() {
     await createTransaction.mutateAsync({
       customerId: selectedCustomerId !== "walk-in" ? selectedCustomerId : undefined,
       warehouseId: currentBusinessUnitWarehouseId,
-      items: cart.map(({ id, availableStock, listPrice, defaultPriceTier, priceTiers, ...item }) => {
-        void id;
-        void availableStock;
-        void listPrice;
-        void defaultPriceTier;
-        void priceTiers;
-        return item;
-      }),
+      items: cart.map(
+        ({
+          id,
+          availableStock,
+          listPrice,
+          defaultPriceTier,
+          priceTiers,
+          standardPriceTiers,
+          ...item
+        }) => {
+          void id;
+          void availableStock;
+          void listPrice;
+          void defaultPriceTier;
+          void priceTiers;
+          void standardPriceTiers;
+          return item;
+        }
+      ),
       payments: [payment],
     });
 
@@ -463,7 +537,7 @@ export default function POSPage() {
                     <>
                       <CommandEmpty>{t("noItemsFound")}</CommandEmpty>
                       <CommandGroup>
-                        {items
+                        {pricedItems
                           .filter((item) => item.isActive)
                           .map((item) => {
                             const isOutOfStock = item.available <= 0;
@@ -564,15 +638,16 @@ export default function POSPage() {
                           <SelectValue placeholder={t("selectPricingTier")} />
                         </SelectTrigger>
                         <SelectContent>
-                            {getItemPriceTierOptions(
-                              items.find((sourceItem) => sourceItem.id === item.itemId) || {
-                                listPrice: item.unitPrice,
-                                defaultPriceTier: item.pricingTier,
-                                priceTiers: [],
+                          {getItemPriceTierOptions(
+                            pricedItems.find((sourceItem) => sourceItem.id === item.itemId) || {
+                              listPrice: item.unitPrice,
+                              defaultPriceTier: item.pricingTier,
+                              priceTiers: [],
                             }
                           ).map((priceTier) => (
                             <SelectItem key={priceTier.priceTier} value={priceTier.priceTier}>
-                              {priceTier.priceTier.toUpperCase()} ({formatCurrency(priceTier.price)})
+                              {priceTier.priceTier.toUpperCase()} ({formatCurrency(priceTier.price)}
+                              )
                             </SelectItem>
                           ))}
                         </SelectContent>

@@ -88,6 +88,8 @@ const mapSalesOrderLineItemToFormValues = (item: SalesOrder["lineItems"][number]
   uomId: item.uomId,
   uomCode: item.uomCode,
   uomName: item.uomName,
+  pricingTier: item.pricingTier,
+  pricingTierName: item.pricingTierName,
   discount: item.discount,
   taxRate: item.taxRate,
   available: item.available,
@@ -273,6 +275,8 @@ export function SalesOrderForm({
     uomId: line.uomId,
     uomCode: line.uomCode,
     uomName: line.uomName,
+    pricingTier: line.pricingTier,
+    pricingTierName: line.pricingTierName,
     discount: line.discount,
     taxRate: line.taxRate,
     lineTotal: line.lineTotal,
@@ -338,6 +342,8 @@ export function SalesOrderForm({
           description: item.description,
           quantity: item.quantity,
           uomId: item.uomId,
+          pricingTier: item.pricingTier,
+          pricingTierName: item.pricingTierName,
           unitPrice: item.unitPrice,
           discount: item.discount,
           taxRate: item.taxRate,
@@ -754,12 +760,10 @@ export function SalesOrderForm({
         onSave={handleSaveItem}
         item={editingItem?.item || null}
         mode={editingItem?.index === null ? "add" : editingItem ? "edit" : "add"}
+        customerId={selectedCustomerId}
       />
 
-      <Dialog
-        open={quotationLinesOpen}
-        onOpenChange={setQuotationLinesOpen}
-      >
+      <Dialog open={quotationLinesOpen} onOpenChange={setQuotationLinesOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Add from customer quotations</DialogTitle>

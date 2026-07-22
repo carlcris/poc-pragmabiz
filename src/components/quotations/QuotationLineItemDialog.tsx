@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { ChevronsUpDown, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useItems } from "@/hooks/useItems";
+import { useResolvedCustomerPricing } from "@/hooks/useCustomerPricing";
 import { useCurrency } from "@/hooks/useCurrency";
 import {
   getDefaultPriceTierCode,
@@ -106,6 +107,7 @@ type QuotationLineItemDialogProps = {
   onSave: (item: LineItemFormValues) => void;
   item?: LineItemFormValues | null;
   mode?: "add" | "edit";
+  customerId?: string;
 };
 
 type MaterialItemOption = {
@@ -216,6 +218,7 @@ export function QuotationLineItemDialog({
   onSave,
   item,
   mode = "add",
+  customerId,
 }: QuotationLineItemDialogProps) {
   const t = useTranslations("quotationLineItemDialog");
   const tCommon = useTranslations("common");
@@ -250,6 +253,7 @@ export function QuotationLineItemDialog({
     sortOrder: 0,
   });
   const [selectedLineItems, setSelectedLineItems] = useState<Record<string, LineItemOption>>({});
+  const [pendingCustomerPriceItemId, setPendingCustomerPriceItemId] = useState<string | null>(null);
   const [selectedMaterialItems, setSelectedMaterialItems] = useState<
     Record<string, MaterialItemOption>
   >({});
@@ -518,12 +522,13 @@ export function QuotationLineItemDialog({
       form.setValue("uomId", basicItem.uomId);
       form.setValue("uomCode", basicItem.uom);
       form.setValue("uomName", basicItem.uom);
+      setPendingCustomerPriceItemId(customerId ? basicItem.id : null);
     }
   };
 
   const handlePricingTierChange = (priceTier: string) => {
-    if (!selectedLineItem) return;
-    const priceSelection = resolvePriceTierSelection(selectedLineItem, priceTier);
+    if (!pricingLineItem) return;
+    const priceSelection = resolvePriceTierSelection(pricingLineItem, priceTier);
     form.setValue("pricingTier", priceSelection.priceTier);
     form.setValue("pricingTierName", priceSelection.priceTierName);
     form.setValue("unitPrice", priceSelection.price);
@@ -555,8 +560,7 @@ export function QuotationLineItemDialog({
     const frameComponents = isFrameJob ? frameComponentsForSave : [];
     onSave({
       ...parsed,
-      quotationId:
-        item?.quotationItemId && item.itemId === parsed.itemId ? item.quotationId : null,
+      quotationId: item?.quotationItemId && item.itemId === parsed.itemId ? item.quotationId : null,
       quotationNumber:
         item?.quotationItemId && item.itemId === parsed.itemId ? item.quotationNumber : undefined,
       quotationItemId:
@@ -601,10 +605,40 @@ export function QuotationLineItemDialog({
 
   const frameQuantity = quantity || 0;
   const selectedLineItem = lineItemsById.get(selectedItemId);
-  const priceTierOptions = selectedLineItem ? getItemPriceTierOptions(selectedLineItem) : [];
+  const { data: resolvedCustomerPricing } = useResolvedCustomerPricing({
+    customerId,
+    itemIds: selectedItemId ? [selectedItemId] : [],
+    enabled: open,
+  });
+  const resolvedPriceTiers = resolvedCustomerPricing?.data.find(
+    (entry) => entry.itemId === selectedItemId
+  )?.priceTiers;
+  const pricingLineItem = useMemo(
+    () =>
+      selectedLineItem && resolvedPriceTiers
+        ? { ...selectedLineItem, priceTiers: resolvedPriceTiers }
+        : selectedLineItem,
+    [resolvedPriceTiers, selectedLineItem]
+  );
+  const priceTierOptions = pricingLineItem ? getItemPriceTierOptions(pricingLineItem) : [];
   const selectedPricingTier =
     form.watch("pricingTier") ||
-    (selectedLineItem ? getDefaultPriceTierCode(selectedLineItem) : undefined);
+    (pricingLineItem ? getDefaultPriceTierCode(pricingLineItem) : undefined);
+
+  useEffect(() => {
+    if (!pricingLineItem || !resolvedPriceTiers || pendingCustomerPriceItemId !== selectedItemId) {
+      return;
+    }
+
+    const priceSelection = resolvePriceTierSelection(
+      pricingLineItem,
+      form.getValues("pricingTier")
+    );
+    form.setValue("pricingTier", priceSelection.priceTier);
+    form.setValue("pricingTierName", priceSelection.priceTierName);
+    form.setValue("unitPrice", priceSelection.price);
+    setPendingCustomerPriceItemId(null);
+  }, [form, pendingCustomerPriceItemId, pricingLineItem, resolvedPriceTiers, selectedItemId]);
   const selectedItemAvailable = selectedLineItem?.available ?? 0;
   const showInventoryWarning =
     !!selectedLineItem &&
@@ -790,24 +824,19 @@ export function QuotationLineItemDialog({
                         onSelect(materialItem);
                         onOpenChange(false);
                       }}
-                      className="flex items-center justify-between py-2"
+                      className="cursor-pointer"
                     >
-                      <div className="flex min-w-0 flex-1 items-start">
-                        <Check
-                          className={cn(
-                            "mr-2 mt-1 h-4 w-4 flex-shrink-0",
-                            selectedItemId === materialItem.id ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        <div className="min-w-0 flex-1">
+                      <div className="flex w-full items-center justify-between">
+                        <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">{materialItem.code}</span>
-                            <span className="truncate text-sm">{materialItem.name}</span>
+                            <span className="font-medium">{materialItem.name}</span>
                           </div>
-                          <div className="mt-0.5 text-xs text-muted-foreground">
-                            {materialItem.uom || "No UoM"} ·{" "}
-                            {formatCurrency(materialItem.listPrice)}
+                          <div className="text-xs text-muted-foreground">
+                            {materialItem.code} • {materialItem.uom || "No UoM"}
                           </div>
+                        </div>
+                        <div className="text-sm font-medium">
+                          {formatCurrency(materialItem.listPrice)}
                         </div>
                       </div>
                     </CommandItem>
@@ -878,6 +907,8 @@ export function QuotationLineItemDialog({
                                   {selectableItems.map((item) => {
                                     const availableQty = item.available ?? 0;
                                     const reorderPoint = item.reorderPoint ?? 0;
+                                    const isOutOfStock = availableQty <= 0;
+                                    const isLowStock = availableQty > 0 && availableQty <= reorderPoint;
                                     return (
                                       <CommandItem
                                         key={item.id}
@@ -887,40 +918,39 @@ export function QuotationLineItemDialog({
                                           handleItemSelect(item.id);
                                           setItemOpen(false);
                                         }}
-                                        className="flex items-center justify-between py-2"
+                                        className="cursor-pointer"
                                       >
-                                        <div className="flex min-w-0 flex-1 items-start">
-                                          <Check
-                                            className={cn(
-                                              "mr-2 mt-1 h-4 w-4 flex-shrink-0",
-                                              field.value === item.id ? "opacity-100" : "opacity-0"
-                                            )}
-                                          />
-                                          <div className="min-w-0 flex-1">
+                                        <div className="flex w-full items-center justify-between">
+                                          <div className="flex-1">
                                             <div className="flex items-center gap-2">
-                                              <span className="font-medium">{item.code}</span>
-                                              <span className="truncate text-sm">{item.name}</span>
+                                              <span className="font-medium">{item.name}</span>
+                                              {isOutOfStock && (
+                                                <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-700">
+                                                  {t("outOfStock")}
+                                                </span>
+                                              )}
+                                              {isLowStock && (
+                                                <span className="rounded bg-orange-100 px-2 py-0.5 text-xs text-orange-700">
+                                                  {t("lowStock")}
+                                                </span>
+                                              )}
                                             </div>
-                                            <div className="mt-0.5 text-xs text-muted-foreground">
-                                              <span
-                                                className={cn(
-                                                  availableQty <= 0
-                                                    ? "font-medium text-red-600"
-                                                    : availableQty <= reorderPoint
-                                                      ? "text-orange-600"
-                                                      : ""
-                                                )}
-                                              >
-                                                {t("stockLabel")}: {availableQty.toFixed(2)}{" "}
-                                                {item.uom}
-                                              </span>
+                                            <div className="text-xs text-muted-foreground">
+                                              {item.code} • {item.uom} •{" "}
+                                              {t("stockCount", {
+                                                count: availableQty.toFixed(2),
+                                              })}
                                             </div>
                                           </div>
-                                        </div>
-                                        <div className="ml-4 flex-shrink-0">
-                                          <span className="text-sm font-semibold">
-                                            {formatCurrency(item.listPrice)}
-                                          </span>
+                                          <div className="text-sm font-medium">
+                                            {formatCurrency(
+                                              resolvePriceTierSelection({
+                                                listPrice: item.listPrice,
+                                                defaultPriceTier: item.defaultPriceTier,
+                                                priceTiers: item.priceTiers,
+                                              }).price
+                                            )}
+                                          </div>
                                         </div>
                                       </CommandItem>
                                     );
@@ -1001,7 +1031,9 @@ export function QuotationLineItemDialog({
                             field.onChange(value);
                             handlePricingTierChange(value);
                           }}
-                          disabled={isFrameJob || !selectedLineItem || priceTierOptions.length === 0}
+                          disabled={
+                            isFrameJob || !selectedLineItem || priceTierOptions.length === 0
+                          }
                         >
                           <FormControl>
                             <SelectTrigger className="h-11">
@@ -1011,7 +1043,8 @@ export function QuotationLineItemDialog({
                           <SelectContent>
                             {priceTierOptions.map((priceTier) => (
                               <SelectItem key={priceTier.priceTier} value={priceTier.priceTier}>
-                                {priceTier.priceTier.toUpperCase()} ({formatCurrency(priceTier.price)})
+                                {priceTier.priceTier.toUpperCase()} (
+                                {formatCurrency(priceTier.price)})
                               </SelectItem>
                             ))}
                           </SelectContent>

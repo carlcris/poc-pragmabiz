@@ -247,6 +247,14 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
         title: t("capabilities.printBatchQr"),
         description: t("capabilities.printBatchQrDescription"),
       },
+      [GRANULAR_CAPABILITIES.CUSTOMER_SPECIAL_PRICES_VIEW]: {
+        title: t("capabilities.viewCustomerSpecialPrices"),
+        description: t("capabilities.viewCustomerSpecialPricesDescription"),
+      },
+      [GRANULAR_CAPABILITIES.CUSTOMER_SPECIAL_PRICES_MANAGE]: {
+        title: t("capabilities.manageCustomerSpecialPrices"),
+        description: t("capabilities.manageCustomerSpecialPricesDescription"),
+      },
     }),
     [t]
   );

@@ -715,6 +715,10 @@ export type TranslationKeys = {
       viewAssignedPickListsDescription: string;
       printBatchQr: string;
       printBatchQrDescription: string;
+      viewCustomerSpecialPrices: string;
+      viewCustomerSpecialPricesDescription: string;
+      manageCustomerSpecialPrices: string;
+      manageCustomerSpecialPricesDescription: string;
     };
   };
   adminCreateRoleDialog: {
@@ -1146,6 +1150,53 @@ export type TranslationKeys = {
     deleteSuccess: string;
     deleteError: string;
   };
+  customerSpecialPrices: {
+    tab: string;
+    title: string;
+    description: string;
+    addPrice: string;
+    searchPlaceholder: string;
+    allStatuses: string;
+    item: string;
+    tier: string;
+    specialPrice: string;
+    effectivePeriod: string;
+    status: string;
+    active: string;
+    inactive: string;
+    noEndDate: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    loadError: string;
+    createTitle: string;
+    editTitle: string;
+    createDescription: string;
+    editDescription: string;
+    selectItem: string;
+    searchItems: string;
+    noItems: string;
+    selectTier: string;
+    price: string;
+    currency: string;
+    effectiveFrom: string;
+    effectiveTo: string;
+    activePrice: string;
+    itemRequired: string;
+    tierRequired: string;
+    priceRequired: string;
+    priceMinimum: string;
+    effectiveFromRequired: string;
+    invalidDateRange: string;
+    standardPrice: string;
+    createSuccess: string;
+    updateSuccess: string;
+    saveError: string;
+    deleteTitle: string;
+    deleteDescription: string;
+    deleteSuccess: string;
+    deleteError: string;
+    saving: string;
+  };
   customerForm: {
     editTitle: string;
     createTitle: string;
@@ -1549,6 +1600,9 @@ export type TranslationKeys = {
     itemSearchPlaceholder: string;
     noItemFound: string;
     stockLabel: string;
+    outOfStock: string;
+    lowStock: string;
+    stockCount: string;
     inventoryWarning: string;
     description: string;
     quantity: string;
@@ -3625,6 +3679,11 @@ export const translations: Record<Locale, TranslationKeys> = {
         printBatchQr: "Print Item Batch QR Codes",
         printBatchQrDescription:
           "Allows printing item batch-location QR labels from an item's Locations tab.",
+        viewCustomerSpecialPrices: "View Customer Special Prices",
+        viewCustomerSpecialPricesDescription: "Allows viewing customer-specific item-tier prices.",
+        manageCustomerSpecialPrices: "Manage Customer Special Prices",
+        manageCustomerSpecialPricesDescription:
+          "Allows creating, editing, and deactivating customer-specific item-tier prices.",
       },
     },
     adminCreateRoleDialog: {
@@ -4065,6 +4124,53 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleteSuccess: "Customer deleted successfully",
       deleteError: "Failed to delete customer",
     },
+    customerSpecialPrices: {
+      tab: "Special Prices",
+      title: "Customer Special Prices",
+      description: "Override configured item price tiers for this customer.",
+      addPrice: "Add Special Price",
+      searchPlaceholder: "Search by item code or name...",
+      allStatuses: "All statuses",
+      item: "Item",
+      tier: "Price Tier",
+      specialPrice: "Special Price",
+      effectivePeriod: "Effective Period",
+      status: "Status",
+      active: "Active",
+      inactive: "Inactive",
+      noEndDate: "No end date",
+      emptyTitle: "No special prices",
+      emptyDescription: "Add an item-tier price override for this customer.",
+      loadError: "Failed to load customer special prices.",
+      createTitle: "Add Customer Special Price",
+      editTitle: "Edit Customer Special Price",
+      createDescription: "Choose an item tier and set the customer's special price.",
+      editDescription: "Update the price, dates, or active status. Item and tier remain fixed.",
+      selectItem: "Select item",
+      searchItems: "Search items...",
+      noItems: "No items found",
+      selectTier: "Select price tier",
+      price: "Price",
+      currency: "Currency",
+      effectiveFrom: "Effective From",
+      effectiveTo: "Effective To",
+      activePrice: "Active price",
+      itemRequired: "Item is required",
+      tierRequired: "Price tier is required",
+      priceRequired: "Price is required",
+      priceMinimum: "Price cannot be negative",
+      effectiveFromRequired: "Effective start date is required",
+      invalidDateRange: "Effective end date must be on or after the start date",
+      standardPrice: "Standard: {price}",
+      createSuccess: "Customer special price created",
+      updateSuccess: "Customer special price updated",
+      saveError: "Failed to save customer special price",
+      deleteTitle: "Delete Customer Special Price",
+      deleteDescription: "Delete the {tier} price for {item}?",
+      deleteSuccess: "Customer special price deleted",
+      deleteError: "Failed to delete customer special price",
+      saving: "Saving...",
+    },
     customerForm: {
       editTitle: "Edit Customer",
       createTitle: "Create New Customer",
@@ -4476,6 +4582,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemSearchPlaceholder: "Search by code or name...",
       noItemFound: "No item found.",
       stockLabel: "Stock",
+      outOfStock: "Out of Stock",
+      lowStock: "Low Stock",
+      stockCount: "Stock: {count}",
       inventoryWarning:
         "Requested quantity {requested} exceeds available stock {available} {uom}. You can still save this line item.",
       description: "Description",
@@ -9182,6 +9291,10 @@ export const translations: Record<Locale, TranslationKeys> = {
           "启用后，仅显示分配给当前用户的拣货单；禁用后，显示当前业务单位内的所有拣货单。",
         printBatchQr: "打印商品批次二维码",
         printBatchQrDescription: "允许从商品的库位标签页打印商品批次库位二维码标签。",
+        viewCustomerSpecialPrices: "查看客户特殊价格",
+        viewCustomerSpecialPricesDescription: "允许查看客户专属的商品价格层级价格。",
+        manageCustomerSpecialPrices: "管理客户特殊价格",
+        manageCustomerSpecialPricesDescription: "允许创建、编辑和停用客户专属的商品价格层级价格。",
       },
     },
     adminCreateRoleDialog: {
@@ -9613,6 +9726,53 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleteSuccess: "客户删除成功",
       deleteError: "删除客户失败",
     },
+    customerSpecialPrices: {
+      tab: "特殊价格",
+      title: "客户特殊价格",
+      description: "为此客户覆盖已配置的商品价格层级。",
+      addPrice: "添加特殊价格",
+      searchPlaceholder: "按商品编码或名称搜索...",
+      allStatuses: "全部状态",
+      item: "商品",
+      tier: "价格层级",
+      specialPrice: "特殊价格",
+      effectivePeriod: "生效期间",
+      status: "状态",
+      active: "启用",
+      inactive: "停用",
+      noEndDate: "无结束日期",
+      emptyTitle: "暂无特殊价格",
+      emptyDescription: "为此客户添加商品价格层级覆盖。",
+      loadError: "加载客户特殊价格失败。",
+      createTitle: "添加客户特殊价格",
+      editTitle: "编辑客户特殊价格",
+      createDescription: "选择商品价格层级并设置客户特殊价格。",
+      editDescription: "更新价格、日期或启用状态。商品和层级保持不变。",
+      selectItem: "选择商品",
+      searchItems: "搜索商品...",
+      noItems: "未找到商品",
+      selectTier: "选择价格层级",
+      price: "价格",
+      currency: "币种",
+      effectiveFrom: "生效日期",
+      effectiveTo: "结束日期",
+      activePrice: "启用价格",
+      itemRequired: "商品为必填项",
+      tierRequired: "价格层级为必填项",
+      priceRequired: "价格为必填项",
+      priceMinimum: "价格不能为负数",
+      effectiveFromRequired: "生效日期为必填项",
+      invalidDateRange: "结束日期必须晚于或等于生效日期",
+      standardPrice: "标准价：{price}",
+      createSuccess: "客户特殊价格已创建",
+      updateSuccess: "客户特殊价格已更新",
+      saveError: "保存客户特殊价格失败",
+      deleteTitle: "删除客户特殊价格",
+      deleteDescription: "删除 {item} 的 {tier} 价格？",
+      deleteSuccess: "客户特殊价格已删除",
+      deleteError: "删除客户特殊价格失败",
+      saving: "保存中...",
+    },
     customerForm: {
       editTitle: "编辑客户",
       createTitle: "创建新客户",
@@ -10021,6 +10181,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemSearchPlaceholder: "按编码或名称搜索...",
       noItemFound: "未找到项目。",
       stockLabel: "库存",
+      outOfStock: "缺货",
+      lowStock: "低库存",
+      stockCount: "库存：{count}",
       inventoryWarning: "请求数量 {requested} 超过可用库存 {available} {uom}。仍可保存该行项目。",
       description: "描述",
       quantity: "数量",

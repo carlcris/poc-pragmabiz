@@ -151,6 +151,8 @@ export function QuotationForm({ quotation, onCancel, onSuccess, submitLabel }: Q
           uomId: item.uomId,
           uomCode: item.uomCode,
           uomName: item.uomName,
+          pricingTier: item.pricingTier,
+          pricingTierName: item.pricingTierName,
           discount: item.discount,
           taxRate: item.taxRate,
           lineTotal: item.lineTotal,
@@ -208,6 +210,8 @@ export function QuotationForm({ quotation, onCancel, onSuccess, submitLabel }: Q
           quantity: item.quantity,
           uomId: item.uomId,
           rate: item.unitPrice,
+          pricingTier: item.pricingTier,
+          pricingTierName: item.pricingTierName,
           discountPercent: item.discount,
           taxPercent: item.taxRate,
           sortOrder: index,
@@ -491,6 +495,7 @@ export function QuotationForm({ quotation, onCancel, onSuccess, submitLabel }: Q
         onSave={handleSaveItem}
         item={editingItem?.item || null}
         mode={editingItem ? "edit" : "add"}
+        customerId={selectedCustomerId}
       />
     </>
   );

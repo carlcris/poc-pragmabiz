@@ -19,6 +19,9 @@ export const GRANULAR_CAPABILITIES = {
   ITEM_SOP_EDIT: "items.field.sop.edit",
   ITEM_BATCH_QR_PRINT: "items.operation.print_batch_qr.view",
 
+  CUSTOMER_SPECIAL_PRICES_VIEW: "customers.tab.special_prices.view",
+  CUSTOMER_SPECIAL_PRICES_MANAGE: "customers.operation.special_prices.edit",
+
   PURCHASING_SR_VALUE: "purchasing_dashboard.widget.stock_requisition_value.view",
   PURCHASING_DAMAGED_ITEMS_VALUE: "purchasing_dashboard.widget.damaged_items_value.view",
   PURCHASING_SUPPLIER_SPEND: "purchasing_dashboard.widget.supplier_spend.view",

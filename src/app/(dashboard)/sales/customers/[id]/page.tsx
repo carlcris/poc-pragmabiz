@@ -32,8 +32,13 @@ import {
   XCircle,
 } from "lucide-react";
 import { useCustomer, useCustomerLedger } from "@/hooks/useCustomers";
+import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useChangeQuotationStatus, useConfirmQuotation, useQuotations } from "@/hooks/useQuotations";
+import {
+  useChangeQuotationStatus,
+  useConfirmQuotation,
+  useQuotations,
+} from "@/hooks/useQuotations";
 import {
   useCancelOrder,
   useConfirmOrder,
@@ -92,12 +97,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CustomerLedgerTab } from "@/components/customers/CustomerLedgerTab";
+import { CustomerSpecialPricesTab } from "@/components/customers/CustomerSpecialPricesTab";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { CreateGuard, EditGuard } from "@/components/permissions/PermissionGuard";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { StatusText } from "@/components/shared/StatusText";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { RESOURCES } from "@/constants/resources";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import type { Customer, PaymentTerms } from "@/types/customer";
 import type { Quotation, QuotationStatus } from "@/types/quotation";
 import type { SalesOrder, SalesOrderStatus } from "@/types/sales-order";
@@ -170,9 +177,15 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
   const tCommon = useTranslations("common");
   const tQuotations = useTranslations("quotationsPage");
   const tOrders = useTranslations("salesOrdersPage");
+  const tSpecialPrices = useTranslations("customerSpecialPrices");
   const { formatCurrency } = useCurrency();
   const router = useRouter();
   const { data: customer, isLoading, error } = useCustomer(customerId);
+  const { data: granularCapabilities } = useGranularCapabilities([
+    GRANULAR_CAPABILITIES.CUSTOMER_SPECIAL_PRICES_VIEW,
+  ]);
+  const canViewSpecialPrices =
+    granularCapabilities?.[GRANULAR_CAPABILITIES.CUSTOMER_SPECIAL_PRICES_VIEW] === true;
   const { data: accountSummaryData, isLoading: isAccountSummaryLoading } = useCustomerLedger(
     customerId,
     {
@@ -686,7 +699,7 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <div className="border-b border-border/40 bg-gradient-to-r from-background via-muted/20 to-background">
+        <div className="overflow-x-auto border-b border-border/40 bg-gradient-to-r from-background via-muted/20 to-background">
           <div className="container-fluid">
             <TabsList className="h-auto w-full justify-start gap-2 rounded-none border-b-0 bg-transparent p-0 py-2">
               <TabsTrigger
@@ -703,6 +716,15 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
                 <CreditCard className="h-4 w-4" />
                 {tForm("termsTab")}
               </TabsTrigger>
+              {canViewSpecialPrices ? (
+                <TabsTrigger
+                  value="special-prices"
+                  className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
+                >
+                  <BadgeDollarSign className="h-4 w-4" />
+                  {tSpecialPrices("tab")}
+                </TabsTrigger>
+              ) : null}
               <TabsTrigger
                 value="quotations"
                 className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
@@ -868,6 +890,15 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
           </Card>
         </TabsContent>
 
+        {canViewSpecialPrices ? (
+          <TabsContent value="special-prices" className="mt-4 min-h-96">
+            <CustomerSpecialPricesTab
+              customerId={customerId}
+              enabled={activeTab === "special-prices"}
+            />
+          </TabsContent>
+        ) : null}
+
         <TabsContent value="ledger" className="mt-4 min-h-[34rem]">
           <CustomerLedgerTab customerId={customerId} enabled={activeTab === "ledger"} />
         </TabsContent>
@@ -999,7 +1030,7 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
                               onClick={(event) => event.stopPropagation()}
                             >
                               <div className="flex justify-end gap-2">
-                                {(order.status === "draft" || order.status === "confirmed") ? (
+                                {order.status === "draft" || order.status === "confirmed" ? (
                                   <EditGuard resource={RESOURCES.SALES_ORDERS}>
                                     <Button
                                       type="button"
@@ -1028,8 +1059,7 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
                                     </Button>
                                   </EditGuard>
                                 ) : null}
-                                {(order.status === "confirmed" ||
-                                  order.status === "in_progress") ? (
+                                {order.status === "confirmed" || order.status === "in_progress" ? (
                                   <CreateGuard resource={RESOURCES.SALES_INVOICES}>
                                     <Button
                                       type="button"
@@ -1067,7 +1097,9 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
                                     className="h-8 px-2"
                                     asChild
                                   >
-                                    <Link href={`/sales/frame-job-orders/${order.frameJobOrder.id}`}>
+                                    <Link
+                                      href={`/sales/frame-job-orders/${order.frameJobOrder.id}`}
+                                    >
                                       <ClipboardList className="mr-2 h-4 w-4" />
                                       {tOrders("viewJobOrder")}
                                     </Link>
@@ -1201,10 +1233,10 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
                               </div>
                             </TableCell>
                             <TableCell>{getQuotationStatus(quotation.status)}</TableCell>
-                          <TableCell
-                            className="text-right"
-                            onClick={(event) => event.stopPropagation()}
-                          >
+                            <TableCell
+                              className="text-right"
+                              onClick={(event) => event.stopPropagation()}
+                            >
                               <div className="flex justify-end gap-2">
                                 {(quotation.status === "draft" || quotation.status === "sent") && (
                                   <EditGuard resource={RESOURCES.SALES_QUOTATIONS}>
