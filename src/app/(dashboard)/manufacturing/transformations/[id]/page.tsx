@@ -411,7 +411,7 @@ function TransformationOrderContent({ id }: { id: string }) {
                     </div>
                   </div>
                   {/* Show waste reason if there is waste */}
-                  {output.wasted_quantity && output.wasted_quantity > 0 && (
+                  {Number(output.wasted_quantity) > 0 && (
                     <div className="mt-2 border-t pt-2 text-xs">
                       <p className="text-muted-foreground">{t("wasteReason")}:</p>
                       <p className="italic text-orange-600">

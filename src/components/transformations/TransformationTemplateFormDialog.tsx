@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useTranslations } from "next-intl";
 import {
   Plus,
   Trash2,
@@ -21,8 +22,8 @@ import {
 import type {
   CreateTransformationTemplateRequest,
   TransformationTemplateApi,
+  TransformationTemplateCopySource,
 } from "@/types/transformation-template";
-import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -55,10 +56,10 @@ import {
   TransformationItemDialog,
   type TransformationItemFormValues,
 } from "./TransformationItemDialog";
+import { TransformationTemplateCopySourcePicker } from "./TransformationTemplateCopySourcePicker";
 
 // Schema for form validation (only basic fields, not inputs/outputs)
 const templateFormSchema = z.object({
-  companyId: z.string().optional(), // Optional because it may be set by auth
   templateCode: z.string().min(1, "Template code is required"),
   templateName: z.string().min(1, "Template name is required"),
   description: z.string().optional(),
@@ -74,12 +75,12 @@ type Props = {
 };
 
 export function TransformationTemplateFormDialog({ open, onOpenChange, template }: Props) {
-  const { user } = useAuthStore();
-  const companyId = user?.companyId;
+  const t = useTranslations("transformation");
 
   // Line items state
   const [inputs, setInputs] = useState<TransformationItemFormValues[]>([]);
   const [outputs, setOutputs] = useState<TransformationItemFormValues[]>([]);
+  const [copiedFromTemplateId, setCopiedFromTemplateId] = useState<string | undefined>();
 
   // Dialog state
   const [inputDialogOpen, setInputDialogOpen] = useState(false);
@@ -100,7 +101,6 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
   const form = useForm<TemplateFormValues>({
     resolver: zodResolver(templateFormSchema),
     defaultValues: {
-      companyId: companyId || "",
       templateCode: "",
       templateName: "",
       description: "",
@@ -111,7 +111,6 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
   useEffect(() => {
     if (template) {
       form.reset({
-        companyId: template.company_id,
         templateCode: template.template_code,
         templateName: template.template_name,
         description: template.description || "",
@@ -145,7 +144,6 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
     } else if (!open) {
       // Reset when closing dialog
       form.reset({
-        companyId: companyId || "",
         templateCode: "",
         templateName: "",
         description: "",
@@ -153,8 +151,62 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
       });
       setInputs([]);
       setOutputs([]);
+      setCopiedFromTemplateId(undefined);
     }
-  }, [template, open, companyId, form]);
+  }, [template, open, form]);
+
+  const handleCopySourceLoaded = useCallback(
+    (source: TransformationTemplateCopySource | null) => {
+      form.clearErrors();
+
+      if (!source) {
+        form.reset({
+          templateCode: "",
+          templateName: "",
+          description: "",
+          imageUrl: "",
+        });
+        setInputs([]);
+        setOutputs([]);
+        setCopiedFromTemplateId(undefined);
+        return;
+      }
+
+      form.reset({
+        templateCode: "",
+        templateName: t("copyOfTemplate", { name: source.template_name }),
+        description: source.description || "",
+        imageUrl: source.image_url || "",
+      });
+      setInputs(
+        (source.inputs || []).map((input, index) => ({
+          itemId: input.item_id || input.items?.id || "",
+          itemCode: input.items?.item_code || "",
+          itemName: input.items?.item_name || "",
+          quantity: Number(input.quantity) || 0,
+          uomId: input.uom_id || input.uom?.id || "",
+          uom: input.uom?.uom_name || input.uom?.name || input.uom?.code || "",
+          sequence: input.sequence || index + 1,
+          notes: input.notes || "",
+        }))
+      );
+      setOutputs(
+        (source.outputs || []).map((output, index) => ({
+          itemId: output.item_id || output.items?.id || "",
+          itemCode: output.items?.item_code || "",
+          itemName: output.items?.item_name || "",
+          quantity: Number(output.quantity) || 0,
+          uomId: output.uom_id || output.uom?.id || "",
+          uom: output.uom?.uom_name || output.uom?.name || output.uom?.code || "",
+          sequence: output.sequence || index + 1,
+          isScrap: Boolean(output.is_scrap),
+          notes: output.notes || "",
+        }))
+      );
+      setCopiedFromTemplateId(source.id);
+    },
+    [form, t]
+  );
 
   // Handler for adding/editing input items
   const handleSaveInput = (item: TransformationItemFormValues) => {
@@ -225,18 +277,7 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
         }
       }
 
-      // Ensure companyId is set
-      const finalCompanyId = data.companyId || companyId;
-      if (!finalCompanyId) {
-        form.setError("root", {
-          type: "manual",
-          message: "Company ID is missing. Please try logging in again.",
-        });
-        return;
-      }
-
       const payload: CreateTransformationTemplateRequest = {
-        companyId: finalCompanyId,
         templateCode: data.templateCode,
         templateName: data.templateName,
         description: data.description,
@@ -256,6 +297,7 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
           isScrap: output.isScrap || false,
           notes: output.notes,
         })),
+        copiedFromTemplateId,
       };
 
       if (template) {
@@ -294,6 +336,7 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
       form.reset();
       setInputs([]);
       setOutputs([]);
+      setCopiedFromTemplateId(undefined);
     } catch (error) {
       const errorMessage = (() => {
         if (error && typeof error === "object") {
@@ -331,6 +374,14 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {!template ? (
+              <TransformationTemplateCopySourcePicker
+                templateKind="recipe"
+                onSourceLoaded={handleCopySourceLoaded}
+                disabled={createTemplate.isPending}
+              />
+            ) : null}
+
             {/* Usage Warning */}
             {template && template.usage_count > 0 && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">

@@ -9822,6 +9822,9 @@ export type Database = {
         Row: {
           business_unit_id: string | null
           company_id: string
+          copied_at: string | null
+          copied_from_business_unit_id: string | null
+          copied_from_template_id: string | null
           created_at: string
           created_by: string
           deleted_at: string | null
@@ -9843,6 +9846,9 @@ export type Database = {
         Insert: {
           business_unit_id?: string | null
           company_id: string
+          copied_at?: string | null
+          copied_from_business_unit_id?: string | null
+          copied_from_template_id?: string | null
           created_at?: string
           created_by: string
           deleted_at?: string | null
@@ -9864,6 +9870,9 @@ export type Database = {
         Update: {
           business_unit_id?: string | null
           company_id?: string
+          copied_at?: string | null
+          copied_from_business_unit_id?: string | null
+          copied_from_template_id?: string | null
           created_at?: string
           created_by?: string
           deleted_at?: string | null
@@ -9895,6 +9904,20 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transformation_templates_copied_from_business_unit_id_fkey"
+            columns: ["copied_from_business_unit_id"]
+            isOneToOne: false
+            referencedRelation: "business_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transformation_templates_copied_from_template_id_fkey"
+            columns: ["copied_from_template_id"]
+            isOneToOne: false
+            referencedRelation: "transformation_templates"
             referencedColumns: ["id"]
           },
           {
@@ -11130,6 +11153,23 @@ export type Database = {
         }
         Returns: string
       }
+      create_transformation_template: {
+        Args: {
+          p_copied_from_template_id?: string
+          p_description?: string
+          p_image_url?: string
+          p_inputs?: Json
+          p_layout?: Json
+          p_outputs?: Json
+          p_sheet_height?: number
+          p_sheet_unit?: string
+          p_sheet_width?: number
+          p_template_code: string
+          p_template_kind?: string
+          p_template_name: string
+        }
+        Returns: string
+      }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       delete_item_custom_field: {
         Args: { p_item_id: string; p_key: string; p_updated_by?: string }
@@ -11484,6 +11524,10 @@ export type Database = {
           total_items_tracked: number
         }[]
       }
+      get_transformation_template_copy_source: {
+        Args: { p_template_id: string }
+        Returns: Json
+      }
       get_user_business_units: {
         Args: never
         Returns: {
@@ -11609,6 +11653,26 @@ export type Database = {
           sr_item_id: string
           sr_number: string
           sr_status: string
+          total_count: number
+        }[]
+      }
+      list_transformation_template_copy_sources: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_scope: string
+          p_search?: string
+          p_template_kind: string
+        }
+        Returns: {
+          business_unit_code: string
+          business_unit_id: string
+          business_unit_name: string
+          description: string
+          id: string
+          template_code: string
+          template_kind: string
+          template_name: string
           total_count: number
         }[]
       }
@@ -12035,6 +12099,9 @@ export type Database = {
         Returns: {
           business_unit_id: string | null
           company_id: string
+          copied_at: string | null
+          copied_from_business_unit_id: string | null
+          copied_from_template_id: string | null
           created_at: string
           created_by: string
           deleted_at: string | null

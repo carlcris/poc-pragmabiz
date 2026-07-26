@@ -5,6 +5,7 @@ import type {
   TransformationTemplateFilters,
   CreateTransformationTemplateRequest,
   UpdateTransformationTemplateRequest,
+  TransformationTemplateCopySourceFilters,
 } from "@/types/transformation-template";
 
 export const TRANSFORMATION_TEMPLATES_QUERY_KEY = "transformation-templates";
@@ -46,6 +47,25 @@ export function useTransformationTemplate(id: string) {
     queryKey: [TRANSFORMATION_TEMPLATES_QUERY_KEY, id],
     queryFn: () => transformationTemplatesApi.getById(id),
     enabled: !!id,
+  });
+}
+
+export function useTransformationTemplateCopySources(
+  params: TransformationTemplateCopySourceFilters,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: [TRANSFORMATION_TEMPLATES_QUERY_KEY, "copy-sources", params],
+    queryFn: () => transformationTemplatesApi.listCopySources(params),
+    enabled,
+  });
+}
+
+export function useTransformationTemplateCopySource(id: string) {
+  return useQuery({
+    queryKey: [TRANSFORMATION_TEMPLATES_QUERY_KEY, "copy-source", id],
+    queryFn: () => transformationTemplatesApi.getCopySource(id),
+    enabled: Boolean(id),
   });
 }
 

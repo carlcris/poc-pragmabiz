@@ -121,6 +121,7 @@ export const createTransformationTemplateSchema = z
     layout: sheetLayoutSchema.optional(),
     inputs: z.array(templateInputItemSchema).default([]),
     outputs: z.array(templateOutputItemSchema).default([]),
+    copiedFromTemplateId: uuidSchema.optional(),
   })
   .refine(
     (data) => {
@@ -252,3 +253,11 @@ export const transformationTemplateFiltersSchema = z.object({
 export type TransformationTemplateFiltersValues = z.infer<
   typeof transformationTemplateFiltersSchema
 >;
+
+export const transformationTemplateCopySourceFiltersSchema = z.object({
+  scope: z.enum(["current", "other"]),
+  templateKind: z.enum(["recipe", "sheet_layout"]),
+  search: z.string().trim().max(100).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(5),
+});

@@ -5,6 +5,9 @@ import type {
   TransformationTemplateListResponse,
   CreateTransformationTemplateRequest,
   UpdateTransformationTemplateRequest,
+  TransformationTemplateCopySource,
+  TransformationTemplateCopySourceFilters,
+  TransformationTemplateCopySourceListResponse,
 } from "@/types/transformation-template";
 
 export const transformationTemplatesApi = {
@@ -30,6 +33,28 @@ export const transformationTemplatesApi = {
   async getById(id: string): Promise<{ data: TransformationTemplateApi }> {
     return apiClient.get<{ data: TransformationTemplateApi }>(
       `/api/transformations/templates/${id}`
+    );
+  },
+
+  async listCopySources(
+    params: TransformationTemplateCopySourceFilters
+  ): Promise<TransformationTemplateCopySourceListResponse> {
+    const searchParams = new URLSearchParams({
+      scope: params.scope,
+      templateKind: params.templateKind,
+      page: String(params.page ?? 1),
+      limit: String(params.limit ?? 5),
+    });
+    if (params.search) searchParams.set("search", params.search);
+
+    return apiClient.get<TransformationTemplateCopySourceListResponse>(
+      `/api/transformations/templates/copy-sources?${searchParams.toString()}`
+    );
+  },
+
+  async getCopySource(id: string): Promise<{ data: TransformationTemplateCopySource }> {
+    return apiClient.get<{ data: TransformationTemplateCopySource }>(
+      `/api/transformations/templates/copy-sources/${id}`
     );
   },
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Check,
   ChevronsUpDown,
@@ -31,6 +32,7 @@ import type {
   SheetLayoutSection,
   SheetLayoutSectionType,
   SheetLayoutUnit,
+  TransformationTemplateCopySource,
 } from "@/types/transformation-template";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,6 +61,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { TransformationTemplateCopySourcePicker } from "./TransformationTemplateCopySourcePicker";
 
 type SplitOrientation = "vertical" | "horizontal";
 type InteractionMode = "draw" | "slice";
@@ -494,12 +497,15 @@ const wrapSvgText = (text: string, maxCharsPerLine: number, maxLines: number): s
 
 export function TransformationTemplateDesignerPage() {
   const router = useRouter();
+  const t = useTranslations("transformation");
   const createTemplate = useCreateTransformationTemplate();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
 
   const [templateName, setTemplateName] = useState("");
+  const [isBlankTemplate, setIsBlankTemplate] = useState(true);
+  const [copiedFromTemplateId, setCopiedFromTemplateId] = useState<string | undefined>();
   const [sheetWidthInput, setSheetWidthInput] = useState(String(DEFAULT_SHEET_WIDTH));
   const [sheetHeightInput, setSheetHeightInput] = useState(String(DEFAULT_SHEET_HEIGHT));
   const [sheetWidth, setSheetWidth] = useState(DEFAULT_SHEET_WIDTH);
@@ -693,6 +699,56 @@ export function TransformationTemplateDesignerPage() {
     setSliceHeightInput("");
     setDragState(null);
   };
+
+  const handleCopySourceLoaded = useCallback(
+    (source: TransformationTemplateCopySource | null) => {
+      setErrorMessage(null);
+      setSelectedSectionId(null);
+      setSelectedCutId(null);
+      setHistory([]);
+      setFuture([]);
+
+      if (!source) {
+        setTemplateName("");
+        setCopiedFromTemplateId(undefined);
+        setParentSheetItem(null);
+        setSheetWidthInput(String(DEFAULT_SHEET_WIDTH));
+        setSheetHeightInput(String(DEFAULT_SHEET_HEIGHT));
+        setSheetWidth(DEFAULT_SHEET_WIDTH);
+        setSheetHeight(DEFAULT_SHEET_HEIGHT);
+        setSheetUnit("in");
+        setSections(createInitialSections(DEFAULT_SHEET_WIDTH, DEFAULT_SHEET_HEIGHT));
+        return;
+      }
+
+      const layout = source.layout_json;
+      const width = Number(source.sheet_width);
+      const height = Number(source.sheet_height);
+      const unit = source.sheet_unit;
+
+      if (!layout || !layout.sourceItem || !layout.sections.length || !width || !height || !unit) {
+        setErrorMessage(t("copySourceInvalidLayout"));
+        setCopiedFromTemplateId(undefined);
+        return;
+      }
+
+      setTemplateName(t("copyOfTemplate", { name: source.template_name }));
+      setCopiedFromTemplateId(source.id);
+      setParentSheetItem({ ...layout.sourceItem });
+      setSheetWidthInput(String(width));
+      setSheetHeightInput(String(height));
+      setSheetWidth(width);
+      setSheetHeight(height);
+      setSheetUnit(unit);
+      setSections(
+        layout.sections.map((section) => ({
+          ...section,
+          mappedItem: section.mappedItem ? { ...section.mappedItem } : section.mappedItem,
+        }))
+      );
+    },
+    [t]
+  );
 
   const openItemPicker = (state: ItemPickerState) => {
     setItemPickerState(state);
@@ -1491,7 +1547,6 @@ export function TransformationTemplateDesignerPage() {
     setIsSaving(true);
 
     const payload: CreateTransformationTemplateRequest = {
-      companyId: "",
       templateName: templateName.trim(),
       templateKind: "sheet_layout",
       sheetWidth,
@@ -1504,6 +1559,7 @@ export function TransformationTemplateDesignerPage() {
       },
       inputs: [],
       outputs: [],
+      copiedFromTemplateId,
     };
 
     try {
@@ -1600,6 +1656,13 @@ export function TransformationTemplateDesignerPage() {
 
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
         <div className="space-y-4">
+          <TransformationTemplateCopySourcePicker
+            templateKind="sheet_layout"
+            onSourceLoaded={handleCopySourceLoaded}
+            onModeChange={(mode) => setIsBlankTemplate(mode === "blank")}
+            disabled={isSaving}
+          />
+
           {/* Template Name Card */}
           <div className="rounded-lg border bg-card p-4">
             <label className="text-sm font-semibold">Template Name</label>
@@ -1611,75 +1674,77 @@ export function TransformationTemplateDesignerPage() {
             />
           </div>
 
-          {/* Parent Sheet Card */}
-          <div className="space-y-3 rounded-lg border bg-card p-4">
-            <div className="flex items-center gap-2">
-              <Package className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold">Parent Sheet</h3>
-            </div>
+          {/* Input Material Card */}
+          {isBlankTemplate ? (
+            <div className="space-y-3 rounded-lg border bg-card p-4">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">{t("inputMaterial")}</h3>
+              </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleOpenParentSheetPicker}
-            >
-              Select From Warehouse Item
-            </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleOpenParentSheetPicker}
+              >
+                Select From Warehouse Item
+              </Button>
 
-            {parentSheetItem ? (
-              <div className="rounded-lg border bg-muted/30 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium">{parentSheetItem.itemCode}</span>
-                  <Badge variant="secondary" className="text-xs">
-                    Source
-                  </Badge>
+              {parentSheetItem ? (
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">{parentSheetItem.itemCode}</span>
+                    <Badge variant="secondary" className="text-xs">
+                      Source
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{parentSheetItem.itemName}</p>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">{parentSheetItem.itemName}</p>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Use a warehouse item with dimensions, or enter manually below
-              </p>
-            )}
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Use a warehouse item with dimensions, or enter manually below
+                </p>
+              )}
 
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">Dimensions</label>
-              <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
-                <Input
-                  inputMode="decimal"
-                  value={sheetWidthInput}
-                  onChange={(event) => setSheetWidthInput(event.target.value)}
-                  placeholder="Width"
-                  className="text-sm"
-                />
-                <Input
-                  inputMode="decimal"
-                  value={sheetHeightInput}
-                  onChange={(event) => setSheetHeightInput(event.target.value)}
-                  placeholder="Height"
-                  className="text-sm"
-                />
-                <Select
-                  value={sheetUnit}
-                  onValueChange={(value) => setSheetUnit(value as SheetLayoutUnit)}
-                >
-                  <SelectTrigger className="w-[80px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="in">in</SelectItem>
-                    <SelectItem value="cm">cm</SelectItem>
-                    <SelectItem value="mm">mm</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Dimensions</label>
+                <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                  <Input
+                    inputMode="decimal"
+                    value={sheetWidthInput}
+                    onChange={(event) => setSheetWidthInput(event.target.value)}
+                    placeholder="Width"
+                    className="text-sm"
+                  />
+                  <Input
+                    inputMode="decimal"
+                    value={sheetHeightInput}
+                    onChange={(event) => setSheetHeightInput(event.target.value)}
+                    placeholder="Height"
+                    className="text-sm"
+                  />
+                  <Select
+                    value={sheetUnit}
+                    onValueChange={(value) => setSheetUnit(value as SheetLayoutUnit)}
+                  >
+                    <SelectTrigger className="w-[80px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="in">in</SelectItem>
+                      <SelectItem value="cm">cm</SelectItem>
+                      <SelectItem value="mm">mm</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+
+              <Button variant="secondary" className="w-full" onClick={handleApplySheetSize}>
+                Apply Sheet Size
+              </Button>
             </div>
-
-            <Button variant="secondary" className="w-full" onClick={handleApplySheetSize}>
-              Apply Sheet Size
-            </Button>
-          </div>
+          ) : null}
 
           {/* Tools Card */}
           <div className="space-y-3 rounded-lg border bg-card p-4">

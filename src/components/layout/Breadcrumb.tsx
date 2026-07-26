@@ -9,10 +9,13 @@ import { customersApi } from "@/lib/api/customers";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
 import { itemsApi } from "@/lib/api/items";
 import { suppliersApi } from "@/lib/api/suppliers";
+import { transformationOrdersApi } from "@/lib/api/transformation-orders";
 import { DELIVERY_NOTES_QUERY_KEY } from "@/hooks/useDeliveryNotes";
+import { TRANSFORMATION_ORDERS_QUERY_KEY } from "@/hooks/useTransformationOrders";
 
 export function Breadcrumb() {
   const t = useTranslations("navigation");
+  const tCommon = useTranslations("common");
   const tReports = useTranslations("reportsPage");
   const tAdminSettingsIndex = useTranslations("adminSettings.index");
   const tAdminSettingsPages = useTranslations("adminSettings.pages");
@@ -35,6 +38,10 @@ export function Breadcrumb() {
     pathSegments[0] === "purchasing" && parentSegment === "suppliers" && pathSegments.length >= 3;
   const isCustomerDetail =
     pathSegments[0] === "sales" && parentSegment === "customers" && pathSegments.length >= 3;
+  const isTransformationOrderDetail =
+    pathSegments[0] === "manufacturing" &&
+    parentSegment === "transformations" &&
+    pathSegments.length === 3;
   const isWarehouseLocations =
     lastSegment === "locations" && pathSegments[pathSegments.length - 3] === "warehouses";
   const isTransformationTemplateDesigner =
@@ -48,6 +55,7 @@ export function Breadcrumb() {
       : "";
   const supplierId = isSupplierDetail ? lastSegment : "";
   const customerId = isCustomerDetail ? lastSegment : "";
+  const transformationOrderId = isTransformationOrderDetail ? lastSegment : "";
   const adminSettingsLabelMap: Record<string, string> = {
     settings: tAdminSettingsIndex("title"),
     company: tAdminSettingsPages("companyTitle"),
@@ -102,6 +110,12 @@ export function Breadcrumb() {
     queryKey: ["customers", customerId],
     queryFn: () => customersApi.getCustomer(customerId),
     enabled: !!customerId,
+  });
+
+  const { data: transformationOrderResponse, isLoading: isTransformationOrderLoading } = useQuery({
+    queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY, transformationOrderId],
+    queryFn: () => transformationOrdersApi.getById(transformationOrderId),
+    enabled: !!transformationOrderId,
   });
 
   // Handle detail pages that use dynamic ids in the URL.
@@ -172,7 +186,10 @@ export function Breadcrumb() {
         {itemLabel ? (
           <span className="font-medium text-foreground">{itemLabel}</span>
         ) : isItemLoading ? (
-          <span aria-label="Loading" className="h-4 w-40 animate-pulse rounded bg-muted" />
+          <span
+            aria-label={tCommon("loading")}
+            className="h-4 w-40 animate-pulse rounded bg-muted"
+          />
         ) : (
           <span className="font-medium text-foreground">{t("Item Master")}</span>
         )}
@@ -200,7 +217,10 @@ export function Breadcrumb() {
         {supplier ? (
           <span className="font-medium text-foreground">{supplier.name || supplier.code}</span>
         ) : isSupplierLoading ? (
-          <span aria-label="Loading" className="h-4 w-40 animate-pulse rounded bg-muted" />
+          <span
+            aria-label={tCommon("loading")}
+            className="h-4 w-40 animate-pulse rounded bg-muted"
+          />
         ) : (
           <span className="font-medium text-foreground">{t("Suppliers")}</span>
         )}
@@ -228,7 +248,10 @@ export function Breadcrumb() {
         {customer ? (
           <span className="font-medium text-foreground">{customer.name || customer.code}</span>
         ) : isCustomerLoading ? (
-          <span aria-label="Loading" className="h-4 w-40 animate-pulse rounded bg-muted" />
+          <span
+            aria-label={tCommon("loading")}
+            className="h-4 w-40 animate-pulse rounded bg-muted"
+          />
         ) : (
           <span className="font-medium text-foreground">{t("Customers")}</span>
         )}
@@ -254,6 +277,39 @@ export function Breadcrumb() {
         </Link>
         <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
         <span className="font-medium text-foreground">{t("Location")}</span>
+      </nav>
+    );
+  }
+
+  if (isTransformationOrderDetail) {
+    const orderCode = transformationOrderResponse?.data.order_code;
+
+    return (
+      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+        <Link
+          href="/dashboard"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {t("Home")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <Link
+          href="/manufacturing/transformations"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {t("Stock Transformations")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        {orderCode ? (
+          <span className="font-medium text-foreground">{orderCode}</span>
+        ) : isTransformationOrderLoading ? (
+          <span
+            aria-label={tCommon("loading")}
+            className="h-4 w-40 animate-pulse rounded bg-muted"
+          />
+        ) : (
+          <span className="font-medium text-foreground">{t("Transformation Order Details")}</span>
+        )}
       </nav>
     );
   }

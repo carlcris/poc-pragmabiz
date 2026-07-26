@@ -83,6 +83,7 @@ export type TranslationKeys = {
     transformationOrder: string;
     transformationTemplate: string;
     inputMaterials: string;
+    inputMaterial: string;
     outputProducts: string;
     totalInputCost: string;
     totalOutputCost: string;
@@ -121,6 +122,20 @@ export type TranslationKeys = {
     plannedExecutionDate: string;
     pickDate: string;
     createFromTemplate: string;
+    createFromDescription: string;
+    blankTemplate: string;
+    currentBusinessUnitTemplate: string;
+    otherBusinessUnitTemplate: string;
+    selectCopySource: string;
+    searchCopySources: string;
+    noActiveCopySources: string;
+    copySourceListError: string;
+    loadingCopySources: string;
+    loadingCopySource: string;
+    copySourceLoadError: string;
+    copySourceInvalidLayout: string;
+    copyIndependenceNotice: string;
+    copyOfTemplate: string;
     executeTransformation: string;
     actualConsumed: string;
     actualProduced: string;
@@ -2954,6 +2969,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       transformationOrder: "Transformation Order",
       transformationTemplate: "Transformation Template",
       inputMaterials: "Input Materials",
+      inputMaterial: "Input Material",
       outputProducts: "Output Products",
       totalInputCost: "Total Input Cost",
       totalOutputCost: "Total Output Cost",
@@ -2993,6 +3009,21 @@ export const translations: Record<Locale, TranslationKeys> = {
       plannedExecutionDate: "Planned Execution Date",
       pickDate: "Pick a date",
       createFromTemplate: "Create from Template",
+      createFromDescription: "Start blank or copy an active template into this business unit.",
+      blankTemplate: "Blank template",
+      currentBusinessUnitTemplate: "Existing template in this business unit",
+      otherBusinessUnitTemplate: "Template from another business unit",
+      selectCopySource: "Select an active template",
+      searchCopySources: "Search templates or business units...",
+      noActiveCopySources: "No active templates found",
+      copySourceListError: "Templates could not be loaded. Please try again.",
+      loadingCopySources: "Loading templates...",
+      loadingCopySource: "Loading template details...",
+      copySourceLoadError: "Failed to load the selected template.",
+      copySourceInvalidLayout: "The selected template does not contain a valid sheet layout.",
+      copyIndependenceNotice:
+        "The copied values are editable. Saving creates an independent active template and does not change the source.",
+      copyOfTemplate: "Copy of {name}",
       executeTransformation: "Execute Transformation",
       actualConsumed: "Actual Consumed",
       actualProduced: "Actual Produced",
@@ -3103,6 +3134,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Delivery Notes": "Delivery Notes",
       "Pick Lists": "Pick Lists",
       "Stock Transformations": "Stock Transformations",
+      "Transformation Order Details": "Transformation Order Details",
       "Putaway Station": "Putaway Station",
       Manufacturing: "Manufacturing",
       Orders: "Orders",
@@ -8583,6 +8615,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       transformationOrder: "转换订单",
       transformationTemplate: "转换模板",
       inputMaterials: "输入材料",
+      inputMaterial: "输入材料",
       outputProducts: "输出产品",
       totalInputCost: "总输入成本",
       totalOutputCost: "总输出成本",
@@ -8621,6 +8654,20 @@ export const translations: Record<Locale, TranslationKeys> = {
       plannedExecutionDate: "计划执行日期",
       pickDate: "选择日期",
       createFromTemplate: "从模板创建",
+      createFromDescription: "从空白开始，或将现有启用模板复制到此业务单位。",
+      blankTemplate: "空白模板",
+      currentBusinessUnitTemplate: "当前业务单位的现有模板",
+      otherBusinessUnitTemplate: "其他业务单位的模板",
+      selectCopySource: "选择启用模板",
+      searchCopySources: "搜索模板或业务单位...",
+      noActiveCopySources: "未找到启用模板",
+      copySourceListError: "无法加载模板，请重试。",
+      loadingCopySources: "正在加载模板...",
+      loadingCopySource: "正在加载模板详情...",
+      copySourceLoadError: "加载所选模板失败。",
+      copySourceInvalidLayout: "所选模板不包含有效的板材布局。",
+      copyIndependenceNotice: "复制的内容可编辑。保存后会创建独立的启用模板，不会更改源模板。",
+      copyOfTemplate: "{name} 的副本",
       executeTransformation: "执行转换",
       actualConsumed: "实际消耗",
       actualProduced: "实际生产",
@@ -8729,6 +8776,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Delivery Notes": "送货单",
       "Pick Lists": "拣货单",
       "Stock Transformations": "库存转换",
+      "Transformation Order Details": "转换工单详情",
       "Putaway Station": "上架工作站",
       Manufacturing: "制造",
       Orders: "工单",

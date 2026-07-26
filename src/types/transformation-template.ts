@@ -140,6 +140,7 @@ export type TransformationTemplateOutputApi = {
 export type TransformationTemplateApi = {
   id: string;
   company_id?: string;
+  business_unit_id?: string | null;
   template_kind?: "recipe" | "sheet_layout";
   template_code: string;
   template_name: string;
@@ -156,8 +157,45 @@ export type TransformationTemplateApi = {
   updated_by?: string | null;
   updated_at?: string | null;
   deleted_at?: string | null;
+  copied_from_template_id?: string | null;
+  copied_from_business_unit_id?: string | null;
+  copied_at?: string | null;
   inputs?: TransformationTemplateInputApi[] | null;
   outputs?: TransformationTemplateOutputApi[] | null;
+};
+
+export type TransformationTemplateCopySourceScope = "current" | "other";
+
+export type TransformationTemplateCopySourceSummary = {
+  id: string;
+  template_code: string;
+  template_name: string;
+  description: string | null;
+  template_kind: "recipe" | "sheet_layout";
+  business_unit_id: string;
+  business_unit_code: string;
+  business_unit_name: string;
+};
+
+export type TransformationTemplateCopySource = TransformationTemplateApi & {
+  business_unit_id: string;
+  source_business_unit_code: string;
+  source_business_unit_name: string;
+};
+
+export type TransformationTemplateCopySourceFilters = {
+  scope: TransformationTemplateCopySourceScope;
+  templateKind: "recipe" | "sheet_layout";
+  search?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type TransformationTemplateCopySourceListResponse = {
+  data: TransformationTemplateCopySourceSummary[];
+  total: number;
+  page: number;
+  limit: number;
 };
 
 // ============================================================================
@@ -165,7 +203,6 @@ export type TransformationTemplateApi = {
 // ============================================================================
 
 export interface CreateTransformationTemplateRequest {
-  companyId: string;
   templateCode?: string;
   templateName: string;
   templateKind?: "recipe" | "sheet_layout";
@@ -190,6 +227,7 @@ export interface CreateTransformationTemplateRequest {
     isScrap?: boolean;
     notes?: string;
   }[];
+  copiedFromTemplateId?: string;
 }
 
 export interface UpdateTransformationTemplateRequest {

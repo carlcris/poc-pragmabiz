@@ -376,6 +376,23 @@ These are the records everything else in the app is built on. Before testing any
 
 **What must already exist first**: the items used as inputs/outputs.
 
+**Create-from options**:
+
+- **Blank template** starts with empty template details.
+- **Existing template in this business unit** lists active templates of the same kind owned by the
+  current business unit.
+- **Template from another business unit** lists active templates of the same kind from other
+  business units in the same company.
+- In the sheet-layout designer, the **Input Material** card is shown only for a blank template.
+  Copies retain the source template's input material without showing the selector.
+- Selecting a source copies its editable values into the form. A plain recipe requires a new unique
+  template code; the sheet-layout designer generates a new code when saved.
+- Saving creates a new active template owned by the current business unit. It is independent: later
+  edits, deactivation, or deletion of the source do not change the copy, and editing the copy does
+  not change the source.
+- The existing Stock Transformations `create` permission controls blank creation and both copy
+  options. Copying does not grant access to manage the source business unit's template.
+
 **Locking behavior once a template has actually been used**:
 
 - The first time a template is used in an actual Transformation order, it becomes **locked**. From then on, you can no longer change its name, description, image, or its input/output list — attempting to will show a clear message explaining it's locked because it's in use, and telling you how many orders are using it. **The only thing you can still change on a locked template is whether it's active or inactive.**
@@ -389,6 +406,16 @@ These are the records everything else in the app is built on. Before testing any
 - Confirm you can still toggle a used/locked template active/inactive without issue.
 - Delete a template that's never been used — should succeed with no restriction.
 - Try creating a template with the same item as both an input and an output — should be refused.
+- Copy an active current-BU template, modify its name, code, quantities, and materials before saving,
+  then confirm the source is unchanged.
+- Copy an active template from another BU and confirm the copy is active and owned by the current BU.
+- Switch to a non-default BU, copy an active template from the default BU, and confirm it appears
+  under **Template from another business unit** even when the session must use the selected-BU
+  database fallback.
+- Confirm inactive, deleted, and different-company templates never appear as copy sources.
+- Edit or deactivate the copied template and confirm the source remains unchanged; then edit the
+  source and confirm the copy remains unchanged.
+- Confirm a user without Stock Transformations `create` permission cannot list or load copy sources.
 
 ---
 

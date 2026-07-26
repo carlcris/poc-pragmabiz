@@ -55,6 +55,12 @@ A **Transformation Template** defines a production recipe: what inputs are requi
 - Quantity relationships
 - Unit conversions
 - Reusable templates
+- Independent template copies from the current or another business unit
+
+Templates remain owned and isolated by one business unit. When creating a template, a user with
+the Stock Transformations `create` permission can start blank or copy an active template from the
+same company. The copied values are editable before saving and become a new active template owned
+by the current business unit. Later changes to either template do not propagate to the other.
 
 **Example - Sheet Cutting**:
 ```
@@ -208,9 +214,13 @@ A **Workstation** represents a production area or equipment.
 CREATE TABLE transformation_templates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id UUID REFERENCES companies(id),
+  business_unit_id UUID REFERENCES business_units(id),
   template_code VARCHAR UNIQUE NOT NULL,
-  name VARCHAR NOT NULL,
+  template_name VARCHAR NOT NULL,
   description TEXT,
+  copied_from_template_id UUID REFERENCES transformation_templates(id) ON DELETE SET NULL,
+  copied_from_business_unit_id UUID REFERENCES business_units(id) ON DELETE SET NULL,
+  copied_at TIMESTAMPTZ,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -359,18 +369,18 @@ CREATE TABLE workstations (
 ### Transformation Template Management
 
 #### GET /api/transformations/templates
-List all transformation templates.
+List transformation templates owned by the current business unit.
 
-**Permissions**: `view` on `transformation_templates`
+**Permissions**: `view` on `stock_transformations`
 
 **Response**:
 ```json
 {
-  "templates": [
+  "data": [
     {
       "id": "uuid",
       "template_code": "SHEET-CUT-001",
-      "name": "Cut 40x80 Sheet into 10x20 Pieces",
+      "template_name": "Cut 40x80 Sheet into 10x20 Pieces",
       "inputs": [
         { "item": "Sheet 40x80", "quantity": 1, "unit": "unit" }
       ],
@@ -387,37 +397,54 @@ List all transformation templates.
 #### POST /api/transformations/templates
 Create transformation template.
 
-**Permissions**: `create` on `transformation_templates`
+**Permissions**: `create` on `stock_transformations` in the current business unit. Template header,
+inputs, outputs, and optional copy lineage are created in one database transaction. New templates
+are active immediately.
 
 **Request**:
 ```json
 {
-  "template_code": "SHEET-CUT-002",
-  "name": "Cut 48x96 Sheet into 12x24 Pieces",
+  "templateCode": "SHEET-CUT-002",
+  "templateName": "Cut 48x96 Sheet into 12x24 Pieces",
   "description": "Cut one 48x96 sheet into sixteen 12x24 pieces with edge trim",
   "inputs": [
     {
-      "item_id": "uuid-sheet-48x96",
+      "itemId": "uuid-sheet-48x96",
       "quantity": 1,
-      "unit_id": "uuid-unit"
+      "uomId": "uuid-unit"
     }
   ],
   "outputs": [
     {
-      "item_id": "uuid-piece-12x24",
+      "itemId": "uuid-piece-12x24",
       "quantity": 16,
-      "unit_id": "uuid-unit",
-      "cost_proportion": 0.99
+      "uomId": "uuid-unit",
+      "isScrap": false
     },
     {
-      "item_id": "uuid-trim-scrap",
+      "itemId": "uuid-trim-scrap",
       "quantity": 0.15,
-      "unit_id": "uuid-kg",
-      "cost_proportion": 0.01
+      "uomId": "uuid-kg",
+      "isScrap": true
     }
-  ]
+  ],
+  "copiedFromTemplateId": "optional-active-source-template-uuid"
 }
 ```
+
+#### GET /api/transformations/templates/copy-sources
+List active copy sources from the current or other business units in the same company. The endpoint
+uses bounded server-side search and pagination and does not grant normal read access to another
+business unit's template records.
+
+**Permissions**: `create` on `stock_transformations` in the current business unit.
+
+**Query parameters**: `scope=current|other`, `templateKind=recipe|sheet_layout`, optional `search`,
+`page`, and `limit` (maximum 50; creation selectors request 5 at a time).
+
+#### GET /api/transformations/templates/copy-sources/[id]
+Return the active source template snapshot needed to initialize a new template. Access is restricted
+to the authenticated user's company and current-BU Stock Transformations `create` permission.
 
 ### Transformation Order Management
 
