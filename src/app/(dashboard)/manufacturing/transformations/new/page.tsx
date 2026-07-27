@@ -256,7 +256,7 @@ export default function NewTransformationOrderPage() {
     return nextErrors;
   };
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     const validationErrors = validate();
@@ -376,135 +376,77 @@ export default function NewTransformationOrderPage() {
     <div className="space-y-6">
       <PageHeader title={t("newTransformation")} subtitle={t("createNewOrder")} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("orderDetails")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={onSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">{t("transformationTemplate")} *</label>
-              {templatesLoading ? (
-                <Skeleton className="h-10 w-full" />
-              ) : (
-                <Select value={values.templateId} onValueChange={onTemplateChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("selectTemplate")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {templatesData?.data.map((template) => (
-                      <SelectItem key={template.id} value={template.id}>
-                        {template.template_code} - {template.template_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {errors.templateId && <p className="text-sm text-red-500">{errors.templateId}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">{tCommon("warehouse")} *</label>
-              {warehousesLoading ? (
-                <Skeleton className="h-10 w-full" />
-              ) : (
-                <Select
-                  value={values.warehouseId}
-                  onValueChange={(value) => onFieldChange("warehouseId", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("selectWarehouse")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {warehousesData?.data.map((warehouse) => (
-                      <SelectItem key={warehouse.id} value={warehouse.id}>
-                        {warehouse.code} - {warehouse.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {errors.warehouseId && <p className="text-sm text-red-500">{errors.warehouseId}</p>}
-            </div>
-
-            <fieldset className="space-y-4 rounded-lg border p-4">
-              <legend className="px-1 text-sm font-medium">{t("plannedQuantity")} *</legend>
-              <p className="text-sm text-muted-foreground">{t("plannedQuantityRatioHint")}</p>
-
-              {!selectedTemplate ? (
-                <p className="text-sm text-muted-foreground">
-                  {t("selectTemplateForPlannedQuantities")}
-                </p>
-              ) : (
-                <>
-                  {inputQuantityLines.length > 0 && (
-                    <div className="space-y-3">
-                      <p className="text-sm font-medium">{t("inputMaterials")}</p>
-                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {inputQuantityLines.map((line) => (
-                          <div key={line.key} className="space-y-2">
-                            <label htmlFor={line.key} className="text-sm font-medium">
-                              {line.itemCode || t("notAvailable")}
-                            </label>
-                            <Input
-                              id={line.key}
-                              type="number"
-                              min="1"
-                              step="1"
-                              value={plannedQuantityValues[line.key] ?? ""}
-                              onChange={(event) =>
-                                onPlannedQuantityChange(line, event.target.value)
-                              }
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {outputQuantityLines.length > 0 && (
-                    <div className="space-y-3">
-                      <p className="text-sm font-medium">{t("outputProducts")}</p>
-                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {outputQuantityLines.map((line) => (
-                          <div key={line.key} className="space-y-2">
-                            <label htmlFor={line.key} className="text-sm font-medium">
-                              {line.itemCode || t("notAvailable")}
-                            </label>
-                            <Input
-                              id={line.key}
-                              type="number"
-                              min="1"
-                              step="1"
-                              value={plannedQuantityValues[line.key] ?? ""}
-                              onChange={(event) =>
-                                onPlannedQuantityChange(line, event.target.value)
-                              }
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {errors.plannedQuantity && (
-                <p role="alert" className="text-sm text-red-500">
-                  {errors.plannedQuantity}
-                </p>
-              )}
-            </fieldset>
-
-            <div className="grid gap-4 sm:grid-cols-2">
+      <form onSubmit={onSubmit} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("orderDetails")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium">{t("orderDate")} *</label>
+                <label className="text-sm font-medium">
+                  {t("transformationTemplate")} <span className="text-destructive">*</span>
+                </label>
+                {templatesLoading ? (
+                  <Skeleton className="h-10 w-full" />
+                ) : (
+                  <Select value={values.templateId} onValueChange={onTemplateChange}>
+                    <SelectTrigger className={errors.templateId ? "border-destructive" : ""}>
+                      <SelectValue placeholder={t("selectTemplate")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templatesData?.data.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          {template.template_code} - {template.template_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {errors.templateId && <p className="text-sm text-destructive">{errors.templateId}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  {tCommon("warehouse")} <span className="text-destructive">*</span>
+                </label>
+                {warehousesLoading ? (
+                  <Skeleton className="h-10 w-full" />
+                ) : (
+                  <Select
+                    value={values.warehouseId}
+                    onValueChange={(value) => onFieldChange("warehouseId", value)}
+                  >
+                    <SelectTrigger className={errors.warehouseId ? "border-destructive" : ""}>
+                      <SelectValue placeholder={t("selectWarehouse")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {warehousesData?.data.map((warehouse) => (
+                        <SelectItem key={warehouse.id} value={warehouse.id}>
+                          {warehouse.code} - {warehouse.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {errors.warehouseId && (
+                  <p className="text-sm text-destructive">{errors.warehouseId}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  {t("orderDate")} <span className="text-destructive">*</span>
+                </label>
                 <Input
                   type="date"
                   value={values.orderDate}
                   onChange={(event) => onFieldChange("orderDate", event.target.value)}
+                  className={errors.orderDate ? "border-destructive" : ""}
                 />
-                {errors.orderDate && <p className="text-sm text-red-500">{errors.orderDate}</p>}
+                {errors.orderDate && <p className="text-sm text-destructive">{errors.orderDate}</p>}
               </div>
 
               <div className="space-y-2">
@@ -516,38 +458,129 @@ export default function NewTransformationOrderPage() {
                 />
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">{tCommon("notes")}</label>
-              <Textarea
-                placeholder={`${tCommon("notes")}...`}
-                rows={3}
-                value={values.notes}
-                onChange={(event) => onFieldChange("notes", event.target.value)}
-              />
-            </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              {t("plannedQuantity")} <span className="text-destructive">*</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">{t("plannedQuantityRatioHint")}</p>
 
-            {errors.root && (
-              <p role="alert" className="text-sm text-red-500">
-                {errors.root}
-              </p>
+            {!selectedTemplate ? (
+              <div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
+                <p className="text-sm text-muted-foreground">
+                  {t("selectTemplateForPlannedQuantities")}
+                </p>
+              </div>
+            ) : (
+              <>
+                {inputQuantityLines.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1 w-1 rounded-full bg-blue-500" />
+                      <p className="text-sm font-semibold text-foreground">{t("inputMaterials")}</p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {inputQuantityLines.map((line) => (
+                        <div key={line.key} className="space-y-2">
+                          <label htmlFor={line.key} className="text-sm font-medium">
+                            {line.itemCode || t("notAvailable")}
+                          </label>
+                          <Input
+                            id={line.key}
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={plannedQuantityValues[line.key] ?? ""}
+                            onChange={(event) =>
+                              onPlannedQuantityChange(line, event.target.value)
+                            }
+                            className="font-medium"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {outputQuantityLines.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1 w-1 rounded-full bg-green-500" />
+                      <p className="text-sm font-semibold text-foreground">{t("outputProducts")}</p>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {outputQuantityLines.map((line) => (
+                        <div key={line.key} className="space-y-2">
+                          <label htmlFor={line.key} className="text-sm font-medium">
+                            {line.itemCode || t("notAvailable")}
+                          </label>
+                          <Input
+                            id={line.key}
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={plannedQuantityValues[line.key] ?? ""}
+                            onChange={(event) =>
+                              onPlannedQuantityChange(line, event.target.value)
+                            }
+                            className="font-medium"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
-            <div className="flex justify-end gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push("/manufacturing/transformations")}
-              >
-                {tCommon("cancel")}
-              </Button>
-              <Button type="submit" disabled={createOrder.isPending}>
-                {createOrder.isPending ? `${tCommon("create")}...` : t("createFromTemplate")}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+            {errors.plannedQuantity && (
+              <p role="alert" className="text-sm text-destructive">
+                {errors.plannedQuantity}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{tCommon("notes")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              placeholder={`${tCommon("notes")}...`}
+              rows={4}
+              value={values.notes}
+              onChange={(event) => onFieldChange("notes", event.target.value)}
+            />
+          </CardContent>
+        </Card>
+
+        {errors.root && (
+          <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
+            <p role="alert" className="text-sm text-destructive">
+              {errors.root}
+            </p>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push("/manufacturing/transformations")}
+          >
+            {tCommon("cancel")}
+          </Button>
+          <Button type="submit" disabled={createOrder.isPending}>
+            {createOrder.isPending ? `${tCommon("create")}...` : t("createFromTemplate")}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }
