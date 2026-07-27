@@ -602,6 +602,32 @@ BEGIN
     RAISE EXCEPTION 'Template additional output item is unavailable' USING ERRCODE = 'P0001';
   END IF;
 
+  IF EXISTS (
+    SELECT 1
+    FROM (
+      SELECT tti.quantity
+      FROM public.transformation_template_inputs tti
+      WHERE tti.template_id = p_template_id
+
+      UNION ALL
+
+      SELECT tto.quantity
+      FROM public.transformation_template_outputs tto
+      WHERE tto.template_id = p_template_id
+
+      UNION ALL
+
+      SELECT additional.quantity
+      FROM public.transformation_template_additional_outputs additional
+      WHERE additional.template_id = p_template_id
+    ) template_line
+    WHERE template_line.quantity * p_planned_quantity
+      <> TRUNC(template_line.quantity * p_planned_quantity)
+  ) THEN
+    RAISE EXCEPTION 'Planned input and output quantities must be whole numbers'
+      USING ERRCODE = 'P0001';
+  END IF;
+
   INSERT INTO public.transformation_orders (
     company_id,
     business_unit_id,

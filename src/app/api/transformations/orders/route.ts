@@ -33,6 +33,12 @@ const transformationOrderCreateSafeErrors: Record<string, TransformationOrderCre
     code: "TRANSFORMATION_PLANNED_QUANTITY_INVALID",
     status: 400,
   },
+  "Planned input and output quantities must be whole numbers": {
+    error:
+      "This quantity is not valid for the selected template because it would produce a fractional input or output quantity.",
+    code: "TRANSFORMATION_PLANNED_QUANTITY_RATIO_INVALID",
+    status: 400,
+  },
   "Template not found": {
     error: "The selected template is no longer active or available. Choose another template.",
     code: "TRANSFORMATION_TEMPLATE_UNAVAILABLE",

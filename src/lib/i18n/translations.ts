@@ -90,6 +90,8 @@ export type TranslationKeys = {
     costVariance: string;
     orderDate: string;
     plannedQuantity: string;
+    plannedQuantityRatioHint: string;
+    selectTemplateForPlannedQuantities: string;
     actualQuantity: string;
     planned: string;
     consumed: string;
@@ -155,6 +157,8 @@ export type TranslationKeys = {
     warehouseRequired: string;
     orderDateRequired: string;
     plannedQuantityGreaterThanZero: string;
+    plannedQuantityWholeNumbersOnly: string;
+    plannedQuantityInvalidRatio: string;
     orderCreatedSuccessfully: string;
     failedCreateTransformationOrder: string;
     createOrderBusinessUnitUnavailable: string;
@@ -3011,6 +3015,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       costVariance: "Cost Variance",
       orderDate: "Order Date",
       plannedQuantity: "Planned Quantity",
+      plannedQuantityRatioHint:
+        "Enter a whole-number input or output quantity. The remaining quantities are calculated from the template ratios.",
+      selectTemplateForPlannedQuantities:
+        "Select a transformation template to view its planned quantities.",
       actualQuantity: "Actual Quantity",
       planned: "Planned",
       consumed: "Consumed",
@@ -3079,6 +3087,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       warehouseRequired: "Warehouse is required",
       orderDateRequired: "Order date is required",
       plannedQuantityGreaterThanZero: "Planned quantity must be greater than 0",
+      plannedQuantityWholeNumbersOnly: "Planned input and output quantities must be whole numbers.",
+      plannedQuantityInvalidRatio:
+        "This quantity is not valid for the selected template because it would produce a fractional input or output quantity.",
       orderCreatedSuccessfully: "Transformation order created successfully",
       failedCreateTransformationOrder:
         "We couldn't create the transformation order. Please try again. If it continues, contact your administrator.",
@@ -8709,6 +8720,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       costVariance: "成本差异",
       orderDate: "订单日期",
       plannedQuantity: "计划数量",
+      plannedQuantityRatioHint: "输入任一整数投入或产出数量，系统将根据模板比例自动计算其余数量。",
+      selectTemplateForPlannedQuantities: "请选择转换模板以查看其计划数量。",
       actualQuantity: "实际数量",
       planned: "计划",
       consumed: "消耗",
@@ -8774,6 +8787,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       warehouseRequired: "仓库为必填项",
       orderDateRequired: "订单日期为必填项",
       plannedQuantityGreaterThanZero: "计划数量必须大于 0",
+      plannedQuantityWholeNumbersOnly: "计划投入和产出数量必须为整数。",
+      plannedQuantityInvalidRatio:
+        "此数量不符合所选模板的比例，因为它会产生非整数的投入或产出数量。",
       orderCreatedSuccessfully: "转换订单创建成功",
       failedCreateTransformationOrder: "无法创建转换订单。请重试；如果问题仍然存在，请联系管理员。",
       createOrderBusinessUnitUnavailable: "您的业务单位上下文已更改。请刷新页面后重试。",

@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { TransformationOrderCreateErrorCode } from "@/types/transformation-order";
+import type { TransformationTemplateListItemApi } from "@/types/transformation-template";
 
 type FormValues = {
   templateId: string;
@@ -40,6 +41,18 @@ type FormErrors = {
   root?: string;
 };
 
+type PlannedQuantityLine = {
+  key: string;
+  direction: "input" | "output";
+  itemCode?: string | null;
+  baseQuantity: string;
+};
+
+type PlannedQuantityCalculation = {
+  scale: string;
+  quantities: bigint[];
+};
+
 const toDateInputValue = (value: Date) => {
   const year = value.getFullYear();
   const month = `${value.getMonth() + 1}`.padStart(2, "0");
@@ -47,10 +60,129 @@ const toDateInputValue = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+const BIGINT_ZERO = BigInt(0);
+const BIGINT_TWO = BigInt(2);
+const PLANNED_QUANTITY_DECIMAL_FACTOR = BigInt(10_000);
+const PLANNED_QUANTITY_PRODUCT_FACTOR =
+  PLANNED_QUANTITY_DECIMAL_FACTOR * PLANNED_QUANTITY_DECIMAL_FACTOR;
+
+const parseScaledDecimal = (value: string): bigint | null => {
+  const match = /^(\d+)(?:\.(\d{1,4}))?$/.exec(value.trim());
+  if (!match) return null;
+
+  const fractionalDigits = (match[2] ?? "").padEnd(4, "0");
+  return BigInt(match[1]) * PLANNED_QUANTITY_DECIMAL_FACTOR + BigInt(fractionalDigits || "0");
+};
+
+const parsePositiveWholeQuantity = (value: string): bigint | null => {
+  const match = /^(\d+)(?:\.(0+))?$/.exec(value.trim());
+  if (!match) return null;
+
+  const quantity = BigInt(match[1]);
+  return quantity > BIGINT_ZERO ? quantity : null;
+};
+
+const formatScaledDecimal = (value: bigint) => {
+  const whole = value / PLANNED_QUANTITY_DECIMAL_FACTOR;
+  const fractional = (value % PLANNED_QUANTITY_DECIMAL_FACTOR)
+    .toString()
+    .padStart(4, "0")
+    .replace(/0+$/, "");
+  return fractional ? `${whole}.${fractional}` : whole.toString();
+};
+
+const calculatePlannedQuantities = (
+  lines: PlannedQuantityLine[],
+  referenceLine: PlannedQuantityLine,
+  referenceQuantity: bigint
+): PlannedQuantityCalculation | null => {
+  const referenceBaseQuantity = parseScaledDecimal(referenceLine.baseQuantity);
+  if (!referenceBaseQuantity || referenceBaseQuantity <= BIGINT_ZERO) return null;
+
+  const scale =
+    (referenceQuantity * PLANNED_QUANTITY_PRODUCT_FACTOR + referenceBaseQuantity / BIGINT_TWO) /
+    referenceBaseQuantity;
+  if (scale <= BIGINT_ZERO) return null;
+
+  const quantities: bigint[] = [];
+  for (const line of lines) {
+    const baseQuantity = parseScaledDecimal(line.baseQuantity);
+    if (!baseQuantity || baseQuantity <= BIGINT_ZERO) return null;
+
+    const product = baseQuantity * scale;
+    if (product % PLANNED_QUANTITY_PRODUCT_FACTOR !== BIGINT_ZERO) return null;
+    quantities.push(product / PLANNED_QUANTITY_PRODUCT_FACTOR);
+  }
+
+  const referenceIndex = lines.findIndex((line) => line.key === referenceLine.key);
+  if (referenceIndex < 0 || quantities[referenceIndex] !== referenceQuantity) return null;
+
+  return {
+    scale: formatScaledDecimal(scale),
+    quantities,
+  };
+};
+
+const getPlannedQuantityLines = (
+  template?: TransformationTemplateListItemApi
+): PlannedQuantityLine[] => {
+  if (!template) return [];
+
+  const inputs = [...(template.inputs ?? [])]
+    .sort((left, right) => (left.sequence ?? 1) - (right.sequence ?? 1))
+    .map((input) => ({
+      key: `input:${input.id}`,
+      direction: "input" as const,
+      itemCode: input.items?.item_code,
+      baseQuantity: String(input.quantity),
+    }));
+
+  const primaryOutputs = [...(template.outputs ?? [])]
+    .sort((left, right) => (left.sequence ?? 1) - (right.sequence ?? 1))
+    .map((output) => ({
+      key: `primary-output:${output.id}`,
+      direction: "output" as const,
+      itemCode: output.items?.item_code,
+      baseQuantity: String(output.quantity),
+    }));
+
+  const additionalOutputs = [...(template.additional_outputs ?? [])]
+    .sort((left, right) => left.sequence - right.sequence)
+    .map((output) => ({
+      key: `additional-output:${output.id}`,
+      direction: "output" as const,
+      itemCode: output.items?.item_code,
+      baseQuantity: String(output.quantity),
+    }));
+
+  return [...inputs, ...primaryOutputs, ...additionalOutputs];
+};
+
+const getPlannedQuantityValidationError = (
+  lines: PlannedQuantityLine[],
+  quantityValues: Record<string, string>
+): "wholeNumbersOnly" | "invalidRatio" | null => {
+  if (lines.length === 0) return null;
+
+  const quantities = lines.map((line) => parsePositiveWholeQuantity(quantityValues[line.key]));
+  if (quantities.some((quantity) => quantity === null)) return "wholeNumbersOnly";
+
+  const referenceQuantity = quantities[0];
+  if (referenceQuantity === null) return "wholeNumbersOnly";
+
+  const calculation = calculatePlannedQuantities(lines, lines[0], referenceQuantity);
+  const hasInvalidRatio =
+    !calculation ||
+    calculation.quantities.some((quantity, index) => quantity !== quantities[index]);
+
+  return hasInvalidRatio ? "invalidRatio" : null;
+};
+
 const transformationOrderCreateErrorCodes = [
   "TRANSFORMATION_CONTEXT_INVALID",
   "TRANSFORMATION_CREATE_FORBIDDEN",
   "TRANSFORMATION_PLANNED_QUANTITY_INVALID",
+  "TRANSFORMATION_PLANNED_QUANTITY_RATIO_INVALID",
   "TRANSFORMATION_TEMPLATE_UNAVAILABLE",
   "TRANSFORMATION_WAREHOUSE_UNAVAILABLE",
   "TRANSFORMATION_TEMPLATE_LINES_REQUIRED",
@@ -79,10 +211,27 @@ export default function NewTransformationOrderPage() {
     plannedDate: "",
     notes: "",
   });
+  const [plannedQuantityValues, setPlannedQuantityValues] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<FormErrors>({});
   const plannedQuantityNumber = useMemo(
     () => Number(values.plannedQuantity),
     [values.plannedQuantity]
+  );
+  const selectedTemplate = useMemo(
+    () => templatesData?.data.find((template) => template.id === values.templateId),
+    [templatesData?.data, values.templateId]
+  );
+  const plannedQuantityLines = useMemo(
+    () => getPlannedQuantityLines(selectedTemplate),
+    [selectedTemplate]
+  );
+  const inputQuantityLines = useMemo(
+    () => plannedQuantityLines.filter((line) => line.direction === "input"),
+    [plannedQuantityLines]
+  );
+  const outputQuantityLines = useMemo(
+    () => plannedQuantityLines.filter((line) => line.direction === "output"),
+    [plannedQuantityLines]
   );
 
   const validate = (): FormErrors => {
@@ -93,6 +242,15 @@ export default function NewTransformationOrderPage() {
     if (!values.orderDate) nextErrors.orderDate = t("orderDateRequired");
     if (!Number.isFinite(plannedQuantityNumber) || plannedQuantityNumber <= 0) {
       nextErrors.plannedQuantity = t("plannedQuantityGreaterThanZero");
+    }
+    const quantityValidationError = getPlannedQuantityValidationError(
+      plannedQuantityLines,
+      plannedQuantityValues
+    );
+    if (quantityValidationError === "wholeNumbersOnly") {
+      nextErrors.plannedQuantity = t("plannedQuantityWholeNumbersOnly");
+    } else if (quantityValidationError === "invalidRatio") {
+      nextErrors.plannedQuantity = t("plannedQuantityInvalidRatio");
     }
 
     return nextErrors;
@@ -125,6 +283,7 @@ export default function NewTransformationOrderPage() {
         TRANSFORMATION_CONTEXT_INVALID: t("createOrderBusinessUnitUnavailable"),
         TRANSFORMATION_CREATE_FORBIDDEN: t("createOrderPermissionLost"),
         TRANSFORMATION_PLANNED_QUANTITY_INVALID: t("plannedQuantityGreaterThanZero"),
+        TRANSFORMATION_PLANNED_QUANTITY_RATIO_INVALID: t("plannedQuantityInvalidRatio"),
         TRANSFORMATION_TEMPLATE_UNAVAILABLE: t("createOrderTemplateUnavailable"),
         TRANSFORMATION_WAREHOUSE_UNAVAILABLE: t("createOrderWarehouseUnavailable"),
         TRANSFORMATION_TEMPLATE_LINES_REQUIRED: t("createOrderTemplateLinesRequired"),
@@ -139,6 +298,78 @@ export default function NewTransformationOrderPage() {
   const onFieldChange = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
     setValues((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: undefined, root: undefined }));
+  };
+
+  const onTemplateChange = (templateId: string) => {
+    const template = templatesData?.data.find((entry) => entry.id === templateId);
+    const quantityLines = getPlannedQuantityLines(template);
+
+    setValues((previous) => ({
+      ...previous,
+      templateId,
+      plannedQuantity: "1",
+    }));
+    setPlannedQuantityValues(
+      Object.fromEntries(quantityLines.map((line) => [line.key, line.baseQuantity]))
+    );
+    const hasFractionalBaseQuantity = quantityLines.some(
+      (line) => parsePositiveWholeQuantity(line.baseQuantity) === null
+    );
+    setErrors((previous) => ({
+      ...previous,
+      templateId: undefined,
+      plannedQuantity: hasFractionalBaseQuantity ? t("plannedQuantityWholeNumbersOnly") : undefined,
+      root: undefined,
+    }));
+  };
+
+  const onPlannedQuantityChange = (changedLine: PlannedQuantityLine, value: string) => {
+    setPlannedQuantityValues((previous) => ({
+      ...previous,
+      [changedLine.key]: value,
+    }));
+    setErrors((previous) => ({
+      ...previous,
+      plannedQuantity: undefined,
+      root: undefined,
+    }));
+
+    if (value.trim() === "") return;
+
+    const changedQuantity = parsePositiveWholeQuantity(value);
+    if (changedQuantity === null) {
+      setErrors((previous) => ({
+        ...previous,
+        plannedQuantity: t("plannedQuantityWholeNumbersOnly"),
+      }));
+      return;
+    }
+
+    const calculation = calculatePlannedQuantities(
+      plannedQuantityLines,
+      changedLine,
+      changedQuantity
+    );
+    if (!calculation) {
+      setErrors((previous) => ({
+        ...previous,
+        plannedQuantity: t("plannedQuantityInvalidRatio"),
+      }));
+      return;
+    }
+
+    setValues((previous) => ({
+      ...previous,
+      plannedQuantity: calculation.scale,
+    }));
+    setPlannedQuantityValues(
+      Object.fromEntries(
+        plannedQuantityLines.map((line, index) => [
+          line.key,
+          calculation.quantities[index].toString(),
+        ])
+      )
+    );
   };
 
   return (
@@ -156,10 +387,7 @@ export default function NewTransformationOrderPage() {
               {templatesLoading ? (
                 <Skeleton className="h-10 w-full" />
               ) : (
-                <Select
-                  value={values.templateId}
-                  onValueChange={(value) => onFieldChange("templateId", value)}
-                >
+                <Select value={values.templateId} onValueChange={onTemplateChange}>
                   <SelectTrigger>
                     <SelectValue placeholder={t("selectTemplate")} />
                   </SelectTrigger>
@@ -199,20 +427,76 @@ export default function NewTransformationOrderPage() {
               {errors.warehouseId && <p className="text-sm text-red-500">{errors.warehouseId}</p>}
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t("plannedQuantity")} *</label>
-                <Input
-                  type="number"
-                  step="0.0001"
-                  value={values.plannedQuantity}
-                  onChange={(event) => onFieldChange("plannedQuantity", event.target.value)}
-                />
-                {errors.plannedQuantity && (
-                  <p className="text-sm text-red-500">{errors.plannedQuantity}</p>
-                )}
-              </div>
+            <fieldset className="space-y-4 rounded-lg border p-4">
+              <legend className="px-1 text-sm font-medium">{t("plannedQuantity")} *</legend>
+              <p className="text-sm text-muted-foreground">{t("plannedQuantityRatioHint")}</p>
 
+              {!selectedTemplate ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("selectTemplateForPlannedQuantities")}
+                </p>
+              ) : (
+                <>
+                  {inputQuantityLines.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium">{t("inputMaterials")}</p>
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {inputQuantityLines.map((line) => (
+                          <div key={line.key} className="space-y-2">
+                            <label htmlFor={line.key} className="text-sm font-medium">
+                              {line.itemCode || t("notAvailable")}
+                            </label>
+                            <Input
+                              id={line.key}
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={plannedQuantityValues[line.key] ?? ""}
+                              onChange={(event) =>
+                                onPlannedQuantityChange(line, event.target.value)
+                              }
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {outputQuantityLines.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium">{t("outputProducts")}</p>
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {outputQuantityLines.map((line) => (
+                          <div key={line.key} className="space-y-2">
+                            <label htmlFor={line.key} className="text-sm font-medium">
+                              {line.itemCode || t("notAvailable")}
+                            </label>
+                            <Input
+                              id={line.key}
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={plannedQuantityValues[line.key] ?? ""}
+                              onChange={(event) =>
+                                onPlannedQuantityChange(line, event.target.value)
+                              }
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {errors.plannedQuantity && (
+                <p role="alert" className="text-sm text-red-500">
+                  {errors.plannedQuantity}
+                </p>
+              )}
+            </fieldset>
+
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t("orderDate")} *</label>
                 <Input

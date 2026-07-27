@@ -475,6 +475,11 @@ Create a draft transformation order atomically from a template.
 
 **Effect**:
 - Creates the order, scaled template inputs, primary outputs, inherited additional outputs, and initial cost allocation in one database transaction.
+- The order form groups template inputs and outputs under **Planned Quantity**. Entering any
+  displayed input, primary output, or additional output quantity recalculates every other displayed
+  quantity from the template ratios; the request still submits one consistent template scale as
+  `plannedQuantity`. All displayed planned quantities must be whole numbers. A value that would
+  produce a fractional input or output is rejected without rounding.
 - Additional-output item, quantity, and base UOM come from the selected template. The order request cannot override them.
 - Rejects the template before creating the order if any referenced input, primary output, additional output, or UOM is inactive or deleted.
 - Does not reserve inventory yet.
@@ -483,7 +488,8 @@ Known create failures return a stable safe reason code. The order form explains 
 template or warehouse is unavailable, the template lacks required lines, a referenced item/UOM is
 inactive or deleted, the business-unit context changed, or permission was lost, and tells the user
 what to correct. These stale-resource failures use HTTP `409 Conflict`; internal database details
-remain server-side.
+remain server-side. A planned quantity that would produce a fractional input or output returns
+`TRANSFORMATION_PLANNED_QUANTITY_RATIO_INVALID` with HTTP `400 Bad Request`.
 
 #### POST /api/transformations/orders/[id]/release
 Prepare the transformation order.
