@@ -5,6 +5,26 @@
 
 // State machine: DRAFT → PREPARING/CANCELLED → COMPLETED
 export type TransformationOrderStatus = "DRAFT" | "PREPARING" | "COMPLETED" | "CANCELLED";
+export type TransformationOrderOutputOrigin = "template_primary" | "planned_additional";
+export type TransformationOrderCreateErrorCode =
+  | "TRANSFORMATION_CONTEXT_INVALID"
+  | "TRANSFORMATION_CREATE_FORBIDDEN"
+  | "TRANSFORMATION_PLANNED_QUANTITY_INVALID"
+  | "TRANSFORMATION_TEMPLATE_UNAVAILABLE"
+  | "TRANSFORMATION_WAREHOUSE_UNAVAILABLE"
+  | "TRANSFORMATION_TEMPLATE_LINES_REQUIRED"
+  | "TRANSFORMATION_TEMPLATE_ITEM_UNAVAILABLE";
+export type TransformationOrderCompleteErrorCode =
+  | "TRANSFORMATION_CONTEXT_INVALID"
+  | "TRANSFORMATION_COMPLETE_FORBIDDEN"
+  | "TRANSFORMATION_ORDER_UNAVAILABLE"
+  | "TRANSFORMATION_ORDER_STATUS_CHANGED"
+  | "TRANSFORMATION_EXECUTION_LINES_INVALID"
+  | "TRANSFORMATION_EXECUTION_LINES_INCOMPLETE"
+  | "TRANSFORMATION_EXECUTION_LINES_DUPLICATE"
+  | "TRANSFORMATION_EXECUTION_QUANTITIES_INVALID"
+  | "TRANSFORMATION_ORDER_ITEM_UNAVAILABLE"
+  | "TRANSFORMATION_INPUT_STOCK_INSUFFICIENT";
 
 export interface TransformationOrderInput {
   id: string;
@@ -47,6 +67,7 @@ export interface TransformationOrderOutput {
   stockTransactionId?: string;
   stockTransactionCode?: string;
   isScrap: boolean;
+  outputOrigin: TransformationOrderOutputOrigin;
   sequence: number;
   notes?: string;
   createdAt: string;
@@ -94,7 +115,6 @@ export interface TransformationOrder {
 // ============================================================================
 
 export interface CreateTransformationOrderRequest {
-  companyId: string;
   templateId: string;
   warehouseId: string;
   plannedQuantity: number;
@@ -181,6 +201,7 @@ export type TransformationOrderOutputApi = {
   wasted_quantity: number | null;
   waste_reason: string | null;
   is_scrap: boolean;
+  output_origin: TransformationOrderOutputOrigin;
   allocated_cost_per_unit: number | null;
   total_allocated_cost: number | null;
   items?: TransformationOrderItemApi | null;

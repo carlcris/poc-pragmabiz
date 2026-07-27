@@ -10,6 +10,7 @@ import { deliveryNotesApi } from "@/lib/api/delivery-notes";
 import { itemsApi } from "@/lib/api/items";
 import { suppliersApi } from "@/lib/api/suppliers";
 import { transformationOrdersApi } from "@/lib/api/transformation-orders";
+import { transformationOrderIdSchema } from "@/lib/validations/transformation-order";
 import { DELIVERY_NOTES_QUERY_KEY } from "@/hooks/useDeliveryNotes";
 import { TRANSFORMATION_ORDERS_QUERY_KEY } from "@/hooks/useTransformationOrders";
 
@@ -41,7 +42,8 @@ export function Breadcrumb() {
   const isTransformationOrderDetail =
     pathSegments[0] === "manufacturing" &&
     parentSegment === "transformations" &&
-    pathSegments.length === 3;
+    pathSegments.length === 3 &&
+    transformationOrderIdSchema.safeParse(lastSegment).success;
   const isWarehouseLocations =
     lastSegment === "locations" && pathSegments[pathSegments.length - 3] === "warehouses";
   const isTransformationTemplateDesigner =

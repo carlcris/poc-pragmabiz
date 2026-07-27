@@ -5,7 +5,7 @@ import {
   validateTemplate,
   validateStockAvailability,
   validateStateTransition,
-} from "@/services/inventory/transformationService";
+} from "@/services/inventory/transformationValidationService";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
@@ -91,11 +91,21 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .select()
+      .select(
+        "id, company_id, business_unit_id, order_code, template_id, source_warehouse_id, status, planned_quantity, actual_quantity, total_input_cost, total_output_cost, cost_variance, variance_notes, order_date, planned_date, execution_date, completion_date, notes, reference_type, reference_id, created_at, created_by, updated_at, updated_by"
+      )
       .single();
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      console.error("Failed to prepare transformation order", {
+        orderId: id,
+        code: updateError.code,
+        message: updateError.message,
+      });
+      return NextResponse.json(
+        { error: "Failed to prepare transformation order" },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

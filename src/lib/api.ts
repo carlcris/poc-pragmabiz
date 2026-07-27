@@ -2,6 +2,26 @@ import { isSessionInvalidStatus, notifySessionInvalid } from "@/lib/auth/session
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
+export const getApiErrorCode = <TCode extends string>(
+  error: unknown,
+  supportedCodes: readonly TCode[]
+): TCode | null => {
+  const cause = error instanceof Error ? error.cause : null;
+  if (
+    typeof cause !== "object" ||
+    cause === null ||
+    !("code" in cause) ||
+    typeof cause.code !== "string"
+  ) {
+    return null;
+  }
+
+  const isSupportedCode = (code: string): code is TCode =>
+    supportedCodes.some((supportedCode) => supportedCode === code);
+
+  return isSupportedCode(cause.code) ? cause.code : null;
+};
+
 export class ApiClient {
   private baseURL: string;
 

@@ -2,35 +2,65 @@ import { withActivityLogging } from "@/lib/activity-logging/route-activity-logge
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { createTransformationOrderSchema } from "@/lib/validations/transformation-order";
-import { validateTemplate } from "@/services/inventory/transformationService";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import type { TransformationOrderCreateErrorCode } from "@/types/transformation-order";
 
-type TemplateInputRow = {
-  item_id: string;
-  quantity: number | string;
-  uom_id: string;
-  sequence?: number | null;
-  notes?: string | null;
+type TransformationOrderCreateSafeError = {
+  error: string;
+  code: TransformationOrderCreateErrorCode;
+  status: 400 | 403 | 409;
 };
 
-type TemplateOutputRow = {
-  item_id: string;
-  quantity: number | string;
-  uom_id: string;
-  is_scrap: boolean;
-  sequence?: number | null;
-  notes?: string | null;
-};
-
-type TemplateWithLines = {
-  inputs: TemplateInputRow[];
-  outputs: TemplateOutputRow[];
-};
-
-type ItemCostRow = {
-  id: string;
-  purchase_price: number | string | null;
+const transformationOrderCreateSafeErrors: Record<string, TransformationOrderCreateSafeError> = {
+  "Business unit context required": {
+    error: "Your business unit context is no longer available. Refresh the page and try again.",
+    code: "TRANSFORMATION_CONTEXT_INVALID",
+    status: 409,
+  },
+  "Business unit context is invalid": {
+    error: "Your business unit context is no longer available. Refresh the page and try again.",
+    code: "TRANSFORMATION_CONTEXT_INVALID",
+    status: 409,
+  },
+  Forbidden: {
+    error: "You no longer have permission to create transformation orders.",
+    code: "TRANSFORMATION_CREATE_FORBIDDEN",
+    status: 403,
+  },
+  "Planned quantity must be greater than zero": {
+    error: "Planned quantity must be greater than zero.",
+    code: "TRANSFORMATION_PLANNED_QUANTITY_INVALID",
+    status: 400,
+  },
+  "Template not found": {
+    error: "The selected template is no longer active or available. Choose another template.",
+    code: "TRANSFORMATION_TEMPLATE_UNAVAILABLE",
+    status: 409,
+  },
+  "Warehouse not found": {
+    error: "The selected warehouse is no longer active or available. Choose another warehouse.",
+    code: "TRANSFORMATION_WAREHOUSE_UNAVAILABLE",
+    status: 409,
+  },
+  "Template requires input and output lines": {
+    error:
+      "The selected template needs at least one input and one primary output before it can be used.",
+    code: "TRANSFORMATION_TEMPLATE_LINES_REQUIRED",
+    status: 409,
+  },
+  "Template contains an unavailable input or output item": {
+    error:
+      "The selected template references an inactive or deleted item or unit. Update the template and try again.",
+    code: "TRANSFORMATION_TEMPLATE_ITEM_UNAVAILABLE",
+    status: 409,
+  },
+  "Template additional output item is unavailable": {
+    error:
+      "The selected template references an inactive or deleted item or unit. Update the template and try again.",
+    code: "TRANSFORMATION_TEMPLATE_ITEM_UNAVAILABLE",
+    status: 409,
+  },
 };
 
 // GET /api/transformations/orders - List transformation orders
@@ -70,8 +100,8 @@ async function GETHandler(request: NextRequest) {
     const warehouseId = searchParams.get("warehouseId") || "";
     const dateFrom = searchParams.get("dateFrom") || "";
     const dateTo = searchParams.get("dateTo") || "";
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20));
     const offset = (page - 1) * limit;
 
     // Build query
@@ -133,7 +163,11 @@ async function GETHandler(request: NextRequest) {
     const { data: orders, error, count } = await query.range(offset, offset + limit - 1);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Failed to list transformation orders", {
+        code: error.code,
+        message: error.message,
+      });
+      return NextResponse.json({ error: "Failed to load transformation orders" }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -151,7 +185,18 @@ async function GETHandler(request: NextRequest) {
 async function POSTHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, "create");
-    if (unauthorized) return unauthorized;
+    if (unauthorized) {
+      if (unauthorized.status === 403) {
+        return NextResponse.json(
+          {
+            error: "You do not have permission to create transformation orders.",
+            code: "TRANSFORMATION_CREATE_FORBIDDEN" satisfies TransformationOrderCreateErrorCode,
+          },
+          { status: 403 }
+        );
+      }
+      return unauthorized;
+    }
 
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
@@ -166,29 +211,19 @@ async function POSTHandler(request: NextRequest) {
     }
 
     if (!currentBusinessUnitId) {
-      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
+      return NextResponse.json(
+        {
+          error:
+            "Your business unit context is no longer available. Refresh the page and try again.",
+          code: "TRANSFORMATION_CONTEXT_INVALID" satisfies TransformationOrderCreateErrorCode,
+        },
+        { status: 409 }
+      );
     }
 
     // Parse and validate request body
     const body = await request.json();
-
-    const dataToValidate = {
-      ...body,
-      companyId: userData.company_id,
-    };
-
-    const validationResult = createTransformationOrderSchema.safeParse(dataToValidate);
+    const validationResult = createTransformationOrderSchema.safeParse(body);
 
     if (!validationResult.success) {
       return NextResponse.json(
@@ -198,185 +233,110 @@ async function POSTHandler(request: NextRequest) {
     }
 
     const data = validationResult.data;
+    const { data: orderId, error: createError } = await supabase.rpc(
+      "create_transformation_order_transaction",
+      {
+        p_template_id: data.templateId,
+        p_warehouse_id: data.warehouseId,
+        p_planned_quantity: data.plannedQuantity,
+        p_order_date: data.orderDate ?? null,
+        p_planned_date: data.plannedDate ?? null,
+        p_notes: data.notes ?? null,
+        p_reference_type: data.referenceType ?? null,
+        p_reference_id: data.referenceId ?? null,
+      }
+    );
 
-    // Validate template
-    const templateValidation = await validateTemplate(data.templateId);
-    if (!templateValidation.isValid) {
+    if (createError) {
+      console.error("Failed to create transformation order transaction", {
+        code: createError.code,
+        message: createError.message,
+      });
+
+      const safeError = transformationOrderCreateSafeErrors[createError.message];
+      if (safeError) {
+        return NextResponse.json(
+          { error: safeError.error, code: safeError.code },
+          { status: safeError.status }
+        );
+      }
+
       return NextResponse.json(
-        { error: templateValidation.error || "Invalid template" },
-        { status: 400 }
+        { error: "The transformation order could not be created. Please try again." },
+        { status: 500 }
       );
     }
 
-    // Get template details
-    const { data: template, error: templateError } = await supabase
-      .from("transformation_templates")
-      .select(
-        `
-        *,
-        inputs:transformation_template_inputs(*),
-        outputs:transformation_template_outputs(*)
-      `
-      )
-      .eq("id", data.templateId)
-      .single();
-
-    if (templateError || !template) {
-      return NextResponse.json({ error: "Template not found" }, { status: 404 });
-    }
-
-    // Create order header
-    const { data: order, error: orderError } = await supabase
-      .from("transformation_orders")
-      .insert({
-        company_id: userData.company_id,
-        business_unit_id: currentBusinessUnitId,
-        template_id: data.templateId,
-        source_warehouse_id: data.warehouseId,
-        status: "DRAFT",
-        planned_quantity: data.plannedQuantity,
-        order_date: data.orderDate || new Date().toISOString().split("T")[0],
-        planned_date: data.plannedDate,
-        notes: data.notes,
-        reference_type: data.referenceType,
-        reference_id: data.referenceId,
-        created_by: user.id,
-        updated_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (orderError || !order) {
-      return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
-    }
-
-    // Get item costs for inputs
-    const typedTemplate = template as TemplateWithLines;
-    const inputItemIds = typedTemplate.inputs.map((input) => input.item_id);
-
-    const { data: inputItems, error: itemsError } = await supabase
-      .from("items")
-      .select("id, purchase_price")
-      .in("id", inputItemIds);
-
-    if (itemsError) {
-    }
-
-    const itemCostMap = new Map(
-      ((inputItems || []) as ItemCostRow[]).map((item) => [
-        item.id,
-        parseFloat(String(item.purchase_price ?? 0)),
-      ])
-    );
-
-    // Create order inputs from template
-    const inputsData = typedTemplate.inputs.map((input, index) => {
-      const unitCost = itemCostMap.get(input.item_id) || 0;
-      const plannedQty = Number(input.quantity) * data.plannedQuantity;
-      return {
-        order_id: order.id,
-        item_id: input.item_id,
-        warehouse_id: data.warehouseId,
-        planned_quantity: plannedQty,
-        uom_id: input.uom_id,
-        unit_cost: unitCost,
-        total_cost: unitCost * plannedQty,
-        sequence: input.sequence || index + 1,
-        notes: input.notes,
-        created_by: user.id,
-        updated_by: user.id,
-      };
-    });
-
-    const { error: inputsError } = await supabase
-      .from("transformation_order_inputs")
-      .insert(inputsData);
-
-    if (inputsError) {
-      // Rollback: delete order
-      await supabase.from("transformation_orders").delete().eq("id", order.id);
-
-      return NextResponse.json({ error: "Failed to create order inputs" }, { status: 500 });
-    }
-
-    // Calculate total input cost
-    const totalInputCost = inputsData.reduce((sum, input) => sum + input.total_cost, 0);
-
-    // Create order outputs from template
-    // Allocate input costs to outputs proportionally
-    const totalOutputQty = typedTemplate.outputs.reduce(
-      (sum, output) => sum + (output.is_scrap ? 0 : Number(output.quantity) * data.plannedQuantity),
-      0
-    );
-
-    const outputsData = typedTemplate.outputs.map((output, index) => {
-      const plannedQty = Number(output.quantity) * data.plannedQuantity;
-      // Only non-scrap items get cost allocation
-      const allocatedCostPerUnit =
-        output.is_scrap || totalOutputQty === 0 ? 0 : totalInputCost / totalOutputQty;
-
-      return {
-        order_id: order.id,
-        item_id: output.item_id,
-        warehouse_id: data.warehouseId,
-        planned_quantity: plannedQty,
-        uom_id: output.uom_id,
-        is_scrap: output.is_scrap,
-        allocated_cost_per_unit: allocatedCostPerUnit,
-        total_allocated_cost: allocatedCostPerUnit * plannedQty,
-        sequence: output.sequence || index + 1,
-        notes: output.notes,
-        created_by: user.id,
-        updated_by: user.id,
-      };
-    });
-
-    const { error: outputsError } = await supabase
-      .from("transformation_order_outputs")
-      .insert(outputsData);
-
-    if (outputsError) {
-      // Rollback: delete order and inputs
-      await supabase.from("transformation_order_inputs").delete().eq("order_id", order.id);
-      await supabase.from("transformation_orders").delete().eq("id", order.id);
-
-      return NextResponse.json({ error: "Failed to create order outputs" }, { status: 500 });
-    }
-
-    // Calculate total output cost
-    const totalOutputCost = outputsData.reduce(
-      (sum, output) => sum + output.total_allocated_cost,
-      0
-    );
-
-    // Update order with calculated costs
-    const { error: updateError } = await supabase
-      .from("transformation_orders")
-      .update({
-        total_input_cost: totalInputCost,
-        total_output_cost: totalOutputCost,
-        cost_variance: totalOutputCost - totalInputCost,
-      })
-      .eq("id", order.id);
-
-    if (updateError) {
+    if (!orderId) {
+      console.error("Transformation order transaction returned no order ID");
+      return NextResponse.json(
+        { error: "The transformation order could not be created. Please try again." },
+        { status: 500 }
+      );
     }
 
     // Fetch complete order with inputs/outputs
-    const { data: completeOrder } = await supabase
+    const { data: completeOrder, error: fetchError } = await supabase
       .from("transformation_orders")
       .select(
         `
-        *,
-        inputs:transformation_order_inputs(*),
-        outputs:transformation_order_outputs(*)
+        id,
+        company_id,
+        business_unit_id,
+        order_code,
+        template_id,
+        source_warehouse_id,
+        status,
+        planned_quantity,
+        actual_quantity,
+        total_input_cost,
+        total_output_cost,
+        cost_variance,
+        variance_notes,
+        order_date,
+        planned_date,
+        execution_date,
+        completion_date,
+        notes,
+        reference_type,
+        reference_id,
+        created_at,
+        created_by,
+        updated_at,
+        updated_by,
+        inputs:transformation_order_inputs(
+          id, order_id, item_id, warehouse_id, planned_quantity, consumed_quantity,
+          uom_id, unit_cost, total_cost, stock_transaction_id, sequence, notes,
+          created_at, created_by, updated_at, updated_by
+        ),
+        outputs:transformation_order_outputs(
+          id, order_id, item_id, warehouse_id, planned_quantity, produced_quantity,
+          uom_id, allocated_cost_per_unit, total_allocated_cost, stock_transaction_id,
+          stock_transaction_waste_id, is_scrap, output_origin, sequence, notes,
+          wasted_quantity, waste_reason, created_at, created_by, updated_at, updated_by
+        )
       `
       )
-      .eq("id", order.id)
+      .eq("id", orderId)
       .single();
 
+    if (fetchError || !completeOrder) {
+      console.error("Created transformation order could not be loaded", {
+        orderId,
+        code: fetchError?.code,
+        message: fetchError?.message,
+      });
+      return NextResponse.json(
+        { error: "Transformation order created but could not be loaded" },
+        {
+          status: 500,
+        }
+      );
+    }
+
     return NextResponse.json({ data: completeOrder }, { status: 201 });
-  } catch {
+  } catch (error) {
+    console.error("Unexpected transformation order creation error", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -5,6 +5,66 @@ import { updateTransformationTemplateSchema } from "@/lib/validations/transforma
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
+const TEMPLATE_DETAIL_SELECT = `
+  id,
+  company_id,
+  business_unit_id,
+  template_code,
+  template_name,
+  description,
+  image_url,
+  template_kind,
+  sheet_width,
+  sheet_height,
+  sheet_unit,
+  layout_json,
+  is_active,
+  usage_count,
+  copied_from_template_id,
+  copied_from_business_unit_id,
+  copied_at,
+  created_by,
+  created_at,
+  updated_by,
+  updated_at,
+  deleted_at,
+  inputs:transformation_template_inputs(
+    id,
+    item_id,
+    quantity,
+    uom_id,
+    sequence,
+    notes,
+    items:items(id, item_code, item_name),
+    uom:units_of_measure(id, code, name)
+  ),
+  outputs:transformation_template_outputs(
+    id,
+    item_id,
+    quantity,
+    uom_id,
+    sequence,
+    is_scrap,
+    notes,
+    items:items(id, item_code, item_name),
+    uom:units_of_measure(id, code, name)
+  ),
+  additional_outputs:transformation_template_additional_outputs(
+    id,
+    item_id,
+    quantity,
+    sequence,
+    notes,
+    items:items(
+      id,
+      item_code,
+      item_name,
+      uom_id,
+      uom:units_of_measure(id, code, name)
+    )
+  )
+`;
+
 // GET /api/transformations/templates/[id] - Get template by ID
 async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -38,21 +98,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     // Fetch template with inputs and outputs
     const { data: template, error } = await supabase
       .from("transformation_templates")
-      .select(
-        `
-        *,
-        inputs:transformation_template_inputs(
-          *,
-          items(id, item_code, item_name),
-          uom:units_of_measure(id, uom_name)
-        ),
-        outputs:transformation_template_outputs(
-          *,
-          items(id, item_code, item_name),
-          uom:units_of_measure(id, uom_name)
-        )
-      `
-      )
+      .select(TEMPLATE_DETAIL_SELECT)
       .eq("id", id)
       .eq("company_id", userData.company_id)
       .is("deleted_at", null)
@@ -177,37 +223,29 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
           message = "Duplicate items in inputs are not allowed";
         } else {
           // Surface the actual unique constraint context instead of mislabeling it.
-          message = rpcError.details
-            ? `${rpcError.message} (${rpcError.details})`
-            : rpcError.message;
+          message = "A template item already exists";
         }
         return NextResponse.json({ error: message }, { status: 400 });
       }
       if (rpcError.code === "P0001") {
-        return NextResponse.json({ error: rpcError.message }, { status: 400 });
+        return NextResponse.json({ error: "Template update is not allowed" }, { status: 400 });
       }
       if (rpcError.code === "P0002") {
         return NextResponse.json({ error: "Template not found" }, { status: 404 });
       }
-      return NextResponse.json({ error: rpcError.message }, { status: 500 });
+      console.error("Failed to update transformation template", {
+        templateId: id,
+        code: rpcError.code,
+        message: rpcError.message,
+      });
+      return NextResponse.json(
+        { error: "Failed to update transformation template" },
+        { status: 500 }
+      );
     }
     const { data: completeTemplate, error: refetchError } = await supabase
       .from("transformation_templates")
-      .select(
-        `
-        *,
-        inputs:transformation_template_inputs(
-          *,
-          items(id, item_code, item_name),
-          uom:units_of_measure(id, uom_name)
-        ),
-        outputs:transformation_template_outputs(
-          *,
-          items(id, item_code, item_name),
-          uom:units_of_measure(id, uom_name)
-        )
-      `
-      )
+      .select(TEMPLATE_DETAIL_SELECT)
       .eq("id", id)
       .single();
 

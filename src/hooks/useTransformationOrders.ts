@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { transformationOrdersApi } from "@/lib/api/transformation-orders";
+import { transformationOrderIdSchema } from "@/lib/validations/transformation-order";
 import type {
   TransformationOrderFilters,
   CreateTransformationOrderRequest,
@@ -47,10 +48,12 @@ export function useTransformationOrders(params?: TransformationOrderFilters) {
  * Hook to fetch single transformation order
  */
 export function useTransformationOrder(id: string) {
+  const isValidOrderId = transformationOrderIdSchema.safeParse(id).success;
+
   return useQuery({
     queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY, id],
     queryFn: () => transformationOrdersApi.getById(id),
-    enabled: !!id,
+    enabled: isValidOrderId,
   });
 }
 
@@ -65,10 +68,6 @@ export function useCreateTransformationOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["transformation-templates"] });
-      toast.success("Transformation order created successfully");
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to create transformation order"));
     },
   });
 }

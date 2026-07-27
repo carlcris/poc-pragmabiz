@@ -96,6 +96,13 @@ export const templateOutputItemSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const templateAdditionalOutputSchema = z.object({
+  itemId: uuidSchema,
+  quantity: numberSchema,
+  sequence: sequenceSchema.optional(),
+  notes: z.string().max(500).optional(),
+});
+
 // ============================================================================
 // Create Template Schema
 // ============================================================================
@@ -121,6 +128,7 @@ export const createTransformationTemplateSchema = z
     layout: sheetLayoutSchema.optional(),
     inputs: z.array(templateInputItemSchema).default([]),
     outputs: z.array(templateOutputItemSchema).default([]),
+    additionalOutputs: z.array(templateAdditionalOutputSchema).max(50).default([]),
     copiedFromTemplateId: uuidSchema.optional(),
   })
   .refine(
@@ -197,7 +205,6 @@ export const createTransformationTemplateSchema = z
   )
   .refine(
     (data) => {
-      if (data.templateKind !== "recipe") return true;
       // Validation: No duplicate items in outputs
       const outputItemIds = data.outputs.map((o) => o.itemId);
       const uniqueOutputs = new Set(outputItemIds);
@@ -206,6 +213,26 @@ export const createTransformationTemplateSchema = z
     {
       message: "Duplicate items in outputs are not allowed",
       path: ["outputs"],
+    }
+  )
+  .refine(
+    (data) => {
+      const additionalItemIds = data.additionalOutputs.map((output) => output.itemId);
+      return additionalItemIds.length === new Set(additionalItemIds).size;
+    },
+    {
+      message: "Duplicate additional output items are not allowed",
+      path: ["additionalOutputs"],
+    }
+  )
+  .refine(
+    (data) => {
+      const primaryItemIds = new Set(data.outputs.map((output) => output.itemId));
+      return data.additionalOutputs.every((output) => !primaryItemIds.has(output.itemId));
+    },
+    {
+      message: "Additional outputs must be different from primary outputs",
+      path: ["additionalOutputs"],
     }
   );
 

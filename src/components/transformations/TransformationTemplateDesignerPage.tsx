@@ -12,11 +12,13 @@ import {
   MoveHorizontal,
   MoveVertical,
   Package,
+  Plus,
   RotateCcw,
   RotateCw,
   Save,
   ScissorsLineDashed,
   Shapes,
+  Trash2,
 } from "lucide-react";
 import { useCreateTransformationTemplate } from "@/hooks/useTransformationTemplates";
 import { useItemsStock } from "@/hooks/useItemsStock";
@@ -62,6 +64,10 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TransformationTemplateCopySourcePicker } from "./TransformationTemplateCopySourcePicker";
+import {
+  TemplateAdditionalOutputDialog,
+  type TemplateAdditionalOutputDialogValue,
+} from "./TemplateAdditionalOutputDialog";
 
 type SplitOrientation = "vertical" | "horizontal";
 type InteractionMode = "draw" | "slice";
@@ -141,10 +147,7 @@ const clamp = (value: number, min: number, max: number) => Math.min(Math.max(val
 const isClose = (a: number, b: number) => Math.abs(a - b) < EDGE_EPSILON;
 
 const rectsIntersect = (a: RectBounds, b: RectBounds) =>
-  a.x < b.x + b.width &&
-  a.x + a.width > b.x &&
-  a.y < b.y + b.height &&
-  a.y + a.height > b.y;
+  a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 
 const subtractRect = (section: SheetLayoutSection, cutout: RectBounds): SheetLayoutSection[] => {
   if (!rectsIntersect(section, cutout)) {
@@ -539,6 +542,10 @@ export function TransformationTemplateDesignerPage() {
   const [itemSearch, setItemSearch] = useState("");
   const [itemPickerError, setItemPickerError] = useState<string | null>(null);
   const [parentSheetItem, setParentSheetItem] = useState<SheetLayoutSourceItem | null>(null);
+  const [additionalOutputs, setAdditionalOutputs] = useState<TemplateAdditionalOutputDialogValue[]>(
+    []
+  );
+  const [additionalOutputDialogOpen, setAdditionalOutputDialogOpen] = useState(false);
   const [isSelectingItem, setIsSelectingItem] = useState(false);
   const [recentlyMappedSectionId, setRecentlyMappedSectionId] = useState<string | null>(null);
   const [sliceClipboard, setSliceClipboard] = useState<SliceClipboard | null>(null);
@@ -586,6 +593,17 @@ export function TransformationTemplateDesignerPage() {
   );
   const unmappedPieceSections = useMemo(
     () => pieceSections.filter((section) => !section.mappedItem),
+    [pieceSections]
+  );
+  const primaryOutputItemIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          pieceSections
+            .map((section) => section.mappedItem?.itemId)
+            .filter((itemId): itemId is string => Boolean(itemId))
+        )
+      ),
     [pieceSections]
   );
   const isCanvasLocked = !parentSheetItem;
@@ -712,6 +730,7 @@ export function TransformationTemplateDesignerPage() {
         setTemplateName("");
         setCopiedFromTemplateId(undefined);
         setParentSheetItem(null);
+        setAdditionalOutputs([]);
         setSheetWidthInput(String(DEFAULT_SHEET_WIDTH));
         setSheetHeightInput(String(DEFAULT_SHEET_HEIGHT));
         setSheetWidth(DEFAULT_SHEET_WIDTH);
@@ -735,6 +754,30 @@ export function TransformationTemplateDesignerPage() {
       setTemplateName(t("copyOfTemplate", { name: source.template_name }));
       setCopiedFromTemplateId(source.id);
       setParentSheetItem({ ...layout.sourceItem });
+      setAdditionalOutputs(
+        (source.additional_outputs ?? []).flatMap((output) => {
+          const item = output.items;
+          const uom = output.uom ?? item?.uom;
+          if (!item?.item_code || !item.item_name || !uom?.id || !uom.code || !uom.name) {
+            return [];
+          }
+
+          return [
+            {
+              item: {
+                id: output.item_id,
+                item_code: item.item_code,
+                item_name: item.item_name,
+                uom_id: uom.id,
+                uom_code: uom.code,
+                uom_name: uom.name,
+              },
+              quantity: Number(output.quantity),
+              notes: output.notes ?? undefined,
+            },
+          ];
+        })
+      );
       setSheetWidthInput(String(width));
       setSheetHeightInput(String(height));
       setSheetWidth(width);
@@ -1457,7 +1500,9 @@ export function TransformationTemplateDesignerPage() {
         const parsedDimensions = parseItemDimensions(itemResponse.data.dimensions);
 
         if (!parsedDimensions) {
-          setItemPickerError("The selected item does not have valid width and height dimensions123.");
+          setItemPickerError(
+            "The selected item does not have valid width and height dimensions123."
+          );
           return;
         }
 
@@ -1559,6 +1604,12 @@ export function TransformationTemplateDesignerPage() {
       },
       inputs: [],
       outputs: [],
+      additionalOutputs: additionalOutputs.map((output, index) => ({
+        itemId: output.item.id,
+        quantity: output.quantity,
+        sequence: index + 1,
+        notes: output.notes,
+      })),
       copiedFromTemplateId,
     };
 
@@ -1745,6 +1796,66 @@ export function TransformationTemplateDesignerPage() {
               </Button>
             </div>
           ) : null}
+
+          <div className="space-y-3 rounded-lg border bg-card p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold">{t("plannedAdditionalOutputs")}</h3>
+                <p className="text-xs text-muted-foreground">
+                  {t("plannedAdditionalOutputsDescription")}
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setAdditionalOutputDialogOpen(true)}
+                disabled={isSaving}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {t("addOutput")}
+              </Button>
+            </div>
+
+            {additionalOutputs.length === 0 ? (
+              <p className="text-xs text-muted-foreground">{t("noPlannedAdditionalOutputs")}</p>
+            ) : (
+              <div className="space-y-2">
+                {additionalOutputs.map((output) => (
+                  <div key={output.item.id} className="rounded-md border bg-muted/20 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{output.item.item_code}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {output.item.item_name}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label={t("removeAdditionalOutput")}
+                        onClick={() =>
+                          setAdditionalOutputs((current) =>
+                            current.filter((entry) => entry.item.id !== output.item.id)
+                          )
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {t("quantityPerTemplate")}: {output.quantity} · {t("baseUnit")}:{" "}
+                      {output.item.uom_code}
+                    </p>
+                    {output.notes ? (
+                      <p className="mt-1 text-xs text-muted-foreground">{output.notes}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Tools Card */}
           <div className="space-y-3 rounded-lg border bg-card p-4">
@@ -2602,6 +2713,16 @@ export function TransformationTemplateDesignerPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <TemplateAdditionalOutputDialog
+        open={additionalOutputDialogOpen}
+        onOpenChange={setAdditionalOutputDialogOpen}
+        excludedItemIds={[
+          ...primaryOutputItemIds,
+          ...additionalOutputs.map((output) => output.item.id),
+        ]}
+        onSave={(output) => setAdditionalOutputs((current) => [...current, output])}
+      />
 
       <Dialog
         open={!!itemPickerState}

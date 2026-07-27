@@ -153,6 +153,8 @@ Hard stop:
 Use the relevant skill when a task matches one of these triggers:
 
 - API routes, Supabase queries, hooks, services, or DB-backed data contracts: `supabase-api-safety`.
+- Known mutation/RPC business failures, generic form/dialog/toast errors, safe error codes, HTTP
+  status mappings, and actionable translated recovery guidance: `actionable-mutation-errors`.
 - Hook/API/function return shapes, `apiClient` wrapping, React Query return values, or callback parameter types: `typescript-contract-verification`.
 - SQL migrations, RLS policies, RPCs, triggers, indexes, generated DB types, or schema behavior: `supabase-migration-chain`.
 - Generated document/control codes: `database-code-generation`.

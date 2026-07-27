@@ -105,6 +105,8 @@ export type TransformationTemplateItemApi = {
   id: string;
   item_code: string | null;
   item_name: string | null;
+  uom_id?: string | null;
+  uom?: TransformationTemplateUomApi | null;
 };
 
 export type TransformationTemplateUomApi = {
@@ -137,6 +139,32 @@ export type TransformationTemplateOutputApi = {
   uom?: TransformationTemplateUomApi | null;
 };
 
+export type TransformationTemplateAdditionalOutputApi = {
+  id: string;
+  item_id: string;
+  sequence: number;
+  quantity: number;
+  notes?: string | null;
+  items?: TransformationTemplateItemApi | null;
+  uom?: TransformationTemplateUomApi | null;
+};
+
+export type TransformationAdditionalOutputItem = {
+  id: string;
+  item_code: string;
+  item_name: string;
+  uom_id: string;
+  uom_code: string;
+  uom_name: string;
+};
+
+export type TransformationAdditionalOutputItemListResponse = {
+  data: TransformationAdditionalOutputItem[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
 export type TransformationTemplateApi = {
   id: string;
   company_id?: string;
@@ -162,6 +190,7 @@ export type TransformationTemplateApi = {
   copied_at?: string | null;
   inputs?: TransformationTemplateInputApi[] | null;
   outputs?: TransformationTemplateOutputApi[] | null;
+  additional_outputs?: TransformationTemplateAdditionalOutputApi[] | null;
 };
 
 export type TransformationTemplateCopySourceScope = "current" | "other";
@@ -181,6 +210,11 @@ export type TransformationTemplateCopySource = TransformationTemplateApi & {
   business_unit_id: string;
   source_business_unit_code: string;
   source_business_unit_name: string;
+};
+
+export type TransformationTemplateListItemApi = TransformationTemplateApi & {
+  input_material_count: number;
+  output_product_count: number;
 };
 
 export type TransformationTemplateCopySourceFilters = {
@@ -227,6 +261,12 @@ export interface CreateTransformationTemplateRequest {
     isScrap?: boolean;
     notes?: string;
   }[];
+  additionalOutputs?: {
+    itemId: string;
+    quantity: number;
+    sequence?: number;
+    notes?: string;
+  }[];
   copiedFromTemplateId?: string;
 }
 
@@ -266,7 +306,7 @@ export interface TransformationTemplateFilters {
 }
 
 export type TransformationTemplateListResponse = {
-  data: TransformationTemplateApi[];
+  data: TransformationTemplateListItemApi[];
   total: number;
   page: number;
   limit: number;

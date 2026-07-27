@@ -50,6 +50,20 @@ const TEMPLATE_DETAIL_SELECT = `
     notes,
     items:items(id, item_code, item_name),
     uom:units_of_measure(id, code, name)
+  ),
+  additional_outputs:transformation_template_additional_outputs(
+    id,
+    item_id,
+    quantity,
+    sequence,
+    notes,
+    items:items(
+      id,
+      item_code,
+      item_name,
+      uom_id,
+      uom:units_of_measure(id, code, name)
+    )
   )
 `;
 
@@ -121,8 +135,15 @@ async function GETHandler(request: NextRequest) {
       );
     }
 
+    const templateRows = (templates || []).map((template) => ({
+      ...template,
+      input_material_count: template.inputs?.length ?? 0,
+      output_product_count:
+        (template.outputs?.length ?? 0) + (template.additional_outputs?.length ?? 0),
+    }));
+
     return NextResponse.json({
-      data: templates || [],
+      data: templateRows,
       total: count || 0,
       page,
       limit,
@@ -225,7 +246,7 @@ async function POSTHandler(request: NextRequest) {
     }
 
     const { data: templateId, error: createError } = await supabase.rpc(
-      "create_transformation_template",
+      "create_transformation_template_with_additional_outputs",
       {
         p_template_code: templateCode,
         p_template_name: data.templateName,
@@ -239,6 +260,7 @@ async function POSTHandler(request: NextRequest) {
         p_inputs: toJson(resolvedInputs),
         p_outputs: toJson(resolvedOutputs),
         p_copied_from_template_id: data.copiedFromTemplateId ?? null,
+        p_additional_outputs: toJson(data.additionalOutputs),
       }
     );
 
@@ -299,6 +321,7 @@ async function POSTHandler(request: NextRequest) {
             copied_from_template_id: data.copiedFromTemplateId ?? null,
             inputs: [],
             outputs: [],
+            additional_outputs: [],
           },
         },
         { status: 201 }

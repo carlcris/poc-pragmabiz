@@ -1,7 +1,7 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
-import { validateStateTransition } from "@/services/inventory/transformationService";
+import { validateStateTransition } from "@/services/inventory/transformationValidationService";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
@@ -54,14 +54,18 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       })
       .eq("id", id)
       .eq("company_id", userData.company_id)
-      .select()
+      .select(
+        "id, company_id, business_unit_id, order_code, template_id, source_warehouse_id, status, planned_quantity, actual_quantity, total_input_cost, total_output_cost, cost_variance, variance_notes, order_date, planned_date, execution_date, completion_date, notes, reference_type, reference_id, created_at, created_by, updated_at, updated_by"
+      )
       .single();
 
     if (updateError || !order) {
-      return NextResponse.json(
-        { error: updateError?.message || "Failed to cancel order" },
-        { status: 500 }
-      );
+      console.error("Failed to cancel transformation order", {
+        orderId: id,
+        code: updateError?.code,
+        message: updateError?.message,
+      });
+      return NextResponse.json({ error: "Failed to cancel order" }, { status: 500 });
     }
 
     return NextResponse.json({

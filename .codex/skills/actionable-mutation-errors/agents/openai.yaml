@@ -1,0 +1,4 @@
+interface:
+  display_name: "Actionable Mutation Errors"
+  short_description: "Turn mutation failures into actionable UI errors"
+  default_prompt: "Use $actionable-mutation-errors to make this mutation failure safe, specific, translated, and actionable."

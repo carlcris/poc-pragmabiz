@@ -3,10 +3,11 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/stores/authStore";
+import { toast } from "sonner";
 import { useCreateTransformationOrder } from "@/hooks/useTransformationOrders";
 import { useTransformationTemplates } from "@/hooks/useTransformationTemplates";
 import { useWarehouses } from "@/hooks/useWarehouses";
+import { getApiErrorCode } from "@/lib/api";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { TransformationOrderCreateErrorCode } from "@/types/transformation-order";
 
 type FormValues = {
   templateId: string;
@@ -45,12 +47,20 @@ const toDateInputValue = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+const transformationOrderCreateErrorCodes = [
+  "TRANSFORMATION_CONTEXT_INVALID",
+  "TRANSFORMATION_CREATE_FORBIDDEN",
+  "TRANSFORMATION_PLANNED_QUANTITY_INVALID",
+  "TRANSFORMATION_TEMPLATE_UNAVAILABLE",
+  "TRANSFORMATION_WAREHOUSE_UNAVAILABLE",
+  "TRANSFORMATION_TEMPLATE_LINES_REQUIRED",
+  "TRANSFORMATION_TEMPLATE_ITEM_UNAVAILABLE",
+] as const satisfies readonly TransformationOrderCreateErrorCode[];
+
 export default function NewTransformationOrderPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
   const t = useTranslations("transformation");
   const tCommon = useTranslations("common");
-  const companyId = user?.companyId;
 
   const createOrder = useCreateTransformationOrder();
 
@@ -70,7 +80,6 @@ export default function NewTransformationOrderPage() {
     notes: "",
   });
   const [errors, setErrors] = useState<FormErrors>({});
-
   const plannedQuantityNumber = useMemo(
     () => Number(values.plannedQuantity),
     [values.plannedQuantity]
@@ -98,28 +107,32 @@ export default function NewTransformationOrderPage() {
       return;
     }
 
-    if (!companyId) {
-      setErrors({ root: t("companyIdMissing") });
-      return;
-    }
-
     try {
       await createOrder.mutateAsync({
-        companyId,
         templateId: values.templateId,
         warehouseId: values.warehouseId,
         plannedQuantity: plannedQuantityNumber,
-        orderDate: new Date(`${values.orderDate}T00:00:00`).toISOString(),
-        plannedDate: values.plannedDate
-          ? new Date(`${values.plannedDate}T00:00:00`).toISOString()
-          : undefined,
+        orderDate: values.orderDate,
+        plannedDate: values.plannedDate || undefined,
         notes: values.notes || undefined,
       });
 
+      toast.success(t("orderCreatedSuccessfully"));
       router.push("/manufacturing/transformations");
     } catch (error) {
-      const message = error instanceof Error ? error.message : t("failedCreateTransformationOrder");
-      setErrors({ root: message });
+      const errorCode = getApiErrorCode(error, transformationOrderCreateErrorCodes);
+      const errorMessages: Record<TransformationOrderCreateErrorCode, string> = {
+        TRANSFORMATION_CONTEXT_INVALID: t("createOrderBusinessUnitUnavailable"),
+        TRANSFORMATION_CREATE_FORBIDDEN: t("createOrderPermissionLost"),
+        TRANSFORMATION_PLANNED_QUANTITY_INVALID: t("plannedQuantityGreaterThanZero"),
+        TRANSFORMATION_TEMPLATE_UNAVAILABLE: t("createOrderTemplateUnavailable"),
+        TRANSFORMATION_WAREHOUSE_UNAVAILABLE: t("createOrderWarehouseUnavailable"),
+        TRANSFORMATION_TEMPLATE_LINES_REQUIRED: t("createOrderTemplateLinesRequired"),
+        TRANSFORMATION_TEMPLATE_ITEM_UNAVAILABLE: t("createOrderTemplateItemUnavailable"),
+      };
+      setErrors({
+        root: errorCode ? errorMessages[errorCode] : t("failedCreateTransformationOrder"),
+      });
     }
   };
 
@@ -230,7 +243,11 @@ export default function NewTransformationOrderPage() {
               />
             </div>
 
-            {errors.root && <p className="text-sm text-red-500">{errors.root}</p>}
+            {errors.root && (
+              <p role="alert" className="text-sm text-red-500">
+                {errors.root}
+              </p>
+            )}
 
             <div className="flex justify-end gap-4">
               <Button

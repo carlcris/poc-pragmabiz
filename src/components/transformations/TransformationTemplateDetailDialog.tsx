@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ScissorsLineDashed } from "lucide-react";
+import { useTranslations } from "next-intl";
 import type { TransformationTemplateApi } from "@/types/transformation-template";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -13,11 +14,13 @@ type Props = {
 };
 
 export function TransformationTemplateDetailDialog({ open, onOpenChange, template }: Props) {
+  const t = useTranslations("transformation");
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   if (!template) return null;
 
   const inputs = template.inputs ?? [];
   const outputs = template.outputs ?? [];
+  const additionalOutputs = template.additional_outputs ?? [];
   const isSheetLayout = template.template_kind === "sheet_layout";
   const layoutSections = template.layout_json?.sections ?? [];
   const sheetWidth = template.sheet_width ?? 0;
@@ -35,6 +38,10 @@ export function TransformationTemplateDetailDialog({ open, onOpenChange, templat
   };
 
   const pieceSections = layoutSections.filter((section) => section.type === "piece");
+  const totalOutputPieces = [...outputs, ...additionalOutputs].reduce((total, output) => {
+    const quantity = Number(output.quantity);
+    return total + (Number.isFinite(quantity) ? quantity : 0);
+  }, 0);
   const cutSizeSummaries = Array.from(
     pieceSections.reduce((acc, section) => {
       const key = `${section.width}x${section.height}`;
@@ -371,7 +378,7 @@ export function TransformationTemplateDetailDialog({ open, onOpenChange, templat
                     <p className="mt-1 font-medium">
                       {isSheetLayout
                         ? `${layoutSections.length} section${layoutSections.length !== 1 ? "s" : ""}`
-                        : `${inputs.length} input${inputs.length !== 1 ? "s" : ""} / ${outputs.length} output${outputs.length !== 1 ? "s" : ""}`}
+                        : `${inputs.length} input${inputs.length !== 1 ? "s" : ""} / ${outputs.length + additionalOutputs.length} output${outputs.length + additionalOutputs.length !== 1 ? "s" : ""}`}
                     </p>
                   </div>
                 </div>
@@ -407,9 +414,7 @@ export function TransformationTemplateDetailDialog({ open, onOpenChange, templat
                         <p className="text-xs uppercase tracking-wide text-muted-foreground">
                           Pieces
                         </p>
-                        <p className="mt-1 font-medium">
-                          {layoutSections.filter((section) => section.type === "piece").length}
-                        </p>
+                        <p className="mt-1 font-medium">{formatDimension(totalOutputPieces)}</p>
                       </div>
                       <div className="rounded-md border bg-muted/30 p-3">
                         <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -520,6 +525,42 @@ export function TransformationTemplateDetailDialog({ open, onOpenChange, templat
                     </span>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="font-semibold">{t("plannedAdditionalOutputs")}</h3>
+              <div className="space-y-2">
+                {additionalOutputs.length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                    {t("noPlannedAdditionalOutputs")}
+                  </div>
+                ) : (
+                  additionalOutputs.map((output) => (
+                    <div
+                      key={output.id}
+                      className="flex items-start justify-between gap-4 rounded-lg border bg-card p-3"
+                    >
+                      <div>
+                        <p className="font-medium leading-tight">
+                          {output.items?.item_code} <span className="text-muted-foreground">•</span>{" "}
+                          {output.items?.item_name}
+                        </p>
+                        {output.notes ? (
+                          <p className="text-sm text-muted-foreground">{output.notes}</p>
+                        ) : null}
+                      </div>
+                      <span className="whitespace-nowrap font-medium">
+                        {output.quantity}{" "}
+                        {output.uom?.name ||
+                          output.uom?.code ||
+                          output.items?.uom?.name ||
+                          output.items?.uom?.code ||
+                          ""}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

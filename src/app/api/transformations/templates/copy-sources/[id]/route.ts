@@ -24,9 +24,12 @@ async function GETHandler(_request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Invalid template ID" }, { status: 400 });
     }
 
-    const { data, error } = await supabase.rpc("get_transformation_template_copy_source", {
-      p_template_id: validationResult.data,
-    });
+    const { data, error } = await supabase.rpc(
+      "get_transformation_template_copy_source_with_additional_outputs",
+      {
+        p_template_id: validationResult.data,
+      }
+    );
 
     if (error) {
       if (error.code === "P0002") {

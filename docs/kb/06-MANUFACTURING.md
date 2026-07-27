@@ -87,17 +87,26 @@ Outputs:
 A **Transformation Order** executes a production run based on a template.
 
 **Key Features**:
-- Based on template or custom
-- Status workflow: Draft → Reserved → Executed → Completed
+- Based on an active template
+- Status workflow: Draft → Preparing → Completed (or Cancelled)
 - Quantity scaling (make 10x the template)
+- Predetermined template additional outputs that are not primary layout cuts
 - Warehouse and location tracking
 - Cost calculation and redistribution
 - Lineage tracking
 
 **Workflow**:
 ```
-Draft → Reserve Inputs → Execute → Complete
+Draft → Preparing → Completed
 ```
+
+Template creators can define predetermined **additional outputs** such as die cuts that are produced
+during the same run but are intentionally absent from the template's primary sheet layout. Each
+additional output stores an item and quantity per template execution; its unit is always derived
+from the item's active base unit and cannot be selected by the user. Creating an order inherits and
+scales these outputs automatically. Copies receive independent additional-output rows, so editing a
+new copied template cannot change its source. Primary and additional outputs must both be fully
+accounted as produced or wasted when the order is completed.
 
 **Shared putaway behavior**:
 Transformation completion hands produced output quantities into the shared putaway station instead of posting outputs into the `UNTRACKED` batch or making them immediately available. GRN receiving uses the same putaway model when received goods are submitted for confirmation, and the model also applies to chop-and-join production or any other workflow that creates stock before final warehouse placement. See `docs/plans/shared-putaway-station-plan.md`.
@@ -449,65 +458,75 @@ to the authenticated user's company and current-BU Stock Transformations `create
 ### Transformation Order Management
 
 #### POST /api/transformations/orders
-Create transformation order.
+Create a draft transformation order atomically from a template.
 
-**Permissions**: `create` on `transformation_orders`
+**Permissions**: `create` on `stock_transformations` in the current business unit.
 
 **Request**:
 ```json
 {
-  "template_id": "uuid",
-  "warehouse_id": "uuid",
-  "workstation_id": "uuid",
-  "order_date": "2025-06-14",
-  "scale_factor": 10,  // Make 10x the template
+  "templateId": "uuid",
+  "warehouseId": "uuid",
+  "plannedQuantity": 10,
+  "orderDate": "2025-06-14",
   "notes": "Weekly production run"
 }
 ```
 
 **Effect**:
-- Creates order in 'draft' status
-- Scales template quantities by scale_factor
-- Does NOT reserve inventory yet
+- Creates the order, scaled template inputs, primary outputs, inherited additional outputs, and initial cost allocation in one database transaction.
+- Additional-output item, quantity, and base UOM come from the selected template. The order request cannot override them.
+- Rejects the template before creating the order if any referenced input, primary output, additional output, or UOM is inactive or deleted.
+- Does not reserve inventory yet.
 
-#### POST /api/transformations/orders/[id]/reserve
-Reserve inputs for transformation.
+Known create failures return a stable safe reason code. The order form explains whether the selected
+template or warehouse is unavailable, the template lacks required lines, a referenced item/UOM is
+inactive or deleted, the business-unit context changed, or permission was lost, and tells the user
+what to correct. These stale-resource failures use HTTP `409 Conflict`; internal database details
+remain server-side.
 
-**Permissions**: `edit` on `transformation_orders`
+#### POST /api/transformations/orders/[id]/release
+Prepare the transformation order.
+
+**Permissions**: `edit` on `stock_transformations`.
 
 **Effect**:
 1. Validates sufficient inventory for inputs
-2. Reserves input quantities in warehouse
-3. Status changes to 'reserved'
-4. Records unit costs at time of reservation
+2. Status changes to `PREPARING`
 
 #### POST /api/transformations/orders/[id]/execute
-Execute transformation (atomic RPC).
+Complete transformation (atomic RPC).
 
-**Permissions**: `edit` on `transformation_orders`
+**Permissions**: `edit` on `stock_transformations`.
 
 **Effect** (all in single transaction):
 1. **Remove input inventory**
-   - Reduce stock levels
+   - Consume available input batches FIFO
+   - Record each consumed batch-location slice as its own stock-out transaction using the actual
+     source location and batch number
+   - Reduce item/warehouse, item batch, and batch/location stock
    - Create negative stock transactions
-   - Release reservations
 2. **Calculate total input cost**
    - Sum (input_qty × unit_cost) for all inputs
 3. **Add output inventory**
-   - Increase on-hand stock levels
-   - Create putaway task records for output quantities pending final placement
+   - Post both primary template outputs and planned additional outputs
+   - Create putaway tasks for produced quantities pending final placement
    - Increase item/warehouse putaway quantity
    - Create positive stock transactions
-   - Allocate costs based on cost_proportion
-4. **Update item costs**
-   - Recalculate average cost for outputs
-5. **Create lineage records**
+   - Allocate input cost across non-scrap produced and wasted quantities
+4. **Create lineage records**
    - Link inputs to outputs
-6. **Create COGS GL entry** (if configured)
-7. **Status changes to 'executed'**
-8. **Record execution timestamp and user**
+5. **Status changes to `COMPLETED`**
+6. **Record execution/completion dates and user**
 
-**See**: `src/services/inventory/transformationService.ts`
+Completion first verifies and locks every referenced input/output item and UOM. If any line has
+become inactive or deleted since order creation, the order remains `PREPARING` and no inventory,
+putaway, waste, costing, lineage, or status writes are committed.
+This unavailable-item state is returned as an HTTP `409 Conflict` with a stable safe reason code.
+The completion dialog stays open and explains that the item/UOM must be reactivated, or that the
+order should be cancelled and recreated from a corrected template if it must remain inactive.
+
+If any consumption, output, waste, putaway, lineage, costing, or final-status write fails, the entire completion rolls back.
 
 #### POST /api/transformations/orders/[id]/cancel
 Cancel transformation order.
@@ -655,70 +674,16 @@ Cancel a frame job order.
 
 ## Services
 
-### Transformation Service
+### Transformation Operations
 
-```typescript
-// Location: src/services/inventory/transformationService.ts
+Transformation order creation and completion are database-owned operations:
 
-class TransformationService {
-  /**
-   * Execute transformation order (atomic RPC)
-   * All steps in single transaction for data integrity
-   */
-  async executeTransformation(orderId: string): Promise<void> {
-    // Call database RPC function for atomic execution
-    const { data, error } = await supabase.rpc(
-      'execute_transformation_order',
-      { p_order_id: orderId }
-    )
-
-    if (error) throw new TransformationError(error.message)
-
-    return data
-  }
-
-  /**
-   * Calculate cost allocation for outputs
-   */
-  calculateCostAllocation(
-    totalInputCost: number,
-    outputs: TransformationOutput[]
-  ): Map<string, number> {
-    const allocation = new Map<string, number>()
-
-    for (const output of outputs) {
-      const allocatedCost = totalInputCost * output.cost_proportion
-      allocation.set(output.id, allocatedCost)
-    }
-
-    return allocation
-  }
-
-  /**
-   * Validate template before execution
-   */
-  validateTemplate(templateId: string): ValidationResult {
-    // 1. Check all input items exist
-    // 2. Check all output items exist
-    // 3. Check unit conversions valid
-    // 4. Check cost proportions sum to 1.0
-    // 5. Check no circular dependencies
-  }
-
-  /**
-   * Trace lineage for recall scenarios
-   */
-  async traceLineage(itemId: string, direction: 'forward' | 'backward'): Promise<LineageTree> {
-    if (direction === 'backward') {
-      // Find what inputs were used to make this item
-      return await this.getInputLineage(itemId)
-    } else {
-      // Find what outputs were made from this item
-      return await this.getOutputLineage(itemId)
-    }
-  }
-}
-```
+- `create_transformation_order_transaction` creates the order header, template lines, inherited
+  additional outputs, and initial costs atomically.
+- `complete_transformation_order_transaction` locks and completes the order while owning FIFO input
+  consumption, stock transactions, output putaway, waste, lineage, costing, and final status.
+- `src/services/inventory/transformationValidationService.ts` contains the remaining read-only
+  template, stock-availability, transition, and template-lock validation helpers.
 
 ## Workflows
 
@@ -737,7 +702,7 @@ class TransformationService {
    - Select template: "SHEET-CUT-001"
    - Scale factor: 10 (to cut 10 sheets)
    - Warehouse: Main Warehouse
-   - Workstation: Sheet Cutting Station #1
+   - Optionally add predetermined inventory outputs that are produced by the run but are not primary cuts in the template. Their base UOM is assigned automatically.
 
 3. **System Validates Inventory**
    - Check: 10 sheets of 40x80 available? ✓
@@ -992,7 +957,7 @@ Detailed lineage tracing for quality management.
 
 - **Transformation Implementation Plan**: `docs/plans/transformation-final-summary.md`
 - **Transformation Progress**: `docs/plans/transformation-progress.md`
-- **Transformation Service**: `src/services/inventory/transformationService.ts`
+- **Transformation Validation Service**: `src/services/inventory/transformationValidationService.ts`
 - **Frame Job Order Plan**: `docs/frame-job-order-sales-order-refactor-plan.md`
 - **Manufacturing Plan**: `docs/generic-manufacturing-production-floor-plan.md`
 

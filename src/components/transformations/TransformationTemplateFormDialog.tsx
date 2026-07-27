@@ -57,6 +57,10 @@ import {
   type TransformationItemFormValues,
 } from "./TransformationItemDialog";
 import { TransformationTemplateCopySourcePicker } from "./TransformationTemplateCopySourcePicker";
+import {
+  TemplateAdditionalOutputDialog,
+  type TemplateAdditionalOutputDialogValue,
+} from "./TemplateAdditionalOutputDialog";
 
 // Schema for form validation (only basic fields, not inputs/outputs)
 const templateFormSchema = z.object({
@@ -80,11 +84,15 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
   // Line items state
   const [inputs, setInputs] = useState<TransformationItemFormValues[]>([]);
   const [outputs, setOutputs] = useState<TransformationItemFormValues[]>([]);
+  const [additionalOutputs, setAdditionalOutputs] = useState<TemplateAdditionalOutputDialogValue[]>(
+    []
+  );
   const [copiedFromTemplateId, setCopiedFromTemplateId] = useState<string | undefined>();
 
   // Dialog state
   const [inputDialogOpen, setInputDialogOpen] = useState(false);
   const [outputDialogOpen, setOutputDialogOpen] = useState(false);
+  const [additionalOutputDialogOpen, setAdditionalOutputDialogOpen] = useState(false);
   const [editingInput, setEditingInput] = useState<{
     index: number;
     item: TransformationItemFormValues;
@@ -141,6 +149,7 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
           notes: output.notes || "",
         }))
       );
+      setAdditionalOutputs([]);
     } else if (!open) {
       // Reset when closing dialog
       form.reset({
@@ -151,6 +160,7 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
       });
       setInputs([]);
       setOutputs([]);
+      setAdditionalOutputs([]);
       setCopiedFromTemplateId(undefined);
     }
   }, [template, open, form]);
@@ -168,6 +178,7 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
         });
         setInputs([]);
         setOutputs([]);
+        setAdditionalOutputs([]);
         setCopiedFromTemplateId(undefined);
         return;
       }
@@ -202,6 +213,30 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
           isScrap: Boolean(output.is_scrap),
           notes: output.notes || "",
         }))
+      );
+      setAdditionalOutputs(
+        (source.additional_outputs ?? []).flatMap((output) => {
+          const item = output.items;
+          const uom = output.uom ?? item?.uom;
+          if (!item?.item_code || !item.item_name || !uom?.id || !uom.code || !uom.name) {
+            return [];
+          }
+
+          return [
+            {
+              item: {
+                id: output.item_id,
+                item_code: item.item_code,
+                item_name: item.item_name,
+                uom_id: uom.id,
+                uom_code: uom.code,
+                uom_name: uom.name,
+              },
+              quantity: Number(output.quantity),
+              notes: output.notes ?? undefined,
+            },
+          ];
+        })
       );
       setCopiedFromTemplateId(source.id);
     },
@@ -297,6 +332,12 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
           isScrap: output.isScrap || false,
           notes: output.notes,
         })),
+        additionalOutputs: additionalOutputs.map((output, index) => ({
+          itemId: output.item.id,
+          quantity: output.quantity,
+          sequence: index + 1,
+          notes: output.notes,
+        })),
         copiedFromTemplateId,
       };
 
@@ -336,6 +377,7 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
       form.reset();
       setInputs([]);
       setOutputs([]);
+      setAdditionalOutputs([]);
       setCopiedFromTemplateId(undefined);
     } catch (error) {
       const errorMessage = (() => {
@@ -679,6 +721,65 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
                     </div>
                   )}
                 </div>
+
+                {!template ? (
+                  <div className="rounded-lg border bg-card">
+                    <div className="flex items-start justify-between gap-4 border-b bg-muted/50 px-4 py-3">
+                      <div>
+                        <h3 className="text-sm font-semibold">{t("plannedAdditionalOutputs")}</h3>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {t("plannedAdditionalOutputsDescription")}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => setAdditionalOutputDialogOpen(true)}
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        {t("addOutput")}
+                      </Button>
+                    </div>
+
+                    {additionalOutputs.length === 0 ? (
+                      <p className="p-4 text-sm text-muted-foreground">
+                        {t("noPlannedAdditionalOutputs")}
+                      </p>
+                    ) : (
+                      <div className="space-y-2 p-4">
+                        {additionalOutputs.map((output) => (
+                          <div
+                            key={output.item.id}
+                            className="flex items-start justify-between gap-4 rounded-md border p-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium">
+                                {output.item.item_code} - {output.item.item_name}
+                              </p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {t("quantityPerTemplate")}: {output.quantity} · {t("baseUnit")}:{" "}
+                                {output.item.uom_code}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              aria-label={t("removeAdditionalOutput")}
+                              onClick={() =>
+                                setAdditionalOutputs((current) =>
+                                  current.filter((entry) => entry.item.id !== output.item.id)
+                                )
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </>
             )}
 
@@ -723,6 +824,16 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
         item={editingInput?.item}
         mode={editingInput ? "edit" : "add"}
         type="input"
+      />
+
+      <TemplateAdditionalOutputDialog
+        open={additionalOutputDialogOpen}
+        onOpenChange={setAdditionalOutputDialogOpen}
+        excludedItemIds={[
+          ...outputs.map((output) => output.itemId),
+          ...additionalOutputs.map((output) => output.item.id),
+        ]}
+        onSave={(output) => setAdditionalOutputs((current) => [...current, output])}
       />
 
       {/* Output Item Dialog */}

@@ -214,8 +214,8 @@ export default function TransformationTemplatesPage() {
                       {template.is_active ? tCommon("active") : tCommon("inactive")}
                     </StatusText>
                   </TableCell>
-                  <TableCell>{template.inputs?.length || 0}</TableCell>
-                  <TableCell>{template.outputs?.length || 0}</TableCell>
+                  <TableCell>{template.input_material_count}</TableCell>
+                  <TableCell>{template.output_product_count}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{template.usage_count}</Badge>
                     {template.usage_count > 0 && (

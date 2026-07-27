@@ -210,7 +210,7 @@ Production and transformation management:
 
 **Key APIs**: `/api/transformations/*`, `/api/frame-jobs/*`, `/api/workstations/*`
 
-**Key Services**: `transformationService.ts`
+**Key Services**: transactional transformation RPCs and `transformationValidationService.ts`
 
 ---
 

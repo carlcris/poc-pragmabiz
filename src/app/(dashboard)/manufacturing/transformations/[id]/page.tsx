@@ -22,8 +22,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useCurrency } from "@/hooks/useCurrency";
 import { transformationOrdersApi } from "@/lib/api/transformation-orders";
+import { getApiErrorCode } from "@/lib/api";
 import { toast } from "sonner";
 import type {
+  TransformationOrderCompleteErrorCode,
   TransformationOrderInputApi,
   TransformationOrderOutputApi,
   TransformationOrderStatus,
@@ -61,8 +63,22 @@ type ExecuteFormData = {
     wastedQty: number;
     wasteReason: string;
     isScrap: boolean;
+    outputOrigin: TransformationOrderOutputApi["output_origin"];
   }>;
 };
+
+const transformationOrderCompleteErrorCodes = [
+  "TRANSFORMATION_CONTEXT_INVALID",
+  "TRANSFORMATION_COMPLETE_FORBIDDEN",
+  "TRANSFORMATION_ORDER_UNAVAILABLE",
+  "TRANSFORMATION_ORDER_STATUS_CHANGED",
+  "TRANSFORMATION_EXECUTION_LINES_INVALID",
+  "TRANSFORMATION_EXECUTION_LINES_INCOMPLETE",
+  "TRANSFORMATION_EXECUTION_LINES_DUPLICATE",
+  "TRANSFORMATION_EXECUTION_QUANTITIES_INVALID",
+  "TRANSFORMATION_ORDER_ITEM_UNAVAILABLE",
+  "TRANSFORMATION_INPUT_STOCK_INSUFFICIENT",
+] as const satisfies readonly TransformationOrderCompleteErrorCode[];
 
 function TransformationOrderContent({ id }: { id: string }) {
   const { formatCurrency } = useCurrency();
@@ -75,6 +91,7 @@ function TransformationOrderContent({ id }: { id: string }) {
   }>({ open: false, action: null });
   const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
   const [executeFormData, setExecuteFormData] = useState<ExecuteFormData | null>(null);
+  const [executeError, setExecuteError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const { data: orderResponse, isLoading, refetch } = useTransformationOrder(id);
@@ -82,6 +99,7 @@ function TransformationOrderContent({ id }: { id: string }) {
   const handleCompleteClick = () => {
     if (!order) return;
 
+    setExecuteError(null);
     // Prepare execute form data with planned quantities as defaults
     const inputs = order.inputs ?? [];
     const outputs = order.outputs ?? [];
@@ -100,6 +118,7 @@ function TransformationOrderContent({ id }: { id: string }) {
         wastedQty: 0,
         wasteReason: "",
         isScrap: output.is_scrap || false,
+        outputOrigin: output.output_origin,
       })),
     });
     setExecuteDialogOpen(true);
@@ -108,6 +127,7 @@ function TransformationOrderContent({ id }: { id: string }) {
   const handleExecuteSubmit = async () => {
     if (!executeFormData || !order) return;
 
+    setExecuteError(null);
     setIsProcessing(true);
     try {
       const executeData = {
@@ -127,9 +147,20 @@ function TransformationOrderContent({ id }: { id: string }) {
       setExecuteDialogOpen(false);
       refetch();
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : t("failedExecuteTransformation");
-      toast.error(errorMessage);
+      const errorCode = getApiErrorCode(error, transformationOrderCompleteErrorCodes);
+      const errorMessages: Record<TransformationOrderCompleteErrorCode, string> = {
+        TRANSFORMATION_CONTEXT_INVALID: t("completeOrderBusinessUnitUnavailable"),
+        TRANSFORMATION_COMPLETE_FORBIDDEN: t("completeOrderPermissionLost"),
+        TRANSFORMATION_ORDER_UNAVAILABLE: t("completeOrderUnavailable"),
+        TRANSFORMATION_ORDER_STATUS_CHANGED: t("completeOrderStatusChanged"),
+        TRANSFORMATION_EXECUTION_LINES_INVALID: t("completeOrderLinesInvalid"),
+        TRANSFORMATION_EXECUTION_LINES_INCOMPLETE: t("completeOrderLinesChanged"),
+        TRANSFORMATION_EXECUTION_LINES_DUPLICATE: t("completeOrderLinesDuplicate"),
+        TRANSFORMATION_EXECUTION_QUANTITIES_INVALID: t("completeOrderQuantitiesInvalid"),
+        TRANSFORMATION_ORDER_ITEM_UNAVAILABLE: t("completeOrderItemUnavailable"),
+        TRANSFORMATION_INPUT_STOCK_INSUFFICIENT: t("completeOrderInsufficientStock"),
+      };
+      setExecuteError(errorCode ? errorMessages[errorCode] : t("failedExecuteTransformation"));
     } finally {
       setIsProcessing(false);
     }
@@ -378,6 +409,11 @@ function TransformationOrderContent({ id }: { id: string }) {
                       </p>
                     </div>
                     <div className="flex gap-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {output.output_origin === "planned_additional"
+                          ? t("additionalOutput")
+                          : t("primaryOutput")}
+                      </Badge>
                       {output.is_scrap && (
                         <Badge variant="outline" className="text-xs">
                           {t("scrap")}
@@ -483,7 +519,13 @@ function TransformationOrderContent({ id }: { id: string }) {
       </AlertDialog>
 
       {/* Execute Transformation Dialog */}
-      <AlertDialog open={executeDialogOpen} onOpenChange={setExecuteDialogOpen}>
+      <AlertDialog
+        open={executeDialogOpen}
+        onOpenChange={(open) => {
+          setExecuteDialogOpen(open);
+          if (!open) setExecuteError(null);
+        }}
+      >
         <AlertDialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>{t("executeTransformation")}</AlertDialogTitle>
@@ -515,6 +557,11 @@ function TransformationOrderContent({ id }: { id: string }) {
                                 {t("scrap")}
                               </Badge>
                             )}
+                            <Badge variant="secondary" className="text-xs">
+                              {output.outputOrigin === "planned_additional"
+                                ? t("additionalOutput")
+                                : t("primaryOutput")}
+                            </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
                             {t("planned")}: <span className="font-medium">{output.plannedQty}</span>
@@ -663,9 +710,18 @@ function TransformationOrderContent({ id }: { id: string }) {
             </div>
           )}
 
+          {executeError && (
+            <p
+              role="alert"
+              className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300"
+            >
+              {executeError}
+            </p>
+          )}
+
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isProcessing}>{tCommon("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
+            <Button
               onClick={handleExecuteSubmit}
               disabled={
                 isProcessing ||
@@ -678,7 +734,7 @@ function TransformationOrderContent({ id }: { id: string }) {
               }
             >
               {isProcessing ? `${t("preparing")}...` : t("complete")}
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

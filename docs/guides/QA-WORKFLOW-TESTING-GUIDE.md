@@ -542,15 +542,15 @@ These are the records everything else in the app is built on. Before testing any
 
 **What it's for**: converting one or more input items into different output items using a fixed recipe (e.g. combining raw materials into a finished good).
 
-**How a record starts**: click **New** on the Transformations list, choose a recipe, a warehouse, and a planned quantity.
+**How a record starts**: first configure any predetermined non-layout outputs under **Additional Outputs** on the transformation template. Then click **New** on the Transformations list and choose the template, warehouse, and planned quantity.
 
 **Stages**: Draft → Preparing → Completed, or Cancelled. This is a strict lifecycle — once Completed or Cancelled, nothing else can happen to the record.
 
 **Step-by-step workflow**:
 
-1. **Create** → status Draft. The system calculates expected input consumption and output quantities from the recipe.
+1. **Create** → status Draft. The system calculates expected input consumption and primary output quantities from the template, then automatically inherits and scales its additional outputs. The order form cannot add, remove, or override those lines. Their base UOM comes from each inventory item.
 2. **Prepare** → status Preparing. Before allowing this, the app re-checks the recipe is still active and that there's enough stock on hand for every input — if any input is short, it lists exactly which items and by how much, and refuses the transition.
-3. **Complete** → status Completed. The user enters the _actual_ consumed input quantities and _actual_ produced output quantities (which can differ from planned), plus an optional wasted quantity and reason per output line. On completing:
+3. **Complete** → status Completed. The user accounts for every primary and additional output line as produced and/or wasted, with a waste reason when waste is greater than zero. On completing:
    - Input stock is deducted.
    - Output stock is produced — but it does **not** immediately become available for picking/sale. It lands in the shared **Putaway** queue (section 19) and a warehouse user has to place it into a real location before it's sellable/pickable.
    - Cost and full input-to-output traceability are recorded.
@@ -561,7 +561,14 @@ These are the records everything else in the app is built on. Before testing any
 **Things to test**:
 
 - Try to Prepare an order when stock is insufficient — confirm the exact shortfall is shown per item.
-- Complete an order with a wasted quantity on one output and confirm the wasted portion is excluded from cost/inventory but still logged with its reason.
+- Add an additional output while creating a template and confirm the item search is server-side and bounded, primary layout outputs cannot be added, and the base UOM cannot be edited.
+- Copy a template with additional outputs and confirm the new template receives independent rows that can be changed before saving without affecting the source.
+- Create an order from that template and confirm all additional outputs are inherited and scaled without any additional-output controls on the order form.
+- Deactivate or soft-delete a template input/output item before creating an order and confirm creation is rejected without leaving an order header or partial lines. Confirm the form explains that the template references an unavailable item/UOM and instructs the user to reactivate or replace it, rather than showing a generic creation failure.
+- After creating and preparing an order, deactivate or soft-delete an input or output item and confirm completion is rejected while the order remains Preparing and no inventory, putaway, waste, costing, or lineage records are written. Confirm the completion dialog remains open and explains whether to reactivate the item/UOM or cancel and recreate the order from a corrected template.
+- Split an input item's FIFO stock across at least two warehouse locations and batches, complete an order that consumes both, and confirm each consumed batch-location slice creates its own stock-out transaction with the actual source location and batch number. Confirm the transaction-item running balances are sequential and the batch-location, batch, and warehouse totals all decrease by the same aggregate quantity.
+- Complete an order containing an additional output and confirm its produced quantity creates its own stock transaction, putaway task, cost allocation, and lineage records.
+- Complete an order with a wasted quantity on one output and confirm the wasted portion is excluded from produced inventory, recorded as cost variance, and logged with its reason.
 - Confirm output stock shows up in on-hand totals immediately after Complete, but is **not** available for picking/sale until it's placed via Putaway.
 - **If the recipe has a scrap output line (an output explicitly marked as scrap, not a normal saleable product): confirm it still creates a putaway task requiring placement today.** This is a known inconsistency — scrap correctly gets zero cost, but it still physically shows up as stock waiting to be put away, which is arguably wrong (scrap shouldn't need a shelf location at all). Log this as a real defect if you find it, not just a "confirm behavior" note — it has been independently verified as still present.
 - Try to Cancel a Completed order — should be refused.

@@ -47,17 +47,45 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       .from("transformation_orders")
       .select(
         `
-        *,
+        id,
+        company_id,
+        business_unit_id,
+        order_code,
+        template_id,
+        source_warehouse_id,
+        status,
+        planned_quantity,
+        actual_quantity,
+        total_input_cost,
+        total_output_cost,
+        cost_variance,
+        variance_notes,
+        order_date,
+        planned_date,
+        execution_date,
+        completion_date,
+        notes,
+        reference_type,
+        reference_id,
+        created_at,
+        created_by,
+        updated_at,
+        updated_by,
         template:transformation_templates(id, template_code, template_name),
         source_warehouse:warehouses!transformation_orders_source_warehouse_id_fkey(id, warehouse_code, warehouse_name),
         inputs:transformation_order_inputs(
-          *,
+          id, order_id, item_id, warehouse_id, planned_quantity, consumed_quantity,
+          uom_id, unit_cost, total_cost, stock_transaction_id, sequence, notes,
+          created_at, created_by, updated_at, updated_by,
           items(id, item_code, item_name),
           warehouse:warehouses(id, warehouse_code, warehouse_name),
           uom:units_of_measure(id, code, name)
         ),
         outputs:transformation_order_outputs(
-          *,
+          id, order_id, item_id, warehouse_id, planned_quantity, produced_quantity,
+          uom_id, allocated_cost_per_unit, total_allocated_cost, stock_transaction_id,
+          stock_transaction_waste_id, is_scrap, output_origin, sequence, notes,
+          wasted_quantity, waste_reason, created_at, created_by, updated_at, updated_by,
           items(id, item_code, item_name),
           warehouse:warehouses(id, warehouse_code, warehouse_name),
           uom:units_of_measure(id, code, name)
@@ -165,11 +193,18 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       .from("transformation_orders")
       .update(updateData)
       .eq("id", id)
-      .select()
+      .select(
+        "id, company_id, business_unit_id, order_code, template_id, source_warehouse_id, status, planned_quantity, actual_quantity, total_input_cost, total_output_cost, cost_variance, variance_notes, order_date, planned_date, execution_date, completion_date, notes, reference_type, reference_id, created_at, created_by, updated_at, updated_by"
+      )
       .single();
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      console.error("Failed to update transformation order", {
+        orderId: id,
+        code: updateError.code,
+        message: updateError.message,
+      });
+      return NextResponse.json({ error: "Failed to update transformation order" }, { status: 500 });
     }
 
     return NextResponse.json({ data: updatedOrder });
@@ -243,7 +278,12 @@ async function DELETEHandler(
       .eq("id", id);
 
     if (deleteError) {
-      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+      console.error("Failed to delete transformation order", {
+        orderId: id,
+        code: deleteError.code,
+        message: deleteError.message,
+      });
+      return NextResponse.json({ error: "Failed to delete transformation order" }, { status: 500 });
     }
 
     return NextResponse.json({ message: "Order deleted successfully" });

@@ -155,15 +155,50 @@ export type TranslationKeys = {
     warehouseRequired: string;
     orderDateRequired: string;
     plannedQuantityGreaterThanZero: string;
-    companyIdMissing: string;
+    orderCreatedSuccessfully: string;
     failedCreateTransformationOrder: string;
+    createOrderBusinessUnitUnavailable: string;
+    createOrderPermissionLost: string;
+    createOrderTemplateUnavailable: string;
+    createOrderWarehouseUnavailable: string;
+    createOrderTemplateLinesRequired: string;
+    createOrderTemplateItemUnavailable: string;
     failedExecuteTransformation: string;
+    completeOrderBusinessUnitUnavailable: string;
+    completeOrderPermissionLost: string;
+    completeOrderUnavailable: string;
+    completeOrderStatusChanged: string;
+    completeOrderLinesInvalid: string;
+    completeOrderLinesChanged: string;
+    completeOrderLinesDuplicate: string;
+    completeOrderQuantitiesInvalid: string;
+    completeOrderItemUnavailable: string;
+    completeOrderInsufficientStock: string;
     failedOrderAction: string;
     noReasonProvided: string;
     totalExceedsPlanned: string;
     totalLessThanPlanned: string;
     wasteReasonRequired: string;
     totalAccounted: string;
+    plannedAdditionalOutputs: string;
+    plannedAdditionalOutputsDescription: string;
+    noPlannedAdditionalOutputs: string;
+    addAdditionalOutput: string;
+    additionalOutputDialogDescription: string;
+    selectAdditionalOutputItem: string;
+    searchAdditionalOutputItems: string;
+    noAdditionalOutputItems: string;
+    additionalOutputItemsLoadError: string;
+    additionalOutputItemRequired: string;
+    quantityPerTemplate: string;
+    baseUnit: string;
+    selectItemForBaseUnit: string;
+    baseUnitIsAutomatic: string;
+    additionalOutputNotesPlaceholder: string;
+    addOutput: string;
+    removeAdditionalOutput: string;
+    primaryOutput: string;
+    additionalOutput: string;
   };
   putawayStationPage: {
     title: string;
@@ -3044,15 +3079,67 @@ export const translations: Record<Locale, TranslationKeys> = {
       warehouseRequired: "Warehouse is required",
       orderDateRequired: "Order date is required",
       plannedQuantityGreaterThanZero: "Planned quantity must be greater than 0",
-      companyIdMissing: "Company ID is missing. Please try logging in again.",
-      failedCreateTransformationOrder: "Failed to create transformation order",
-      failedExecuteTransformation: "Failed to execute transformation",
+      orderCreatedSuccessfully: "Transformation order created successfully",
+      failedCreateTransformationOrder:
+        "We couldn't create the transformation order. Please try again. If it continues, contact your administrator.",
+      createOrderBusinessUnitUnavailable:
+        "Your business unit context changed. Refresh the page and try again.",
+      createOrderPermissionLost: "You no longer have permission to create transformation orders.",
+      createOrderTemplateUnavailable:
+        "The selected template is no longer active or available. Choose another template.",
+      createOrderWarehouseUnavailable:
+        "The selected warehouse is no longer active or available. Choose another warehouse.",
+      createOrderTemplateLinesRequired:
+        "The selected template needs at least one input and one primary output. Update the template, then try again.",
+      createOrderTemplateItemUnavailable:
+        "The selected template references an inactive or deleted item or unit of measure. Reactivate or replace it in the template, then try again.",
+      failedExecuteTransformation:
+        "We couldn't complete the transformation order. Please try again. If it continues, contact your administrator.",
+      completeOrderBusinessUnitUnavailable:
+        "Your business unit context changed. Refresh the page and try again.",
+      completeOrderPermissionLost:
+        "You no longer have permission to complete transformation orders.",
+      completeOrderUnavailable: "This transformation order is no longer available.",
+      completeOrderStatusChanged:
+        "This order is no longer preparing. Refresh the page to see its current status.",
+      completeOrderLinesInvalid:
+        "The completion lines are invalid. Refresh the order and try again.",
+      completeOrderLinesChanged: "The order lines changed. Refresh the order before completing it.",
+      completeOrderLinesDuplicate:
+        "A completion line was submitted more than once. Refresh the order and try again.",
+      completeOrderQuantitiesInvalid:
+        "One or more completion quantities are invalid. Review the quantities and try again.",
+      completeOrderItemUnavailable:
+        "This order references an inactive or deleted input/output item or unit of measure. Reactivate it before completing the order. If it should remain inactive, cancel this order and create a new one from a corrected template.",
+      completeOrderInsufficientStock:
+        "There is not enough available stock for one or more input materials. Replenish or adjust the stock, then try again.",
       failedOrderAction: "Failed to process order action",
       noReasonProvided: "No reason provided",
       totalExceedsPlanned: "Total exceeds planned",
       totalLessThanPlanned: "Total less than planned",
       wasteReasonRequired: "Waste reason is required",
       totalAccounted: "Total Accounted",
+      plannedAdditionalOutputs: "Additional Outputs",
+      plannedAdditionalOutputsDescription:
+        "Define predetermined inventory items produced by this template but not shown as primary layout cuts.",
+      noPlannedAdditionalOutputs: "No additional outputs configured for this template.",
+      addAdditionalOutput: "Add Additional Output",
+      additionalOutputDialogDescription:
+        "Select an inventory item and its quantity per template execution. Its base unit is assigned automatically.",
+      selectAdditionalOutputItem: "Select an output item",
+      searchAdditionalOutputItems: "Search stock items...",
+      noAdditionalOutputItems: "No eligible stock items found.",
+      additionalOutputItemsLoadError: "Output items could not be loaded. Please try again.",
+      additionalOutputItemRequired: "Output item is required",
+      quantityPerTemplate: "Quantity per Template",
+      baseUnit: "Base Unit",
+      selectItemForBaseUnit: "Select an item",
+      baseUnitIsAutomatic: "The item's base unit is used and cannot be changed.",
+      additionalOutputNotesPlaceholder: "Optional notes for this template output...",
+      addOutput: "Add Output",
+      removeAdditionalOutput: "Remove additional output",
+      primaryOutput: "Primary",
+      additionalOutput: "Additional",
     },
     putawayStationPage: {
       title: "Putaway Station",
@@ -8687,15 +8774,55 @@ export const translations: Record<Locale, TranslationKeys> = {
       warehouseRequired: "仓库为必填项",
       orderDateRequired: "订单日期为必填项",
       plannedQuantityGreaterThanZero: "计划数量必须大于 0",
-      companyIdMissing: "缺少公司 ID。请重新登录后重试。",
-      failedCreateTransformationOrder: "创建转换订单失败",
-      failedExecuteTransformation: "执行转换失败",
+      orderCreatedSuccessfully: "转换订单创建成功",
+      failedCreateTransformationOrder: "无法创建转换订单。请重试；如果问题仍然存在，请联系管理员。",
+      createOrderBusinessUnitUnavailable: "您的业务单位上下文已更改。请刷新页面后重试。",
+      createOrderPermissionLost: "您已无权创建转换订单。",
+      createOrderTemplateUnavailable: "所选模板已停用或不可用。请选择其他模板。",
+      createOrderWarehouseUnavailable: "所选仓库已停用或不可用。请选择其他仓库。",
+      createOrderTemplateLinesRequired:
+        "所选模板至少需要一个输入和一个主要产出。请更新模板后重试。",
+      createOrderTemplateItemUnavailable:
+        "所选模板引用了已停用或已删除的物料或计量单位。请在模板中重新启用或替换后重试。",
+      failedExecuteTransformation: "无法完成转换订单。请重试；如果问题仍然存在，请联系管理员。",
+      completeOrderBusinessUnitUnavailable: "您的业务单位上下文已更改。请刷新页面后重试。",
+      completeOrderPermissionLost: "您已无权完成转换订单。",
+      completeOrderUnavailable: "此转换订单已不可用。",
+      completeOrderStatusChanged: "此订单已不再处于准备中状态。请刷新页面查看当前状态。",
+      completeOrderLinesInvalid: "完成订单所提交的明细无效。请刷新订单后重试。",
+      completeOrderLinesChanged: "订单明细已更改。请刷新订单后再完成。",
+      completeOrderLinesDuplicate: "同一完成明细被重复提交。请刷新订单后重试。",
+      completeOrderQuantitiesInvalid: "一个或多个完成数量无效。请检查数量后重试。",
+      completeOrderItemUnavailable:
+        "此订单引用了已停用或已删除的投入/产出物料或计量单位。请重新启用后再完成订单。如果该物料应保持停用，请取消此订单并使用已修正的模板创建新订单。",
+      completeOrderInsufficientStock: "一个或多个投入物料的可用库存不足。请补充或调整库存后重试。",
       failedOrderAction: "处理订单操作失败",
       noReasonProvided: "未提供原因",
       totalExceedsPlanned: "总数超过计划数量",
       totalLessThanPlanned: "总数少于计划数量",
       wasteReasonRequired: "必须填写浪费原因",
       totalAccounted: "已统计总数",
+      plannedAdditionalOutputs: "附加产出",
+      plannedAdditionalOutputsDescription:
+        "定义此模板将生产、但不会显示为主要版面切割项的预定库存物料。",
+      noPlannedAdditionalOutputs: "此模板尚未配置附加产出。",
+      addAdditionalOutput: "添加附加产出",
+      additionalOutputDialogDescription:
+        "选择库存物料及每次模板执行的数量。系统会自动使用该物料的基础单位。",
+      selectAdditionalOutputItem: "选择产出物料",
+      searchAdditionalOutputItems: "搜索库存物料...",
+      noAdditionalOutputItems: "未找到符合条件的库存物料。",
+      additionalOutputItemsLoadError: "无法加载产出物料，请重试。",
+      additionalOutputItemRequired: "必须选择产出物料",
+      quantityPerTemplate: "每次模板数量",
+      baseUnit: "基础单位",
+      selectItemForBaseUnit: "请选择物料",
+      baseUnitIsAutomatic: "系统使用物料的基础单位，且不可更改。",
+      additionalOutputNotesPlaceholder: "此模板产出的可选备注...",
+      addOutput: "添加产出",
+      removeAdditionalOutput: "删除附加产出",
+      primaryOutput: "主要产出",
+      additionalOutput: "附加产出",
     },
     putawayStationPage: {
       title: "上架工作站",

@@ -9416,6 +9416,7 @@ export type Database = {
           item_id: string
           notes: string | null
           order_id: string
+          output_origin: string
           planned_quantity: number
           produced_quantity: number | null
           sequence: number
@@ -9438,6 +9439,7 @@ export type Database = {
           item_id: string
           notes?: string | null
           order_id: string
+          output_origin?: string
           planned_quantity: number
           produced_quantity?: number | null
           sequence?: number
@@ -9460,6 +9462,7 @@ export type Database = {
           item_id?: string
           notes?: string | null
           order_id?: string
+          output_origin?: string
           planned_quantity?: number
           produced_quantity?: number | null
           sequence?: number
@@ -9652,6 +9655,74 @@ export type Database = {
           },
           {
             foreignKeyName: "transformation_orders_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transformation_template_additional_outputs: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          item_id: string
+          notes: string | null
+          quantity: number
+          sequence: number
+          template_id: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          item_id: string
+          notes?: string | null
+          quantity: number
+          sequence?: number
+          template_id: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          item_id?: string
+          notes?: string | null
+          quantity?: number
+          sequence?: number
+          template_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transformation_template_additional_outputs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transformation_template_additional_outputs_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transformation_template_additional_outputs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "transformation_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transformation_template_additional_outputs_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "users"
@@ -10953,6 +11024,16 @@ export type Database = {
         }
         Returns: string
       }
+      complete_transformation_order_transaction: {
+        Args: {
+          p_execution_date?: string
+          p_inputs: Json
+          p_notes?: string
+          p_order_id: string
+          p_outputs: Json
+        }
+        Returns: Json
+      }
       confirm_grn_with_putaway: {
         Args: {
           p_company_id: string
@@ -11133,6 +11214,19 @@ export type Database = {
           status: string
         }[]
       }
+      create_transformation_order_transaction: {
+        Args: {
+          p_notes?: string
+          p_order_date?: string
+          p_planned_date?: string
+          p_planned_quantity: number
+          p_reference_id?: string
+          p_reference_type?: string
+          p_template_id: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
       create_transformation_output_putaway: {
         Args: {
           p_business_unit_id: string
@@ -11155,6 +11249,24 @@ export type Database = {
       }
       create_transformation_template: {
         Args: {
+          p_copied_from_template_id?: string
+          p_description?: string
+          p_image_url?: string
+          p_inputs?: Json
+          p_layout?: Json
+          p_outputs?: Json
+          p_sheet_height?: number
+          p_sheet_unit?: string
+          p_sheet_width?: number
+          p_template_code: string
+          p_template_kind?: string
+          p_template_name: string
+        }
+        Returns: string
+      }
+      create_transformation_template_with_additional_outputs: {
+        Args: {
+          p_additional_outputs?: Json
           p_copied_from_template_id?: string
           p_description?: string
           p_image_url?: string
@@ -11528,6 +11640,10 @@ export type Database = {
         Args: { p_template_id: string }
         Returns: Json
       }
+      get_transformation_template_copy_source_with_additional_outputs: {
+        Args: { p_template_id: string }
+        Returns: Json
+      }
       get_user_business_units: {
         Args: never
         Returns: {
@@ -11654,6 +11770,23 @@ export type Database = {
           sr_number: string
           sr_status: string
           total_count: number
+        }[]
+      }
+      list_transformation_additional_output_items: {
+        Args: {
+          p_excluded_item_ids?: string[]
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+        }
+        Returns: {
+          id: string
+          item_code: string
+          item_name: string
+          total_count: number
+          uom_code: string
+          uom_id: string
+          uom_name: string
         }[]
       }
       list_transformation_template_copy_sources: {

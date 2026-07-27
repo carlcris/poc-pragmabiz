@@ -7,6 +7,8 @@ const uuidSchema = z
   .string()
   .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "Invalid UUID format");
 
+export const transformationOrderIdSchema = uuidSchema;
+
 // ============================================================================
 // Order Status Enum
 // ============================================================================
@@ -23,7 +25,6 @@ export const transformationOrderStatusEnum = z.enum([
 // ============================================================================
 
 export const createTransformationOrderSchema = z.object({
-  companyId: uuidSchema,
   templateId: uuidSchema,
   warehouseId: uuidSchema,
   plannedQuantity: z.number().min(0.0001, "Planned quantity must be greater than 0"),
@@ -69,10 +70,14 @@ export const executeTransformationOrderOutputSchema = z.object({
 });
 
 export const executeTransformationOrderSchema = z.object({
-  inputs: z.array(executeTransformationOrderInputSchema).min(1, "At least one input is required"),
+  inputs: z
+    .array(executeTransformationOrderInputSchema)
+    .min(1, "At least one input is required")
+    .max(100),
   outputs: z
     .array(executeTransformationOrderOutputSchema)
-    .min(1, "At least one output is required"),
+    .min(1, "At least one output is required")
+    .max(100),
   executionDate: z.string().optional(),
   notes: z.string().max(1000).optional(),
 });
