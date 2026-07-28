@@ -35,6 +35,7 @@ type ItemUnitOptionWriteError = {
 
 const ITEM_UNIT_OPTION_DUPLICATE_CONSTRAINT = "ux_item_unit_options_item_uom_qty";
 const DUPLICATE_UNIT_OPTION_ERROR = "A unit option with this unit and quantity already exists";
+const MAX_UNIT_OPTIONS_PER_ITEM = 50;
 
 const isDuplicateUnitOptionError = (error: ItemUnitOptionWriteError | null): boolean =>
   error?.code === "23505" &&
@@ -69,27 +70,55 @@ const listUnitOptions = async (
   supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"],
   itemId: string,
   companyId: string,
-  baseUomCode: string
+  baseUomCode: string,
+  activeOnly: boolean,
+  limit: number
 ) => {
-  const { data, error } = await supabase
+  let query = supabase
     .from("item_unit_options")
-    .select(ITEM_UNIT_OPTION_SELECT)
+    .select(ITEM_UNIT_OPTION_SELECT, { count: "exact" })
     .eq("company_id", companyId)
     .eq("item_id", itemId)
     .is("deleted_at", null);
 
+  if (activeOnly) {
+    query = query.eq("is_active", true);
+  }
+
+  const { data, error, count } = await query
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
+    .limit(limit);
+
   if (error) throw error;
 
-  return sortItemUnitOptions(
-    ((data || []) as DbItemUnitOptionRow[]).map((row) =>
-      transformItemUnitOptionRow(row, baseUomCode)
-    )
-  );
+  return {
+    data: sortItemUnitOptions(
+      ((data || []) as DbItemUnitOptionRow[]).map((row) =>
+        transformItemUnitOptionRow(row, baseUomCode)
+      )
+    ),
+    total: count || 0,
+  };
 };
 
 async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: itemId } = await params;
+    const rawLimit = request.nextUrl.searchParams.get("limit");
+    const limit = rawLimit === null ? MAX_UNIT_OPTIONS_PER_ITEM : Number(rawLimit);
+    if (!Number.isInteger(limit) || limit < 1 || limit > MAX_UNIT_OPTIONS_PER_ITEM) {
+      return NextResponse.json(
+        { error: `limit must be an integer from 1 to ${MAX_UNIT_OPTIONS_PER_ITEM}` },
+        { status: 400 }
+      );
+    }
+    const rawActiveOnly = request.nextUrl.searchParams.get("activeOnly");
+    if (rawActiveOnly !== null && rawActiveOnly !== "true" && rawActiveOnly !== "false") {
+      return NextResponse.json({ error: "activeOnly must be true or false" }, { status: 400 });
+    }
+    const activeOnly = rawActiveOnly === "true";
     const { supabase } = await createServerClientWithBU();
     const {
       data: { user },
@@ -118,8 +147,15 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       .is("deleted_at", null)
       .maybeSingle();
 
-    const unitOptions = await listUnitOptions(supabase, itemId, companyId, baseUom?.code || "");
-    return NextResponse.json({ data: unitOptions, total: unitOptions.length });
+    const unitOptions = await listUnitOptions(
+      supabase,
+      itemId,
+      companyId,
+      baseUom?.code || "",
+      activeOnly,
+      limit
+    );
+    return NextResponse.json(unitOptions);
   } catch (error) {
     console.error("Error fetching item unit options:", error);
     return NextResponse.json({ error: "Failed to fetch item unit options" }, { status: 500 });

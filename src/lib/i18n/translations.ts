@@ -2600,10 +2600,23 @@ export type TranslationKeys = {
     updateAction: string;
     createAction: string;
     lineItemRequired: string;
+    duplicateBatchLine: string;
     stockAdjustmentLabel: string;
     printBatchMissing: string;
     printBatchSuccess: string;
     printBatchError: string;
+    batchPrintDialogTitle: string;
+    batchPrintDialogDescription: string;
+    batchLabelCount: string;
+    batchLabelCountHelp: string;
+    invalidBatchLabelCount: string;
+    printBatchLabels: string;
+    printingBatchLabels: string;
+    batchPrintUnit: string;
+    selectBatchPrintUnit: string;
+    batchPrintUnitHelp: string;
+    batchPrintUnitLoadError: string;
+    batchPrintUnitUnavailable: string;
   };
   stockAdjustmentValidation: {
     adjustmentDateRequired: string;
@@ -2621,6 +2634,10 @@ export type TranslationKeys = {
     itemLabel: string;
     chooseItem: string;
     searchByCodeOrName: string;
+    batchEntryModeLabel: string;
+    existingBatchMode: string;
+    newBatchMode: string;
+    newBatchLocationRequired: string;
     batchLabel: string;
     chooseBatch: string;
     chooseItemBeforeBatch: string;
@@ -2630,6 +2647,7 @@ export type TranslationKeys = {
     manualBatchCodeLabel: string;
     manualBatchCodePlaceholder: string;
     manualBatchCodeHint: string;
+    newBatchIncreaseOnlyHint: string;
     batchOptionMeta: string;
     unassignedLocation: string;
     currentStockOnHand: string;
@@ -2659,6 +2677,10 @@ export type TranslationKeys = {
     currentQtyMin: string;
     adjustedQtyMin: string;
     unitCostMin: string;
+    newBatchIncreaseOnly: string;
+    newBatchPositiveQuantity: string;
+    batchAlreadyExistsAtLocation: string;
+    batchAvailabilityCheckFailed: string;
   };
   deliveryNotesPage: Record<string, string>;
   deliveryNoteDetailPage: Record<string, string>;
@@ -5678,10 +5700,26 @@ export const translations: Record<Locale, TranslationKeys> = {
       updateAction: "Update Adjustment",
       createAction: "Create Adjustment",
       lineItemRequired: "Please add at least one line item",
+      duplicateBatchLine:
+        "This item and batch are already included. Edit the existing line instead.",
       stockAdjustmentLabel: "Stock Adjustment",
-      printBatchMissing: "Select a batch before printing a QR label.",
-      printBatchSuccess: "Batch QR label opened for printing.",
-      printBatchError: "Failed to print batch QR label",
+      printBatchMissing: "Save the adjustment before printing labels for a new batch.",
+      printBatchSuccess: "{count} batch QR labels opened for printing.",
+      printBatchError: "Failed to print batch QR labels.",
+      batchPrintDialogTitle: "Print Batch QR Labels",
+      batchPrintDialogDescription:
+        "Print labels for batch {batch}, with an adjusted quantity of {quantity}.",
+      batchLabelCount: "Number of labels",
+      batchLabelCountHelp: "Enter a whole number from 1 to {max}.",
+      invalidBatchLabelCount: "Enter a whole-number label count from 1 to {max}.",
+      printBatchLabels: "Print Labels",
+      printingBatchLabels: "Printing...",
+      batchPrintUnit: "Unit",
+      selectBatchPrintUnit: "Select a unit",
+      batchPrintUnitHelp:
+        "Each label's Qty uses the selected unit's Qty / Unit. The adjusted quantity is not divided.",
+      batchPrintUnitLoadError: "Unit options could not be loaded. Try again before printing.",
+      batchPrintUnitUnavailable: "This item has no active unit option available for printing.",
     },
     stockAdjustmentValidation: {
       adjustmentDateRequired: "Adjustment date is required",
@@ -5699,6 +5737,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemLabel: "Inventory Item",
       chooseItem: "Choose an item to adjust",
       searchByCodeOrName: "Search by code or name...",
+      batchEntryModeLabel: "Batch Source",
+      existingBatchMode: "Existing Batch",
+      newBatchMode: "Create New Batch",
+      newBatchLocationRequired: "Select an adjustment location before creating a new batch.",
       batchLabel: "Batch",
       chooseBatch: "Choose a batch to adjust",
       chooseItemBeforeBatch: "Choose an item first",
@@ -5708,7 +5750,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       manualBatchCodeLabel: "New Batch Code",
       manualBatchCodePlaceholder: "Enter batch code",
       manualBatchCodeHint:
-        "No batch/location exists yet. This batch will be created at the selected adjustment location when saved.",
+        "This batch will be created at the selected adjustment location when the draft is saved.",
+      newBatchIncreaseOnlyHint: "A new batch starts at zero and can only increase stock.",
       batchOptionMeta: "{qty} units at {location}",
       unassignedLocation: "Unassigned location",
       currentStockOnHand: "Current Stock on Hand",
@@ -5738,6 +5781,12 @@ export const translations: Record<Locale, TranslationKeys> = {
       currentQtyMin: "Current quantity cannot be negative",
       adjustedQtyMin: "Adjusted quantity cannot be negative",
       unitCostMin: "Unit cost cannot be negative",
+      newBatchIncreaseOnly: "A new batch can only increase stock",
+      newBatchPositiveQuantity: "Enter a quantity greater than zero for the new batch",
+      batchAlreadyExistsAtLocation:
+        "This batch already exists at the selected location. Use Existing Batch instead.",
+      batchAvailabilityCheckFailed:
+        "The batch code could not be verified. Check your connection or change the code to retry.",
     },
     deliveryNotesPage: {
       title: "Delivery Notes",
@@ -11319,10 +11368,23 @@ export const translations: Record<Locale, TranslationKeys> = {
       updateAction: "更新调整",
       createAction: "创建调整",
       lineItemRequired: "请至少添加一条明细项目",
+      duplicateBatchLine: "该商品和批次已包含在调整中，请改为编辑现有明细。",
       stockAdjustmentLabel: "库存调整",
-      printBatchMissing: "打印二维码标签前请选择批次。",
-      printBatchSuccess: "批次二维码标签已打开，可进行打印。",
-      printBatchError: "打印批次二维码标签失败",
+      printBatchMissing: "请先保存库存调整，再打印新批次标签。",
+      printBatchSuccess: "已打开 {count} 个批次二维码标签，可进行打印。",
+      printBatchError: "打印批次二维码标签失败。",
+      batchPrintDialogTitle: "打印批次二维码标签",
+      batchPrintDialogDescription: "为批次 {batch} 打印标签，调整后数量为 {quantity}。",
+      batchLabelCount: "标签数量",
+      batchLabelCountHelp: "请输入 1 到 {max} 之间的整数。",
+      invalidBatchLabelCount: "请输入 1 到 {max} 之间的整数标签数量。",
+      printBatchLabels: "打印标签",
+      printingBatchLabels: "正在打印...",
+      batchPrintUnit: "单位",
+      selectBatchPrintUnit: "选择单位",
+      batchPrintUnitHelp: "每个标签的数量采用所选单位的每单位数量，不会拆分调整后数量。",
+      batchPrintUnitLoadError: "无法加载单位选项，请重试后再打印。",
+      batchPrintUnitUnavailable: "该商品没有可用于打印的启用单位选项。",
     },
     stockAdjustmentValidation: {
       adjustmentDateRequired: "调整日期为必填项",
@@ -11340,6 +11402,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemLabel: "库存商品",
       chooseItem: "选择要调整的商品",
       searchByCodeOrName: "按编码或名称搜索...",
+      batchEntryModeLabel: "批次来源",
+      existingBatchMode: "现有批次",
+      newBatchMode: "创建新批次",
+      newBatchLocationRequired: "创建新批次前，请先选择调整库位。",
       batchLabel: "批次",
       chooseBatch: "选择要调整的批次",
       chooseItemBeforeBatch: "请先选择商品",
@@ -11348,7 +11414,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       loadingBatches: "正在加载批次...",
       manualBatchCodeLabel: "新批次编码",
       manualBatchCodePlaceholder: "输入批次编码",
-      manualBatchCodeHint: "尚无批次/库位记录。保存时将在所选调整库位创建此批次。",
+      manualBatchCodeHint: "保存草稿时，将在所选调整库位创建此批次。",
+      newBatchIncreaseOnlyHint: "新批次的初始库存为零，只能增加库存。",
       batchOptionMeta: "{location} 的 {qty} 单位",
       unassignedLocation: "未分配库位",
       currentStockOnHand: "当前现有库存",
@@ -11378,6 +11445,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       currentQtyMin: "当前数量不能为负数",
       adjustedQtyMin: "调整后数量不能为负数",
       unitCostMin: "单位成本不能为负数",
+      newBatchIncreaseOnly: "新批次只能增加库存",
+      newBatchPositiveQuantity: "请输入大于零的新批次数量",
+      batchAlreadyExistsAtLocation: "该批次已存在于所选库位，请改用“现有批次”。",
+      batchAvailabilityCheckFailed: "无法验证批次编码。请检查网络连接，或修改编码后重试。",
     },
     deliveryNotesPage: {
       title: "送货单",

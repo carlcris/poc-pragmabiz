@@ -73,6 +73,7 @@ async function GETHandler(request: NextRequest) {
     const warehouseId = searchParams.get("warehouseId");
     const locationId = searchParams.get("locationId");
     const search = searchParams.get("search")?.trim();
+    const exactBatchCode = searchParams.get("exactBatchCode")?.trim();
     const limit = parseLimit(searchParams.get("limit"));
 
     if (!itemId || !UUID_REGEX.test(itemId)) {
@@ -87,8 +88,31 @@ async function GETHandler(request: NextRequest) {
       return NextResponse.json({ error: "Invalid locationId" }, { status: 400 });
     }
 
-    const matchingBatchIds =
-      search && search.length > 0
+    if (exactBatchCode && exactBatchCode.length > 150) {
+      return NextResponse.json(
+        { error: "Batch code cannot exceed 150 characters" },
+        { status: 400 }
+      );
+    }
+
+    if (search && exactBatchCode) {
+      return NextResponse.json(
+        { error: "Use either search or exactBatchCode, not both" },
+        { status: 400 }
+      );
+    }
+
+    const matchingBatchIds = exactBatchCode
+      ? await supabase
+          .from("item_batches")
+          .select("id")
+          .eq("company_id", companyId)
+          .eq("item_id", itemId)
+          .eq("warehouse_id", warehouseId)
+          .eq("batch_code", exactBatchCode)
+          .is("deleted_at", null)
+          .limit(1)
+      : search && search.length > 0
         ? await supabase
             .from("item_batches")
             .select("id")
@@ -98,9 +122,18 @@ async function GETHandler(request: NextRequest) {
             .ilike("batch_code", `%${search.replace(/[,%]/g, " ")}%`)
             .is("deleted_at", null)
             .limit(MAX_LIMIT)
-        : { data: [] };
+        : { data: [], error: null };
+
+    if (matchingBatchIds.error) {
+      console.error("Error loading matching item batches:", matchingBatchIds.error);
+      return NextResponse.json({ error: "Failed to load item batches" }, { status: 500 });
+    }
 
     const batchIds = ((matchingBatchIds.data || []) as Array<{ id: string }>).map((row) => row.id);
+
+    if (exactBatchCode && batchIds.length === 0) {
+      return NextResponse.json({ data: [] });
+    }
 
     let query = supabase
       .from("item_batch_locations")
@@ -138,7 +171,9 @@ async function GETHandler(request: NextRequest) {
       query = query.eq("location_id", locationId);
     }
 
-    if (search) {
+    if (exactBatchCode) {
+      query = query.in("item_batch_id", batchIds).limit(1);
+    } else if (search) {
       const normalized = search.replace(/[,%]/g, " ");
       const filters = [`batch_location_sku.ilike.%${normalized}%`];
       if (batchIds.length > 0) {

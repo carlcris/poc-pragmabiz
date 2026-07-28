@@ -22,9 +22,29 @@ export type UpdateItemUnitOptionRequest = {
   isActive?: boolean;
 };
 
+export type ItemUnitOptionsQuery = {
+  activeOnly?: boolean;
+  limit?: number;
+};
+
 export const itemUnitOptionsApi = {
-  getItemUnitOptions: async (itemId: string): Promise<ItemUnitOptionsResponse> =>
-    apiClient.get<ItemUnitOptionsResponse>(`/api/items/${itemId}/unit-options`),
+  getItemUnitOptions: async (
+    itemId: string,
+    query?: ItemUnitOptionsQuery
+  ): Promise<ItemUnitOptionsResponse> => {
+    const searchParams = new URLSearchParams();
+    if (query?.activeOnly !== undefined) {
+      searchParams.set("activeOnly", String(query.activeOnly));
+    }
+    if (query?.limit !== undefined) {
+      searchParams.set("limit", String(query.limit));
+    }
+
+    const queryString = searchParams.toString();
+    return apiClient.get<ItemUnitOptionsResponse>(
+      `/api/items/${itemId}/unit-options${queryString ? `?${queryString}` : ""}`
+    );
+  },
 
   createItemUnitOption: async (
     itemId: string,

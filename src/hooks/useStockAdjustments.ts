@@ -54,6 +54,7 @@ export function useCreateStockAdjustment() {
     mutationFn: (data: CreateStockAdjustmentRequest) => stockAdjustmentsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY] });
       toast.success("Stock adjustment created successfully");
     },
     onError: (error: unknown) => {
@@ -73,6 +74,7 @@ export function useUpdateStockAdjustment() {
       stockAdjustmentsApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY] });
       toast.success("Stock adjustment updated successfully");
     },
     onError: (error: unknown) => {

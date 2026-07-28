@@ -11,7 +11,8 @@ import { toast } from "sonner";
 import type { StockAdjustment } from "@/types/stock-adjustment";
 import type { WarehouseLocation } from "@/types/inventory-location";
 import { apiClient } from "@/lib/api";
-import { printBarcodeLabels, type BarcodeData } from "@/lib/barcode";
+import type { BarcodeData } from "@/lib/barcode";
+import { StockAdjustmentBatchPrintDialog } from "@/components/stock-adjustments/StockAdjustmentBatchPrintDialog";
 import {
   StockAdjustmentLineItemDialog,
   type StockAdjustmentLineItemFormValues,
@@ -107,6 +108,7 @@ export function StockAdjustmentFormDialog({
     index: number;
     item: StockAdjustmentLineItemFormValues;
   } | null>(null);
+  const [batchLabelToPrint, setBatchLabelToPrint] = useState<BarcodeData | null>(null);
 
   const adjustmentFormSchema = createAdjustmentFormSchema((key) => tValidation(key));
   const form = useForm<StockAdjustmentFormValues>({
@@ -143,6 +145,7 @@ export function StockAdjustmentFormDialog({
       const formLineItems: StockAdjustmentLineItemFormValues[] = selectedAdjustment.items.map(
         (item) => ({
           itemId: item.itemId,
+          batchEntryMode: item.itemBatchLocationId ? "existing" : "new",
           itemBatchLocationId: item.itemBatchLocationId || "",
           batchLocationSku: item.batchLocationSku || "",
           batchCode: item.batchCode || "",
@@ -221,20 +224,41 @@ export function StockAdjustmentFormDialog({
   };
 
   const handleSaveItem = (item: StockAdjustmentLineItemFormValues) => {
+    const duplicateLine = lineItems.some((existingItem, index) => {
+      if (editingItem?.index === index || existingItem.itemId !== item.itemId) {
+        return false;
+      }
+
+      if (existingItem.itemBatchLocationId && item.itemBatchLocationId) {
+        return existingItem.itemBatchLocationId === item.itemBatchLocationId;
+      }
+
+      const existingBatchCode = existingItem.batchCode?.trim();
+      const batchCode = item.batchCode?.trim();
+      return Boolean(existingBatchCode && batchCode && existingBatchCode === batchCode);
+    });
+
+    if (duplicateLine) {
+      toast.error(t("duplicateBatchLine"));
+      return false;
+    }
+
     if (editingItem !== null) {
       setLineItems((items) => items.map((it, i) => (i === editingItem.index ? item : it)));
-      return;
+      return true;
     }
+
     setLineItems((items) => [...items, item]);
+    return true;
   };
 
-  const handlePrintBatchLabel = async (item: StockAdjustmentLineItemFormValues) => {
+  const handlePrintBatchLabel = (item: StockAdjustmentLineItemFormValues) => {
     if (!item.itemBatchLocationId || !item.batchLocationSku) {
       toast.error(t("printBatchMissing"));
       return;
     }
 
-    const barcodeData: BarcodeData = {
+    setBatchLabelToPrint({
       boxId: item.itemBatchLocationId,
       itemId: item.itemId,
       batchLocationSku: item.batchLocationSku,
@@ -248,14 +272,7 @@ export function StockAdjustmentFormDialog({
       warehouseCode: effectiveWarehouse?.code || undefined,
       locationId: item.batchWarehouseLocationId || null,
       locationCode: item.batchLocationCode || undefined,
-    };
-
-    try {
-      await printBarcodeLabels([barcodeData]);
-      toast.success(t("printBatchSuccess"));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("printBatchError"));
-    }
+    });
   };
 
   const handleSubmit = async (values: StockAdjustmentFormValues) => {
@@ -458,7 +475,7 @@ export function StockAdjustmentFormDialog({
                             <TableHead className="text-right">{t("difference")}</TableHead>
                             <TableHead className="text-right">{t("unitCost")}</TableHead>
                             <TableHead className="text-right">{t("totalValue")}</TableHead>
-                            <TableHead className="w-[100px]">{t("actions")}</TableHead>
+                            <TableHead className="w-24">{t("actions")}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -542,7 +559,8 @@ export function StockAdjustmentFormDialog({
                                       type="button"
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => void handlePrintBatchLabel(item)}
+                                      aria-label={t("printBatchLabels")}
+                                      onClick={() => handlePrintBatchLabel(item)}
                                     >
                                       <Printer className="h-4 w-4" />
                                     </Button>
@@ -611,6 +629,15 @@ export function StockAdjustmentFormDialog({
           </Form>
         </DialogContent>
       </Dialog>
+
+      <StockAdjustmentBatchPrintDialog
+        label={batchLabelToPrint}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBatchLabelToPrint(null);
+          }
+        }}
+      />
 
       {itemDialogOpen && (
         <StockAdjustmentLineItemDialog

@@ -84,6 +84,7 @@ import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { BarcodeData } from "@/lib/barcode";
 import type { StockAdjustmentFormSubmitPayload } from "@/components/stock-adjustments/StockAdjustmentFormDialog";
+import { StockAdjustmentBatchPrintDialog } from "@/components/stock-adjustments/StockAdjustmentBatchPrintDialog";
 
 const StockAdjustmentFormDialog = dynamic(
   () =>
@@ -112,6 +113,7 @@ export default function StockAdjustmentsPage() {
   const [adjustmentToPost, setAdjustmentToPost] = useState<StockAdjustment | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [adjustmentToView, setAdjustmentToView] = useState<StockAdjustment | null>(null);
+  const [batchLabelToPrint, setBatchLabelToPrint] = useState<BarcodeData | null>(null);
 
   const user = useAuthStore((state) => state.user);
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
@@ -227,10 +229,7 @@ export default function StockAdjustmentsPage() {
     setDetailsOpen(true);
   };
 
-  const handlePrintBatchLabel = async (
-    adjustment: StockAdjustment,
-    item: StockAdjustmentItem
-  ) => {
+  const handlePrintBatchLabel = (adjustment: StockAdjustment, item: StockAdjustmentItem) => {
     if (!item.itemBatchLocationId || !item.batchLocationSku) {
       toast.error(tForm("printBatchMissing"));
       return;
@@ -239,7 +238,7 @@ export default function StockAdjustmentsPage() {
     const selectedWarehouse = warehouses.find(
       (warehouse) => warehouse.id === adjustment.warehouseId
     );
-    const barcodeData: BarcodeData = {
+    setBatchLabelToPrint({
       boxId: item.itemBatchLocationId,
       itemId: item.itemId,
       batchLocationSku: item.batchLocationSku,
@@ -253,15 +252,7 @@ export default function StockAdjustmentsPage() {
       warehouseCode: selectedWarehouse?.code || undefined,
       locationId: item.batchWarehouseLocationId || null,
       locationCode: item.batchLocationCode || undefined,
-    };
-
-    try {
-      const { printBarcodeLabels } = await import("@/lib/barcode");
-      await printBarcodeLabels([barcodeData]);
-      toast.success(tForm("printBatchSuccess"));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : tForm("printBatchError"));
-    }
+    });
   };
 
   const handleDeleteAdjustment = (adjustment: StockAdjustment) => {
@@ -291,32 +282,30 @@ export default function StockAdjustmentsPage() {
   };
 
   const handleSaveAdjustment = async (payload: StockAdjustmentFormSubmitPayload) => {
-    try {
-      const warehouseId = payload.selectedAdjustment?.warehouseId || currentWarehouse?.id || "";
-      const submitData = {
-        ...payload.values,
-        companyId,
-        warehouseId,
-        items: payload.lineItems.map((item) => ({
-          itemId: item.itemId,
-          itemBatchLocationId: item.itemBatchLocationId,
-          batchCode: item.batchCode,
-          currentQty: item.currentQty,
-          adjustedQty: item.adjustedQty,
-          unitCost: item.unitCost,
-          uomId: item.uomId,
-        })),
-      };
+    const warehouseId = payload.selectedAdjustment?.warehouseId || currentWarehouse?.id || "";
+    const submitData = {
+      ...payload.values,
+      companyId,
+      warehouseId,
+      items: payload.lineItems.map((item) => ({
+        itemId: item.itemId,
+        itemBatchLocationId: item.itemBatchLocationId,
+        batchCode: item.batchCode,
+        currentQty: item.currentQty,
+        adjustedQty: item.adjustedQty,
+        unitCost: item.unitCost,
+        uomId: item.uomId,
+      })),
+    };
 
-      if (payload.selectedAdjustment) {
-        await updateMutation.mutateAsync({
-          id: payload.selectedAdjustment.id,
-          data: submitData,
-        });
-      } else {
-        await createMutation.mutateAsync(submitData);
-      }
-    } catch {}
+    if (payload.selectedAdjustment) {
+      await updateMutation.mutateAsync({
+        id: payload.selectedAdjustment.id,
+        data: submitData,
+      });
+    } else {
+      await createMutation.mutateAsync(submitData);
+    }
   };
 
   const handleStatusFilterChange = (value: string) => {
@@ -729,7 +718,7 @@ export default function StockAdjustmentsPage() {
                           <TableHead className="text-right">{t("difference")}</TableHead>
                           <TableHead className="text-right">{t("unitCost")}</TableHead>
                           <TableHead className="text-right">{t("totalValue")}</TableHead>
-                          <TableHead className="w-[100px]">{t("actions")}</TableHead>
+                          <TableHead className="w-24">{t("actions")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -786,7 +775,7 @@ export default function StockAdjustmentsPage() {
                                 variant="ghost"
                                 size="sm"
                                 aria-label={tCommon("print")}
-                                onClick={() => void handlePrintBatchLabel(adjustmentToView, item)}
+                                onClick={() => handlePrintBatchLabel(adjustmentToView, item)}
                               >
                                 <Printer className="h-4 w-4" />
                               </Button>
@@ -807,6 +796,15 @@ export default function StockAdjustmentsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <StockAdjustmentBatchPrintDialog
+          label={batchLabelToPrint}
+          onOpenChange={(open) => {
+            if (!open) {
+              setBatchLabelToPrint(null);
+            }
+          }}
+        />
 
         {/* Delete Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

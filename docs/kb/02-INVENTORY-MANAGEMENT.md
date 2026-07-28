@@ -736,7 +736,9 @@ Create stock adjustment (draft) for the current business unit. The UI shows the 
 }
 ```
 
-Each adjustment line normally selects an `item_batch_locations` row. The selector is server-filtered by item, the current business unit warehouse, optional location, and batch/QR search text. The selected batch-location row supplies the current quantity and QR label metadata. If no batch-location row exists for the selected item/location, the user can enter a new batch code; saving the draft creates a zero-quantity `item_batches` and `item_batch_locations` record for the current business unit warehouse/location inside the same database transaction as the adjustment header and lines. If any part of the save fails, no manual batch, batch-location, header, or line write remains committed.
+Each adjustment line explicitly chooses **Existing Batch** or **Create New Batch**. The existing-batch selector is server-filtered by item, the current business unit warehouse, optional location, and batch/QR search text. The selected batch-location row supplies the current quantity and QR label metadata.
+
+Creating a new batch requires an adjustment location, a batch code, and a positive stock increase. New batches start at zero, so stock removal is unavailable in this mode. The form checks whether the same batch already exists at the selected location and directs the user to the existing-batch path when it does. Saving the draft creates or reuses the `item_batches` row and creates its missing `item_batch_locations` row for the current business unit warehouse/location inside the same database transaction as the adjustment header and lines. If any part of the save fails, no manual batch, batch-location, header, or line write remains committed.
 
 #### POST /api/stock-adjustments/[id]/post
 Post stock adjustment (apply to inventory).
@@ -751,7 +753,7 @@ Post stock adjustment (apply to inventory).
 5. Marks adjustment as posted
 6. Records posting user and timestamp
 
-Stock adjustment lines can reprint a batch QR label using the same QR payload and PDF label generator as GRN box labels. The printed label uses the selected batch code, batch-location SKU, item details, adjusted quantity, warehouse, and location metadata.
+Stock adjustment lines can reprint 1–100 batch QR labels using the same QR payload and PDF label generator as GRN box labels. The user selects an active item unit option, and each printed copy uses that option's `qtyPerUnit` together with the selected batch code, batch-location SKU, item details, warehouse, and location metadata. The adjusted quantity is informational and is not divided across the labels.
 
 ### Stock Transfers
 
@@ -981,7 +983,7 @@ class LocationService {
 3. Adds lines by selecting an item and the exact batch-location row being counted, or enters a new batch code when no initial batch-location exists
 4. Enters the adjustment quantity
 5. System calculates the new batch quantity and variance
-6. User can reprint a QR label for the selected batch-location row
+6. User can choose an active item unit option and a whole-number copy count from 1–100, then reprint QR labels for the selected batch-location row
 7. User reviews variances
 8. Posts adjustment
 9. System creates stock transactions
@@ -1041,11 +1043,11 @@ class LocationService {
 - Stock valuation summary
 
 #### StockAdjustmentForm
-**Location**: `src/components/inventory/StockAdjustmentForm.tsx`
+**Location**: `src/components/stock-adjustments/StockAdjustmentFormDialog.tsx`
 - Create stock adjustment
-- Add adjustment lines with required batch-location selection
+- Add adjustment lines using an existing batch-location or a new batch code at the selected location
 - View adjustment header and line-item details from the stock adjustments list
-- Reprint selected batch QR labels from editable lines or the read-only details view
+- Reprint 1–100 selected batch QR labels from editable lines or the read-only details view
 - Show variance calculations
 - Post adjustment workflow
 

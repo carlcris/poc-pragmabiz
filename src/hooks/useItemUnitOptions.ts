@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   itemUnitOptionsApi,
   type CreateItemUnitOptionRequest,
+  type ItemUnitOptionsQuery,
   type UpdateItemUnitOptionRequest,
 } from "@/lib/api/item-unit-options";
 
@@ -14,10 +15,10 @@ const invalidateItemQueries = (queryClient: ReturnType<typeof useQueryClient>, i
   queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY] });
 };
 
-export const useItemUnitOptions = (itemId: string) =>
+export const useItemUnitOptions = (itemId: string, query?: ItemUnitOptionsQuery) =>
   useQuery({
-    queryKey: [ITEM_UNIT_OPTIONS_QUERY_KEY, itemId],
-    queryFn: () => itemUnitOptionsApi.getItemUnitOptions(itemId),
+    queryKey: [ITEM_UNIT_OPTIONS_QUERY_KEY, itemId, query],
+    queryFn: () => itemUnitOptionsApi.getItemUnitOptions(itemId, query),
     enabled: !!itemId,
   });
 

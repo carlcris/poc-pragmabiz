@@ -589,6 +589,8 @@ These are the records everything else in the app is built on. Before testing any
 1. **Create** → status Draft. Freely editable.
 2. **Post** → records a stock movement, updates stock levels and the stock ledger, then changes the status to Posted. It does not create an accounting journal or General Ledger entry. This directly changes on-hand inventory — there is no approval step in between today.
 
+For each line, choose either **Existing Batch** or **Create New Batch**. Creating a new batch requires a selected adjustment location, a unique batch code at that location, and a positive stock increase. Saving the draft creates the zero-quantity batch/location identity transactionally; posting applies the entered increase to inventory.
+
 **Who can do it**: edit access to Stock Adjustments (posting uses the same permission as editing).
 
 **Things to test**:
@@ -596,6 +598,9 @@ These are the records everything else in the app is built on. Before testing any
 - Confirm Post only ever appears as an option while status is Draft.
 - **Do not test for an approval step.** Pending, Approved, and Rejected exist as filter options and as designed stages, but there is no button anywhere in the app that sets them. If you find a status filter for "Pending Approval" and can't get a record into that state, this is why — flag it to the product team as a design-vs-implementation gap, not a bug you need to chase.
 - Confirm posting correctly updates the item's on-hand quantity by exactly the adjusted amount, and that a corresponding stock transaction appears in the stock ledger.
+- With other batches already present, create a different batch code and confirm the draft creates its batch/location identity and Post applies the increase.
+- Try creating a batch without a location, with zero quantity, with Decrease Stock, and with a code already present at the selected location; each case should remain in the form with actionable guidance.
+- From both an editable adjustment and its read-only details view, print multiple QR labels for a persisted batch. Confirm the dialog defaults to the item's default unit (then base, then first active option), accepts another active unit selection, accepts only whole-number copy counts from 1–100, and produces exactly that many labels with the selected unit's `qtyPerUnit` and the same batch-location SKU.
 
 ---
 
