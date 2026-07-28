@@ -16,7 +16,7 @@ import {
   Printer,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useStockRequisitions,
   useDeleteStockRequisition,
@@ -77,6 +77,7 @@ export default function StockRequisitionsPage() {
   const t = useTranslations("stockRequisitionsPage");
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -116,6 +117,14 @@ export default function StockRequisitionsPage() {
 
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "1") return;
+
+    setSelectedSR(null);
+    setDialogOpen(true);
+    router.replace("/purchasing/stock-requisitions");
+  }, [router, searchParams]);
 
   const formatDate = (value?: string | null) => {
     if (!value) return t("noValue");

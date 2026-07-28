@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
   Plus,
@@ -104,6 +105,8 @@ export default function StockRequestsPage() {
   const t = useTranslations("stockRequestsPage");
   const tCommon = useTranslations("common");
   const locale = useLocale();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -279,6 +282,14 @@ export default function StockRequestsPage() {
 
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
+
+  useEffect(() => {
+    if (searchParams.get("create") !== "1") return;
+
+    setSelectedRequest(null);
+    setDialogOpen(true);
+    router.replace("/inventory/stock-requests");
+  }, [router, searchParams]);
 
   const handleCreateRequest = () => {
     setSelectedRequest(null);

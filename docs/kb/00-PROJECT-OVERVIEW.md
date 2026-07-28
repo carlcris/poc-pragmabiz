@@ -115,6 +115,15 @@ Real-time dashboards, inventory reports, sales analytics, purchasing analytics, 
 Mobile app for warehouse operations and POS transactions.
 **See**: `docs/kb/08-POS-MOBILE.md`
 
+## Desktop Quick Actions
+
+The protected desktop dashboard shell includes a compact quick-action rail on the right side of the
+screen. It provides direct creation entry points for items, stock requisitions, stock requests,
+quotations, and sales orders without displacing the primary module navigation. The rail is hidden on
+smaller screens, omits actions when the current user lacks the corresponding resource view or create
+permission, and opens list-owned creation dialogs directly where a dedicated creation page does not
+exist.
+
 ## Project Structure
 
 ```

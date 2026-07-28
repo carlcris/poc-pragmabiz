@@ -450,7 +450,9 @@ These are the records everything else in the app is built on. Before testing any
 
 > Naming note: this is different from "Stock Requisitions" (section 17b), which is a request to purchase from a supplier. Don't mix them up when writing tickets.
 
-**How a record starts**: click **New** on the Stock Requests list page. Fill in the item(s), quantities, source warehouse, and destination.
+**How a record starts**: click **New** on the Stock Requests list page, or use **New stock request**
+from the desktop quick-action rail. Both paths open the same creation form. Fill in the item(s),
+quantities, source warehouse, and destination.
 
 **Stages**: Draft → Submitted → Approved → Picking → Picked → Delivered → Received → Completed, or Cancelled / Rejected along the way.
 
@@ -639,7 +641,8 @@ For each line, choose either **Existing Batch** or **Create New Batch**. Creatin
 
 **What it's for**: a purchasing-side request to source specific items — the internal ask that eventually gets fulfilled by a supplier shipment (Load List). Not to be confused with "Stock Requests" (section 12), which is a warehouse-to-warehouse transfer.
 
-**How a record starts**: click **New** on the Stock Requisitions list.
+**How a record starts**: click **New** on the Stock Requisitions list, or use **New stock
+requisition** from the desktop quick-action rail. Both paths open the same creation form.
 
 **Stages**: Draft → Submitted → Partially Fulfilled → Fulfilled, or Cancelled.
 
@@ -1041,6 +1044,11 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 
 - Log in as users with different roles and confirm each only sees the summary widgets their permissions actually allow, rather than either seeing everything or seeing a broken/empty dashboard.
 - Confirm the numbers shown (open stock requests, active pick lists, etc.) match what you can independently count from those modules' own list screens.
+- On a desktop viewport, confirm the right-side quick-action rail shows only creation shortcuts for
+  resources where the user has both view and create permission. Confirm each visible icon has a
+  translated hover/focus label and opens its creation page or dialog directly.
+- Confirm the quick-action rail is absent on smaller viewports and on the manufacturing floor's
+  fullscreen mode.
 
 ---
 

@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { usePermissionStore } from "@/stores/permissionStore";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { QuickActionSidebar } from "@/components/layout/QuickActionSidebar";
 import { NavigationActivityLogger } from "@/components/activity-logging/NavigationActivityLogger";
 import { BusinessUnitProvider } from "@/components/business-unit/BusinessUnitProvider";
 import { useLoadPermissions } from "@/hooks/usePermissions";
@@ -87,14 +88,19 @@ export function DashboardShell({
           )}
         >
           {!isManufacturingFloorFullscreen ? <Header /> : null}
-          <main
-            className={cn(
-              "min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background",
-              isManufacturingFloorFullscreen ? "p-0" : "p-4 sm:p-6"
-            )}
-          >
-            {children}
-          </main>
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            <main
+              className={cn(
+                "min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background",
+                isManufacturingFloorFullscreen ? "p-0" : "p-4 sm:p-6"
+              )}
+            >
+              {children}
+            </main>
+            {!isManufacturingFloorFullscreen ? (
+              <QuickActionSidebar initialPermissions={initialPermissions} />
+            ) : null}
+          </div>
         </div>
       </div>
     </BusinessUnitProvider>

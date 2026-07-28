@@ -268,6 +268,14 @@ export type TranslationKeys = {
     goToLastPage: string;
   };
   navigation: Record<string, string>;
+  quickActions: {
+    label: string;
+    addItem: string;
+    newStockRequisition: string;
+    newStockRequest: string;
+    newQuotation: string;
+    newSalesOrder: string;
+  };
   manufacturingFloorPage: {
     title: string;
     subtitle: string;
@@ -3317,6 +3325,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Stock Requisition Details": "Stock Requisition Details",
       "Load List Details": "Load List Details",
       "GRN Details": "GRN Details",
+    },
+    quickActions: {
+      label: "Quick actions",
+      addItem: "Add new item",
+      newStockRequisition: "New stock requisition",
+      newStockRequest: "New stock request",
+      newQuotation: "New quotation",
+      newSalesOrder: "New sales order",
     },
     manufacturingFloorPage: {
       title: "Production",
@@ -9031,6 +9047,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Stock Requisition Details": "库存请购详情",
       "Load List Details": "装载单详情",
       "GRN Details": "收货单详情",
+    },
+    quickActions: {
+      label: "快捷操作",
+      addItem: "新增商品",
+      newStockRequisition: "新建库存请购",
+      newStockRequest: "新建库存申请",
+      newQuotation: "新建报价单",
+      newSalesOrder: "新建销售订单",
     },
     manufacturingFloorPage: {
       title: "生产",
