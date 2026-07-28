@@ -122,7 +122,10 @@ screen. It provides direct creation entry points for items, stock requisitions, 
 quotations, and sales orders without displacing the primary module navigation. The rail is hidden on
 smaller screens, omits actions when the current user lacks the corresponding resource view or create
 permission, and opens list-owned creation dialogs directly where a dedicated creation page does not
-exist.
+exist. A separate Utilities group exposes a unit converter for length, mass, volume, and temperature.
+The converter slides in from the right as a non-modal panel, allowing the user to continue interacting
+with the current page. Users can select Imperial-only (US customary), Metric-only, Imperial-to-Metric,
+or Metric-to-Imperial conversion modes; unit choices are restricted to the selected direction.
 
 ## Project Structure
 

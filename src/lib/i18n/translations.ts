@@ -270,11 +270,58 @@ export type TranslationKeys = {
   navigation: Record<string, string>;
   quickActions: {
     label: string;
+    utilitiesLabel: string;
     addItem: string;
     newStockRequisition: string;
     newStockRequest: string;
     newQuotation: string;
     newSalesOrder: string;
+    unitConverter: string;
+  };
+  unitConverter: {
+    title: string;
+    description: string;
+    close: string;
+    conversionMode: string;
+    imperialSystem: string;
+    metricSystem: string;
+    imperialToMetric: string;
+    metricToImperial: string;
+    measurementType: string;
+    value: string;
+    valuePlaceholder: string;
+    from: string;
+    to: string;
+    swapUnits: string;
+    result: string;
+    invalidValue: string;
+    length: string;
+    mass: string;
+    volume: string;
+    temperature: string;
+    inch: string;
+    foot: string;
+    yard: string;
+    mile: string;
+    millimeter: string;
+    centimeter: string;
+    meter: string;
+    kilometer: string;
+    ounce: string;
+    pound: string;
+    gram: string;
+    kilogram: string;
+    teaspoon: string;
+    tablespoon: string;
+    fluidOunce: string;
+    cup: string;
+    pint: string;
+    quart: string;
+    gallon: string;
+    milliliter: string;
+    liter: string;
+    fahrenheit: string;
+    celsius: string;
   };
   manufacturingFloorPage: {
     title: string;
@@ -3328,11 +3375,59 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     quickActions: {
       label: "Quick actions",
+      utilitiesLabel: "Utilities",
       addItem: "Add new item",
       newStockRequisition: "New stock requisition",
       newStockRequest: "New stock request",
       newQuotation: "New quotation",
       newSalesOrder: "New sales order",
+      unitConverter: "Unit converter",
+    },
+    unitConverter: {
+      title: "Unit converter",
+      description:
+        "Convert within or between US customary and metric systems without leaving your task.",
+      close: "Close unit converter",
+      conversionMode: "Conversion mode",
+      imperialSystem: "Imperial only (US customary)",
+      metricSystem: "Metric only",
+      imperialToMetric: "Imperial → Metric",
+      metricToImperial: "Metric → Imperial",
+      measurementType: "Measurement type",
+      value: "Value",
+      valuePlaceholder: "Enter a value",
+      from: "From",
+      to: "To",
+      swapUnits: "Swap units",
+      result: "Result",
+      invalidValue: "Enter a valid number to convert.",
+      length: "Length",
+      mass: "Mass",
+      volume: "Volume",
+      temperature: "Temperature",
+      inch: "Inch",
+      foot: "Foot",
+      yard: "Yard",
+      mile: "Mile",
+      millimeter: "Millimeter",
+      centimeter: "Centimeter",
+      meter: "Meter",
+      kilometer: "Kilometer",
+      ounce: "Ounce",
+      pound: "Pound",
+      gram: "Gram",
+      kilogram: "Kilogram",
+      teaspoon: "Teaspoon",
+      tablespoon: "Tablespoon",
+      fluidOunce: "Fluid ounce",
+      cup: "Cup",
+      pint: "Pint",
+      quart: "Quart",
+      gallon: "Gallon",
+      milliliter: "Milliliter",
+      liter: "Liter",
+      fahrenheit: "Fahrenheit",
+      celsius: "Celsius",
     },
     manufacturingFloorPage: {
       title: "Production",
@@ -9050,11 +9145,58 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     quickActions: {
       label: "快捷操作",
+      utilitiesLabel: "实用工具",
       addItem: "新增商品",
       newStockRequisition: "新建库存请购",
       newStockRequest: "新建库存申请",
       newQuotation: "新建报价单",
       newSalesOrder: "新建销售订单",
+      unitConverter: "单位换算器",
+    },
+    unitConverter: {
+      title: "单位换算器",
+      description: "在不中断当前工作的情况下，进行美制、公制或两者之间的单位换算。",
+      close: "关闭单位换算器",
+      conversionMode: "换算模式",
+      imperialSystem: "仅英制（美制）",
+      metricSystem: "仅公制",
+      imperialToMetric: "英制 → 公制",
+      metricToImperial: "公制 → 英制",
+      measurementType: "测量类型",
+      value: "数值",
+      valuePlaceholder: "输入数值",
+      from: "从",
+      to: "到",
+      swapUnits: "交换单位",
+      result: "结果",
+      invalidValue: "请输入有效数字进行换算。",
+      length: "长度",
+      mass: "质量",
+      volume: "容量",
+      temperature: "温度",
+      inch: "英寸",
+      foot: "英尺",
+      yard: "码",
+      mile: "英里",
+      millimeter: "毫米",
+      centimeter: "厘米",
+      meter: "米",
+      kilometer: "千米",
+      ounce: "盎司",
+      pound: "磅",
+      gram: "克",
+      kilogram: "千克",
+      teaspoon: "茶匙",
+      tablespoon: "汤匙",
+      fluidOunce: "液量盎司",
+      cup: "杯",
+      pint: "品脱",
+      quart: "夸脱",
+      gallon: "加仑",
+      milliliter: "毫升",
+      liter: "升",
+      fahrenheit: "华氏度",
+      celsius: "摄氏度",
     },
     manufacturingFloorPage: {
       title: "生产",

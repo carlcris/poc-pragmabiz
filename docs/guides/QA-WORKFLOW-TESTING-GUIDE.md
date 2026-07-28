@@ -1049,6 +1049,15 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
   translated hover/focus label and opens its creation page or dialog directly.
 - Confirm the quick-action rail is absent on smaller viewports and on the manufacturing floor's
   fullscreen mode.
+- Open the Unit converter from the rail's Utilities group and confirm its panel slides in from the
+  right without a backdrop or focus trap. Verify the current page remains interactive while the panel
+  is open, Escape and the close button dismiss it, and the rail button reflects its expanded state.
+- Verify length, mass, volume, and temperature conversions in both US-to-metric and metric-to-US
+  directions, including decimal and negative temperature values. Confirm Swap units preserves the
+  represented measurement and that English and Chinese labels remain in parity.
+- Verify the conversion-mode selector supports Imperial-only (US customary), Metric-only,
+  Imperial-to-Metric, and Metric-to-Imperial modes. Confirm the From and To selectors only show units
+  allowed by the selected mode, and that Swap units reverses cross-system modes.
 
 ---
 

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   ClipboardPlus,
+  Calculator,
   FilePlus2,
   PackagePlus,
   ShoppingCart,
@@ -68,9 +69,15 @@ const quickActions: QuickAction[] = [
 
 type QuickActionSidebarProps = {
   initialPermissions?: UserPermissions | null;
+  isUnitConverterOpen: boolean;
+  onUnitConverterToggle: () => void;
 };
 
-export function QuickActionSidebar({ initialPermissions = null }: QuickActionSidebarProps) {
+export function QuickActionSidebar({
+  initialPermissions = null,
+  isUnitConverterOpen,
+  onUnitConverterToggle,
+}: QuickActionSidebarProps) {
   const t = useTranslations("quickActions");
   const pathname = usePathname();
   const [hasMounted, setHasMounted] = useState(false);
@@ -88,54 +95,83 @@ export function QuickActionSidebar({ initialPermissions = null }: QuickActionSid
     return permission?.can_view && permission.can_create;
   });
 
-  if (visibleActions.length === 0) {
-    return null;
-  }
-
   return (
     <aside
       aria-label={t("label")}
-      className="hidden w-16 shrink-0 flex-col items-center border-l border-border bg-card/80 py-4 lg:flex"
+      className="relative z-30 hidden w-16 shrink-0 flex-col items-center border-l border-border bg-card py-4 lg:flex"
     >
-      <div
-        className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary"
-        aria-hidden="true"
-      >
-        <Zap className="h-4 w-4" />
-      </div>
-      <div className="my-4 h-px w-8 bg-border" />
-      <nav aria-label={t("label")} className="flex flex-col items-center gap-2">
-        {visibleActions.map((action) => {
-          const Icon = action.icon;
-          const label = t(action.labelKey);
-          const isActive = action.activePath ? pathname === action.activePath : false;
+      {visibleActions.length > 0 ? (
+        <>
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary"
+            aria-hidden="true"
+          >
+            <Zap className="h-4 w-4" />
+          </div>
+          <div className="my-4 h-px w-8 bg-border" />
+          <nav aria-label={t("label")} className="flex flex-col items-center gap-2">
+            {visibleActions.map((action) => {
+              const Icon = action.icon;
+              const label = t(action.labelKey);
+              const isActive = action.activePath ? pathname === action.activePath : false;
 
-          return (
-            <div key={action.labelKey} className="group relative">
-              <Link
-                href={action.href}
-                aria-label={label}
-                aria-current={isActive ? "page" : undefined}
-                className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-xl border border-transparent text-muted-foreground transition-colors",
-                  "hover:border-primary/20 hover:bg-primary/10 hover:text-primary",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                  isActive && "border-primary/20 bg-primary/10 text-primary"
-                )}
-              >
-                <Icon className="h-5 w-5" />
-                <span className="sr-only">{label}</span>
-              </Link>
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute right-full top-1/2 z-40 mr-3 -translate-y-1/2 translate-x-1 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-xs font-medium text-popover-foreground opacity-0 shadow-md transition-all group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100"
-              >
-                {label}
-              </span>
-            </div>
-          );
-        })}
-      </nav>
+              return (
+                <div key={action.labelKey} className="group relative">
+                  <Link
+                    href={action.href}
+                    aria-label={label}
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-xl border border-transparent text-muted-foreground transition-colors",
+                      "hover:border-primary/20 hover:bg-primary/10 hover:text-primary",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      isActive && "border-primary/20 bg-primary/10 text-primary"
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="sr-only">{label}</span>
+                  </Link>
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute right-full top-1/2 z-40 mr-3 -translate-y-1/2 translate-x-1 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-xs font-medium text-popover-foreground opacity-0 shadow-md transition-all group-hover:translate-x-0 group-hover:opacity-100"
+                  >
+                    {label}
+                  </span>
+                </div>
+              );
+            })}
+          </nav>
+        </>
+      ) : null}
+
+      <div className="mt-auto flex flex-col items-center gap-3">
+        <div className="h-px w-8 bg-border" />
+        <nav aria-label={t("utilitiesLabel")}>
+          <div className="group relative">
+            <button
+              type="button"
+              onClick={onUnitConverterToggle}
+              aria-label={t("unitConverter")}
+              aria-controls="unit-converter-panel"
+              aria-expanded={isUnitConverterOpen}
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-xl border border-transparent text-muted-foreground transition-colors",
+                "hover:border-primary/20 hover:bg-primary/10 hover:text-primary",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                isUnitConverterOpen && "border-primary/20 bg-primary/10 text-primary"
+              )}
+            >
+              <Calculator className="h-5 w-5" />
+            </button>
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute right-full top-1/2 z-40 mr-3 -translate-y-1/2 translate-x-1 whitespace-nowrap rounded-md border border-border bg-popover px-3 py-2 text-xs font-medium text-popover-foreground opacity-0 shadow-md transition-all group-hover:translate-x-0 group-hover:opacity-100"
+            >
+              {t("unitConverter")}
+            </span>
+          </div>
+        </nav>
+      </div>
     </aside>
   );
 }

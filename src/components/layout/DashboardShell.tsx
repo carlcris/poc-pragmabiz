@@ -9,6 +9,7 @@ import { usePermissionStore } from "@/stores/permissionStore";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { QuickActionSidebar } from "@/components/layout/QuickActionSidebar";
+import { UnitConverterPanel } from "@/components/layout/UnitConverterPanel";
 import { NavigationActivityLogger } from "@/components/activity-logging/NavigationActivityLogger";
 import { BusinessUnitProvider } from "@/components/business-unit/BusinessUnitProvider";
 import { useLoadPermissions } from "@/hooks/usePermissions";
@@ -40,6 +41,7 @@ export function DashboardShell({
   const setPermissions = usePermissionStore((state) => state.setPermissions);
   const isSidebarOpen = useSidebarStore((state) => state.isOpen);
   const [hasMounted, setHasMounted] = useState(false);
+  const [isUnitConverterOpen, setIsUnitConverterOpen] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const sidebarOpen = hasMounted ? isSidebarOpen : true;
@@ -88,7 +90,7 @@ export function DashboardShell({
           )}
         >
           {!isManufacturingFloorFullscreen ? <Header /> : null}
-          <div className="flex min-h-0 flex-1 overflow-hidden">
+          <div className="relative flex min-h-0 flex-1 overflow-hidden">
             <main
               className={cn(
                 "min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background",
@@ -98,7 +100,17 @@ export function DashboardShell({
               {children}
             </main>
             {!isManufacturingFloorFullscreen ? (
-              <QuickActionSidebar initialPermissions={initialPermissions} />
+              <>
+                <UnitConverterPanel
+                  open={isUnitConverterOpen}
+                  onClose={() => setIsUnitConverterOpen(false)}
+                />
+                <QuickActionSidebar
+                  initialPermissions={initialPermissions}
+                  isUnitConverterOpen={isUnitConverterOpen}
+                  onUnitConverterToggle={() => setIsUnitConverterOpen((current) => !current)}
+                />
+              </>
             ) : null}
           </div>
         </div>
