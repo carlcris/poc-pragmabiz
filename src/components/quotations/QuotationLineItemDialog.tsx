@@ -62,8 +62,8 @@ import {
   getItemPriceTierOptions,
   resolvePriceTierSelection,
 } from "@/lib/pricing/itemPriceTiers";
+import { ItemSelect, type ItemSelectOption } from "@/components/common/ItemSelect";
 import type { ItemDimensions } from "@/types/item";
-import type { ItemPriceTier } from "@/types/item";
 import type {
   FrameInvoiceDisplayMode,
   FrameQuotationComponent,
@@ -120,20 +120,9 @@ type MaterialItemOption = {
   dimensions?: ItemDimensions | null;
 };
 
-type LineItemOption = {
-  id: string;
-  code: string;
-  name: string;
-  description?: string;
-  uom: string;
-  uomId: string;
+type LineItemOption = ItemSelectOption & {
   uomCode?: string;
   uomName?: string;
-  listPrice: number;
-  defaultPriceTier?: string | null;
-  priceTiers?: ItemPriceTier[];
-  available?: number;
-  reorderPoint?: number;
 };
 
 type MoldingCutPlanStick = {
@@ -222,8 +211,6 @@ export function QuotationLineItemDialog({
 }: QuotationLineItemDialogProps) {
   const t = useTranslations("quotationLineItemDialog");
   const tCommon = useTranslations("common");
-  const [itemSearch, setItemSearch] = useState("");
-  const [debouncedItemSearch, setDebouncedItemSearch] = useState("");
   const [materialSearch, setMaterialSearch] = useState("");
   const [debouncedMaterialSearch, setDebouncedMaterialSearch] = useState("");
   const [isFrameJob, setIsFrameJob] = useState(false);
@@ -257,39 +244,6 @@ export function QuotationLineItemDialog({
   const [selectedMaterialItems, setSelectedMaterialItems] = useState<
     Record<string, MaterialItemOption>
   >({});
-  const { data: basicItemsData } = useItems({
-    search: debouncedItemSearch.trim() || undefined,
-    limit: 5,
-    isActive: true,
-    includeStock: true,
-  });
-  const basicItems = basicItemsData?.data || [];
-  const lineItemsById = new Map<string, LineItemOption>();
-  for (const lineItem of Object.values(selectedLineItems)) {
-    lineItemsById.set(lineItem.id, lineItem);
-  }
-  for (const itemOption of basicItems) {
-    lineItemsById.set(itemOption.id, {
-      id: itemOption.id,
-      code: itemOption.code,
-      name: itemOption.name,
-      description: "description" in itemOption ? itemOption.description : "",
-      uom: itemOption.uom,
-      uomId: itemOption.uomId,
-      listPrice: itemOption.listPrice,
-      defaultPriceTier: itemOption.defaultPriceTier,
-      priceTiers: itemOption.priceTiers,
-      available:
-        "available" in itemOption && typeof itemOption.available === "number"
-          ? itemOption.available
-          : 0,
-      reorderPoint:
-        "reorderPoint" in itemOption && typeof itemOption.reorderPoint === "number"
-          ? itemOption.reorderPoint
-          : 0,
-    });
-  }
-  const selectableItems = Array.from(lineItemsById.values());
   const { data: materialItemsData } = useItems({
     search: debouncedMaterialSearch.trim() || undefined,
     limit: 5,
@@ -322,7 +276,6 @@ export function QuotationLineItemDialog({
   const { formatCurrency } = useCurrency();
 
   // Item combobox state
-  const [itemOpen, setItemOpen] = useState(false);
   const [moldingOpen, setMoldingOpen] = useState(false);
   const [pendingComponentItemOpen, setPendingComponentItemOpen] = useState(false);
 
@@ -344,15 +297,6 @@ export function QuotationLineItemDialog({
       taxRate: 0,
     },
   });
-
-  useEffect(() => {
-    if (!open) return;
-    const timer = window.setTimeout(() => {
-      setDebouncedItemSearch(itemSearch.trim());
-    }, 300);
-
-    return () => window.clearTimeout(timer);
-  }, [itemSearch, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -507,23 +451,20 @@ export function QuotationLineItemDialog({
     }));
   };
 
-  const handleItemSelect = async (itemId: string) => {
-    const basicItem = lineItemsById.get(itemId);
-    if (basicItem) {
-      rememberLineItem(basicItem);
-      form.setValue("itemId", basicItem.id);
-      form.setValue("itemCode", basicItem.code);
-      form.setValue("itemName", basicItem.name);
-      form.setValue("description", basicItem.description || "");
-      const priceSelection = resolvePriceTierSelection(basicItem);
-      form.setValue("pricingTier", priceSelection.priceTier);
-      form.setValue("pricingTierName", priceSelection.priceTierName);
-      form.setValue("unitPrice", priceSelection.price);
-      form.setValue("uomId", basicItem.uomId);
-      form.setValue("uomCode", basicItem.uom);
-      form.setValue("uomName", basicItem.uom);
-      setPendingCustomerPriceItemId(customerId ? basicItem.id : null);
-    }
+  const handleItemSelect = (selectedItem: ItemSelectOption) => {
+    rememberLineItem(selectedItem);
+    form.setValue("itemId", selectedItem.id);
+    form.setValue("itemCode", selectedItem.code);
+    form.setValue("itemName", selectedItem.name);
+    form.setValue("description", selectedItem.description || "");
+    const priceSelection = resolvePriceTierSelection(selectedItem);
+    form.setValue("pricingTier", priceSelection.priceTier);
+    form.setValue("pricingTierName", priceSelection.priceTierName);
+    form.setValue("unitPrice", priceSelection.price);
+    form.setValue("uomId", selectedItem.uomId);
+    form.setValue("uomCode", selectedItem.uom);
+    form.setValue("uomName", selectedItem.uom);
+    setPendingCustomerPriceItemId(customerId ? selectedItem.id : null);
   };
 
   const handlePricingTierChange = (priceTier: string) => {
@@ -604,7 +545,7 @@ export function QuotationLineItemDialog({
     getNumericValue(source?.dimensions?.width);
 
   const frameQuantity = quantity || 0;
-  const selectedLineItem = lineItemsById.get(selectedItemId);
+  const selectedLineItem = selectedLineItems[selectedItemId];
   const { data: resolvedCustomerPricing } = useResolvedCustomerPricing({
     customerId,
     itemIds: selectedItemId ? [selectedItemId] : [],
@@ -869,113 +810,37 @@ export function QuotationLineItemDialog({
               <FormField
                 control={form.control}
                 name="itemId"
-                render={({ field }) => {
-                  const selectedItem = lineItemsById.get(field.value);
-                  return (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>{tCommon("item")} *</FormLabel>
-                      <Popover open={itemOpen} onOpenChange={setItemOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={itemOpen}
-                              className={cn(
-                                "w-full justify-between",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {selectedItem
-                                ? `${selectedItem.code} - ${selectedItem.name}`
-                                : t("searchItem")}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[600px] p-0" align="start">
-                          <Command shouldFilter={false}>
-                            <CommandInput
-                              value={itemSearch}
-                              onValueChange={setItemSearch}
-                              placeholder={t("itemSearchPlaceholder")}
-                            />
-                            <div className="max-h-[300px] overflow-y-auto overscroll-contain">
-                              <CommandList>
-                                <CommandEmpty>{t("noItemFound")}</CommandEmpty>
-                                <CommandGroup>
-                                  {selectableItems.map((item) => {
-                                    const availableQty = item.available ?? 0;
-                                    const reorderPoint = item.reorderPoint ?? 0;
-                                    const isOutOfStock = availableQty <= 0;
-                                    const isLowStock = availableQty > 0 && availableQty <= reorderPoint;
-                                    return (
-                                      <CommandItem
-                                        key={item.id}
-                                        value={`${item.code} ${item.name}`}
-                                        onSelect={() => {
-                                          field.onChange(item.id);
-                                          handleItemSelect(item.id);
-                                          setItemOpen(false);
-                                        }}
-                                        className="cursor-pointer"
-                                      >
-                                        <div className="flex w-full items-center justify-between">
-                                          <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                              <span className="font-medium">{item.name}</span>
-                                              {isOutOfStock && (
-                                                <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-700">
-                                                  {t("outOfStock")}
-                                                </span>
-                                              )}
-                                              {isLowStock && (
-                                                <span className="rounded bg-orange-100 px-2 py-0.5 text-xs text-orange-700">
-                                                  {t("lowStock")}
-                                                </span>
-                                              )}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                              {item.code} • {item.uom} •{" "}
-                                              {t("stockCount", {
-                                                count: availableQty.toFixed(2),
-                                              })}
-                                            </div>
-                                          </div>
-                                          <div className="text-sm font-medium">
-                                            {formatCurrency(
-                                              resolvePriceTierSelection({
-                                                listPrice: item.listPrice,
-                                                defaultPriceTier: item.defaultPriceTier,
-                                                priceTiers: item.priceTiers,
-                                              }).price
-                                            )}
-                                          </div>
-                                        </div>
-                                      </CommandItem>
-                                    );
-                                  })}
-                                </CommandGroup>
-                              </CommandList>
-                            </div>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      {showInventoryWarning ? (
-                        <Alert className="mt-2 border-amber-200 bg-amber-50 text-amber-900">
-                          <AlertDescription>
-                            {t("inventoryWarning", {
-                              requested: quantity.toFixed(2),
-                              available: selectedItemAvailable.toFixed(2),
-                              uom: selectedLineItem?.uom || "",
-                            })}
-                          </AlertDescription>
-                        </Alert>
-                      ) : null}
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>{tCommon("item")} *</FormLabel>
+                    <ItemSelect
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      onItemSelect={handleItemSelect}
+                      selectedOption={selectedLineItems[field.value] ?? null}
+                      includeStock
+                      showStock
+                      renderTrailing={(lineItem) =>
+                        formatCurrency(resolvePriceTierSelection(lineItem).price)
+                      }
+                      placeholder={t("searchItem")}
+                      searchPlaceholder={t("itemSearchPlaceholder")}
+                      emptyMessage={t("noItemFound")}
+                    />
+                    {showInventoryWarning ? (
+                      <Alert className="mt-2 border-amber-200 bg-amber-50 text-amber-900">
+                        <AlertDescription>
+                          {t("inventoryWarning", {
+                            requested: quantity.toFixed(2),
+                            available: selectedItemAvailable.toFixed(2),
+                            uom: selectedLineItem?.uom || "",
+                          })}
+                        </AlertDescription>
+                      </Alert>
+                    ) : null}
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
 
               <FormField

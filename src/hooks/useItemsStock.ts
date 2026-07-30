@@ -32,7 +32,11 @@ export interface ItemsStockResponse {
   };
 }
 
-export function useItemsStock(filters?: ItemsStockFilters) {
+type UseItemsStockOptions = {
+  enabled?: boolean;
+};
+
+export function useItemsStock(filters?: ItemsStockFilters, options: UseItemsStockOptions = {}) {
   return useQuery<ItemsStockResponse>({
     queryKey: [ITEMS_STOCK_QUERY_KEY, filters],
     queryFn: async () => {
@@ -63,6 +67,7 @@ export function useItemsStock(filters?: ItemsStockFilters) {
 
       return response.json();
     },
+    enabled: options.enabled !== false,
     staleTime: 30_000,
   });
 }

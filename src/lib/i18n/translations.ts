@@ -71,6 +71,15 @@ export type TranslationKeys = {
     selectItem: string;
     noDataFound: string;
   };
+  inventoryItemSelect: {
+    selectItem: string;
+    searchItems: string;
+    noItemsFound: string;
+    loadingItems: string;
+    outOfStock: string;
+    lowStock: string;
+    stockCount: string;
+  };
   transformation: {
     transformations: string;
     transformation: string;
@@ -121,6 +130,11 @@ export type TranslationKeys = {
     orderDetails: string;
     selectTemplate: string;
     selectWarehouse: string;
+    warehouseItem: string;
+    selectWarehouseItem: string;
+    searchWarehouseItems: string;
+    noWarehouseItems: string;
+    loadingWarehouseItems: string;
     plannedExecutionDate: string;
     pickDate: string;
     createFromTemplate: string;
@@ -1722,10 +1736,6 @@ export type TranslationKeys = {
     searchItem: string;
     itemSearchPlaceholder: string;
     noItemFound: string;
-    stockLabel: string;
-    outOfStock: string;
-    lowStock: string;
-    stockCount: string;
     inventoryWarning: string;
     description: string;
     quantity: string;
@@ -3177,6 +3187,15 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectItem: "Select an item...",
       noDataFound: "No data found",
     },
+    inventoryItemSelect: {
+      selectItem: "Select item",
+      searchItems: "Search by item code or name...",
+      noItemsFound: "No items found.",
+      loadingItems: "Loading items...",
+      outOfStock: "Out of Stock",
+      lowStock: "Low Stock",
+      stockCount: "Stock: {count}",
+    },
     transformation: {
       transformations: "Transformations",
       transformation: "Transformation",
@@ -3230,6 +3249,11 @@ export const translations: Record<Locale, TranslationKeys> = {
       orderDetails: "Order Details",
       selectTemplate: "Select a template",
       selectWarehouse: "Select warehouse",
+      warehouseItem: "Warehouse Item",
+      selectWarehouseItem: "Select item",
+      searchWarehouseItems: "Search by item code or name...",
+      noWarehouseItems: "No warehouse items found.",
+      loadingWarehouseItems: "Loading warehouse items...",
       plannedExecutionDate: "Planned Execution Date",
       pickDate: "Pick a date",
       createFromTemplate: "Create from Template",
@@ -4964,10 +4988,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       searchItem: "Search item...",
       itemSearchPlaceholder: "Search by code or name...",
       noItemFound: "No item found.",
-      stockLabel: "Stock",
-      outOfStock: "Out of Stock",
-      lowStock: "Low Stock",
-      stockCount: "Stock: {count}",
       inventoryWarning:
         "Requested quantity {requested} exceeds available stock {available} {uom}. You can still save this line item.",
       description: "Description",
@@ -9110,6 +9130,15 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectItem: "选择物品...",
       noDataFound: "未找到数据",
     },
+    inventoryItemSelect: {
+      selectItem: "选择商品",
+      searchItems: "按商品编码或名称搜索...",
+      noItemsFound: "未找到商品。",
+      loadingItems: "正在加载商品...",
+      outOfStock: "缺货",
+      lowStock: "低库存",
+      stockCount: "库存：{count}",
+    },
     transformation: {
       transformations: "转换",
       transformation: "转换",
@@ -9160,6 +9189,11 @@ export const translations: Record<Locale, TranslationKeys> = {
       orderDetails: "订单详情",
       selectTemplate: "选择模板",
       selectWarehouse: "选择仓库",
+      warehouseItem: "仓库商品",
+      selectWarehouseItem: "选择商品",
+      searchWarehouseItems: "按商品编码或名称搜索...",
+      noWarehouseItems: "未找到仓库商品。",
+      loadingWarehouseItems: "正在加载仓库商品...",
       plannedExecutionDate: "计划执行日期",
       pickDate: "选择日期",
       createFromTemplate: "从模板创建",
@@ -10851,10 +10885,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       searchItem: "搜索项目...",
       itemSearchPlaceholder: "按编码或名称搜索...",
       noItemFound: "未找到项目。",
-      stockLabel: "库存",
-      outOfStock: "缺货",
-      lowStock: "低库存",
-      stockCount: "库存：{count}",
       inventoryWarning: "请求数量 {requested} 超过可用库存 {available} {uom}。仍可保存该行项目。",
       description: "描述",
       quantity: "数量",

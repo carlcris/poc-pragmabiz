@@ -22,7 +22,9 @@ import {
 } from "lucide-react";
 import { useCreateTransformationTemplate } from "@/hooks/useTransformationTemplates";
 import { useItemsStock } from "@/hooks/useItemsStock";
+import { useCurrency } from "@/hooks/useCurrency";
 import { itemsApi } from "@/lib/api/items";
+import { resolvePriceTierSelection } from "@/lib/pricing/itemPriceTiers";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { toast } from "sonner";
 import type { ItemDimensions } from "@/types/item";
@@ -63,6 +65,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TransformationTemplateCopySourcePicker } from "./TransformationTemplateCopySourcePicker";
+import { ItemSelect } from "@/components/common/ItemSelect";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import {
   TemplateAdditionalOutputDialog,
@@ -501,6 +504,7 @@ const wrapSvgText = (text: string, maxCharsPerLine: number, maxLines: number): s
 export function TransformationTemplateDesignerPage() {
   const router = useRouter();
   const t = useTranslations("transformation");
+  const { formatCurrency } = useCurrency();
   const createTemplate = useCreateTransformationTemplate();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
@@ -539,7 +543,6 @@ export function TransformationTemplateDesignerPage() {
   const [sliceItemSearchInput, setSliceItemSearchInput] = useState("");
   const [sliceItemSearch, setSliceItemSearch] = useState("");
   const [itemPickerState, setItemPickerState] = useState<ItemPickerState | null>(null);
-  const [itemSearch, setItemSearch] = useState("");
   const [itemPickerError, setItemPickerError] = useState<string | null>(null);
   const [parentSheetItem, setParentSheetItem] = useState<SheetLayoutSourceItem | null>(null);
   const [additionalOutputs, setAdditionalOutputs] = useState<TemplateAdditionalOutputDialogValue[]>(
@@ -550,27 +553,24 @@ export function TransformationTemplateDesignerPage() {
   const [recentlyMappedSectionId, setRecentlyMappedSectionId] = useState<string | null>(null);
   const [sliceClipboard, setSliceClipboard] = useState<SliceClipboard | null>(null);
   const [warehouseId, setWarehouseId] = useState("");
-
-  const { data: itemCandidatesResponse, isLoading: isLoadingItemCandidates } = useItemsStock({
-    warehouseId,
-    search: itemSearch || undefined,
-    page: 1,
-    limit: 20,
-  });
   const {
     data: sliceItemCandidatesResponse,
     isLoading: isLoadingSliceItemCandidates,
     isFetching: isFetchingSliceItemCandidates,
-  } = useItemsStock({
-    warehouseId,
-    search: sliceItemSearch || undefined,
-    page: 1,
-    limit: 5,
-  });
+  } = useItemsStock(
+    {
+      warehouseId,
+      search: sliceItemSearch || undefined,
+      page: 1,
+      limit: 5,
+    },
+    {
+      enabled: Boolean(warehouseId),
+    }
+  );
 
   useEffect(() => {
     setWarehouseId("");
-    setItemSearch("");
     setSliceItemSearch("");
   }, [currentBusinessUnit?.id]);
 
@@ -795,14 +795,12 @@ export function TransformationTemplateDesignerPage() {
 
   const openItemPicker = (state: ItemPickerState) => {
     setItemPickerState(state);
-    setItemSearch("");
     setItemPickerError(null);
     setContextMenu(null);
   };
 
   const closeItemPicker = () => {
     setItemPickerState(null);
-    setItemSearch("");
     setItemPickerError(null);
     setIsSelectingItem(false);
   };
@@ -1425,11 +1423,7 @@ export function TransformationTemplateDesignerPage() {
   }, [dragState, sections, sheetUnit]);
 
   const handleOpenParentSheetPicker = () => {
-    if (!warehouseId) {
-      setErrorMessage(t("warehouseRequired"));
-      return;
-    }
-
+    setErrorMessage(null);
     openItemPicker({ mode: "parent" });
   };
 
@@ -1490,6 +1484,10 @@ export function TransformationTemplateDesignerPage() {
     uom: string;
   }) => {
     if (!itemPickerState) return;
+    if (!warehouseId) {
+      setItemPickerError(t("warehouseRequired"));
+      return;
+    }
 
     setItemPickerError(null);
     setIsSelectingItem(true);
@@ -2749,57 +2747,28 @@ export function TransformationTemplateDesignerPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Search Items</label>
-              <Input
-                value={itemSearch}
-                onChange={(event) => setItemSearch(event.target.value)}
-                placeholder="Search by item code or item name"
-                disabled={!warehouseId}
+              <label className="text-sm font-medium">{t("warehouseItem")}</label>
+              <ItemSelect
+                warehouseId={warehouseId}
+                includeStock
+                showStock
+                renderTrailing={(item) => formatCurrency(resolvePriceTierSelection(item).price)}
+                enabled={Boolean(warehouseId)}
+                onItemSelect={(item) => {
+                  void handleSelectCandidateItem({
+                    id: item.id,
+                    code: item.code,
+                    name: item.name,
+                    uomId: item.uomId,
+                    uom: item.uom,
+                  });
+                }}
+                placeholder={t("selectWarehouseItem")}
+                searchPlaceholder={t("searchWarehouseItems")}
+                emptyMessage={t("noWarehouseItems")}
+                loadingMessage={t("loadingWarehouseItems")}
+                disabled={!warehouseId || isSelectingItem}
               />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Available Items</label>
-              <div className="max-h-[380px] space-y-2 overflow-y-auto rounded-lg border bg-muted/20 p-2">
-                {isLoadingItemCandidates ? (
-                  <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Loading items...</span>
-                  </div>
-                ) : itemCandidatesResponse?.data.length ? (
-                  itemCandidatesResponse.data.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className="flex w-full items-start justify-between rounded-md border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary hover:bg-accent disabled:opacity-50"
-                      onClick={() =>
-                        handleSelectCandidateItem({
-                          id: item.id,
-                          code: item.code,
-                          name: item.name,
-                          uomId: item.uomId,
-                          uom: item.uom,
-                        })
-                      }
-                      disabled={isSelectingItem}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold">{item.code}</p>
-                        <p className="text-sm text-muted-foreground">{item.name}</p>
-                      </div>
-                      <div className="ml-3 text-right">
-                        <p className="text-sm font-medium">
-                          {item.available.toFixed(2)} {item.uom}
-                        </p>
-                        <p className="text-xs text-muted-foreground">available</p>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <div className="px-3 py-12 text-center text-sm text-muted-foreground">
-                    {itemSearch ? "No items matched your search." : "No warehouse items available."}
-                  </div>
-                )}
-              </div>
             </div>
             {itemPickerError && (
               <div className="rounded-lg border border-destructive bg-destructive/5 px-3 py-2">
