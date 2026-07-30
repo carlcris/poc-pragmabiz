@@ -138,18 +138,18 @@ export function StockRequestViewDialog({
           <div className="grid grid-cols-2 gap-6 text-sm">
             <div className="space-y-3">
               <div>
-                <span className="text-muted-foreground">{t("requestedByWarehouse")}:</span>
+                <span className="text-muted-foreground">{t("requestedByBusinessUnit")}:</span>
                 <div className="font-medium">
-                  {request.requesting_warehouse?.warehouse_code
-                    ? `${request.requesting_warehouse.warehouse_code} - ${request.requesting_warehouse.warehouse_name}`
+                  {request.requesting_business_unit?.code
+                    ? `${request.requesting_business_unit.code} - ${request.requesting_business_unit.name}`
                     : t("noValue")}
                 </div>
               </div>
               <div>
-                <span className="text-muted-foreground">{t("requestedToWarehouse")}:</span>
+                <span className="text-muted-foreground">{t("requestedToBusinessUnit")}:</span>
                 <div className="font-medium">
-                  {request.fulfilling_warehouse?.warehouse_code
-                    ? `${request.fulfilling_warehouse.warehouse_code} - ${request.fulfilling_warehouse.warehouse_name}`
+                  {request.fulfilling_business_unit?.code
+                    ? `${request.fulfilling_business_unit.code} - ${request.fulfilling_business_unit.name}`
                     : t("noValue")}
                 </div>
               </div>
@@ -216,6 +216,7 @@ export function StockRequestViewDialog({
                     <th className="p-3 text-right">{t("quantity")}</th>
                     <th className="p-3 text-right">{t("deliveredQty")}</th>
                     <th className="p-3 text-left">{t("unit")}</th>
+                    <th className="p-3 text-left">{t("batch")}</th>
                     <th className="p-3 text-right">{t("qtyPerUnit")}</th>
                     <th className="p-3 text-left">{t("notes")}</th>
                   </tr>
@@ -248,6 +249,18 @@ export function StockRequestViewDialog({
                             t("noValue")}
                         </span>
                       </td>
+                      <td className="p-3">
+                        {item.selected_item_batch ? (
+                          <div>
+                            <div className="font-medium">{item.selected_item_batch.batch_code}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {item.selected_item_batch.warehouse?.warehouse_code || t("noValue")}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">{t("automaticBatch")}</span>
+                        )}
+                      </td>
                       <td className="p-3 text-right">
                         {(item.item_unit_option?.qtyPerUnit ?? 1).toLocaleString(locale, {
                           minimumFractionDigits: 0,
@@ -261,7 +274,7 @@ export function StockRequestViewDialog({
                   ))}
                   {(!request.stock_request_items || request.stock_request_items.length === 0) && (
                     <tr className="border-t">
-                      <td colSpan={6} className="p-3 text-center text-muted-foreground">
+                      <td colSpan={7} className="p-3 text-center text-muted-foreground">
                         {t("noItems")}
                       </td>
                     </tr>

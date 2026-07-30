@@ -11,7 +11,6 @@ import {
   fetchDeliveryNoteHeader,
   fetchDeliveryNoteItems,
   getAuthContext,
-  syncStockRequestStatusCache,
   toNumber,
 } from "../../_lib";
 
@@ -120,15 +119,12 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
     );
 
     if (postingError) {
-      return NextResponse.json({ error: postingError.message }, { status: 400 });
+      console.error("Failed to complete direct pickup:", postingError);
+      return NextResponse.json(
+        { error: "The direct pickup could not be completed. Refresh and try again." },
+        { status: 400 }
+      );
     }
-
-    await syncStockRequestStatusCache(
-      auth.supabase,
-      auth.companyId,
-      dnItems.map((item) => item.sr_id),
-      auth.userId
-    );
 
     try {
       const warehouseBuMap = await getWarehouseBusinessUnitMap(auth.supabase, auth.companyId, [
@@ -158,8 +154,8 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
     const dn = await fetchDeliveryNote(auth.supabase, auth.companyId, id);
     return NextResponse.json(dn);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Unexpected direct pickup error:", error);
+    return NextResponse.json({ error: "Failed to complete direct pickup" }, { status: 500 });
   }
 }
 

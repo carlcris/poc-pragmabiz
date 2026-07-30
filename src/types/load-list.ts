@@ -47,12 +47,18 @@ export type LoadList = {
   llNumber: string;
   supplierLlNumber?: string;
   companyId: string;
-  businessUnitId?: string;
-  businessUnit?: {
+  sourceBusinessUnitId: string;
+  sourceBusinessUnit?: {
     id: string;
     name: string;
     code: string;
-  };
+  } | null;
+  destinationBusinessUnitId: string;
+  destinationBusinessUnit?: {
+    id: string;
+    name: string;
+    code: string;
+  } | null;
   supplierId: string;
   supplier?: {
     id: string;
@@ -61,13 +67,7 @@ export type LoadList = {
     contactPerson?: string;
     email?: string;
     phone?: string;
-  };
-  warehouseId: string;
-  warehouse?: {
-    id: string;
-    name: string;
-    code: string;
-  };
+  } | null;
   isSourceBusinessUnit: boolean;
   isTargetBusinessUnit: boolean;
   containerNumber?: string;
@@ -89,21 +89,21 @@ export type LoadList = {
     email: string;
     firstName: string;
     lastName: string;
-  };
+  } | null;
   receivedBy?: string;
   receivedByUser?: {
     id: string;
     email: string;
     firstName: string;
     lastName: string;
-  };
+  } | null;
   approvedBy?: string;
   approvedByUser?: {
     id: string;
     email: string;
     firstName: string;
     lastName: string;
-  };
+  } | null;
   receivedDate?: string;
   approvedDate?: string;
   createdAt: string;
@@ -114,7 +114,7 @@ export type LoadList = {
 
 export type CreateLoadListRequest = {
   supplierId: string;
-  warehouseId: string;
+  destinationBusinessUnitId: string;
   supplierLlNumber?: string;
   containerNumber?: string;
   sealNumber?: string;
@@ -134,7 +134,7 @@ export type CreateLoadListRequest = {
   }[];
 };
 
-export type UpdateLoadListRequest = Partial<CreateLoadListRequest>;
+export type UpdateLoadListRequest = Omit<CreateLoadListRequest, "destinationBusinessUnitId">;
 
 export type UpdateLoadListStatusRequest = {
   status: LoadListStatus;
@@ -146,7 +146,7 @@ export type LoadListFilters = {
   search?: string;
   status?: LoadListStatus | "all";
   supplierId?: string;
-  warehouseId?: string;
+  destinationBusinessUnitId?: string;
   dateFrom?: string;
   dateTo?: string;
   page?: number;

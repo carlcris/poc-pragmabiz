@@ -376,9 +376,18 @@ async function GETHandler(request: NextRequest) {
         .from("load_lists")
         .select(
           `
-          *,
+          id,
+          ll_number,
+          status,
+          estimated_arrival_date,
+          actual_arrival_date,
+          container_number,
           supplier:suppliers(id, supplier_name, supplier_code),
-          warehouse:warehouses(id, warehouse_name, warehouse_code)
+          destination_business_unit:business_units!load_lists_destination_business_unit_id_fkey(
+            id,
+            name,
+            code
+          )
         `,
           { count: "exact" }
         )
@@ -389,11 +398,7 @@ async function GETHandler(request: NextRequest) {
         .is("deleted_at", null);
 
       if (businessUnitId) {
-        query = query.eq("business_unit_id", businessUnitId);
-      }
-
-      if (warehouseId) {
-        query = query.eq("warehouse_id", warehouseId);
+        query = query.eq("destination_business_unit_id", businessUnitId);
       }
 
       const { data, error, count } = await query.order("estimated_arrival_date", {
@@ -418,9 +423,18 @@ async function GETHandler(request: NextRequest) {
         .from("load_lists")
         .select(
           `
-          *,
+          id,
+          ll_number,
+          status,
+          estimated_arrival_date,
+          actual_arrival_date,
+          container_number,
           supplier:suppliers(id, supplier_name, supplier_code),
-          warehouse:warehouses(id, warehouse_name, warehouse_code)
+          destination_business_unit:business_units!load_lists_destination_business_unit_id_fkey(
+            id,
+            name,
+            code
+          )
         `,
           { count: "exact" }
         )
@@ -430,11 +444,7 @@ async function GETHandler(request: NextRequest) {
         .is("deleted_at", null);
 
       if (businessUnitId) {
-        query = query.eq("business_unit_id", businessUnitId);
-      }
-
-      if (warehouseId) {
-        query = query.eq("warehouse_id", warehouseId);
+        query = query.eq("destination_business_unit_id", businessUnitId);
       }
 
       const { data, error, count } = await query.order("estimated_arrival_date", {
@@ -459,9 +469,18 @@ async function GETHandler(request: NextRequest) {
         .from("load_lists")
         .select(
           `
-          *,
+          id,
+          ll_number,
+          status,
+          estimated_arrival_date,
+          actual_arrival_date,
+          container_number,
           supplier:suppliers(id, supplier_name, supplier_code),
-          warehouse:warehouses(id, warehouse_name, warehouse_code)
+          destination_business_unit:business_units!load_lists_destination_business_unit_id_fkey(
+            id,
+            name,
+            code
+          )
         `,
           { count: "exact" }
         )
@@ -471,11 +490,7 @@ async function GETHandler(request: NextRequest) {
         .is("deleted_at", null);
 
       if (businessUnitId) {
-        query = query.eq("business_unit_id", businessUnitId);
-      }
-
-      if (warehouseId) {
-        query = query.eq("warehouse_id", warehouseId);
+        query = query.eq("destination_business_unit_id", businessUnitId);
       }
 
       const { data, error, count } = await query.order("actual_arrival_date", { ascending: true });
@@ -496,7 +511,9 @@ async function GETHandler(request: NextRequest) {
         .from("grns")
         .select(
           `
-          *,
+          id,
+          grn_number,
+          created_at,
           load_list:load_lists(
             id,
             ll_number,
@@ -553,7 +570,7 @@ async function GETHandler(request: NextRequest) {
           grnItems.map(async (grnItem) => {
             const { count: boxCount } = await supabase
               .from("grn_boxes")
-              .select("*", { count: "exact", head: true })
+              .select("id", { count: "exact", head: true })
               .eq("grn_item_id", grnItem.id);
 
             const grnNumber = grnItem.grns?.grn_number || "";
@@ -667,9 +684,18 @@ async function GETHandler(request: NextRequest) {
         .from("load_lists")
         .select(
           `
-          *,
+          id,
+          ll_number,
+          status,
+          estimated_arrival_date,
+          actual_arrival_date,
+          container_number,
           supplier:suppliers(id, supplier_name, supplier_code),
-          warehouse:warehouses(id, warehouse_name, warehouse_code)
+          destination_business_unit:business_units!load_lists_destination_business_unit_id_fkey(
+            id,
+            name,
+            code
+          )
         `
         )
         .eq("company_id", companyId)
@@ -678,11 +704,7 @@ async function GETHandler(request: NextRequest) {
         .is("deleted_at", null);
 
       if (businessUnitId) {
-        query = query.eq("business_unit_id", businessUnitId);
-      }
-
-      if (warehouseId) {
-        query = query.eq("warehouse_id", warehouseId);
+        query = query.eq("destination_business_unit_id", businessUnitId);
       }
 
       const { data: loadLists, error } = await query.order("estimated_arrival_date", {
@@ -698,7 +720,12 @@ async function GETHandler(request: NextRequest) {
               .select(
                 `
                 sr_item:stock_requisition_items!inner(
-                  stock_requisition:stock_requisitions!inner(*)
+                  stock_requisition:stock_requisitions!inner(
+                    id,
+                    sr_number,
+                    status,
+                    total_amount
+                  )
                 ),
                 load_list_item:load_list_items!inner(
                   id,
@@ -758,7 +785,7 @@ async function GETHandler(request: NextRequest) {
         .is("deleted_at", null);
 
       if (businessUnitId) {
-        query = query.eq("business_unit_id", businessUnitId);
+        query = query.eq("destination_business_unit_id", businessUnitId);
       }
 
       const { data, error } = await query.order("estimated_arrival_date", { ascending: true });

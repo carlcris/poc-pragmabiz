@@ -1,22 +1,15 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "./stock-request-mapper";
-import {
-  resolveStockRequestLineUnitOptions,
-  StockRequestLineValidationError,
-  type ResolvedStockRequestLineInput,
-} from "./line-item-unit-options";
-import { createAdminClient } from "@/lib/supabase/admin";
-import type { Database } from "@/types/database.types";
 import type { CreateStockRequestPayload } from "@/types/stock-request";
+import { STOCK_REQUEST_SELECT } from "./stock-request-select";
+import { mapStockRequestDraftRpcError } from "./stock-request-draft-errors";
+import { validateStockRequestDraftPayload } from "./stock-request-draft-validation";
 
 type StockRequestDbRecord = Parameters<typeof mapStockRequest>[0];
-type StockRequestItemInput = ResolvedStockRequestLineInput;
-type SupabaseLikeClient = SupabaseClient<Database>;
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DEFAULT_LIMIT = 10;
@@ -47,58 +40,8 @@ const parsePositiveInt = (value: string | null, fallback: number) => {
 
 const normalizeSearch = (value: string | null) => {
   if (!value) return null;
-  const normalized = value.trim().replace(/[,%]/g, " ");
+  const normalized = value.trim().slice(0, 100).replace(/[,%]/g, " ");
   return normalized.length > 0 ? normalized : null;
-};
-
-const validateSelectedItemBatches = async (
-  supabase: SupabaseLikeClient,
-  companyId: string,
-  fulfillingWarehouseId: string,
-  items: StockRequestItemInput[]
-) => {
-  const selectedBatchIds = Array.from(
-    new Set(
-      items
-        .map((item) => item.selected_item_batch_id)
-        .filter((value): value is string => Boolean(value))
-    )
-  );
-
-  if (selectedBatchIds.length === 0) return null;
-
-  const { data: batchRows, error } = await supabase
-    .from("item_batches")
-    .select("id, item_id, warehouse_id, qty_available")
-    .eq("company_id", companyId)
-    .in("id", selectedBatchIds)
-    .is("deleted_at", null);
-
-  if (error) {
-    console.error("Error validating selected stock request batches:", error);
-    return "Failed to validate selected batches";
-  }
-
-  const batchMap = new Map((batchRows || []).map((batch) => [batch.id, batch]));
-
-  for (const item of items) {
-    if (!item.selected_item_batch_id) continue;
-
-    const batch = batchMap.get(item.selected_item_batch_id);
-    if (!batch) return "Selected batch is not available";
-    if (batch.item_id !== item.item_id) return "Selected batch does not match the item";
-    if (batch.warehouse_id !== fulfillingWarehouseId) {
-      return "Selected batch does not belong to the fulfilling warehouse";
-    }
-
-    const requestedBaseQty = Number(item.requested_qty || 0) * Number(item.qty_per_unit || 1);
-    const availableBaseQty = Number(batch.qty_available || 0);
-    if (availableBaseQty < requestedBaseQty) {
-      return "Selected batch does not have enough available quantity";
-    }
-  }
-
-  return null;
 };
 
 // GET /api/stock-requests - List stock requests
@@ -115,8 +58,8 @@ async function GETHandler(request: NextRequest) {
 
     // Parse query parameters
     const search = normalizeSearch(searchParams.get("search"));
-    const requestingWarehouseId = searchParams.get("requestingWarehouseId");
-    const fulfillingWarehouseId = searchParams.get("fulfillingWarehouseId");
+    const requestingBusinessUnitId = searchParams.get("requestingBusinessUnitId");
+    const fulfillingBusinessUnitId = searchParams.get("fulfillingBusinessUnitId");
     const status = searchParams.get("status");
     const priority = searchParams.get("priority");
     const startDate = searchParams.get("startDate");
@@ -125,11 +68,17 @@ async function GETHandler(request: NextRequest) {
     const limit = Math.min(parsePositiveInt(searchParams.get("limit"), DEFAULT_LIMIT), MAX_LIMIT);
     const offset = (page - 1) * limit;
 
-    if (requestingWarehouseId && !UUID_REGEX.test(requestingWarehouseId)) {
-      return NextResponse.json({ error: "Invalid requesting warehouse filter" }, { status: 400 });
+    if (requestingBusinessUnitId && !UUID_REGEX.test(requestingBusinessUnitId)) {
+      return NextResponse.json(
+        { error: "Invalid requesting business unit filter" },
+        { status: 400 }
+      );
     }
-    if (fulfillingWarehouseId && !UUID_REGEX.test(fulfillingWarehouseId)) {
-      return NextResponse.json({ error: "Invalid fulfilling warehouse filter" }, { status: 400 });
+    if (fulfillingBusinessUnitId && !UUID_REGEX.test(fulfillingBusinessUnitId)) {
+      return NextResponse.json(
+        { error: "Invalid fulfilling business unit filter" },
+        { status: 400 }
+      );
     }
     if (status && !VALID_STATUSES.has(status)) {
       return NextResponse.json({ error: "Invalid status filter" }, { status: 400 });
@@ -141,116 +90,14 @@ async function GETHandler(request: NextRequest) {
     // Build query
     let query = supabase
       .from("stock_requests")
-      .select(
-        `
-        *,
-        requesting_warehouse:warehouses!stock_requests_requesting_warehouse_id_fkey(
-          id,
-          warehouse_code,
-          warehouse_name,
-          business_unit_id
-        ),
-        fulfilling_warehouse:warehouses!stock_requests_fulfilling_warehouse_id_fkey(
-          id,
-          warehouse_code,
-          warehouse_name,
-          business_unit_id
-        ),
-        requested_by_user:users!stock_requests_requested_by_user_id_fkey(
-          id,
-          email,
-          first_name,
-          last_name
-        ),
-        received_by_user:users!stock_requests_received_by_fkey(
-          id,
-          email,
-          first_name,
-          last_name
-        ),
-        stock_request_items(
-          *,
-          items(
-            id,
-            item_code,
-            item_name,
-            uom_id,
-            base_unit:units_of_measure!items_uom_id_fkey(
-              id,
-              code,
-              name,
-              symbol
-            )
-          ),
-          units_of_measure(id, code, symbol),
-          item_unit_options(
-            id,
-            item_id,
-            uom_id,
-            option_label,
-            qty_per_unit,
-            barcode,
-            is_base,
-            is_default,
-            is_active,
-            sort_order,
-            units_of_measure(
-              id,
-              code,
-              name,
-              symbol
-            )
-          ),
-          selected_item_batch:item_batches!stock_request_items_selected_item_batch_id_fkey(
-            id,
-            batch_code,
-            received_at,
-            qty_on_hand,
-            qty_reserved,
-            qty_available
-          )
-        ),
-        delivery_note_sources(
-          created_at,
-          delivery_notes!delivery_note_sources_dn_id_fkey(
-            id,
-            dn_no,
-            status,
-            created_at
-          )
-        )
-      `,
-        { count: "exact" }
-      )
+      .select(STOCK_REQUEST_SELECT, { count: "exact" })
       .eq("company_id", companyId)
       .is("deleted_at", null);
 
     if (currentBusinessUnitId) {
-      const { data: currentBuWarehouseRows, error: currentBuWarehousesError } = await supabase
-        .from("warehouses")
-        .select("id")
-        .eq("company_id", companyId)
-        .eq("business_unit_id", currentBusinessUnitId)
-        .is("deleted_at", null);
-
-      if (currentBuWarehousesError) {
-        return NextResponse.json(
-          { error: "Failed to resolve current business unit warehouses" },
-          { status: 500 }
-        );
-      }
-
-      const currentBuWarehouseIds = (currentBuWarehouseRows || [])
-        .map((row) => row.id)
-        .filter((value): value is string => Boolean(value));
-
-      if (currentBuWarehouseIds.length > 0) {
-        query = query.or(
-          `business_unit_id.eq.${currentBusinessUnitId},and(fulfilling_warehouse_id.in.(${currentBuWarehouseIds.join(",")}),status.neq.draft)`
-        );
-      } else {
-        query = query.eq("business_unit_id", currentBusinessUnitId);
-      }
+      query = query.or(
+        `business_unit_id.eq.${currentBusinessUnitId},and(fulfilling_business_unit_id.eq.${currentBusinessUnitId},status.neq.draft)`
+      );
     }
 
     // Apply filters
@@ -259,11 +106,11 @@ async function GETHandler(request: NextRequest) {
         `request_code.ilike.%${search}%,purpose.ilike.%${search}%,department.ilike.%${search}%`
       );
     }
-    if (requestingWarehouseId) {
-      query = query.eq("requesting_warehouse_id", requestingWarehouseId);
+    if (requestingBusinessUnitId) {
+      query = query.eq("business_unit_id", requestingBusinessUnitId);
     }
-    if (fulfillingWarehouseId) {
-      query = query.eq("fulfilling_warehouse_id", fulfillingWarehouseId);
+    if (fulfillingBusinessUnitId) {
+      query = query.eq("fulfilling_business_unit_id", fulfillingBusinessUnitId);
     }
     if (status) {
       query = query.eq("status", status);
@@ -290,78 +137,12 @@ async function GETHandler(request: NextRequest) {
 
     if (error) {
       console.error("Error fetching stock requests:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: "Failed to load stock requests" }, { status: 500 });
     }
 
-    const typedRequests = (requests || []) as StockRequestDbRecord[];
-    const missingWarehouseIds = Array.from(
-      new Set(
-        typedRequests.flatMap((request) => {
-          const ids: string[] = [];
-          const requestingWarehouse = Array.isArray(request.requesting_warehouse)
-            ? (request.requesting_warehouse[0] ?? null)
-            : (request.requesting_warehouse ?? null);
-          const fulfillingWarehouse = Array.isArray(request.fulfilling_warehouse)
-            ? (request.fulfilling_warehouse[0] ?? null)
-            : (request.fulfilling_warehouse ?? null);
-
-          if (!requestingWarehouse && request.requesting_warehouse_id) {
-            ids.push(request.requesting_warehouse_id);
-          }
-          if (!fulfillingWarehouse && request.fulfilling_warehouse_id) {
-            ids.push(request.fulfilling_warehouse_id);
-          }
-          return ids;
-        })
-      )
+    const formattedRequests = ((requests || []) as StockRequestDbRecord[]).map((request) =>
+      mapStockRequest(request)
     );
-
-    if (missingWarehouseIds.length > 0) {
-      const adminSupabase = createAdminClient();
-      const { data: warehouseRows } = await adminSupabase
-        .from("warehouses")
-        .select("id, warehouse_code, warehouse_name, business_unit_id")
-        .eq("company_id", companyId)
-        .in("id", missingWarehouseIds)
-        .is("deleted_at", null);
-
-      const warehouseMap = new Map((warehouseRows || []).map((row) => [row.id, row]));
-
-      for (const request of typedRequests) {
-        const requestingWarehouse = Array.isArray(request.requesting_warehouse)
-          ? (request.requesting_warehouse[0] ?? null)
-          : (request.requesting_warehouse ?? null);
-        const fulfillingWarehouse = Array.isArray(request.fulfilling_warehouse)
-          ? (request.fulfilling_warehouse[0] ?? null)
-          : (request.fulfilling_warehouse ?? null);
-
-        if (!requestingWarehouse && request.requesting_warehouse_id) {
-          const row = warehouseMap.get(request.requesting_warehouse_id);
-          if (row) {
-            request.requesting_warehouse = {
-              id: row.id,
-              warehouse_code: row.warehouse_code,
-              warehouse_name: row.warehouse_name,
-              business_unit_id: row.business_unit_id,
-            };
-          }
-        }
-
-        if (!fulfillingWarehouse && request.fulfilling_warehouse_id) {
-          const row = warehouseMap.get(request.fulfilling_warehouse_id);
-          if (row) {
-            request.fulfilling_warehouse = {
-              id: row.id,
-              warehouse_code: row.warehouse_code,
-              warehouse_name: row.warehouse_name,
-              business_unit_id: row.business_unit_id,
-            };
-          }
-        }
-      }
-    }
-
-    const formattedRequests = typedRequests.map((request) => mapStockRequest(request));
 
     return NextResponse.json({
       data: formattedRequests,
@@ -387,211 +168,95 @@ async function POSTHandler(request: NextRequest) {
 
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, userId, companyId, currentBusinessUnitId } = context;
-    const body = (await request.json()) as CreateStockRequestPayload;
-    const { data: userProfile } = await supabase
-      .from("users")
-      .select("first_name, last_name, email")
-      .eq("id", userId)
-      .maybeSingle();
-
-    // Validate business unit context
-    if (!currentBusinessUnitId) {
-      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    const { supabase, companyId, currentBusinessUnitId } = context;
+    const body = (await request.json().catch(() => null)) as CreateStockRequestPayload | null;
+    const validationError = validateStockRequestDraftPayload(body, {
+      requireFulfillingBusinessUnit: true,
+    });
+    if (validationError) {
+      return NextResponse.json(validationError, { status: 400 });
     }
-
-    const requestingWarehouseId = body.requesting_warehouse_id;
-    const fulfillingWarehouseId = body.fulfilling_warehouse_id;
-
-    // Validate required fields
-    if (
-      !body.request_date ||
-      !body.required_date ||
-      !requestingWarehouseId ||
-      !fulfillingWarehouseId ||
-      !body.priority
-    ) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
-
-    if (requestingWarehouseId === fulfillingWarehouseId) {
+    if (!body) {
       return NextResponse.json(
-        { error: "Fulfilling warehouse must be different from requesting warehouse" },
+        {
+          code: "STOCK_REQUEST_HEADER_INVALID",
+          error: "Complete the required stock request details before saving.",
+        },
         { status: 400 }
       );
     }
 
-    if (!body.items || body.items.length === 0) {
-      return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
+    // Validate business unit context
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        {
+          code: "STOCK_REQUEST_CONTEXT_INVALID",
+          error: "Select a valid business unit before saving the stock request.",
+        },
+        { status: 400 }
+      );
     }
 
-    const resolvedLineItems = await resolveStockRequestLineUnitOptions(
-      supabase,
-      companyId,
-      body.items
-    );
-    const selectedBatchError = await validateSelectedItemBatches(
-      supabase,
-      companyId,
-      fulfillingWarehouseId,
-      resolvedLineItems
-    );
-    if (selectedBatchError) {
-      return NextResponse.json({ error: selectedBatchError }, { status: 400 });
+    const fulfillingBusinessUnitId = body.fulfilling_business_unit_id;
+
+    if (currentBusinessUnitId === fulfillingBusinessUnitId) {
+      return NextResponse.json(
+        {
+          code: "STOCK_REQUEST_BUSINESS_UNITS_MUST_DIFFER",
+          error: "The requesting and fulfilling business units must be different.",
+        },
+        { status: 400 }
+      );
     }
 
-    // Build requested_by_name from first_name and last_name
-    const requestedByName =
-      [userProfile?.first_name, userProfile?.last_name].filter(Boolean).join(" ") ||
-      userProfile?.email ||
-      userId;
+    const rpcItems = body.items.map((item) => ({
+      item_id: item.item_id,
+      requested_qty: item.requested_qty,
+      item_unit_option_id: item.item_unit_option_id,
+      selected_item_batch_id: item.selected_item_batch_id || null,
+      uom_id: item.uom_id,
+      notes: item.notes || null,
+    }));
 
-    // Create stock request header
-    const { data: stockRequest, error: requestError } = await supabase
-      .from("stock_requests")
-      .insert({
-        company_id: companyId,
-        business_unit_id: currentBusinessUnitId,
-        request_date: body.request_date,
-        required_date: body.required_date,
-        requesting_warehouse_id: requestingWarehouseId,
-        fulfilling_warehouse_id: fulfillingWarehouseId,
-        department: body.department || null,
-        status: "draft",
-        priority: body.priority,
-        purpose: body.purpose || null,
-        notes: body.notes || null,
-        requested_by_user_id: userId,
-        requested_by_name: requestedByName,
-        created_by: userId,
-        updated_by: userId,
-      })
-      .select()
-      .single();
-
-    if (requestError) {
-      console.error("Error creating stock request:", requestError);
-      return NextResponse.json({ error: requestError.message }, { status: 500 });
-    }
-
-    // Create stock request items
-    const requestItems = resolvedLineItems.map(
-      (item: StockRequestItemInput & { item_unit_option_id: string }) => ({
-        stock_request_id: stockRequest.id,
-        item_id: item.item_id,
-        requested_qty: item.requested_qty,
-        picked_qty: 0,
-        item_unit_option_id: item.item_unit_option_id,
-        selected_item_batch_id: item.selected_item_batch_id || null,
-        uom_id: item.uom_id,
-        notes: item.notes || null,
-      })
+    const { data: stockRequestId, error: saveError } = await supabase.rpc(
+      "create_stock_request_draft",
+      {
+        p_business_unit_id: currentBusinessUnitId,
+        p_fulfilling_business_unit_id: fulfillingBusinessUnitId,
+        p_request_date: body.request_date,
+        p_required_date: body.required_date,
+        p_department: body.department || null,
+        p_priority: body.priority,
+        p_purpose: body.purpose || null,
+        p_notes: body.notes || null,
+        p_items: rpcItems,
+      }
     );
 
-    const { error: itemsError } = await supabase.from("stock_request_items").insert(requestItems);
-
-    if (itemsError) {
-      console.error("Error creating stock request items:", itemsError);
-      // Rollback request
-      await supabase.from("stock_requests").delete().eq("id", stockRequest.id);
-      return NextResponse.json({ error: "Failed to create request items" }, { status: 500 });
+    if (saveError || !stockRequestId) {
+      console.error("Error creating stock request draft:", saveError);
+      const mappedError = mapStockRequestDraftRpcError(saveError?.message || "");
+      return NextResponse.json(mappedError.body, { status: mappedError.status });
     }
 
     // Fetch the complete request with items
-    const { data: completeRequest } = await supabase
+    const { data: completeRequest, error: fetchError } = await supabase
       .from("stock_requests")
-      .select(
-        `
-        *,
-        requesting_warehouse:warehouses!stock_requests_requesting_warehouse_id_fkey(
-          id,
-          warehouse_code,
-          warehouse_name,
-          business_unit_id
-        ),
-        fulfilling_warehouse:warehouses!stock_requests_fulfilling_warehouse_id_fkey(
-          id,
-          warehouse_code,
-          warehouse_name,
-          business_unit_id
-        ),
-        requested_by_user:users!stock_requests_requested_by_user_id_fkey(
-          id,
-          email,
-          first_name,
-          last_name
-        ),
-        received_by_user:users!stock_requests_received_by_fkey(
-          id,
-          email,
-          first_name,
-          last_name
-        ),
-        stock_request_items(
-          *,
-          items(
-            id,
-            item_code,
-            item_name,
-            uom_id,
-            base_unit:units_of_measure!items_uom_id_fkey(
-              id,
-              code,
-              name,
-              symbol
-            )
-          ),
-          units_of_measure(id, code, symbol),
-          item_unit_options(
-            id,
-            item_id,
-            uom_id,
-            option_label,
-            qty_per_unit,
-            barcode,
-            is_base,
-            is_default,
-            is_active,
-            sort_order,
-            units_of_measure(
-              id,
-              code,
-              name,
-              symbol
-            )
-          ),
-          selected_item_batch:item_batches!stock_request_items_selected_item_batch_id_fkey(
-            id,
-            batch_code,
-            received_at,
-            qty_on_hand,
-            qty_reserved,
-            qty_available
-          )
-        ),
-        delivery_note_sources(
-          created_at,
-          delivery_notes!delivery_note_sources_dn_id_fkey(
-            id,
-            dn_no,
-            status,
-            created_at
-          )
-        )
-      `
-      )
-      .eq("id", stockRequest.id)
+      .select(STOCK_REQUEST_SELECT)
+      .eq("id", stockRequestId)
+      .eq("company_id", companyId)
+      .is("deleted_at", null)
       .single();
 
-    if (!completeRequest) {
+    if (fetchError || !completeRequest) {
+      console.error("Error fetching created stock request:", fetchError);
       return NextResponse.json({ error: "Failed to fetch created request" }, { status: 500 });
     }
 
-    return NextResponse.json(mapStockRequest(completeRequest as StockRequestDbRecord));
+    return NextResponse.json(mapStockRequest(completeRequest as StockRequestDbRecord), {
+      status: 201,
+    });
   } catch (error) {
-    if (error instanceof StockRequestLineValidationError) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
     console.error("Error in stock-requests POST:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

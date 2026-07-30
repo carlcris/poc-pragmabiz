@@ -19,7 +19,7 @@ export type StockRequestStatus =
 
 export type StockRequestPriority = "low" | "normal" | "high" | "urgent";
 
-export interface StockRequestItem {
+export type StockRequestItem = {
   id: string;
   stock_request_id: string;
   item_id: string;
@@ -47,22 +47,23 @@ export interface StockRequestItem {
   selected_item_batch?: {
     id: string;
     batch_code: string;
-    received_at: string;
-    qty_on_hand?: number;
-    qty_reserved?: number;
-    qty_available?: number | null;
+    received_at?: string | null;
+    warehouse?: {
+      id: string;
+      warehouse_code: string;
+      warehouse_name: string;
+    } | null;
   } | null;
-}
+};
 
-export interface StockRequest {
+export type StockRequest = {
   id: string;
   company_id: string;
   business_unit_id?: string | null;
+  fulfilling_business_unit_id: string;
   request_code: string;
   request_date: string;
   required_date: string;
-  requesting_warehouse_id: string;
-  fulfilling_warehouse_id?: string | null;
   department?: string | null;
   status: StockRequestStatus;
   priority: StockRequestPriority;
@@ -83,17 +84,15 @@ export interface StockRequest {
   deleted_at?: string | null;
   version: number;
   // Joined data
-  requesting_warehouse?: {
+  requesting_business_unit?: {
     id: string;
-    warehouse_code: string;
-    warehouse_name: string;
-    businessUnitId?: string | null;
+    code: string;
+    name: string;
   } | null;
-  fulfilling_warehouse?: {
+  fulfilling_business_unit?: {
     id: string;
-    warehouse_code: string;
-    warehouse_name: string;
-    businessUnitId?: string | null;
+    code: string;
+    name: string;
   } | null;
   fulfilling_delivery_note?: {
     id: string;
@@ -122,13 +121,12 @@ export interface StockRequest {
     full_name?: string | null;
   };
   stock_request_items?: StockRequestItem[];
-}
+};
 
-export interface CreateStockRequestPayload {
+export type CreateStockRequestPayload = {
   request_date: string;
   required_date: string;
-  requesting_warehouse_id: string;
-  fulfilling_warehouse_id: string;
+  fulfilling_business_unit_id: string;
   department?: string;
   priority: StockRequestPriority;
   purpose?: string;
@@ -136,28 +134,30 @@ export interface CreateStockRequestPayload {
   items: Array<{
     item_id: string;
     requested_qty: number;
-    item_unit_option_id?: string;
+    item_unit_option_id: string;
     selected_item_batch_id?: string | null;
-    uom_id?: string;
+    uom_id: string;
     notes?: string;
   }>;
-}
+};
 
-export type UpdateStockRequestPayload = Partial<CreateStockRequestPayload>;
+export type UpdateStockRequestPayload = Partial<
+  Omit<CreateStockRequestPayload, "fulfilling_business_unit_id">
+>;
 
-export interface StockRequestListParams {
+export type StockRequestListParams = {
   search?: string;
-  requestingWarehouseId?: string;
-  fulfillingWarehouseId?: string;
+  requestingBusinessUnitId?: string;
+  fulfillingBusinessUnitId?: string;
   status?: StockRequestStatus;
   priority?: StockRequestPriority;
   startDate?: string;
   endDate?: string;
   page?: number;
   limit?: number;
-}
+};
 
-export interface StockRequestListResponse {
+export type StockRequestListResponse = {
   data: StockRequest[];
   pagination: {
     total: number;
@@ -165,39 +165,4 @@ export interface StockRequestListResponse {
     limit: number;
     totalPages: number;
   };
-}
-
-export type ReceiveStockRequestPayload = {
-  receivedDate?: string;
-  notes?: string;
-  items: Array<{
-    stockRequestItemId: string;
-    itemId: string;
-    requestedQty: number;
-    receivedQty: number;
-    uomId: string;
-    locationId?: string | null;
-  }>;
-};
-
-export type StockRequestPickLineInput = {
-  stockRequestItemId: string;
-  pickedQty: number;
-  shortReasonCode?: string;
-};
-
-export type PickStockRequestPayload = {
-  notes?: string;
-  items: StockRequestPickLineInput[];
-};
-
-export type StockRequestDispatchLineInput = {
-  stockRequestItemId: string;
-  dispatchQty?: number;
-};
-
-export type DispatchStockRequestPayload = {
-  dispatchDate?: string;
-  notes?: string;
-  items?: StockRequestDispatchLineInput[];
 };

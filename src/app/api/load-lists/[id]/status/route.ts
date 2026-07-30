@@ -15,16 +15,6 @@ const normalizeOptionalDate = (value: unknown) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const normalizeLoadListItemBaseQty = (item: {
-  load_list_qty?: string | number | null;
-  qty_per_unit?: string | number | null;
-}) => {
-  const qtyPerUnit = Number(item.qty_per_unit);
-  const loadListQty = Number(item.load_list_qty ?? 0) || 0;
-
-  return { loadListBaseQty: loadListQty * qtyPerUnit };
-};
-
 // PATCH /api/load-lists/[id]/status
 async function PATCHHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -61,7 +51,7 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    // Fetch load list with items and warehouse info
+    // Fetch the load list and its destination business unit.
     const { data: ll, error: fetchError } = await supabase
       .from("load_lists")
       .select(
@@ -69,18 +59,11 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
         id,
         ll_number,
         business_unit_id,
+        destination_business_unit_id,
         status,
-        warehouse_id,
         created_by,
         liner_name,
-        estimated_arrival_date,
-        items:load_list_items(
-          id,
-          item_id,
-          qty_per_unit,
-          load_list_qty
-        ),
-        warehouse:warehouses!inner(business_unit_id)
+        estimated_arrival_date
       `
       )
       .eq("id", id)
@@ -92,9 +75,8 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Load list not found" }, { status: 404 });
     }
 
-    const warehouse = Array.isArray(ll.warehouse) ? ll.warehouse[0] : ll.warehouse;
     const isSourceBusinessUnit = ll.business_unit_id === currentBusinessUnitId;
-    const isTargetBusinessUnit = warehouse?.business_unit_id === currentBusinessUnitId;
+    const isTargetBusinessUnit = ll.destination_business_unit_id === currentBusinessUnitId;
 
     if (!isSourceBusinessUnit && !isTargetBusinessUnit) {
       return NextResponse.json({ error: "Load list not found" }, { status: 404 });
@@ -108,9 +90,16 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
     const effectiveEstimatedArrivalDate =
       normalizeOptionalDate(body.estimatedArrivalDate) || ll.estimated_arrival_date || null;
 
-    if (!isMarkArrived && !isSourceBusinessUnit) {
+    if (!isMarkArrived && !isArrivalReversal && !isSourceBusinessUnit) {
       return NextResponse.json(
         { error: "Load list is read-only in this business unit" },
+        { status: 403 }
+      );
+    }
+
+    if ((isMarkArrived || isArrivalReversal) && !isTargetBusinessUnit) {
+      return NextResponse.json(
+        { error: "Only the destination business unit can manage shipment arrival" },
         { status: 403 }
       );
     }
@@ -206,7 +195,8 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
           markArrivedError.message === "Load list not found" ||
           markArrivedError.message === "Only in-transit load lists can be marked arrived" ||
           markArrivedError.message === "Load list has no items" ||
-          markArrivedError.message === "Target warehouse not found"
+          markArrivedError.message ===
+            "Only the destination business unit can mark the load list arrived"
             ? markArrivedError.message
             : "Failed to mark load list arrived";
         return NextResponse.json({ error }, { status });
@@ -260,51 +250,6 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
         status: "in_transit",
         message: "Status updated successfully",
       });
-    }
-
-    // ========================================================================
-    // INVENTORY UPDATES - Critical business logic
-    // ========================================================================
-
-    try {
-      // Handle transition FROM any active transit state TO "cancelled"
-      if (currentStatus === "in_transit" && newStatus === "cancelled") {
-        // Decrement in_transit (rollback)
-        for (const item of ll.items) {
-          const { loadListBaseQty } = normalizeLoadListItemBaseQty(item);
-          // Ensure item_warehouse record exists
-          const { data: existingRecord } = await supabase
-            .from("item_warehouse")
-            .select("id, in_transit")
-            .eq("item_id", item.item_id)
-            .eq("warehouse_id", ll.warehouse_id)
-            .eq("company_id", companyId)
-            .single();
-
-          if (existingRecord) {
-            const newInTransit = Math.max(
-              0,
-              parseFloat(existingRecord.in_transit) - loadListBaseQty
-            );
-
-            await supabase
-              .from("item_warehouse")
-              .update({
-                in_transit: newInTransit,
-                updated_by: userId,
-              })
-              .eq("item_id", item.item_id)
-              .eq("warehouse_id", ll.warehouse_id)
-              .eq("company_id", companyId);
-          }
-        }
-      }
-    } catch (inventoryError) {
-      console.error("Error updating inventory:", inventoryError);
-      return NextResponse.json(
-        { error: "Failed to update inventory. Transaction rolled back." },
-        { status: 500 }
-      );
     }
 
     // Update load list status

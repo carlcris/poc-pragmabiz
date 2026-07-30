@@ -2,17 +2,45 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { STOCK_REQUESTS_QUERY_KEY } from "@/hooks/queryKeys";
 import { stockRequestsApi } from "@/lib/api/stock-requests";
+import { getApiErrorCode } from "@/lib/api";
 import type {
   StockRequestListParams,
   CreateStockRequestPayload,
   UpdateStockRequestPayload,
-  ReceiveStockRequestPayload,
-  PickStockRequestPayload,
-  DispatchStockRequestPayload,
 } from "@/types/stock-request";
 
 const getErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
+
+const STOCK_REQUEST_DRAFT_ERROR_CODES = [
+  "STOCK_REQUEST_SAVE_FAILED",
+  "STOCK_REQUEST_UNAUTHORIZED",
+  "STOCK_REQUEST_FORBIDDEN",
+  "STOCK_REQUEST_CONTEXT_INVALID",
+  "STOCK_REQUEST_NOT_DRAFT",
+  "STOCK_REQUEST_HEADER_INVALID",
+  "STOCK_REQUEST_BUSINESS_UNITS_MUST_DIFFER",
+  "STOCK_REQUEST_FULFILLING_BUSINESS_UNIT_INVALID",
+  "STOCK_REQUEST_FULFILLING_BUSINESS_UNIT_IMMUTABLE",
+  "STOCK_REQUEST_ITEMS_INVALID",
+  "STOCK_REQUEST_LINE_INVALID",
+  "STOCK_REQUEST_ITEM_UNAVAILABLE",
+  "STOCK_REQUEST_UNIT_OPTION_UNAVAILABLE",
+  "STOCK_REQUEST_UNIT_OPTION_MISMATCH",
+] as const;
+
+type StockRequestDraftErrorCode = (typeof STOCK_REQUEST_DRAFT_ERROR_CODES)[number];
+
+type StockRequestDraftMutationMessages = {
+  success: string;
+  fallbackError: string;
+  errors: Partial<Record<StockRequestDraftErrorCode, string>>;
+};
+
+const getDraftMutationError = (error: unknown, messages: StockRequestDraftMutationMessages) => {
+  const code = getApiErrorCode(error, STOCK_REQUEST_DRAFT_ERROR_CODES);
+  return (code && messages.errors[code]) || messages.fallbackError;
+};
 
 /**
  * Hook to fetch list of stock requests
@@ -38,7 +66,7 @@ export function useStockRequest(id: string) {
 /**
  * Hook to create stock request
  */
-export function useCreateStockRequest() {
+export function useCreateStockRequest(messages: StockRequestDraftMutationMessages) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -46,10 +74,10 @@ export function useCreateStockRequest() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
-      toast.success("Stock request created successfully");
+      toast.success(messages.success);
     },
     onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to create stock request"));
+      toast.error(getDraftMutationError(error, messages));
     },
   });
 }
@@ -57,7 +85,7 @@ export function useCreateStockRequest() {
 /**
  * Hook to update stock request
  */
-export function useUpdateStockRequest() {
+export function useUpdateStockRequest(messages: StockRequestDraftMutationMessages) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -66,10 +94,10 @@ export function useUpdateStockRequest() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
-      toast.success("Stock request updated successfully");
+      toast.success(messages.success);
     },
     onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to update stock request"));
+      toast.error(getDraftMutationError(error, messages));
     },
   });
 }
@@ -152,88 +180,6 @@ export function useRejectStockRequest() {
 }
 
 /**
- * Hook to mark stock request as delivered
- */
-export function useMarkDelivered() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => stockRequestsApi.markDelivered(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
-      toast.success("Stock request dispatched");
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to dispatch stock request"));
-    },
-  });
-}
-
-/**
- * Hook to save stock request picking progress
- */
-export function usePickStockRequest() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: PickStockRequestPayload }) =>
-      stockRequestsApi.pick(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
-      toast.success("Pick progress saved");
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to save pick progress"));
-    },
-  });
-}
-
-/**
- * Hook to dispatch picked stock request quantities
- */
-export function useDispatchStockRequest() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data?: DispatchStockRequestPayload }) =>
-      stockRequestsApi.dispatch(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
-      toast.success("Stock request dispatched");
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to dispatch stock request"));
-    },
-  });
-}
-
-/**
- * Hook to complete stock request
- */
-export function useCompleteStockRequest() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => stockRequestsApi.complete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
-      toast.success("Stock request completed successfully");
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to complete stock request"));
-    },
-  });
-}
-
-/**
  * Hook to cancel stock request
  */
 export function useCancelStockRequest() {
@@ -249,27 +195,6 @@ export function useCancelStockRequest() {
     },
     onError: (error: unknown) => {
       toast.error(getErrorMessage(error, "Failed to cancel stock request"));
-    },
-  });
-}
-
-/**
- * Hook to receive delivered stock request
- */
-export function useReceiveStockRequest() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: ReceiveStockRequestPayload }) =>
-      stockRequestsApi.receive(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["items"] });
-      toast.success("Stock request received successfully");
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to receive stock request"));
     },
   });
 }

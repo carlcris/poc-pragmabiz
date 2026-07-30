@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   BackHandler,
@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, ErrorState, LoadingState, ScannerModal, Screen, StatusBadge } from "@/components/ui";
 import {
   useDeliveryNote,
+  useReceivingWarehouses,
   useRecordDeliveryNoteReceivingScan,
   useStartReceiving,
   useSubmitReceiving,
@@ -182,6 +183,7 @@ export default function ReceivingDetailScreen() {
   const canViewDeliveryNoteReceiving = canAccessDeliveryNoteReceiving(session);
   const canManageReceiving = canManageDeliveryNoteReceiving(session);
   const [discrepancyNotes, setDiscrepancyNotes] = useState("");
+  const [receivingWarehouseId, setReceivingWarehouseId] = useState("");
   const [barcode, setBarcode] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanError, setScanError] = useState("");
@@ -193,14 +195,29 @@ export default function ReceivingDetailScreen() {
   const hardwareScanBlockedRef = useRef(false);
   const pendingScanConfirmationRef = useRef<ScanConfirmation | null>(null);
   const deliveryNote = useDeliveryNote(id, canViewDeliveryNoteReceiving);
+  const refetchDeliveryNote = deliveryNote.refetch;
+  const receivingWarehouses = useReceivingWarehouses(
+    canManageReceiving && !deliveryNote.data?.receivingStartedAt
+  );
   const startReceiving = useStartReceiving(id);
   const recordScan = useRecordDeliveryNoteReceivingScan(id);
   const submitReceiving = useSubmitReceiving(id);
   const isReceiving = deliveryNote.data?.status === "dispatched";
   const isReceived = deliveryNote.data?.status === "received";
   const isReceivingStarted = Boolean(deliveryNote.data?.receivingStartedAt);
+  const receivingWarehouseOptions = receivingWarehouses.data || [];
+  const effectiveReceivingWarehouseId =
+    receivingWarehouseId ||
+    (receivingWarehouseOptions.length === 1 ? receivingWarehouseOptions[0]?.id || "" : "");
+  const showReceivingWarehousePicker = receivingWarehouseOptions.length > 1;
   const displayStatus =
     isReceiving && isReceivingStarted ? "receiving" : deliveryNote.data?.status || "unknown";
+
+  const handleRefresh = useCallback(async () => {
+    if (canViewDeliveryNoteReceiving) {
+      await refetchDeliveryNote();
+    }
+  }, [canViewDeliveryNoteReceiving, refetchDeliveryNote]);
 
   useEffect(() => {
     if (
@@ -407,6 +424,7 @@ export default function ReceivingDetailScreen() {
     enabled:
       canManageReceiving &&
       isReceiving &&
+      isReceivingStarted &&
       !scannerOpen &&
       !recordScan.isPending &&
       !scanConfirmation &&
@@ -417,7 +435,13 @@ export default function ReceivingDetailScreen() {
 
   if (!canViewDeliveryNoteReceiving) {
     return (
-      <Screen title="Receiving" subtitle="Delivery note receiving" back>
+      <Screen
+        title="Receiving"
+        subtitle="Delivery note receiving"
+        back
+        onRefresh={handleRefresh}
+        refreshing={deliveryNote.isRefetching}
+      >
         <ErrorState message="You do not have permission to access receiving." />
       </Screen>
     );
@@ -425,7 +449,12 @@ export default function ReceivingDetailScreen() {
 
   return (
     <View style={styles.screenRoot}>
-      <Screen title={deliveryNote.data?.code || "Delivery Note"} subtitle="Scan and verify items">
+      <Screen
+        title={deliveryNote.data?.code || "Delivery Note"}
+        subtitle="Scan and verify items"
+        onRefresh={handleRefresh}
+        refreshing={deliveryNote.isRefetching}
+      >
         {deliveryNote.isLoading ? <LoadingState /> : null}
         {deliveryNote.error ? <ErrorState message="Unable to load the delivery note." /> : null}
         {deliveryNote.data ? (
@@ -447,37 +476,72 @@ export default function ReceivingDetailScreen() {
             {isReceiving && canManageReceiving ? (
               <View style={styles.actionRow}>
                 {!isReceivingStarted ? (
-                  <Pressable
-                    onPress={() => startReceiving.mutate()}
-                    disabled={startReceiving.isPending}
-                    style={({ pressed }) => [
-                      styles.actionButton,
-                      pressed && styles.actionButtonPressed,
-                    ]}
-                  >
-                    <Ionicons name="scan-outline" size={18} color="#fff" />
-                    <Text style={styles.actionButtonText}>Start Receiving</Text>
-                  </Pressable>
+                  <View style={styles.receivingStartSection}>
+                    {showReceivingWarehousePicker ? (
+                      <>
+                        <Text style={styles.receivingWarehouseLabel}>Receiving warehouse</Text>
+                        <View style={styles.receivingWarehouseOptions}>
+                          {receivingWarehouseOptions.map((warehouse) => {
+                            const isSelected = effectiveReceivingWarehouseId === warehouse.id;
+                            return (
+                              <Pressable
+                                key={warehouse.id}
+                                onPress={() => setReceivingWarehouseId(warehouse.id)}
+                                style={[
+                                  styles.receivingWarehouseOption,
+                                  isSelected && styles.receivingWarehouseOptionSelected,
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.receivingWarehouseOptionText,
+                                    isSelected && styles.receivingWarehouseOptionTextSelected,
+                                  ]}
+                                >
+                                  {warehouse.code} - {warehouse.name}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      </>
+                    ) : null}
+                    <Pressable
+                      onPress={() => startReceiving.mutate(effectiveReceivingWarehouseId)}
+                      disabled={!effectiveReceivingWarehouseId || startReceiving.isPending}
+                      style={({ pressed }) => [
+                        styles.actionButton,
+                        (!effectiveReceivingWarehouseId || startReceiving.isPending) &&
+                          styles.actionButtonDisabled,
+                        pressed && styles.actionButtonPressed,
+                      ]}
+                    >
+                      <Ionicons name="scan-outline" size={18} color="#fff" />
+                      <Text style={styles.actionButtonText}>Start Receiving</Text>
+                    </Pressable>
+                  </View>
                 ) : (
                   <View style={[styles.actionButton, styles.actionButtonStarted]}>
                     <Ionicons name="checkmark-circle-outline" size={18} color={colors.greenDark} />
                     <Text style={styles.actionButtonTextStarted}>Receiving Started</Text>
                   </View>
                 )}
-                <Pressable
-                  onPress={handleSubmitReceiving}
-                  disabled={submitReceiving.isPending}
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    styles.actionButtonSecondary,
-                    pressed && styles.actionButtonSecondaryPressed,
-                  ]}
-                >
-                  <Ionicons name="paper-plane-outline" size={18} color={colors.text} />
-                  <Text style={styles.actionButtonTextSecondary}>
-                    {submitReceiving.isPending ? "Submitting..." : "Submit"}
-                  </Text>
-                </Pressable>
+                {isReceivingStarted ? (
+                  <Pressable
+                    onPress={handleSubmitReceiving}
+                    disabled={submitReceiving.isPending}
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      styles.actionButtonSecondary,
+                      pressed && styles.actionButtonSecondaryPressed,
+                    ]}
+                  >
+                    <Ionicons name="paper-plane-outline" size={18} color={colors.text} />
+                    <Text style={styles.actionButtonTextSecondary}>
+                      {submitReceiving.isPending ? "Submitting..." : "Submit"}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
             ) : isReceived ? (
               <Card style={styles.receivedCard}>
@@ -492,7 +556,7 @@ export default function ReceivingDetailScreen() {
             ) : null}
             {submitError ? <Text style={styles.submitErrorText}>{submitError}</Text> : null}
 
-            {isReceiving && canManageReceiving ? (
+            {isReceiving && isReceivingStarted && canManageReceiving ? (
               <>
                 <Text style={styles.sectionTitle}>QR / BARCODE</Text>
 
@@ -543,7 +607,11 @@ export default function ReceivingDetailScreen() {
               </>
             ) : null}
 
-            {isReceiving && canManageReceiving && hasVariance ? (
+            {isReceiving &&
+            isReceivingStarted &&
+            canManageReceiving &&
+            totals.received > 0 &&
+            hasVariance ? (
               <>
                 <Card style={styles.warningCard}>
                   <Ionicons name="alert-circle-outline" size={18} color={colors.amberDark} />
@@ -675,7 +743,7 @@ export default function ReceivingDetailScreen() {
           </>
         ) : null}
         <ScannerModal
-          visible={canManageReceiving && scannerOpen}
+          visible={canManageReceiving && isReceivingStarted && scannerOpen}
           onClose={() => setScannerOpen(false)}
           onScan={(value) => {
             void processScan(value);
@@ -865,6 +933,39 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.sm,
   },
+  receivingStartSection: {
+    flex: 1,
+    gap: spacing.sm,
+  },
+  receivingWarehouseLabel: {
+    fontSize: 13,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.textSecondary,
+  },
+  receivingWarehouseOptions: {
+    gap: spacing.xs,
+  },
+  receivingWarehouseOption: {
+    minHeight: 40,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    justifyContent: "center",
+    paddingHorizontal: spacing.md,
+  },
+  receivingWarehouseOptionSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+  },
+  receivingWarehouseOptionText: {
+    fontSize: 14,
+    color: colors.text,
+  },
+  receivingWarehouseOptionTextSelected: {
+    color: colors.primary,
+    fontWeight: typography.fontWeights.semibold,
+  },
   actionButton: {
     flex: 1,
     minHeight: 44,
@@ -874,6 +975,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xs,
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
   },
   actionButtonSecondary: {
     backgroundColor: colors.surface,

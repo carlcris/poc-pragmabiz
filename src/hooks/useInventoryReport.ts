@@ -8,15 +8,13 @@ export type InventoryStockStatus =
   | "on_hand"
   | "available"
   | "allocated"
-  | "in_transit"
   | "zero";
 
 export type InventoryReportSortBy =
   | "updated_at"
   | "current_stock"
   | "reserved_stock"
-  | "available_stock"
-  | "in_transit";
+  | "available_stock";
 
 export type InventoryReportFilters = {
   page?: number;
@@ -44,7 +42,6 @@ export type InventoryReportRow = {
   currentStock: number;
   reservedStock: number;
   availableStock: number;
-  inTransit: number;
   reorderLevel: number;
   reorderQuantity: number;
   maxQuantity: number | null;
@@ -61,7 +58,6 @@ export type InventoryReportResponse = {
     pageQtyOnHand: number;
     pageQtyReserved: number;
     pageQtyAvailable: number;
-    pageQtyInTransit: number;
     pageStockValue: number;
     lowStockRows: number;
     outOfStockRows: number;

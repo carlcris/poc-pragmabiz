@@ -7,7 +7,6 @@ import {
   fetchDeliveryNoteHeader,
   fetchDeliveryNoteItems,
   getAuthContext,
-  syncStockRequestStatusCache,
   toNumber,
 } from "../../_lib";
 
@@ -69,21 +68,18 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
     });
 
     if (voidError) {
-      return NextResponse.json({ error: voidError.message }, { status: 400 });
+      console.error("Failed to void delivery note:", voidError);
+      return NextResponse.json(
+        { error: "The delivery note could not be voided. Refresh and try again." },
+        { status: 400 }
+      );
     }
-
-    await syncStockRequestStatusCache(
-      auth.supabase,
-      auth.companyId,
-      Array.from(new Set(dnItems.map((item) => item.sr_id))),
-      auth.userId
-    );
 
     const dn = await fetchDeliveryNote(auth.supabase, auth.companyId, id);
     return NextResponse.json(dn);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Unexpected delivery note void error:", error);
+    return NextResponse.json({ error: "Failed to void delivery note" }, { status: 500 });
   }
 }
 

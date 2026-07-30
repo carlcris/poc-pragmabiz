@@ -137,6 +137,7 @@ INSERT INTO warehouses (id, company_id, business_unit_id, warehouse_code, wareho
 VALUES
     -- Main Office Warehouses
     ('b4dd7da9-4a6f-418c-98b4-6a05520eb6c5', '1e10e2dd-655e-41e0-a508-edfd660a9bcf', 'd69c52d5-6755-4e28-87e3-24c680a5897b', 'WH-BULACAN', 'Bulacan', 'main', 'JP Laurel Ave', 'Malolos City', 'Region III', 'Philippines', '8000', 'Juan Dela Cruz', '+63-917-111-2222', 'taguig.wh@achlers.com', true, false),
+    ('a2b20002-0000-4000-8000-000000000002', '1e10e2dd-655e-41e0-a508-edfd660a9bcf', 'd69c52d5-6755-4e28-87e3-24c680a5897b', 'WHB-002', 'Warehouse B', 'main', 'JP Laurel Ave', 'Malolos City', 'Region III', 'Philippines', '8000', 'Warehouse B Team', '+63-917-111-2233', 'warehouse-b@achlers.com', true, false),
     ('b1bc2eeb-aab4-4aa1-a225-b82c95975a53', '1e10e2dd-655e-41e0-a508-edfd660a9bcf', 'd5d09f49-c3d7-4f24-aca9-57bea45e0a54', 'WH-BAMBANG', 'Bambang', 'main', '123 Lopez St.', 'Manila', 'NCR', 'Philippines', '9000', 'Maria Santos', '+63-917-222-3333', 'pasay.wh@achlers.com', true, false),
     ('c830f462-6973-42cd-8125-898376fbc291', '1e10e2dd-655e-41e0-a508-edfd660a9bcf', 'bbce384d-dd71-441c-a5e3-2b5e5d1543ce', 'STR-SANTOS', 'Abad Santos', 'store', '456 Juan Luna St.', 'Pasig City', 'NCR', 'Philippines', '9500', 'Miguel Flores', '+63-917-333-4444', 'pasig@achlers.com', true, false);
 -- ============================================================================
@@ -817,7 +818,6 @@ WITH stockman_permissions(resource, can_view, can_create, can_edit, can_delete) 
     ('transfer_between_locations', true, true, true, false),
     ('stock_adjustments', true, true, true, false),
     ('stock_requests', true, true, true, false),
-    ('stock_transfers', true, true, true, false),
     ('stock_transactions', true, true, false, false)
 )
 INSERT INTO role_permissions (
@@ -1523,7 +1523,7 @@ SELECT
   w.id,
   'MAIN',
   'Main',
-  'crate',
+  'rack',
   true,
   true,
   true,
@@ -1572,7 +1572,7 @@ SELECT DISTINCT
   iw.warehouse_id,
   'MAIN' AS code,
   'Main' AS name,
-  'bin' AS location_type,
+  'rack' AS location_type,
   TRUE,
   TRUE,
   TRUE,
@@ -2214,7 +2214,7 @@ SELECT
   warehouses.id,
   'MAIN',
   'Main',
-  'crate',
+  'rack',
   TRUE,
   TRUE,
   TRUE
@@ -2260,7 +2260,6 @@ INSERT INTO public.item_warehouse (
   reorder_quantity,
   current_stock,
   reserved_stock,
-  in_transit,
   is_active
 )
 SELECT
@@ -2272,7 +2271,6 @@ SELECT
   100,
   opening_qty,
   0,
-  0,
   TRUE
 FROM imported_items
 ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE SET
@@ -2281,7 +2279,6 @@ ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE SET
   reorder_quantity = EXCLUDED.reorder_quantity,
   current_stock = EXCLUDED.current_stock,
   reserved_stock = 0,
-  in_transit = 0,
   is_active = TRUE,
   deleted_at = NULL,
   updated_at = CURRENT_TIMESTAMP;
@@ -2682,7 +2679,7 @@ SELECT
   warehouses.id,
   'MAIN',
   'Main',
-  'crate',
+  'rack',
   TRUE,
   TRUE,
   TRUE
@@ -2728,7 +2725,6 @@ INSERT INTO public.item_warehouse (
   reorder_quantity,
   current_stock,
   reserved_stock,
-  in_transit,
   is_active
 )
 SELECT
@@ -2740,7 +2736,6 @@ SELECT
   100,
   opening_qty,
   0,
-  0,
   TRUE
 FROM imported_items
 ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE SET
@@ -2749,7 +2744,6 @@ ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE SET
   reorder_quantity = EXCLUDED.reorder_quantity,
   current_stock = EXCLUDED.current_stock,
   reserved_stock = 0,
-  in_transit = 0,
   is_active = TRUE,
   deleted_at = NULL,
   updated_at = CURRENT_TIMESTAMP;
@@ -3293,7 +3287,7 @@ SELECT
   warehouses.id,
   'MAIN',
   'Main',
-  'crate',
+  'rack',
   TRUE,
   TRUE,
   TRUE
@@ -3339,7 +3333,6 @@ INSERT INTO public.item_warehouse (
   reorder_quantity,
   current_stock,
   reserved_stock,
-  in_transit,
   is_active
 )
 SELECT
@@ -3351,7 +3344,6 @@ SELECT
   100,
   opening_qty,
   0,
-  0,
   TRUE
 FROM imported_items
 ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE SET
@@ -3360,7 +3352,6 @@ ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE SET
   reorder_quantity = EXCLUDED.reorder_quantity,
   current_stock = EXCLUDED.current_stock,
   reserved_stock = 0,
-  in_transit = 0,
   is_active = TRUE,
   deleted_at = NULL,
   updated_at = CURRENT_TIMESTAMP;
@@ -4027,7 +4018,7 @@ SELECT
   warehouses.id,
   'MAIN',
   'Main',
-  'crate',
+  'rack',
   TRUE,
   TRUE,
   TRUE
@@ -4073,7 +4064,6 @@ INSERT INTO public.item_warehouse (
   reorder_quantity,
   current_stock,
   reserved_stock,
-  in_transit,
   is_active
 )
 SELECT
@@ -4085,7 +4075,6 @@ SELECT
   100,
   opening_qty,
   0,
-  0,
   TRUE
 FROM imported_items
 ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE SET
@@ -4094,7 +4083,6 @@ ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE SET
   reorder_quantity = EXCLUDED.reorder_quantity,
   current_stock = EXCLUDED.current_stock,
   reserved_stock = 0,
-  in_transit = 0,
   is_active = TRUE,
   deleted_at = NULL,
   updated_at = CURRENT_TIMESTAMP;
@@ -4574,7 +4562,7 @@ SELECT
   warehouses.id,
   'MAIN',
   'Main',
-  'crate',
+  'rack',
   TRUE,
   TRUE,
   TRUE
@@ -4620,7 +4608,6 @@ INSERT INTO public.item_warehouse (
   reorder_quantity,
   current_stock,
   reserved_stock,
-  in_transit,
   is_active
 )
 SELECT
@@ -4632,7 +4619,6 @@ SELECT
   100,
   opening_qty,
   0,
-  0,
   TRUE
 FROM imported_items
 ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE SET
@@ -4641,7 +4627,6 @@ ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE SET
   reorder_quantity = EXCLUDED.reorder_quantity,
   current_stock = EXCLUDED.current_stock,
   reserved_stock = 0,
-  in_transit = 0,
   is_active = TRUE,
   deleted_at = NULL,
   updated_at = CURRENT_TIMESTAMP;
@@ -5070,7 +5055,7 @@ SELECT
   warehouses.id,
   'MAIN',
   'Main',
-  'crate',
+  'rack',
   TRUE,
   TRUE,
   TRUE
@@ -5116,7 +5101,6 @@ INSERT INTO public.item_warehouse (
   reorder_quantity,
   current_stock,
   reserved_stock,
-  in_transit,
   is_active
 )
 SELECT
@@ -5128,7 +5112,6 @@ SELECT
   100,
   opening_qty,
   0,
-  0,
   TRUE
 FROM imported_items
 ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE SET
@@ -5137,7 +5120,6 @@ ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE SET
   reorder_quantity = EXCLUDED.reorder_quantity,
   current_stock = EXCLUDED.current_stock,
   reserved_stock = 0,
-  in_transit = 0,
   is_active = TRUE,
   deleted_at = NULL,
   updated_at = CURRENT_TIMESTAMP;
@@ -5265,5 +5247,338 @@ WHERE i.id = source.item_id
 
 END;
 $innovatronix_import$;
+
+-- ============================================================================
+-- SEED DATA: Warehouse B Rack Locations and Distributed Opening Inventory
+-- ============================================================================
+
+WITH warehouse_b AS (
+  SELECT id, company_id
+  FROM public.warehouses
+  WHERE id = 'a2b20002-0000-4000-8000-000000000002'
+    AND warehouse_code = 'WHB-002'
+    AND business_unit_id = 'd69c52d5-6755-4e28-87e3-24c680a5897b'
+    AND deleted_at IS NULL
+),
+location_seed(code, name) AS (
+  VALUES
+    ('WHB-A', 'Rack A'),
+    ('WHB-B', 'Rack B'),
+    ('WHB-C', 'Rack C'),
+    ('WHB-D', 'Rack D'),
+    ('WHB-E', 'Rack E'),
+    ('WHB-F', 'Rack F'),
+    ('WHB-G', 'Rack G'),
+    ('WHB-H', 'Rack H'),
+    ('WHB-I', 'Rack I'),
+    ('WHB-J', 'Rack J')
+)
+INSERT INTO public.warehouse_locations (
+  company_id,
+  warehouse_id,
+  code,
+  name,
+  location_type,
+  is_pickable,
+  is_storable,
+  is_active
+)
+SELECT
+  warehouse_b.company_id,
+  warehouse_b.id,
+  location_seed.code,
+  location_seed.name,
+  'rack',
+  TRUE,
+  TRUE,
+  TRUE
+FROM warehouse_b
+CROSS JOIN location_seed
+ON CONFLICT (company_id, warehouse_id, code) DO UPDATE SET
+  name = EXCLUDED.name,
+  location_type = EXCLUDED.location_type,
+  is_pickable = TRUE,
+  is_storable = TRUE,
+  is_active = TRUE,
+  deleted_at = NULL,
+  updated_at = CURRENT_TIMESTAMP;
+
+WITH target_locations AS (
+  SELECT
+    warehouse_locations.id,
+    ROW_NUMBER() OVER (ORDER BY warehouse_locations.code) AS row_number
+  FROM public.warehouse_locations
+  WHERE warehouse_locations.warehouse_id = 'a2b20002-0000-4000-8000-000000000002'
+    AND warehouse_locations.code IN (
+      'WHB-A',
+      'WHB-B',
+      'WHB-C',
+      'WHB-D',
+      'WHB-E',
+      'WHB-F',
+      'WHB-G',
+      'WHB-H',
+      'WHB-I',
+      'WHB-J'
+    )
+    AND warehouse_locations.deleted_at IS NULL
+),
+ranked_opening_stock AS (
+  SELECT
+    item_batch_locations.id,
+    ROW_NUMBER() OVER (ORDER BY items.item_code, item_batch_locations.id) AS row_number
+  FROM public.item_batch_locations
+  JOIN public.items
+    ON items.id = item_batch_locations.item_id
+   AND items.company_id = item_batch_locations.company_id
+   AND items.deleted_at IS NULL
+  JOIN public.item_batches
+    ON item_batches.id = item_batch_locations.item_batch_id
+   AND item_batches.batch_code = 'OPENING-BAL'
+   AND item_batches.deleted_at IS NULL
+  JOIN public.warehouse_locations current_location
+    ON current_location.id = item_batch_locations.location_id
+   AND current_location.code = 'MAIN'
+   AND current_location.deleted_at IS NULL
+  WHERE item_batch_locations.warehouse_id = 'a2b20002-0000-4000-8000-000000000002'
+    AND item_batch_locations.qty_on_hand > 0
+    AND item_batch_locations.deleted_at IS NULL
+),
+location_assignments AS (
+  SELECT
+    ranked_opening_stock.id AS item_batch_location_id,
+    target_locations.id AS location_id
+  FROM ranked_opening_stock
+  JOIN target_locations
+    ON target_locations.row_number = ranked_opening_stock.row_number
+  WHERE ranked_opening_stock.row_number <= 10
+)
+UPDATE public.item_batch_locations
+SET
+  location_id = location_assignments.location_id,
+  updated_at = CURRENT_TIMESTAMP
+FROM location_assignments
+WHERE item_batch_locations.id = location_assignments.item_batch_location_id;
+
+WITH target_locations AS (
+  SELECT
+    warehouse_locations.id,
+    ROW_NUMBER() OVER (ORDER BY warehouse_locations.code) AS row_number
+  FROM public.warehouse_locations
+  WHERE warehouse_locations.warehouse_id = 'a2b20002-0000-4000-8000-000000000002'
+    AND warehouse_locations.code IN (
+      'WHB-A',
+      'WHB-B',
+      'WHB-C',
+      'WHB-D',
+      'WHB-E',
+      'WHB-F',
+      'WHB-G',
+      'WHB-H',
+      'WHB-I',
+      'WHB-J'
+    )
+    AND warehouse_locations.deleted_at IS NULL
+),
+ranked_item_stock AS (
+  SELECT
+    item_warehouse.id,
+    ROW_NUMBER() OVER (ORDER BY items.item_code, item_warehouse.id) AS row_number
+  FROM public.item_warehouse
+  JOIN public.items
+    ON items.id = item_warehouse.item_id
+   AND items.company_id = item_warehouse.company_id
+   AND items.deleted_at IS NULL
+  WHERE item_warehouse.warehouse_id = 'a2b20002-0000-4000-8000-000000000002'
+    AND item_warehouse.current_stock > 0
+    AND item_warehouse.deleted_at IS NULL
+),
+location_assignments AS (
+  SELECT
+    ranked_item_stock.id AS item_warehouse_id,
+    target_locations.id AS location_id
+  FROM ranked_item_stock
+  JOIN target_locations
+    ON target_locations.row_number = ranked_item_stock.row_number
+  WHERE ranked_item_stock.row_number <= 10
+)
+UPDATE public.item_warehouse
+SET
+  default_location_id = location_assignments.location_id,
+  updated_at = CURRENT_TIMESTAMP
+FROM location_assignments
+WHERE item_warehouse.id = location_assignments.item_warehouse_id;
+
+-- Spread one existing item's opening stock across Warehouse B racks A-D.
+DO $existing_item_multi_rack_seed$
+DECLARE
+  v_company_id CONSTANT UUID := '1e10e2dd-655e-41e0-a508-edfd660a9bcf';
+  v_warehouse_id CONSTANT UUID := 'a2b20002-0000-4000-8000-000000000002';
+  v_item_id UUID;
+  v_item_batch_id UUID;
+  v_batch_total NUMERIC(20, 4);
+  v_rack_a_id UUID;
+  v_rack_b_id UUID;
+  v_rack_c_id UUID;
+  v_rack_d_id UUID;
+  v_rack_a_qty NUMERIC(20, 2);
+  v_rack_b_qty NUMERIC(20, 2);
+  v_rack_c_qty NUMERIC(20, 2);
+  v_rack_d_qty NUMERIC(20, 2);
+  v_location_total NUMERIC(20, 4);
+BEGIN
+  SELECT warehouse_locations.id
+  INTO v_rack_a_id
+  FROM public.warehouse_locations
+  WHERE warehouse_locations.company_id = v_company_id
+    AND warehouse_locations.warehouse_id = v_warehouse_id
+    AND warehouse_locations.code = 'WHB-A'
+    AND warehouse_locations.deleted_at IS NULL;
+
+  SELECT warehouse_locations.id
+  INTO v_rack_b_id
+  FROM public.warehouse_locations
+  WHERE warehouse_locations.company_id = v_company_id
+    AND warehouse_locations.warehouse_id = v_warehouse_id
+    AND warehouse_locations.code = 'WHB-B'
+    AND warehouse_locations.deleted_at IS NULL;
+
+  SELECT warehouse_locations.id
+  INTO v_rack_c_id
+  FROM public.warehouse_locations
+  WHERE warehouse_locations.company_id = v_company_id
+    AND warehouse_locations.warehouse_id = v_warehouse_id
+    AND warehouse_locations.code = 'WHB-C'
+    AND warehouse_locations.deleted_at IS NULL;
+
+  SELECT warehouse_locations.id
+  INTO v_rack_d_id
+  FROM public.warehouse_locations
+  WHERE warehouse_locations.company_id = v_company_id
+    AND warehouse_locations.warehouse_id = v_warehouse_id
+    AND warehouse_locations.code = 'WHB-D'
+    AND warehouse_locations.deleted_at IS NULL;
+
+  IF v_rack_a_id IS NULL OR v_rack_b_id IS NULL OR v_rack_c_id IS NULL OR v_rack_d_id IS NULL THEN
+    RAISE EXCEPTION 'Cannot spread existing item stock without Warehouse B racks A-D';
+  END IF;
+
+  SELECT
+    items.id,
+    item_batches.id,
+    item_batches.qty_on_hand
+  INTO
+    v_item_id,
+    v_item_batch_id,
+    v_batch_total
+  FROM public.items
+  JOIN public.units_of_measure
+    ON units_of_measure.id = items.uom_id
+   AND units_of_measure.company_id = items.company_id
+   AND units_of_measure.code = 'STICK'
+   AND units_of_measure.deleted_at IS NULL
+  JOIN public.item_batches
+    ON item_batches.company_id = items.company_id
+   AND item_batches.item_id = items.id
+   AND item_batches.warehouse_id = v_warehouse_id
+   AND item_batches.batch_code = 'OPENING-BAL'
+   AND item_batches.qty_on_hand >= 10
+   AND item_batches.qty_on_hand = TRUNC(item_batches.qty_on_hand)
+   AND item_batches.qty_reserved = 0
+   AND item_batches.deleted_at IS NULL
+  WHERE items.company_id = v_company_id
+    AND items.deleted_at IS NULL
+  ORDER BY items.item_code, item_batches.id
+  LIMIT 1;
+
+  IF v_item_id IS NULL THEN
+    RAISE NOTICE 'No eligible existing Warehouse B opening-balance item found for multi-rack seed';
+    RETURN;
+  END IF;
+
+  v_rack_a_qty := FLOOR(v_batch_total * 0.40);
+  v_rack_b_qty := FLOOR(v_batch_total * 0.30);
+  v_rack_c_qty := FLOOR(v_batch_total * 0.20);
+  v_rack_d_qty := v_batch_total - v_rack_a_qty - v_rack_b_qty - v_rack_c_qty;
+
+  DELETE FROM public.item_batch_locations
+  WHERE item_batch_locations.company_id = v_company_id
+    AND item_batch_locations.item_id = v_item_id
+    AND item_batch_locations.warehouse_id = v_warehouse_id
+    AND item_batch_locations.item_batch_id = v_item_batch_id;
+
+  INSERT INTO public.item_batch_locations (
+    company_id,
+    item_id,
+    warehouse_id,
+    location_id,
+    item_batch_id,
+    qty_on_hand,
+    qty_reserved
+  )
+  VALUES
+    (
+      v_company_id,
+      v_item_id,
+      v_warehouse_id,
+      v_rack_a_id,
+      v_item_batch_id,
+      v_rack_a_qty,
+      0.00
+    ),
+    (
+      v_company_id,
+      v_item_id,
+      v_warehouse_id,
+      v_rack_b_id,
+      v_item_batch_id,
+      v_rack_b_qty,
+      0.00
+    ),
+    (
+      v_company_id,
+      v_item_id,
+      v_warehouse_id,
+      v_rack_c_id,
+      v_item_batch_id,
+      v_rack_c_qty,
+      0.00
+    ),
+    (
+      v_company_id,
+      v_item_id,
+      v_warehouse_id,
+      v_rack_d_id,
+      v_item_batch_id,
+      v_rack_d_qty,
+      0.00
+    );
+
+  UPDATE public.item_warehouse
+  SET
+    default_location_id = v_rack_a_id,
+    updated_at = CURRENT_TIMESTAMP
+  WHERE item_warehouse.company_id = v_company_id
+    AND item_warehouse.item_id = v_item_id
+    AND item_warehouse.warehouse_id = v_warehouse_id
+    AND item_warehouse.deleted_at IS NULL;
+
+  SELECT SUM(item_batch_locations.qty_on_hand)
+  INTO v_location_total
+  FROM public.item_batch_locations
+  WHERE item_batch_locations.company_id = v_company_id
+    AND item_batch_locations.item_id = v_item_id
+    AND item_batch_locations.warehouse_id = v_warehouse_id
+    AND item_batch_locations.item_batch_id = v_item_batch_id
+    AND item_batch_locations.deleted_at IS NULL;
+
+  IF v_location_total IS DISTINCT FROM v_batch_total THEN
+    RAISE EXCEPTION
+      'Existing item multi-rack total % does not reconcile to batch total %',
+      v_location_total,
+      v_batch_total;
+  END IF;
+END;
+$existing_item_multi_rack_seed$;
 
 SELECT set_config('app.skip_reorder_notification_sync', 'false', false);

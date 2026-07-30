@@ -1,7 +1,6 @@
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextResponse } from "next/server";
 import { requireRequestContext } from "@/lib/auth/requestContext";
-import { getWarehouseBusinessUnitMap } from "@/app/api/_lib/workflow-notifications";
 
 type AuthContext = {
   supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"];
@@ -14,6 +13,8 @@ type DeliveryNoteRow = {
   id: string;
   company_id: string;
   business_unit_id: string | null;
+  requesting_business_unit_id: string;
+  fulfilling_business_unit_id: string;
   dn_no: string;
   status:
     | "draft"
@@ -24,7 +25,7 @@ type DeliveryNoteRow = {
     | "dispatched"
     | "received"
     | "voided";
-  requesting_warehouse_id: string;
+  requesting_warehouse_id: string | null;
   fulfilling_warehouse_id: string;
   fulfillment_mode: "transfer_to_store" | "customer_pickup_from_warehouse";
   confirmed_at: string | null;
@@ -61,7 +62,7 @@ type DeliveryNoteItemRow = {
   dn_id: string;
   sr_id: string;
   sr_item_id: string;
-  requesting_warehouse_id: string;
+  requesting_warehouse_id: string | null;
   fulfilling_warehouse_id: string;
   item_id: string;
   item_unit_option_id?: string | null;
@@ -84,7 +85,33 @@ type DeliveryNoteItemRow = {
 };
 
 type DeliveryNoteWithRelations = {
-  requesting_warehouse_id: string;
+  requesting_business_unit_id: string;
+  fulfilling_business_unit_id: string;
+  fulfilling_business_unit?:
+    | {
+        id: string;
+        code: string;
+        name: string;
+      }
+    | {
+        id: string;
+        code: string;
+        name: string;
+      }[]
+    | null;
+  requesting_business_unit?:
+    | {
+        id: string;
+        code: string;
+        name: string;
+      }
+    | {
+        id: string;
+        code: string;
+        name: string;
+      }[]
+    | null;
+  requesting_warehouse_id: string | null;
   fulfilling_warehouse_id: string;
   fulfillment_mode?: "transfer_to_store" | "customer_pickup_from_warehouse";
   receiving_started_at?: unknown;
@@ -107,6 +134,79 @@ type DeliveryNoteWithRelations = {
   delivery_note_receiving_exceptions?: unknown;
   [key: string]: unknown;
 };
+
+const DELIVERY_NOTE_HEADER_COLUMNS = `
+  id,
+  company_id,
+  business_unit_id,
+  requesting_business_unit_id,
+  fulfilling_business_unit_id,
+  dn_no,
+  status,
+  requesting_warehouse_id,
+  fulfilling_warehouse_id,
+  fulfillment_mode,
+  confirmed_at,
+  picking_started_at,
+  picking_started_by,
+  picking_completed_at,
+  picking_completed_by,
+  dispatched_at,
+  received_at,
+  receiving_started_at,
+  receiving_started_by,
+  receiving_completed_at,
+  receiving_completed_by,
+  received_by,
+  receiving_notes,
+  receiving_has_discrepancy,
+  receiving_discrepancy_notes,
+  voided_at,
+  void_reason,
+  driver_name,
+  driver_signature,
+  helper_name,
+  delivery_time,
+  plate_number,
+  notes,
+  created_by,
+  created_at,
+  updated_by,
+  updated_at
+`;
+
+const DELIVERY_NOTE_ITEM_COLUMNS = `
+  id,
+  company_id,
+  dn_id,
+  sr_id,
+  sr_item_id,
+  requesting_warehouse_id,
+  fulfilling_warehouse_id,
+  item_id,
+  item_unit_option_id,
+  uom_id,
+  allocated_qty,
+  picked_qty,
+  short_qty,
+  dispatched_qty,
+  received_qty,
+  receiving_discrepancy_flag,
+  receiving_variance_qty,
+  receiving_status,
+  receiving_notes,
+  receiving_overage_review_status,
+  receiving_overage_posted_qty,
+  receiving_overage_review_notes,
+  receiving_overage_reviewed_by,
+  receiving_overage_reviewed_at,
+  is_voided,
+  voided_at,
+  voided_by,
+  void_reason,
+  created_at,
+  updated_at
+`;
 
 export const toNumber = (value: number | string | null | undefined) => {
   if (value == null) return 0;
@@ -136,12 +236,42 @@ export const fetchDeliveryNote = async (
     .from("delivery_notes")
     .select(
       `
-      *,
-      delivery_note_sources(*),
+      ${DELIVERY_NOTE_HEADER_COLUMNS},
+      fulfilling_business_unit:business_units!delivery_notes_fulfilling_business_unit_id_fkey(
+        id,
+        code,
+        name
+      ),
+      requesting_business_unit:business_units!delivery_notes_requesting_business_unit_id_fkey(
+        id,
+        code,
+        name
+      ),
+      delivery_note_sources(company_id, dn_id, sr_id, created_at),
       delivery_note_items(
-        *,
+        ${DELIVERY_NOTE_ITEM_COLUMNS},
         delivery_note_item_receiving_scans(
-          *
+          id,
+          company_id,
+          business_unit_id,
+          dn_id,
+          dn_item_id,
+          item_id,
+          item_unit_option_id,
+          uom_id,
+          box_id,
+          qr_code,
+          qr_qty,
+          accepted_qty,
+          adjustment_reason,
+          notes,
+          scanned_by,
+          scanned_at,
+          voided_at,
+          voided_by,
+          void_reason,
+          created_at,
+          updated_at
         ),
         items!delivery_note_items_item_id_fkey(item_name, item_code),
         units_of_measure!delivery_note_items_uom_id_fkey(code, symbol, name),
@@ -193,7 +323,28 @@ export const fetchDeliveryNote = async (
         deleted_at
       ),
       delivery_note_receiving_exceptions(
-        *,
+        id,
+        company_id,
+        business_unit_id,
+        dn_id,
+        item_id,
+        item_unit_option_id,
+        uom_id,
+        box_id,
+        qr_code,
+        qr_qty,
+        accepted_qty,
+        batch_number,
+        location_id,
+        reason,
+        notes,
+        status,
+        scanned_by,
+        scanned_at,
+        reviewed_by,
+        reviewed_at,
+        created_at,
+        updated_at,
         items!delivery_note_receiving_exceptions_item_id_fkey(item_name, item_code),
         units_of_measure!delivery_note_receiving_exceptions_uom_id_fkey(code, symbol, name),
         item_unit_options!delivery_note_receiving_exceptions_item_unit_option_id_fkey(
@@ -225,57 +376,29 @@ export const fetchDeliveryNote = async (
   if (error || !data) return null;
   const record = data as DeliveryNoteWithRelations;
   if (currentBusinessUnitId) {
-    const warehouseBuMap = await getWarehouseBusinessUnitMap(supabase, companyId, [
-      record.requesting_warehouse_id,
-      record.fulfilling_warehouse_id,
-    ]);
-    const requestingBusinessUnitId = warehouseBuMap.get(record.requesting_warehouse_id);
-    const fulfillingBusinessUnitId = warehouseBuMap.get(record.fulfilling_warehouse_id);
-
     if (
-      requestingBusinessUnitId !== currentBusinessUnitId &&
-      fulfillingBusinessUnitId !== currentBusinessUnitId
+      record.requesting_business_unit_id !== currentBusinessUnitId &&
+      record.fulfilling_business_unit_id !== currentBusinessUnitId
     ) {
       return null;
     }
   }
 
   const canViewReceivingDetails = currentBusinessUnitId
-    ? await isReceivingBusinessUnit(
-        supabase,
-        companyId,
-        currentBusinessUnitId,
-        record.requesting_warehouse_id
-      )
+    ? record.requesting_business_unit_id === currentBusinessUnitId
     : true;
   return mapDeliveryNoteRecord(record, canViewReceivingDetails);
 };
 
-export const getReceivingBusinessUnitId = async (
-  supabase: AuthContext["supabase"],
-  companyId: string,
-  requestingWarehouseId: string | null | undefined
-) => {
-  if (!requestingWarehouseId) return null;
-  const warehouseBuMap = await getWarehouseBusinessUnitMap(supabase, companyId, [
-    requestingWarehouseId,
-  ]);
-  return warehouseBuMap.get(requestingWarehouseId) || null;
-};
-
-export const isReceivingBusinessUnit = async (
-  supabase: AuthContext["supabase"],
-  companyId: string,
+export const isReceivingBusinessUnit = (
   currentBusinessUnitId: string | null | undefined,
-  requestingWarehouseId: string | null | undefined
+  requestingBusinessUnitId: string | null | undefined
 ) => {
-  if (!currentBusinessUnitId) return false;
-  const receivingBusinessUnitId = await getReceivingBusinessUnitId(
-    supabase,
-    companyId,
-    requestingWarehouseId
+  return (
+    !!currentBusinessUnitId &&
+    !!requestingBusinessUnitId &&
+    requestingBusinessUnitId === currentBusinessUnitId
   );
-  return receivingBusinessUnitId === currentBusinessUnitId;
 };
 
 export const mapDeliveryNoteRecord = <T extends DeliveryNoteWithRelations>(
@@ -344,7 +467,7 @@ export const fetchDeliveryNoteHeader = async (
 ) => {
   const { data } = await supabase
     .from("delivery_notes")
-    .select("*")
+    .select(DELIVERY_NOTE_HEADER_COLUMNS)
     .eq("id", id)
     .eq("company_id", companyId)
     .is("deleted_at", null)
@@ -360,159 +483,9 @@ export const fetchDeliveryNoteItems = async (
 ) => {
   const { data } = await supabase
     .from("delivery_note_items")
-    .select("*")
+    .select(DELIVERY_NOTE_ITEM_COLUMNS)
     .eq("dn_id", id)
     .eq("company_id", companyId);
 
   return ((data as DeliveryNoteItemRow[] | null) || []) as DeliveryNoteItemRow[];
-};
-
-export const computeStockRequestDerivedStatus = async (
-  supabase: AuthContext["supabase"],
-  companyId: string,
-  stockRequestId: string
-) => {
-  const { data: request } = await supabase
-    .from("stock_requests")
-    .select("id, status")
-    .eq("id", stockRequestId)
-    .eq("company_id", companyId)
-    .is("deleted_at", null)
-    .single();
-
-  if (!request) return null;
-
-  const { data: requestItems } = await supabase
-    .from("stock_request_items")
-    .select("id, requested_qty, received_qty")
-    .eq("stock_request_id", stockRequestId);
-
-  const { data: dnItems } = await supabase
-    .from("delivery_note_items")
-    .select(
-      `
-      allocated_qty,
-      dispatched_qty,
-      is_voided,
-      delivery_notes!inner(status)
-    `
-    )
-    .eq("company_id", companyId)
-    .eq("sr_id", stockRequestId);
-
-  const totalRequested = (requestItems || []).reduce(
-    (sum, item) => sum + toNumber(item.requested_qty),
-    0
-  );
-  const totalReceived = (requestItems || []).reduce(
-    (sum, item) => sum + toNumber(item.received_qty),
-    0
-  );
-
-  const activeDnItems = (dnItems || []).filter((item) => {
-    const dnHeader = Array.isArray(item.delivery_notes)
-      ? item.delivery_notes[0]
-      : item.delivery_notes;
-    return dnHeader?.status !== "voided" && !item.is_voided;
-  });
-
-  const totalAllocated = activeDnItems.reduce((sum, item) => sum + toNumber(item.allocated_qty), 0);
-  const totalDispatched = activeDnItems.reduce(
-    (sum, item) => sum + toNumber(item.dispatched_qty),
-    0
-  );
-  const hasNonVoidedDn = activeDnItems.length > 0;
-
-  let derivedStatus: string;
-  if (totalRequested > 0 && totalReceived >= totalRequested) {
-    derivedStatus = "fulfilled";
-  } else if (totalReceived > 0) {
-    derivedStatus = "partially_fulfilled";
-  } else if (totalDispatched > 0) {
-    derivedStatus = "dispatched";
-  } else if (totalRequested > 0 && totalAllocated >= totalRequested) {
-    derivedStatus = "allocated";
-  } else if (totalAllocated > 0) {
-    derivedStatus = "partially_allocated";
-  } else if (hasNonVoidedDn) {
-    derivedStatus = "allocating";
-  } else if (
-    [
-      "approved",
-      "allocating",
-      "partially_allocated",
-      "allocated",
-      "dispatched",
-      "partially_fulfilled",
-      "fulfilled",
-      "picked",
-      "delivered",
-      "received",
-      "completed",
-    ].includes(request.status)
-  ) {
-    // With no active DN allocations, revert allocation lifecycle back to approved.
-    derivedStatus = "approved";
-  } else if (request.status === "draft") {
-    derivedStatus = "draft";
-  } else {
-    derivedStatus = "submitted";
-  }
-
-  return {
-    stockRequestId,
-    cachedStatus: request.status,
-    derivedStatus,
-    totals: {
-      totalRequested,
-      totalAllocated,
-      totalDispatched,
-      totalReceived,
-    },
-  };
-};
-
-export const syncStockRequestStatusCache = async (
-  supabase: AuthContext["supabase"],
-  companyId: string,
-  stockRequestIds: string[],
-  userId?: string
-) => {
-  const uniqueIds = Array.from(new Set(stockRequestIds.filter(Boolean)));
-  for (const stockRequestId of uniqueIds) {
-    const projection = await computeStockRequestDerivedStatus(supabase, companyId, stockRequestId);
-    if (!projection) continue;
-
-    const nextStatus = projection.derivedStatus || projection.cachedStatus || "submitted";
-    const patch: {
-      status: string;
-      updated_at: string;
-      updated_by?: string;
-      received_at?: string;
-      received_by?: string;
-    } = {
-      status: nextStatus,
-      updated_at: new Date().toISOString(),
-    };
-
-    if (userId) {
-      patch.updated_by = userId;
-    }
-
-    if (nextStatus === "partially_fulfilled" || nextStatus === "fulfilled") {
-      patch.received_at = new Date().toISOString();
-      if (userId) patch.received_by = userId;
-    }
-
-    const { error } = await supabase
-      .from("stock_requests")
-      .update(patch)
-      .eq("id", stockRequestId)
-      .eq("company_id", companyId)
-      .is("deleted_at", null);
-
-    if (error) {
-      throw new Error(`Failed to sync stock request ${stockRequestId} status: ${error.message}`);
-    }
-  }
 };

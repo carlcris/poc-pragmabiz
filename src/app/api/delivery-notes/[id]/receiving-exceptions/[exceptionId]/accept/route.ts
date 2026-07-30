@@ -60,11 +60,9 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
 
-    const canReceive = await isReceivingBusinessUnit(
-      auth.supabase,
-      auth.companyId,
+    const canReceive = isReceivingBusinessUnit(
       auth.currentBusinessUnitId,
-      header.requesting_warehouse_id
+      header.requesting_business_unit_id
     );
     if (!canReceive) {
       return NextResponse.json(

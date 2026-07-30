@@ -108,6 +108,11 @@ scales these outputs automatically. Copies receive independent additional-output
 new copied template cannot change its source. Primary and additional outputs must both be fully
 accounted as produced or wasted when the order is completed.
 
+The sheet-layout template designer requires an explicit warehouse when searching stock-backed item
+candidates. The selector is limited to active warehouses in the current business unit and never
+silently chooses the first warehouse. The warehouse is a search location only; it does not replace
+the business-unit ownership of the template.
+
 **Shared putaway behavior**:
 Transformation completion hands produced output quantities into the shared putaway station instead of posting outputs into the `UNTRACKED` batch or making them immediately available. GRN receiving uses the same putaway model when received goods are submitted for confirmation, and the model also applies to chop-and-join production or any other workflow that creates stock before final warehouse placement. See `docs/plans/shared-putaway-station-plan.md`.
 

@@ -25,7 +25,7 @@ export type DeliveryNoteItem = {
   dn_id: string;
   sr_id: string;
   sr_item_id: string;
-  requesting_warehouse_id: string;
+  requesting_warehouse_id: string | null;
   fulfilling_warehouse_id: string;
   item_id: string;
   item_unit_option_id?: string | null;
@@ -172,13 +172,23 @@ export type DeliveryNotePickListSummary = {
   deleted_at?: string | null;
 };
 
+export type DeliveryNoteBusinessUnitSummary = {
+  id: string;
+  code: string;
+  name: string;
+};
+
 export type DeliveryNote = {
   id: string;
   company_id: string;
   business_unit_id: string | null;
+  requesting_business_unit_id: string;
+  fulfilling_business_unit_id: string;
+  fulfilling_business_unit?: DeliveryNoteBusinessUnitSummary | null;
+  requesting_business_unit?: DeliveryNoteBusinessUnitSummary | null;
   dn_no: string;
   status: DeliveryNoteStatus;
-  requesting_warehouse_id: string;
+  requesting_warehouse_id: string | null;
   fulfilling_warehouse_id: string;
   fulfillment_mode?: DeliveryNoteFulfillmentMode;
   confirmed_at: string | null;
@@ -217,37 +227,42 @@ export type DeliveryNote = {
 
 export type DeliveryNoteListResponse = {
   data: DeliveryNote[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 };
 
 export type DeliveryNoteListParams = {
   status?: string;
   requestingWarehouseId?: string;
   search?: string;
+  page?: number;
+  limit?: number;
 };
 
 export type CreateDeliveryNotePayload = {
-  srIds: string[];
-  requestingWarehouseId?: string;
-  fulfillingWarehouseId?: string;
   fulfillmentMode?: DeliveryNoteFulfillmentMode;
   notes?: string;
   driverName?: string;
   items: Array<{
-    srId: string;
     srItemId: string;
-    itemId: string;
-    itemUnitOptionId?: string;
-    uomId: string;
     allocatedQty: number;
   }>;
 };
 
+export type CreateDeliveryNotesResponse = {
+  data: DeliveryNote[];
+};
+
 export type DeliveryNoteAllocationAvailability = {
   srItemId: string;
+  remainingRequestQty: number;
   availableQty: number;
   availableBaseQty: number;
   qtyPerUnit: number;
-  selectedItemBatchId: string | null;
   baseUnitLabel: string;
 };
 
@@ -343,11 +358,7 @@ export type AddDeliveryNoteItemsPayload = {
   pickerUserIds: string[];
   notes?: string;
   items: Array<{
-    srId: string;
     srItemId: string;
-    itemId: string;
-    itemUnitOptionId?: string;
-    uomId: string;
     allocatedQty: number;
   }>;
 };

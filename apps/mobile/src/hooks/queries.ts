@@ -26,9 +26,7 @@ import type {
 export const queryKeys = {
   businessUnits: ["business-units"] as const,
   dashboard: ["dashboard"] as const,
-  receivingWarehouse: (businessUnitId: string) => ["receiving-warehouse", businessUnitId] as const,
-  loadLists: (status: string, search: string, warehouseId: string) =>
-    ["load-lists", status, search, warehouseId] as const,
+  loadLists: (status: string, search: string) => ["load-lists", status, search] as const,
   loadListReceivingScope: (id: string) => ["load-list-receiving", id] as const,
   loadListReceiving: (id: string, includeGrn: boolean) =>
     [...queryKeys.loadListReceivingScope(id), includeGrn] as const,
@@ -71,7 +69,6 @@ export const useSetBusinessUnit = () => {
     mutationFn: businessUnitsApi.setBusinessUnitContext,
     onMutate: async () => {
       setBusinessUnitSwitching(true);
-      await client.cancelQueries({ queryKey: ["receiving-warehouse"] });
       await client.cancelQueries({ queryKey: ["load-lists"] });
       await client.cancelQueries({ queryKey: ["load-list-receiving"] });
     },
@@ -94,7 +91,6 @@ export const useSetBusinessUnit = () => {
       }
 
       client.removeQueries({ queryKey: queryKeys.dashboard });
-      client.removeQueries({ queryKey: ["receiving-warehouse"] });
       client.removeQueries({ queryKey: ["load-lists"] });
       client.removeQueries({ queryKey: ["load-list-receiving"] });
       client.removeQueries({ queryKey: ["delivery-notes"] });
@@ -138,23 +134,11 @@ export const useDashboard = () =>
     queryFn: dashboardApi.getDashboard,
   });
 
-export const useReceivingWarehouse = (businessUnitId?: string, enabled = true) =>
+export const useLoadLists = (status: string, search: string, enabled = true) =>
   useQuery({
-    queryKey: queryKeys.receivingWarehouse(businessUnitId || ""),
-    queryFn: receivingApi.getReceivingWarehouse,
-    enabled: Boolean(businessUnitId) && enabled,
-  });
-
-export const useLoadLists = (
-  status: string,
-  search: string,
-  warehouseId?: string,
-  enabled = true
-) =>
-  useQuery({
-    queryKey: queryKeys.loadLists(status, search, warehouseId || ""),
-    queryFn: () => receivingApi.listLoadLists(status, search, warehouseId || ""),
-    enabled: Boolean(warehouseId) && enabled,
+    queryKey: queryKeys.loadLists(status, search),
+    queryFn: () => receivingApi.listLoadLists(status, search),
+    enabled,
   });
 
 export const useLoadListReceiving = (
@@ -246,6 +230,13 @@ export const useDeliveryNote = (id: string, enabled = true) =>
     enabled: Boolean(id) && enabled,
   });
 
+export const useReceivingWarehouses = (enabled = true) =>
+  useQuery({
+    queryKey: ["receiving-warehouses"],
+    queryFn: receivingApi.listReceivingWarehouses,
+    enabled,
+  });
+
 export const useScannedItemInfo = (payload: string) =>
   useQuery({
     queryKey: queryKeys.scannedItemInfo(payload),
@@ -256,7 +247,8 @@ export const useScannedItemInfo = (payload: string) =>
 export const useStartReceiving = (id: string) => {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () => receivingApi.startReceiving(id),
+    mutationFn: (receivingWarehouseId: string) =>
+      receivingApi.startReceiving(id, receivingWarehouseId),
     onSuccess: async () => {
       await client.invalidateQueries({ queryKey: queryKeys.deliveryNote(id) });
     },

@@ -43,7 +43,6 @@ export type TransactionalResource =
   | typeof RESOURCES.PURCHASE_ORDERS
   | typeof RESOURCES.PURCHASE_RECEIPTS
   | typeof RESOURCES.LOAD_LISTS
-  | typeof RESOURCES.STOCK_TRANSFERS
   | typeof RESOURCES.STOCK_REQUESTS
   | typeof RESOURCES.STOCK_ADJUSTMENTS
   | typeof RESOURCES.STOCK_TRANSFORMATIONS;
@@ -74,6 +73,7 @@ export const LOOKUP_DATA_ACCESS_MAP: Record<TransactionalResource, LookupResourc
   [RESOURCES.POS]: [
     RESOURCES.ITEMS, // Need to see items for sale
     RESOURCES.CUSTOMERS, // Need to select/create customers
+    RESOURCES.WAREHOUSES, // Need to select the inventory location for checkout
     RESOURCES.ITEM_CATEGORIES, // Need for item filtering/browsing
   ],
 
@@ -160,16 +160,6 @@ export const LOOKUP_DATA_ACCESS_MAP: Record<TransactionalResource, LookupResourc
   // ============================================================================
   // INVENTORY FEATURES
   // ============================================================================
-
-  /**
-   * Stock Transfers
-   * Warehouse staff need items and warehouse info
-   */
-  [RESOURCES.STOCK_TRANSFERS]: [
-    RESOURCES.ITEMS,
-    RESOURCES.WAREHOUSES, // Need source and destination warehouses
-    RESOURCES.ITEM_CATEGORIES,
-  ],
 
   /**
    * Stock Requests

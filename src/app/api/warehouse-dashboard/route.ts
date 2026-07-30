@@ -148,7 +148,7 @@ async function GETHandler() {
         ? supabase
             .from("load_lists")
             .select("id", { count: "exact", head: true })
-            .in("business_unit_id", scopedBUIds)
+            .in("destination_business_unit_id", scopedBUIds)
             .in("status", ["in_transit", "receiving"])
             .is("deleted_at", null)
         : Promise.resolve({ count: 0, error: null }),
@@ -157,11 +157,8 @@ async function GETHandler() {
       canViewIncomingShipmentsCard
         ? supabase
             .from("delivery_notes")
-            .select(
-              "id, requesting_warehouse:warehouses!delivery_notes_requesting_warehouse_id_fkey!inner(business_unit_id)",
-              { count: "exact", head: true }
-            )
-            .in("requesting_warehouse.business_unit_id", scopedBUIds)
+            .select("id", { count: "exact", head: true })
+            .in("requesting_business_unit_id", scopedBUIds)
             .eq("status", "dispatched")
             .is("deleted_at", null)
         : Promise.resolve({ count: 0, error: null }),
@@ -171,7 +168,7 @@ async function GETHandler() {
         ? supabase
             .from("stock_requests")
             .select("id", { count: "exact", head: true })
-            .in("business_unit_id", scopedBUIds)
+            .in("fulfilling_business_unit_id", scopedBUIds)
             .in("status", ["submitted", "approved"])
             .is("deleted_at", null)
         : Promise.resolve({ count: 0, error: null }),
@@ -180,7 +177,7 @@ async function GETHandler() {
       supabase
         .from("stock_requests")
         .select("id", { count: "exact", head: true })
-        .in("business_unit_id", scopedBUIds)
+        .in("fulfilling_business_unit_id", scopedBUIds)
         .in("status", ["submitted", "approved"])
         .eq("priority", "urgent")
         .is("deleted_at", null),
@@ -259,7 +256,7 @@ async function GETHandler() {
           load_list_items(id)
         `
             )
-            .in("business_unit_id", scopedBUIds)
+            .in("destination_business_unit_id", scopedBUIds)
             .in("status", ["in_transit", "receiving"])
             .is("deleted_at", null)
             .order("estimated_arrival_date", { ascending: true })
@@ -283,7 +280,7 @@ async function GETHandler() {
           stock_request_items(id)
         `
             )
-            .in("business_unit_id", scopedBUIds)
+            .in("fulfilling_business_unit_id", scopedBUIds)
             .in("status", ["submitted", "approved"])
             .is("deleted_at", null)
             .order("priority", { ascending: false })

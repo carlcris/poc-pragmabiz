@@ -216,7 +216,7 @@ export const ensureWarehouseDefaultLocation = async ({
       warehouse_id: warehouseId,
       code: DEFAULT_LOCATION_CODE,
       name: "Main",
-      location_type: "bin",
+      location_type: "rack",
       is_pickable: true,
       is_storable: true,
       is_active: true,

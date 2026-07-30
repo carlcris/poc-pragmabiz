@@ -60,8 +60,6 @@ type ItemWarehouseRow = {
   current_stock: number | string | null;
   reserved_stock: number | string | null;
   available_stock: number | string | null;
-  in_transit: number | string | null;
-  estimated_arrival_date: string | null;
   max_quantity: number | string | null;
 };
 type DbItemCategory = {
@@ -417,13 +415,11 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     const reorderLevel = Number(data.reorder_level) || 0;
     const reorderQty = Number(data.reorder_quantity) || 0;
     let maxStockLevel = 0;
-    let inTransit = 0;
-    let estimatedArrivalDate: string | null = null;
 
     let inventoryQuery = supabase
       .from("item_warehouse")
       .select(
-        "current_stock, reserved_stock, available_stock, in_transit, estimated_arrival_date, max_quantity, warehouses!inner(business_unit_id)"
+        "current_stock, reserved_stock, available_stock, max_quantity, warehouses!inner(business_unit_id)"
       )
       .eq("item_id", id)
       .eq("company_id", data.company_id)
@@ -446,13 +442,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
         onHand += rowOnHand;
         allocated += rowAllocated;
         available += rowAvailable;
-        inTransit += Number(row.in_transit || 0);
         maxStockLevel += Number(row.max_quantity || 0);
-        if (row.estimated_arrival_date) {
-          if (!estimatedArrivalDate || row.estimated_arrival_date < estimatedArrivalDate) {
-            estimatedArrivalDate = row.estimated_arrival_date;
-          }
-        }
       }
     }
 
@@ -469,8 +459,6 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
         onHand,
         allocated,
         available,
-        inTransit,
-        estimatedArrivalDate,
         reorderLevel,
         reorderQty,
         maxStockLevel,

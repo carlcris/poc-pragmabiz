@@ -15,7 +15,7 @@ const parseLimit = (raw: string | null) => {
 };
 
 const normalizeSearch = (raw: string | null) => {
-  const value = raw?.trim();
+  const value = raw?.trim().replace(/[,%]/g, " ");
   return value ? value : null;
 };
 
@@ -26,7 +26,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
 
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { companyId } = context;
+    const { companyId, accessibleBusinessUnitIds } = context;
     const adminSupabase = createAdminClient();
 
     const { id: warehouseId } = await params;
@@ -34,6 +34,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     const search = normalizeSearch(searchParams.get("search"));
     const limit = parseLimit(searchParams.get("limit"));
     const includeInactive = searchParams.get("includeInactive") === "true";
+    const storableOnly = searchParams.get("storableOnly") === "true";
 
     const { data: warehouse, error: warehouseError } = await adminSupabase
       .from("warehouses")
@@ -44,13 +45,11 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       .maybeSingle();
 
     if (warehouseError) {
-      return NextResponse.json(
-        { error: "Failed to validate warehouse", details: warehouseError.message },
-        { status: 500 }
-      );
+      console.error("Failed to validate warehouse for location lookup:", warehouseError);
+      return NextResponse.json({ error: "Failed to validate warehouse" }, { status: 500 });
     }
 
-    if (!warehouse) {
+    if (!warehouse || !accessibleBusinessUnitIds.includes(warehouse.business_unit_id)) {
       return NextResponse.json({ error: "Warehouse not found" }, { status: 404 });
     }
 
@@ -66,14 +65,13 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       .limit(limit);
 
     if (!includeInactive) query = query.eq("is_active", true);
+    if (storableOnly) query = query.eq("is_storable", true);
     if (search) query = query.or(`code.ilike.%${search}%,name.ilike.%${search}%`);
 
     const { data, error } = await query;
     if (error) {
-      return NextResponse.json(
-        { error: "Failed to fetch warehouse locations", details: error.message },
-        { status: 500 }
-      );
+      console.error("Failed to fetch warehouse location lookup options:", error);
+      return NextResponse.json({ error: "Failed to fetch warehouse locations" }, { status: 500 });
     }
 
     return NextResponse.json({

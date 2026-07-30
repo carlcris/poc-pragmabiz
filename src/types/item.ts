@@ -68,8 +68,6 @@ export type Item = {
   reorderLevel: number;
   reorderQty: number;
   maxStockLevel: number;
-  inTransit?: number;
-  estimatedArrivalDate?: string | null;
   imageUrl?: string;
   isActive: boolean;
   createdAt: string;

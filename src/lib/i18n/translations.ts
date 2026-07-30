@@ -218,6 +218,7 @@ export type TranslationKeys = {
     source: string;
     item: string;
     warehouse: string;
+    assignAtPutaway: string;
     unit: string;
     qtyPerUnit: string;
     pendingQty: string;
@@ -277,6 +278,19 @@ export type TranslationKeys = {
     newQuotation: string;
     newSalesOrder: string;
     unitConverter: string;
+  };
+  warehouseSelect: {
+    allWarehouses: string;
+    selectWarehouse: string;
+    searchPlaceholder: string;
+    empty: string;
+    loading: string;
+  };
+  businessUnitSelect: {
+    selectBusinessUnit: string;
+    searchPlaceholder: string;
+    empty: string;
+    loading: string;
   };
   unitConverter: {
     title: string;
@@ -1980,6 +1994,7 @@ export type TranslationKeys = {
   posPage: {
     title: string;
     subtitle: string;
+    warehouseRequired: string;
     searchAndAddItems: string;
     searchItems: string;
     noItemsFound: string;
@@ -2140,8 +2155,8 @@ export type TranslationKeys = {
     uom: string;
     onHand: string;
     allocated: string;
-    inTransitQty: string;
     putawayQty: string;
+    buInventory: string;
     available: string;
     normal: string;
     overstock: string;
@@ -2167,6 +2182,66 @@ export type TranslationKeys = {
     editAriaLabel: string;
     deleteAriaLabel: string;
     moreActions: string;
+  };
+  stockInTransitPage: {
+    title: string;
+    subtitle: string;
+    shipmentLines: string;
+    totalBaseQuantity: string;
+    searchLabel: string;
+    searchPlaceholder: string;
+    loadList: string;
+    item: string;
+    supplier: string;
+    sourceBusinessUnit: string;
+    shipmentReference: string;
+    estimatedArrival: string;
+    shipmentQuantity: string;
+    baseQuantity: string;
+    notAvailable: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    noSearchResultsTitle: string;
+    noSearchResultsDescription: string;
+    loadErrorTitle: string;
+    loadErrorMessage: string;
+    retry: string;
+  };
+  itemLedger: {
+    title: string;
+    description: string;
+    warehouse: string;
+    startDate: string;
+    endDate: string;
+    movementType: string;
+    allMovements: string;
+    stockIn: string;
+    stockOut: string;
+    stockInShort: string;
+    stockOutShort: string;
+    transfer: string;
+    adjustment: string;
+    openingBalance: string;
+    totalIn: string;
+    totalOut: string;
+    closingBalance: string;
+    stockReceived: string;
+    stockIssued: string;
+    currentStock: string;
+    selectWarehouseTitle: string;
+    selectWarehouseDescription: string;
+    date: string;
+    dateAndTime: string;
+    voucher: string;
+    type: string;
+    inQuantity: string;
+    outQuantity: string;
+    balance: string;
+    rate: string;
+    value: string;
+    loadError: string;
+    emptyTitle: string;
+    emptyDescription: string;
   };
   inventoryItemPage: {
     rawMaterial: string;
@@ -2381,8 +2456,9 @@ export type TranslationKeys = {
     maxStock: string;
     inTransit: string;
     estArrival: string;
-    defaultBadge: string;
-    setDefault: string;
+    preferredRackBadge: string;
+    setPreferredRack: string;
+    currentPreferredRack: string;
     editMaxStock: string;
     printBatchQr: string;
     printingBatchQr: string;
@@ -2398,8 +2474,8 @@ export type TranslationKeys = {
     batchPrintUnit: string;
     selectBatchPrintUnit: string;
     batchPrintUnitHelp: string;
-    defaultUpdated: string;
-    updateDefaultError: string;
+    preferredRackUpdated: string;
+    updatePreferredRackError: string;
     maxStockUpdated: string;
     maxStockError: string;
     selectWarehouseForMaxStock: string;
@@ -2825,6 +2901,8 @@ export type TranslationKeys = {
     requiredDate: string;
     requestedByWarehouse: string;
     requestedToWarehouse: string;
+    requestedByBusinessUnit: string;
+    requestedToBusinessUnit: string;
     priority: string;
     status: string;
     receivedDate: string;
@@ -2843,6 +2921,7 @@ export type TranslationKeys = {
     cancel: string;
     noActions: string;
     noWarehouse: string;
+    noBusinessUnit: string;
     deleteTitle: string;
     deleteDescription: string;
     deleting: string;
@@ -2861,6 +2940,27 @@ export type TranslationKeys = {
     completeDescription: string;
     cancelTitle: string;
     cancelDescription: string;
+    createSuccess: string;
+    updateSuccess: string;
+    saveFailed: string;
+    authenticationRequired: string;
+    saveForbidden: string;
+    contextRequired: string;
+    notDraft: string;
+    invalidDetails: string;
+    warehousesMustDiffer: string;
+    warehouseUnavailable: string;
+    invalidItems: string;
+    invalidLine: string;
+    itemUnavailable: string;
+    unitUnavailable: string;
+    unitMismatch: string;
+    batchUnavailable: string;
+    batchQuantityUnavailable: string;
+    warehouseImmutable: string;
+    businessUnitsMustDiffer: string;
+    businessUnitUnavailable: string;
+    businessUnitImmutable: string;
   };
   stockRequestForm: {
     editTitle: string;
@@ -2898,6 +2998,8 @@ export type TranslationKeys = {
     updateAction: string;
     createAction: string;
     lineItemRequired: string;
+    selectWarehousesBeforeItems: string;
+    selectBusinessUnitBeforeItems: string;
     noValue: string;
   };
   stockRequestValidation: {
@@ -2980,8 +3082,8 @@ export type TranslationKeys = {
   stockRequestViewDialog: {
     title: string;
     requestNumber: string;
-    requestedByWarehouse: string;
-    requestedToWarehouse: string;
+    requestedByBusinessUnit: string;
+    requestedToBusinessUnit: string;
     requestedByUser: string;
     requestDate: string;
     requiredDate: string;
@@ -2995,6 +3097,8 @@ export type TranslationKeys = {
     quantity: string;
     deliveredQty: string;
     unit: string;
+    batch: string;
+    automaticBatch: string;
     qtyPerUnit: string;
     noItems: string;
     fulfillmentSummary: string;
@@ -3243,6 +3347,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       source: "Source",
       item: "Item",
       warehouse: "Warehouse",
+      assignAtPutaway: "Choose during putaway",
       unit: "Unit",
       qtyPerUnit: "Qty/Unit",
       pendingQty: "Base Qty",
@@ -3298,6 +3403,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       Dashboard: "Dashboard",
       Inventory: "Inventory",
       "Item Master": "Item Master",
+      "Stock In Transit": "Stock In Transit",
       "Create Item": "Create Item",
       "Edit Item": "Edit Item",
       Warehouse: "Warehouse",
@@ -3344,6 +3450,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       dashboard: "Dashboard",
       inventory: "Inventory",
       items: "Item Master",
+      "stock-in-transit": "Stock In Transit",
       warehouses: "Warehouses",
       stock: "Stock Transactions",
       adjustments: "Stock Adjustments",
@@ -3382,6 +3489,19 @@ export const translations: Record<Locale, TranslationKeys> = {
       newQuotation: "New quotation",
       newSalesOrder: "New sales order",
       unitConverter: "Unit converter",
+    },
+    warehouseSelect: {
+      allWarehouses: "All warehouses",
+      selectWarehouse: "Select warehouse",
+      searchPlaceholder: "Search warehouses...",
+      empty: "No warehouses found.",
+      loading: "Loading warehouses...",
+    },
+    businessUnitSelect: {
+      selectBusinessUnit: "Select business unit",
+      searchPlaceholder: "Search business units...",
+      empty: "No business units found.",
+      loading: "Loading business units...",
     },
     unitConverter: {
       title: "Unit converter",
@@ -5121,6 +5241,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     posPage: {
       title: "Point of Sale",
       subtitle: "Quick checkout for walk-in customers",
+      warehouseRequired: "Select a warehouse before adding items or completing the sale.",
       searchAndAddItems: "Search and add items...",
       searchItems: "Search items...",
       noItemsFound: "No items found.",
@@ -5283,8 +5404,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       uom: "UOM",
       onHand: "On Hand",
       allocated: "Allocated",
-      inTransitQty: "In Transit Qty",
       putawayQty: "Putaway Qty",
+      buInventory: "All Inventories",
       available: "Available",
       normal: "Normal",
       overstock: "Overstock",
@@ -5311,6 +5432,68 @@ export const translations: Record<Locale, TranslationKeys> = {
       editAriaLabel: "Edit",
       deleteAriaLabel: "Delete",
       moreActions: "More",
+    },
+    stockInTransitPage: {
+      title: "Stock In Transit",
+      subtitle: "Supplier shipments currently moving to the selected business unit.",
+      shipmentLines: "Shipment Lines",
+      totalBaseQuantity: "Total Base Quantity",
+      searchLabel: "Search stock in transit",
+      searchPlaceholder: "Search load list, item, or supplier...",
+      loadList: "Load List",
+      item: "Item",
+      supplier: "Supplier",
+      sourceBusinessUnit: "Source Business Unit",
+      shipmentReference: "Shipment Reference",
+      estimatedArrival: "Estimated Arrival",
+      shipmentQuantity: "Shipment Quantity",
+      baseQuantity: "Base Quantity",
+      notAvailable: "--",
+      emptyTitle: "No stock is currently in transit",
+      emptyDescription:
+        "Confirmed supplier shipments will appear here after they are marked in transit.",
+      noSearchResultsTitle: "No matching stock in transit",
+      noSearchResultsDescription: "Try a different load list, item, or supplier search.",
+      loadErrorTitle: "Unable to load stock in transit",
+      loadErrorMessage: "The shipment pipeline could not be loaded. Please try again.",
+      retry: "Retry",
+    },
+    itemLedger: {
+      title: "Stock Ledger",
+      description: "Item movement history with a running balance for one warehouse.",
+      warehouse: "Warehouse",
+      startDate: "Start Date",
+      endDate: "End Date",
+      movementType: "Movement Type",
+      allMovements: "All Movements",
+      stockIn: "Stock In",
+      stockOut: "Stock Out",
+      stockInShort: "IN",
+      stockOutShort: "OUT",
+      transfer: "Transfer",
+      adjustment: "Adjustment",
+      openingBalance: "Opening Balance",
+      totalIn: "Total IN",
+      totalOut: "Total OUT",
+      closingBalance: "Closing Balance",
+      stockReceived: "Stock received",
+      stockIssued: "Stock issued",
+      currentStock: "Current stock",
+      selectWarehouseTitle: "Select a warehouse to view this ledger.",
+      selectWarehouseDescription:
+        "Running balances are calculated separately for each inventory location.",
+      date: "Date",
+      dateAndTime: "Date & Time",
+      voucher: "Voucher",
+      type: "Type",
+      inQuantity: "IN Qty",
+      outQuantity: "OUT Qty",
+      balance: "Balance",
+      rate: "Rate",
+      value: "Value",
+      loadError: "Unable to load the stock ledger. Please try again.",
+      emptyTitle: "No transactions found.",
+      emptyDescription: "No stock movements match the selected filters.",
     },
     inventoryItemPage: {
       rawMaterial: "Raw Material",
@@ -5518,7 +5701,8 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     itemLocationsTab: {
       title: "Locations",
-      description: "Stock by warehouse location",
+      description:
+        "Stock by warehouse location. Each warehouse has one preferred rack for this item.",
       moveStock: "Move Stock",
       loadError: "Failed to load item locations.",
       empty: "No location stock found.",
@@ -5531,8 +5715,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       maxStock: "Max Stock",
       inTransit: "In Transit",
       estArrival: "Est Arrival",
-      defaultBadge: "Default",
-      setDefault: "Set Default",
+      preferredRackBadge: "Preferred rack",
+      setPreferredRack: "Set as preferred rack",
+      currentPreferredRack: "Current preferred rack",
       editMaxStock: "Set Max",
       printBatchQr: "Print QR",
       printingBatchQr: "Printing...",
@@ -5550,8 +5735,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectBatchPrintUnit: "Select a unit",
       batchPrintUnitHelp:
         "Each label's Qty uses the selected unit's Qty / Unit. Current on-hand is not divided.",
-      defaultUpdated: "Default location updated",
-      updateDefaultError: "Failed to update default location",
+      preferredRackUpdated: "Preferred rack updated",
+      updatePreferredRackError: "Failed to update preferred rack",
       maxStockUpdated: "Max stock level updated",
       maxStockError: "Failed to update max stock level",
       selectWarehouseForMaxStock: "Select a warehouse to update max stock.",
@@ -5903,7 +6088,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       title: "Delivery Notes",
       subtitle: "Manage DN lifecycle for stock transfer fulfillment",
       createDn: "Create DN",
-      searchPlaceholder: "Search delivery notes or warehouses...",
+      searchPlaceholder: "Search delivery notes...",
+      previous: "Previous",
+      next: "Next",
+      pageOf: "Page {page} of {totalPages}",
       statusPlaceholder: "Status",
       allStatus: "All Status",
       draft: "Draft",
@@ -5934,7 +6122,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       void: "Void",
       createDialogTitle: "Create Delivery Note",
       createDialogDescription:
-        "Select source business unit, then choose stock transfer lines for allocation.",
+        "Select a requesting business unit, then allocate its approved request lines. Source warehouses are chosen automatically.",
+      requestingBusinessUnit: "Requesting Business Unit",
+      selectRequestingBusinessUnit: "Select requesting business unit",
       requestSourceBusinessUnit: "Request Source Business Unit",
       selectSourceBusinessUnit: "Select source business unit",
       fulfillmentMode: "Fulfillment Mode",
@@ -5945,6 +6135,8 @@ export const translations: Record<Locale, TranslationKeys> = {
         "Customer pickup skips destination inventory receive posting and uses direct pickup completion.",
       notes: "Notes",
       sourceBuLabel: "Source BU:",
+      selectRequestingBuHint:
+        "Select a requesting business unit to load its approved stock request lines",
       eligibleLabel: "Eligible:",
       selectedLabel: "Selected:",
       selectSourceBuHint: "Select a source business unit to load stock transfer lines",
@@ -5965,6 +6157,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       allocationExceedsAvailable:
         "Allocated quantity for {item} exceeds the allowed maximum ({quantity}).",
       createSuccess: "Delivery note created",
+      createSuccessCount: "Created {count} warehouse-specific delivery note(s)",
       noEligibleLines: "No eligible stock transfer lines found for this source business unit",
       cancel: "Cancel",
       create: "Create",
@@ -6002,8 +6195,18 @@ export const translations: Record<Locale, TranslationKeys> = {
       confirmReceive: "Confirm Receive",
       confirmVoid: "Confirm Void",
       unknownWarehouse: "Unknown warehouse",
+      receivingWarehousePending: "Receiving warehouse selected at receipt",
+      receivingWarehouse: "Receiving Warehouse",
+      receivingWarehouseHint:
+        "Choose the inventory warehouse where the received stock will be stored.",
+      receivingWarehouseRequired: "Select a receiving warehouse before starting receipt.",
+      confirmStartReceiving: "Start Receiving",
+      startReceivingSuccess: "Receiving started",
+      startReceivingError: "Failed to start delivery note receiving",
       createError:
         "Unable to create delivery note. Please review allocated quantities and try again.",
+      selectedBatchInsufficient:
+        "A selected batch no longer has enough inventory. Reduce the allocation or edit the stock request batch.",
       confirmTitle: "Confirm Delivery Note",
       queuePickingTitle: "Queue Picking",
       dispatchTitle: "Dispatch Delivery Note",
@@ -6014,10 +6217,25 @@ export const translations: Record<Locale, TranslationKeys> = {
         "Review this delivery note, assign pickers, then create the pick list.",
       dispatchDescription:
         "Review the details and confirm dispatch. Dispatched quantities will use picked quantities.",
-      receiveDescription: "Review the details and confirm receive.",
+      receiveDescription: "Select the destination warehouse to begin receiving this delivery note.",
       voidDescription: "Review the details and confirm void.",
     },
     deliveryNoteDetailPage: {
+      itemsAddedSuccess: "Delivery note items added and queued for picking",
+      itemsAddFailed: "Failed to add delivery note items. Refresh and try again.",
+      itemsAddForbidden: "You do not have permission to add items to this delivery note.",
+      itemsAddNotFound: "The delivery note could not be found.",
+      itemsAddNotDispatched: "Items can only be added after the delivery note is dispatched.",
+      itemsAddBusinessUnitMismatch:
+        "The stock request and delivery note business units do not match.",
+      itemsAddInvalid: "Check the selected items and quantities, then try again.",
+      itemsAddDuplicate: "A selected stock request item is already on this delivery note.",
+      itemsAddIneligible: "A selected stock request is no longer eligible for allocation.",
+      itemsAddQuantityExceeded: "An allocated quantity exceeds the remaining request quantity.",
+      itemsAddPickerInvalid: "Select at least one valid picker.",
+      itemsAddActivePickList: "Complete or cancel the active pick list before adding more items.",
+      itemsAddInsufficientInventory:
+        "There is not enough pickable inventory in the source warehouse.",
       loading: "Loading...",
       loadError: "Failed to load delivery note.",
       title: "Delivery Note",
@@ -6025,8 +6243,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       queuePicking: "Queue Picking",
       void: "Void",
       status: "Status",
-      sourceWarehouse: "Source Warehouse",
-      destinationWarehouse: "Destination Warehouse",
+      sourceBusinessUnit: "Source Business Unit",
+      destinationBusinessUnit: "Destination Business Unit",
       linkedPickList: "Linked Pick List",
       noValue: "--",
       totalItems: "Total Items",
@@ -6124,8 +6342,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectQtyToAdd: "Qty to Add",
       addSelectedItems: "Add Items and Create Pick List",
       creatingReplacementPickList: "Creating pick list...",
-      unknownSourceWarehouse: "Unknown source warehouse",
-      unknownDestinationWarehouse: "Unknown destination warehouse",
+      unknownSourceBusinessUnit: "Unknown source business unit",
+      unknownDestinationBusinessUnit: "Unknown destination business unit",
       unknownItem: "Unknown item",
       unknownUnit: "Unknown unit",
       unknownStockRequest: "Unknown stock transfer",
@@ -7265,7 +7483,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       inventoryReportDescription:
         "Review warehouse stock balances by item, category, status, and warehouse",
       inventoryReportValue:
-        "Operational visibility into on-hand, allocated, available, and in-transit stock",
+        "Operational visibility into on-hand, allocated, and available warehouse stock",
       fastMovingProductsName: "Fast Moving Products",
       fastMovingProductsDescription:
         "Rank products by sales velocity, sold quantity, and revenue for the selected period",
@@ -7472,7 +7690,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       qtyOnHand: "Qty On Hand",
       qtyReserved: "Allocated",
       qtyAvailable: "Available",
-      qtyInTransit: "In Transit",
       availableDescription: "Available quantity on the current page.",
       currentPageScope: "Current page total.",
       stockValue: "Stock Value",
@@ -7485,12 +7702,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       on_hand: "On Hand",
       available: "Available",
       allocated: "Allocated",
-      in_transit: "In Transit",
       zero: "Zero Stock",
       onHandStatus: "On Hand",
       availableStatus: "Available",
       allocatedStatus: "Allocated",
-      inTransitStatus: "In Transit",
       zeroStatus: "Zero Stock",
       noRows: "No inventory balances found for the selected filters.",
       pageOfTotal: "Page {page} of {totalPages} • {total} total rows",
@@ -8048,10 +8263,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       searchPlaceholder: "Search by LL number, container, seal, batch...",
       statusPlaceholder: "Status",
       supplierPlaceholder: "Supplier",
-      warehousePlaceholder: "Warehouse",
       allStatus: "All Status",
       allSuppliers: "All Suppliers",
-      allWarehouses: "All Warehouses",
       draft: "Draft",
       confirmed: "Confirmed",
       inTransit: "In Transit",
@@ -8062,7 +8275,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       cancelled: "Cancelled",
       llNumber: "LL Number",
       supplier: "Supplier",
-      warehouse: "Warehouse",
+      destinationBusinessUnit: "Destination Business Unit",
+      clearDestinationBusinessUnit: "Clear destination business unit",
       containerSeal: "Container / Seal",
       batch: "Batch",
       currency: "Currency",
@@ -8113,8 +8327,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       primaryInformation: "Primary Information",
       supplierLabel: "Supplier *",
       selectSupplier: "Select supplier",
-      warehouseLabel: "Warehouse *",
-      selectWarehouse: "Select warehouse",
+      destinationBusinessUnitLabel: "Destination Business Unit *",
       supplierLoadListNumber: "Supplier LL Number",
       supplierLoadListPlaceholder: "Supplier reference",
       containerDetails: "Container Details",
@@ -8248,8 +8461,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       currency: "Currency:",
       supplier: "Supplier:",
       contact: "Contact:",
-      warehouse: "Warehouse:",
-      businessUnit: "Business Unit:",
+      destinationBusinessUnit: "Destination Business Unit:",
+      sourceBusinessUnit: "Source Business Unit:",
       supplierLlNumber: "Supplier LL Number:",
       containerNumber: "Container Number:",
       sealNumber: "Seal Number:",
@@ -8281,7 +8494,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       confirming: "Confirming...",
       inTransitTitle: "Mark as In Transit",
       inTransitDescription:
-        "This will mark the load list as in transit and update inventory in-transit quantities.",
+        "This will mark the supplier shipment as in transit to the destination business unit.",
       estimatedArrivalDateLabel: "Estimated Arrival Date",
       linerNameLabel: "Liner",
       linerNamePlaceholder: "Shipping line or liner",
@@ -8289,7 +8502,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       updating: "Updating...",
       arrivedTitle: "Mark as Arrived",
       arrivedDescription:
-        "This will mark the load list as arrived at the warehouse. You can then proceed with receiving.",
+        "This will mark the load list as arrived at the destination business unit and create its draft GRN. Select the receiving warehouse when receiving begins.",
       reverseArrivalTitle: "Reverse Arrival",
       reverseArrivalDescription:
         "This will move the load list back to in transit and delete the untouched draft GRN that was auto-created on arrival.",
@@ -8314,7 +8527,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     loadListValidation: {
       supplierRequired: "Supplier is required",
-      warehouseRequired: "Warehouse is required",
+      destinationBusinessUnitRequired: "Destination business unit is required",
     },
     grnsPage: {
       title: "Goods Receipt Notes",
@@ -8386,6 +8599,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       startingReceiving: "Starting...",
       startReceivingSuccess: "GRN receiving started",
       startReceivingError: "Failed to start GRN receiving",
+      grnNotGenerated: "Goods receipt note is not available",
+      grnNotGeneratedDescription:
+        "Mark the load list as arrived to generate its goods receipt note before receiving.",
       saving: "Saving...",
       saveChanges: "Save Changes",
       submitting: "Submitting...",
@@ -8397,7 +8613,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       container: "Container",
       seal: "Seal",
       batchNumber: "Batch Number",
-      locationDates: "Location & Dates",
+      locationDates: "Business Unit & Dates",
       warehouse: "Warehouse",
       businessUnit: "Business Unit",
       deliveryDate: "Delivery Date",
@@ -8612,6 +8828,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       requiredDate: "Required Date",
       requestedByWarehouse: "Requested By",
       requestedToWarehouse: "Requested To",
+      requestedByBusinessUnit: "Requesting BU",
+      requestedToBusinessUnit: "Fulfilling BU",
       priority: "Priority",
       status: "Status",
       receivedDate: "Received",
@@ -8630,6 +8848,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       cancel: "Cancel",
       noActions: "--",
       noWarehouse: "--",
+      noBusinessUnit: "--",
       deleteTitle: "Delete Stock Transfer",
       deleteDescription:
         "Are you sure you want to delete request {code}? This action cannot be undone.",
@@ -8650,6 +8869,30 @@ export const translations: Record<Locale, TranslationKeys> = {
         "Complete this stock transfer? This will create stock transactions and update inventory levels.",
       cancelTitle: "Cancel Stock Transfer",
       cancelDescription: "Cancel this stock transfer? Please provide a reason.",
+      createSuccess: "Stock transfer created successfully.",
+      updateSuccess: "Stock transfer updated successfully.",
+      saveFailed: "The stock transfer could not be saved. Please try again.",
+      authenticationRequired: "Sign in again before saving this stock transfer.",
+      saveForbidden: "You do not have permission to save stock transfers in this business unit.",
+      contextRequired: "Select a valid business unit before saving this stock transfer.",
+      notDraft: "This stock transfer is no longer a draft. Refresh the page and try again.",
+      invalidDetails: "Complete the required stock transfer details before saving.",
+      warehousesMustDiffer: "The requesting and fulfilling warehouses must be different.",
+      warehouseUnavailable:
+        "A selected warehouse is no longer available. Choose another warehouse.",
+      invalidItems: "Add between 1 and 200 stock transfer items.",
+      invalidLine: "One or more stock transfer lines contain invalid values.",
+      itemUnavailable: "An item is no longer available. Refresh the item list and try again.",
+      unitUnavailable: "A selected unit is no longer available. Reselect the unit and try again.",
+      unitMismatch: "A selected unit does not match its item. Reselect the unit and try again.",
+      batchUnavailable: "A selected batch is no longer available in the fulfilling warehouse.",
+      batchQuantityUnavailable: "A selected batch no longer has enough available quantity.",
+      warehouseImmutable: "Warehouses cannot be changed after a stock transfer is created.",
+      businessUnitsMustDiffer: "The requesting and fulfilling business units must be different.",
+      businessUnitUnavailable:
+        "The selected fulfilling business unit is no longer available. Choose another business unit.",
+      businessUnitImmutable:
+        "The fulfilling business unit cannot be changed after a stock request is created.",
     },
     stockRequestForm: {
       editTitle: "Edit Stock Transfer",
@@ -8687,6 +8930,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       updateAction: "Update Request",
       createAction: "Create Request",
       lineItemRequired: "Please add at least one line item",
+      selectWarehousesBeforeItems:
+        "Select both the requesting and fulfilling warehouses before adding items.",
+      selectBusinessUnitBeforeItems:
+        "Select the fulfilling business unit before adding request items.",
       noValue: "--",
     },
     stockRequestValidation: {
@@ -8770,8 +9017,8 @@ export const translations: Record<Locale, TranslationKeys> = {
     stockRequestViewDialog: {
       title: "Stock Transfer Details",
       requestNumber: "Request #{code}",
-      requestedByWarehouse: "Requested By",
-      requestedToWarehouse: "Requested To",
+      requestedByBusinessUnit: "Requesting Business Unit",
+      requestedToBusinessUnit: "Fulfilling Business Unit",
       requestedByUser: "Requested By",
       requestDate: "Request Date",
       requiredDate: "Required Date",
@@ -8785,6 +9032,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       quantity: "Quantity",
       deliveredQty: "Delivered Qty",
       unit: "Unit",
+      batch: "Batch",
+      automaticBatch: "Automatic FIFO",
       qtyPerUnit: "Qty/Unit",
       noItems: "No items found.",
       fulfillmentSummary: "Fulfillment Summary",
@@ -9014,6 +9263,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       source: "来源",
       item: "物料",
       warehouse: "仓库",
+      assignAtPutaway: "上架时选择",
       unit: "单位",
       qtyPerUnit: "每单位数量",
       pendingQty: "基础数量",
@@ -9068,6 +9318,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       Dashboard: "仪表板",
       Inventory: "库存",
       "Item Master": "商品主档",
+      "Stock In Transit": "在途库存",
       "Create Item": "创建商品",
       "Edit Item": "编辑商品",
       Warehouse: "仓库",
@@ -9114,6 +9365,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       dashboard: "仪表板",
       inventory: "库存",
       items: "商品主档",
+      "stock-in-transit": "在途库存",
       warehouses: "仓库",
       stock: "库存交易",
       adjustments: "库存调整",
@@ -9152,6 +9404,19 @@ export const translations: Record<Locale, TranslationKeys> = {
       newQuotation: "新建报价单",
       newSalesOrder: "新建销售订单",
       unitConverter: "单位换算器",
+    },
+    warehouseSelect: {
+      allWarehouses: "所有仓库",
+      selectWarehouse: "选择仓库",
+      searchPlaceholder: "搜索仓库...",
+      empty: "未找到仓库。",
+      loading: "正在加载仓库...",
+    },
+    businessUnitSelect: {
+      selectBusinessUnit: "选择业务单元",
+      searchPlaceholder: "搜索业务单元...",
+      empty: "未找到业务单元。",
+      loading: "正在加载业务单元...",
     },
     unitConverter: {
       title: "单位换算器",
@@ -10859,6 +11124,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     posPage: {
       title: "收银台",
       subtitle: "为散客提供快速结账",
+      warehouseRequired: "请先选择仓库，再添加商品或完成销售。",
       searchAndAddItems: "搜索并添加商品...",
       searchItems: "搜索商品...",
       noItemsFound: "未找到商品。",
@@ -11019,8 +11285,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       uom: "计量单位",
       onHand: "现有库存",
       allocated: "已分配",
-      inTransitQty: "在途数量",
       putawayQty: "待上架数量",
+      buInventory: "全部库存",
       available: "可用数量",
       normal: "正常",
       overstock: "超储",
@@ -11046,6 +11312,66 @@ export const translations: Record<Locale, TranslationKeys> = {
       editAriaLabel: "编辑",
       deleteAriaLabel: "删除",
       moreActions: "更多",
+    },
+    stockInTransitPage: {
+      title: "在途库存",
+      subtitle: "当前正在运往所选业务单元的供应商货物。",
+      shipmentLines: "运输明细",
+      totalBaseQuantity: "基本单位总数量",
+      searchLabel: "搜索在途库存",
+      searchPlaceholder: "搜索装载单、商品或供应商...",
+      loadList: "装载单",
+      item: "商品",
+      supplier: "供应商",
+      sourceBusinessUnit: "来源业务单元",
+      shipmentReference: "运输参考",
+      estimatedArrival: "预计到达",
+      shipmentQuantity: "运输数量",
+      baseQuantity: "基本单位数量",
+      notAvailable: "--",
+      emptyTitle: "当前没有在途库存",
+      emptyDescription: "供应商货物标记为运输中后，将显示在此处。",
+      noSearchResultsTitle: "没有匹配的在途库存",
+      noSearchResultsDescription: "请尝试其他装载单、商品或供应商搜索条件。",
+      loadErrorTitle: "无法加载在途库存",
+      loadErrorMessage: "无法加载运输流程，请重试。",
+      retry: "重试",
+    },
+    itemLedger: {
+      title: "库存台账",
+      description: "查看单个仓库的商品库存变动和连续余额。",
+      warehouse: "仓库",
+      startDate: "开始日期",
+      endDate: "结束日期",
+      movementType: "变动类型",
+      allMovements: "所有变动",
+      stockIn: "入库",
+      stockOut: "出库",
+      stockInShort: "入",
+      stockOutShort: "出",
+      transfer: "调拨",
+      adjustment: "调整",
+      openingBalance: "期初余额",
+      totalIn: "入库总量",
+      totalOut: "出库总量",
+      closingBalance: "期末余额",
+      stockReceived: "已收库存",
+      stockIssued: "已发库存",
+      currentStock: "当前库存",
+      selectWarehouseTitle: "请选择仓库以查看库存台账。",
+      selectWarehouseDescription: "每个库存位置的连续余额将分别计算。",
+      date: "日期",
+      dateAndTime: "日期和时间",
+      voucher: "凭证",
+      type: "类型",
+      inQuantity: "入库数量",
+      outQuantity: "出库数量",
+      balance: "余额",
+      rate: "单价",
+      value: "价值",
+      loadError: "无法加载库存台账。请重试。",
+      emptyTitle: "未找到库存交易。",
+      emptyDescription: "没有符合当前筛选条件的库存变动。",
     },
     inventoryItemPage: {
       rawMaterial: "原材料",
@@ -11247,7 +11573,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     itemLocationsTab: {
       title: "库位",
-      description: "按仓库库位显示库存",
+      description: "按仓库库位显示库存。每个仓库均为此商品设置一个首选货架。",
       moveStock: "移动库存",
       loadError: "加载商品库位失败。",
       empty: "未找到库位库存。",
@@ -11260,8 +11586,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       maxStock: "最高库存",
       inTransit: "在途",
       estArrival: "预计到达",
-      defaultBadge: "默认",
-      setDefault: "设为默认",
+      preferredRackBadge: "首选货架",
+      setPreferredRack: "设为首选货架",
+      currentPreferredRack: "当前首选货架",
       editMaxStock: "设置最高",
       printBatchQr: "打印二维码",
       printingBatchQr: "正在打印...",
@@ -11277,8 +11604,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       batchPrintUnit: "单位",
       selectBatchPrintUnit: "选择单位",
       batchPrintUnitHelp: "每个标签的数量采用所选单位的每单位数量。不会拆分当前现有数量。",
-      defaultUpdated: "默认库位已更新",
-      updateDefaultError: "更新默认库位失败",
+      preferredRackUpdated: "首选货架已更新",
+      updatePreferredRackError: "更新首选货架失败",
       maxStockUpdated: "最高库存水平已更新",
       maxStockError: "更新最高库存水平失败",
       selectWarehouseForMaxStock: "请选择要更新最高库存的仓库。",
@@ -11620,7 +11947,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       title: "送货单",
       subtitle: "管理库存调拨履行的送货单生命周期",
       createDn: "创建送货单",
-      searchPlaceholder: "搜索送货单或仓库...",
+      searchPlaceholder: "搜索送货单...",
+      previous: "上一页",
+      next: "下一页",
+      pageOf: "第 {page} 页，共 {totalPages} 页",
       statusPlaceholder: "状态",
       allStatus: "所有状态",
       draft: "草稿",
@@ -11650,7 +11980,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       receive: "接收",
       void: "作废",
       createDialogTitle: "创建送货单",
-      createDialogDescription: "选择来源业务单元，然后选择要分配的库存调拨行项目。",
+      createDialogDescription:
+        "选择申请业务单元，然后分配其已批准的申请行项目。系统将自动选择来源仓库。",
+      requestingBusinessUnit: "申请业务单元",
+      selectRequestingBusinessUnit: "选择申请业务单元",
       requestSourceBusinessUnit: "申请来源业务单元",
       selectSourceBusinessUnit: "选择来源业务单元",
       fulfillmentMode: "履行方式",
@@ -11660,6 +11993,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       fulfillmentModeHint: "客户自提将跳过目标库存接收入账，改为直接完成提货。",
       notes: "备注",
       sourceBuLabel: "来源业务单元：",
+      selectRequestingBuHint: "选择申请业务单元以加载其已批准的库存申请行项目",
       eligibleLabel: "可用：",
       selectedLabel: "已选：",
       selectSourceBuHint: "请选择来源业务单元以加载库存调拨行项目",
@@ -11678,6 +12012,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       retryInventoryAvailability: "重试",
       allocationExceedsAvailable: "{item} 的分配数量超过允许的最大值（{quantity}）。",
       createSuccess: "送货单已创建",
+      createSuccessCount: "已创建 {count} 张按仓库拆分的送货单",
       noEligibleLines: "该来源业务单元没有符合条件的库存调拨行项目",
       cancel: "取消",
       create: "创建",
@@ -11715,7 +12050,15 @@ export const translations: Record<Locale, TranslationKeys> = {
       confirmReceive: "确认接收",
       confirmVoid: "确认作废",
       unknownWarehouse: "未知仓库",
+      receivingWarehousePending: "接收时选择收货仓库",
+      receivingWarehouse: "收货仓库",
+      receivingWarehouseHint: "选择接收库存要存放的仓库。",
+      receivingWarehouseRequired: "开始接收前请选择收货仓库。",
+      confirmStartReceiving: "开始接收",
+      startReceivingSuccess: "已开始接收",
+      startReceivingError: "开始送货单接收失败",
       createError: "无法创建送货单。请检查分配数量后重试。",
+      selectedBatchInsufficient: "所选批次的库存已不足。请减少分配数量或修改库存申请中的批次。",
       confirmTitle: "确认送货单",
       queuePickingTitle: "加入拣货",
       dispatchTitle: "发运送货单",
@@ -11724,10 +12067,23 @@ export const translations: Record<Locale, TranslationKeys> = {
       confirmDescription: "请查看以下详情，然后确认此送货单。",
       queuePickingDescription: "查看此送货单，分配拣货员，然后创建拣货单。",
       dispatchDescription: "查看详情并确认发运。发运数量将使用已拣货数量。",
-      receiveDescription: "查看详情并确认接收。",
+      receiveDescription: "选择目标仓库以开始接收此送货单。",
       voidDescription: "查看详情并确认作废。",
     },
     deliveryNoteDetailPage: {
+      itemsAddedSuccess: "送货单项目已添加并加入拣货队列",
+      itemsAddFailed: "添加送货单项目失败。请刷新后重试。",
+      itemsAddForbidden: "您没有权限向此送货单添加项目。",
+      itemsAddNotFound: "找不到该送货单。",
+      itemsAddNotDispatched: "只能在送货单发运后添加项目。",
+      itemsAddBusinessUnitMismatch: "库存申请与送货单的业务单元不匹配。",
+      itemsAddInvalid: "请检查所选项目和数量，然后重试。",
+      itemsAddDuplicate: "所选库存申请项目已存在于此送货单中。",
+      itemsAddIneligible: "所选库存申请已不再符合分配条件。",
+      itemsAddQuantityExceeded: "分配数量超过了申请的剩余数量。",
+      itemsAddPickerInvalid: "请至少选择一名有效的拣货员。",
+      itemsAddActivePickList: "请先完成或取消当前拣货单，再添加更多项目。",
+      itemsAddInsufficientInventory: "来源仓库中没有足够的可拣库存。",
       loading: "加载中...",
       loadError: "加载送货单失败。",
       title: "送货单",
@@ -11735,8 +12091,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       queuePicking: "加入拣货",
       void: "作废",
       status: "状态",
-      sourceWarehouse: "来源仓库",
-      destinationWarehouse: "目标仓库",
+      sourceBusinessUnit: "来源业务单元",
+      destinationBusinessUnit: "目标业务单元",
       linkedPickList: "关联拣货单",
       noValue: "--",
       totalItems: "商品总数",
@@ -11830,8 +12186,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectQtyToAdd: "添加数量",
       addSelectedItems: "添加商品并创建拣货单",
       creatingReplacementPickList: "正在创建拣货单...",
-      unknownSourceWarehouse: "未知来源仓库",
-      unknownDestinationWarehouse: "未知目标仓库",
+      unknownSourceBusinessUnit: "未知来源业务单元",
+      unknownDestinationBusinessUnit: "未知目标业务单元",
       unknownItem: "未知商品",
       unknownUnit: "未知单位",
       unknownStockRequest: "未知库存调拨",
@@ -12937,7 +13293,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       stockAgingValue: "减少 15-25% 呆滞库存",
       inventoryReportName: "库存报表",
       inventoryReportDescription: "按商品、分类、状态和仓库查看库存余额",
-      inventoryReportValue: "掌握现有、已分配、可用和在途库存的运营可视化",
+      inventoryReportValue: "掌握现有、已分配和可用仓库库存的运营可视化",
       fastMovingProductsName: "畅销商品",
       fastMovingProductsDescription: "按所选期间的销售速度、销售数量和收入排行商品",
       fastMovingProductsValue: "提升补货重点和需求可视化",
@@ -13128,7 +13484,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       qtyOnHand: "现有数量",
       qtyReserved: "已分配",
       qtyAvailable: "可用",
-      qtyInTransit: "在途",
       availableDescription: "当前页可用数量。",
       currentPageScope: "当前页合计。",
       stockValue: "库存价值",
@@ -13141,12 +13496,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       on_hand: "现有",
       available: "可用",
       allocated: "已分配",
-      in_transit: "在途",
       zero: "零库存",
       onHandStatus: "现有",
       availableStatus: "可用",
       allocatedStatus: "已分配",
-      inTransitStatus: "在途",
       zeroStatus: "零库存",
       noRows: "所选筛选条件下未找到库存余额。",
       pageOfTotal: "第 {page} / {totalPages} 页 • 共 {total} 行",
@@ -13696,10 +14049,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       searchPlaceholder: "按装载单号、集装箱号、封条号、批次搜索...",
       statusPlaceholder: "状态",
       supplierPlaceholder: "供应商",
-      warehousePlaceholder: "仓库",
       allStatus: "所有状态",
       allSuppliers: "所有供应商",
-      allWarehouses: "所有仓库",
       draft: "草稿",
       confirmed: "已确认",
       inTransit: "在途",
@@ -13710,7 +14061,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       cancelled: "已取消",
       llNumber: "装载单号",
       supplier: "供应商",
-      warehouse: "仓库",
+      destinationBusinessUnit: "目标业务单元",
+      clearDestinationBusinessUnit: "清除目标业务单元",
       containerSeal: "集装箱 / 封条",
       batch: "批次",
       currency: "币种",
@@ -13759,8 +14111,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       primaryInformation: "主要信息",
       supplierLabel: "供应商 *",
       selectSupplier: "选择供应商",
-      warehouseLabel: "仓库 *",
-      selectWarehouse: "选择仓库",
+      destinationBusinessUnitLabel: "目标业务单元 *",
       supplierLoadListNumber: "供应商装载单号",
       supplierLoadListPlaceholder: "供应商参考号",
       containerDetails: "集装箱信息",
@@ -13891,8 +14242,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       currency: "币种：",
       supplier: "供应商：",
       contact: "联系人：",
-      warehouse: "仓库：",
-      businessUnit: "业务单元：",
+      destinationBusinessUnit: "目标业务单元：",
+      sourceBusinessUnit: "来源业务单元：",
       supplierLlNumber: "供应商装载单号：",
       containerNumber: "集装箱号：",
       sealNumber: "封条号：",
@@ -13922,14 +14273,15 @@ export const translations: Record<Locale, TranslationKeys> = {
       confirmDescription: "确定要确认此装载单吗？确认后将无法修改商品。",
       confirming: "确认中...",
       inTransitTitle: "标记为在途",
-      inTransitDescription: "这将把装载单标记为在途，并更新库存在途数量。",
+      inTransitDescription: "这会将供应商发运标记为正在运往目标业务单元。",
       estimatedArrivalDateLabel: "预计到达日期",
       linerNameLabel: "船公司",
       linerNamePlaceholder: "船公司或航运公司",
       saveAndMarkInTransit: "保存并标记为在途",
       updating: "更新中...",
       arrivedTitle: "标记为已到达",
-      arrivedDescription: "这将把装载单标记为已到达仓库，然后可以继续收货。",
+      arrivedDescription:
+        "这会将装载单标记为已到达目标业务单元并创建草稿收货单。开始收货时再选择实际收货仓库。",
       reverseArrivalTitle: "撤销到达",
       reverseArrivalDescription: "这会将装载单退回在途，并删除到达时自动创建且未处理的草稿收货单。",
       confirmReverseArrival: "退回在途",
@@ -13952,7 +14304,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     loadListValidation: {
       supplierRequired: "供应商为必填项",
-      warehouseRequired: "仓库为必填项",
+      destinationBusinessUnitRequired: "目标业务单元为必填项",
     },
     grnsPage: {
       title: "收货单",
@@ -14023,6 +14375,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       startingReceiving: "正在开始...",
       startReceivingSuccess: "收货单收货已开始",
       startReceivingError: "开始收货单收货失败",
+      grnNotGenerated: "收货单尚不可用",
+      grnNotGeneratedDescription: "请先将装载单标记为已到达，以生成收货单后再开始收货。",
       saving: "保存中...",
       saveChanges: "保存更改",
       submitting: "提交中...",
@@ -14034,7 +14388,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       container: "集装箱",
       seal: "封条",
       batchNumber: "批次号",
-      locationDates: "位置与日期",
+      locationDates: "业务单元与日期",
       warehouse: "仓库",
       businessUnit: "业务单元",
       deliveryDate: "到货日期",
@@ -14248,6 +14602,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       requiredDate: "需求日期",
       requestedByWarehouse: "申请方仓库",
       requestedToWarehouse: "供货方仓库",
+      requestedByBusinessUnit: "申请业务单元",
+      requestedToBusinessUnit: "履行业务单元",
       priority: "优先级",
       status: "状态",
       receivedDate: "接收日期",
@@ -14266,6 +14622,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       cancel: "取消",
       noActions: "--",
       noWarehouse: "--",
+      noBusinessUnit: "--",
       deleteTitle: "删除库存调拨",
       deleteDescription: "确定要删除申请单 {code} 吗？此操作无法撤销。",
       deleting: "删除中...",
@@ -14284,6 +14641,27 @@ export const translations: Record<Locale, TranslationKeys> = {
       completeDescription: "确定要完成此库存调拨吗？这将创建库存交易并更新库存数量。",
       cancelTitle: "取消库存调拨",
       cancelDescription: "确定要取消此库存调拨吗？请提供原因。",
+      createSuccess: "库存调拨创建成功。",
+      updateSuccess: "库存调拨更新成功。",
+      saveFailed: "无法保存库存调拨，请重试。",
+      authenticationRequired: "请重新登录后再保存此库存调拨。",
+      saveForbidden: "您无权在此业务单元中保存库存调拨。",
+      contextRequired: "请选择有效的业务单元后再保存此库存调拨。",
+      notDraft: "此库存调拨已不再是草稿，请刷新页面后重试。",
+      invalidDetails: "请完整填写必填的库存调拨信息后再保存。",
+      warehousesMustDiffer: "申请方仓库和供货方仓库必须不同。",
+      warehouseUnavailable: "所选仓库已不可用，请选择其他仓库。",
+      invalidItems: "请添加 1 至 200 个库存调拨商品。",
+      invalidLine: "一个或多个库存调拨明细包含无效值。",
+      itemUnavailable: "某个商品已不可用，请刷新商品列表后重试。",
+      unitUnavailable: "所选单位已不可用，请重新选择单位后重试。",
+      unitMismatch: "所选单位与商品不匹配，请重新选择单位后重试。",
+      batchUnavailable: "所选批次在供货仓库中已不可用。",
+      batchQuantityUnavailable: "所选批次的可用数量已不足。",
+      warehouseImmutable: "库存调拨创建后不能更改仓库。",
+      businessUnitsMustDiffer: "申请业务单元和履行业务单元必须不同。",
+      businessUnitUnavailable: "所选履行业务单元已不可用，请选择其他业务单元。",
+      businessUnitImmutable: "库存申请创建后不能更改履行业务单元。",
     },
     stockRequestForm: {
       editTitle: "编辑库存调拨",
@@ -14321,6 +14699,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       updateAction: "更新申请",
       createAction: "创建申请",
       lineItemRequired: "请至少添加一条明细项目",
+      selectWarehousesBeforeItems: "请先选择申请仓库和供货仓库，再添加商品。",
+      selectBusinessUnitBeforeItems: "请先选择履行业务单元，再添加申请商品。",
       noValue: "--",
     },
     stockRequestValidation: {
@@ -14403,8 +14783,8 @@ export const translations: Record<Locale, TranslationKeys> = {
     stockRequestViewDialog: {
       title: "库存调拨详情",
       requestNumber: "申请单号 #{code}",
-      requestedByWarehouse: "申请方",
-      requestedToWarehouse: "供货方",
+      requestedByBusinessUnit: "申请业务单元",
+      requestedToBusinessUnit: "履行业务单元",
       requestedByUser: "申请人",
       requestDate: "申请日期",
       requiredDate: "需求日期",
@@ -14418,6 +14798,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       quantity: "数量",
       deliveredQty: "已交付数量",
       unit: "单位",
+      batch: "批次",
+      automaticBatch: "自动先进先出",
       qtyPerUnit: "每单位数量",
       noItems: "未找到商品。",
       fulfillmentSummary: "履行汇总",

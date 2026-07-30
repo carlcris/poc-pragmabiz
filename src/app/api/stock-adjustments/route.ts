@@ -122,6 +122,25 @@ type BatchLocationRow = {
     | null;
 };
 
+const STOCK_ADJUSTMENT_ITEM_COLUMNS = `
+  id,
+  adjustment_id,
+  item_id,
+  item_batch_location_id,
+  item_code,
+  item_name,
+  current_qty,
+  adjusted_qty,
+  difference,
+  unit_cost,
+  total_cost,
+  uom_id,
+  uom_name,
+  reason,
+  created_at,
+  updated_at
+`;
+
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
@@ -342,7 +361,7 @@ async function GETHandler(request: NextRequest) {
       adjustmentIds.length > 0
         ? await supabase
             .from("stock_adjustment_items")
-            .select("*")
+            .select(STOCK_ADJUSTMENT_ITEM_COLUMNS)
             .in("adjustment_id", adjustmentIds)
         : { data: [] };
 
@@ -412,6 +431,7 @@ async function GETHandler(request: NextRequest) {
         locationId,
         locationCode: location?.code || null,
         locationName: location?.name || null,
+        warehouseCode: warehouse?.warehouse_code || null,
         warehouseName: warehouse?.warehouse_name || null,
         status: adj.status,
         reason: adj.reason,
@@ -563,16 +583,23 @@ async function POSTHandler(request: NextRequest) {
     }
 
     // Fetch the complete adjustment with items
-    const { data: completeAdjustment } = await supabase
+    const { data: completeAdjustment, error: completeAdjustmentError } = await supabase
       .from("stock_adjustments")
-      .select("*")
+      .select(
+        "id, company_id, adjustment_code, adjustment_type, adjustment_date, warehouse_id, status, reason, notes, total_value, created_by, updated_by, created_at, updated_at"
+      )
       .eq("id", savedAdjustment.adjustment_id)
       .single();
 
     const { data: completeItems } = await supabase
       .from("stock_adjustment_items")
-      .select("*")
+      .select(STOCK_ADJUSTMENT_ITEM_COLUMNS)
       .eq("adjustment_id", savedAdjustment.adjustment_id);
+
+    if (completeAdjustmentError || !completeAdjustment) {
+      console.error("Error fetching created stock adjustment:", completeAdjustmentError);
+      return NextResponse.json({ error: "Failed to load created stock adjustment" }, { status: 500 });
+    }
 
     return NextResponse.json({
       id: completeAdjustment.id,

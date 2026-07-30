@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { ArrowRight, FileText, Package, TrendingDown, TrendingUp } from "lucide-react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useStockLedger } from "@/hooks/useStockLedger";
-import { useWarehouses } from "@/hooks/useWarehouses";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { Badge } from "@/components/ui/badge";
@@ -28,37 +27,20 @@ import {
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { MetricCard } from "@/components/shared/MetricCard";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 
 type ItemLedgerTabProps = {
   itemId: string;
   itemUom?: string;
 };
 
-const TRANSACTION_TYPE_OPTIONS = [
-  { value: "all", label: "All Movements" },
-  { value: "in", label: "Stock In" },
-  { value: "out", label: "Stock Out" },
-  { value: "transfer", label: "Transfer" },
-  { value: "adjustment", label: "Adjustment" },
-];
-
 export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
+  const t = useTranslations("itemLedger");
   const locale = useLocale();
   const { formatCurrency } = useCurrency();
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
   const hasBusinessUnitHydrated = useBusinessUnitStore((state) => state.hasHydrated);
-  const { data: warehousesData, isLoading: isWarehousesLoading } = useWarehouses({ limit: 100 });
-  const warehouses = useMemo(() => warehousesData?.data || [], [warehousesData?.data]);
-  const currentWarehouse = useMemo(() => {
-    if (!currentBusinessUnit?.id) return null;
-
-    return (
-      warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit.id) ?? null
-    );
-  }, [currentBusinessUnit?.id, warehouses]);
-  const currentWarehouseId = currentWarehouse?.id;
-  const isWarehouseContextLoading = !hasBusinessUnitHydrated || isWarehousesLoading;
-
+  const [warehouseId, setWarehouseId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [transactionTypeFilter, setTransactionTypeFilter] = useState("all");
@@ -67,7 +49,7 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
 
   const { data, isLoading, error } = useStockLedger({
     itemId,
-    warehouseId: currentWarehouseId,
+    warehouseId,
     startDate: startDate || undefined,
     endDate: endDate || undefined,
     voucherType: transactionTypeFilter !== "all" ? transactionTypeFilter : undefined,
@@ -92,6 +74,11 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
 
   const resetToFirstPage = () => setPage(1);
 
+  useEffect(() => {
+    setWarehouseId("");
+    setPage(1);
+  }, [currentBusinessUnit?.id]);
+
   const handleStartDateChange = (event: ChangeEvent<HTMLInputElement>) => {
     setStartDate(event.target.value);
     resetToFirstPage();
@@ -114,63 +101,68 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
 
   const getTransactionTypeBadge = (type: string) => {
     if (type === "in") {
-      return <Badge className="bg-green-600 hover:bg-green-600">IN</Badge>;
+      return <Badge className="bg-green-600 hover:bg-green-600">{t("stockInShort")}</Badge>;
     }
 
     if (type === "out") {
-      return <Badge className="bg-red-600 hover:bg-red-600">OUT</Badge>;
+      return <Badge className="bg-red-600 hover:bg-red-600">{t("stockOutShort")}</Badge>;
     }
 
     if (type === "transfer") {
-      return <Badge variant="outline">TRANSFER</Badge>;
+      return <Badge variant="outline">{t("transfer")}</Badge>;
     }
 
-    return <Badge variant="secondary">{type.toUpperCase()}</Badge>;
+    return <Badge variant="secondary">{t("adjustment")}</Badge>;
   };
+
+  const transactionTypeOptions = [
+    { value: "all", label: t("allMovements") },
+    { value: "in", label: t("stockIn") },
+    { value: "out", label: t("stockOut") },
+    { value: "transfer", label: t("transfer") },
+    { value: "adjustment", label: t("adjustment") },
+  ];
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base font-semibold">Stock Ledger</CardTitle>
-          <CardDescription className="text-sm">
-            Item movement history with running balance for the current warehouse context.
-          </CardDescription>
+          <CardTitle className="text-base font-semibold">{t("title")}</CardTitle>
+          <CardDescription className="text-sm">{t("description")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 rounded-md border bg-muted/30 px-3 py-2 text-sm">
-            <div className="text-muted-foreground">Warehouse</div>
-            <div className="font-medium">
-              {isWarehouseContextLoading ? (
-                <Skeleton className="mt-1 h-4 w-56" />
-              ) : currentWarehouse ? (
-                `${currentWarehouse.code} - ${currentWarehouse.name}`
-              ) : (
-                "No warehouse resolved from the current business unit"
-              )}
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Start Date</label>
+              <label className="text-sm font-medium">{t("warehouse")}</label>
+              <WarehouseSelect
+                value={warehouseId}
+                onValueChange={(value) => {
+                  setWarehouseId(value);
+                  resetToFirstPage();
+                }}
+                scope="current_business_unit"
+                disabled={!hasBusinessUnitHydrated || !currentBusinessUnit?.id}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t("startDate")}</label>
               <Input type="date" value={startDate} onChange={handleStartDateChange} />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">End Date</label>
+              <label className="text-sm font-medium">{t("endDate")}</label>
               <Input type="date" value={endDate} onChange={handleEndDateChange} />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Movement Type</label>
+              <label className="text-sm font-medium">{t("movementType")}</label>
               <Select value={transactionTypeFilter} onValueChange={handleTransactionTypeChange}>
                 <SelectTrigger>
                   <FileText className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder="Movement type" />
+                  <SelectValue placeholder={t("movementType")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {TRANSACTION_TYPE_OPTIONS.map((option) => (
+                  {transactionTypeOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
@@ -182,10 +174,10 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
         </CardContent>
       </Card>
 
-      {currentWarehouseId ? (
+      {warehouseId ? (
         <div className="grid gap-4 md:grid-cols-4">
           <MetricCard
-            title="Opening Balance"
+            title={t("openingBalance")}
             icon={Package}
             iconClassName="h-4 w-4 text-blue-600"
             value={data ? formatQuantity(openingBalance) : undefined}
@@ -193,7 +185,7 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
             isLoading={isLoading}
           />
           <MetricCard
-            title="Total IN"
+            title={t("totalIn")}
             icon={TrendingUp}
             iconClassName="h-4 w-4 text-green-600"
             value={
@@ -203,12 +195,12 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
                   : formatQuantity(totalIn)
                 : undefined
             }
-            caption="Stock received"
+            caption={t("stockReceived")}
             valueClassName="text-2xl font-bold text-green-600"
             isLoading={isLoading}
           />
           <MetricCard
-            title="Total OUT"
+            title={t("totalOut")}
             icon={TrendingDown}
             iconClassName="h-4 w-4 text-red-600"
             value={
@@ -218,25 +210,25 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
                   : formatQuantity(totalOut)
                 : undefined
             }
-            caption="Stock issued"
+            caption={t("stockIssued")}
             valueClassName="text-2xl font-bold text-red-600"
             isLoading={isLoading}
           />
           <MetricCard
-            title="Closing Balance"
+            title={t("closingBalance")}
             icon={ArrowRight}
             iconClassName="h-4 w-4 text-purple-600"
             value={data ? formatQuantity(closingBalance) : undefined}
-            caption={currentWarehouse ? currentWarehouse.code : "Current stock"}
+            caption={itemUom || t("currentStock")}
             isLoading={isLoading}
           />
         </div>
       ) : null}
 
-      {!currentWarehouseId ? (
+      {!warehouseId ? (
         <Card>
           <CardContent className="py-12">
-            {isWarehouseContextLoading ? (
+            {!hasBusinessUnitHydrated ? (
               <div className="mx-auto max-w-sm space-y-3">
                 <Skeleton className="mx-auto h-12 w-12 rounded-full" />
                 <Skeleton className="mx-auto h-5 w-56" />
@@ -245,12 +237,8 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
             ) : (
               <div className="text-center text-muted-foreground">
                 <Package className="mx-auto mb-4 h-12 w-12 opacity-50" />
-                <p className="text-lg font-medium">
-                  No warehouse is available for the current business unit context.
-                </p>
-                <p className="mt-2 text-sm">
-                  Switch to a business unit with a warehouse to view this item ledger.
-                </p>
+                <p className="text-lg font-medium">{t("selectWarehouseTitle")}</p>
+                <p className="mt-2 text-sm">{t("selectWarehouseDescription")}</p>
               </div>
             )}
           </CardContent>
@@ -260,14 +248,14 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Voucher</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">IN Qty</TableHead>
-                <TableHead className="text-right">OUT Qty</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-                <TableHead className="text-right">Rate</TableHead>
-                <TableHead className="text-right">Value</TableHead>
+                <TableHead>{t("date")}</TableHead>
+                <TableHead>{t("voucher")}</TableHead>
+                <TableHead>{t("type")}</TableHead>
+                <TableHead className="text-right">{t("inQuantity")}</TableHead>
+                <TableHead className="text-right">{t("outQuantity")}</TableHead>
+                <TableHead className="text-right">{t("balance")}</TableHead>
+                <TableHead className="text-right">{t("rate")}</TableHead>
+                <TableHead className="text-right">{t("value")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -305,9 +293,7 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
       ) : error ? (
         <Card>
           <CardContent className="py-12">
-            <div className="text-center text-destructive">
-              Error loading stock ledger. Please try again.
-            </div>
+            <div className="text-center text-destructive">{t("loadError")}</div>
           </CardContent>
         </Card>
       ) : ledgerEntries.length === 0 ? (
@@ -315,8 +301,8 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
           <CardContent className="py-12">
             <div className="text-center text-muted-foreground">
               <FileText className="mx-auto mb-4 h-12 w-12 opacity-50" />
-              <p className="text-lg font-medium">No transactions found.</p>
-              <p className="mt-2 text-sm">No stock movements for the selected filters.</p>
+              <p className="text-lg font-medium">{t("emptyTitle")}</p>
+              <p className="mt-2 text-sm">{t("emptyDescription")}</p>
             </div>
           </CardContent>
         </Card>
@@ -326,14 +312,14 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date & Time</TableHead>
-                  <TableHead>Voucher</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">IN Qty</TableHead>
-                  <TableHead className="text-right">OUT Qty</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                  <TableHead className="text-right">Rate</TableHead>
-                  <TableHead className="text-right">Value</TableHead>
+                  <TableHead>{t("dateAndTime")}</TableHead>
+                  <TableHead>{t("voucher")}</TableHead>
+                  <TableHead>{t("type")}</TableHead>
+                  <TableHead className="text-right">{t("inQuantity")}</TableHead>
+                  <TableHead className="text-right">{t("outQuantity")}</TableHead>
+                  <TableHead className="text-right">{t("balance")}</TableHead>
+                  <TableHead className="text-right">{t("rate")}</TableHead>
+                  <TableHead className="text-right">{t("value")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

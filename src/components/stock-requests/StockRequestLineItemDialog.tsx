@@ -42,7 +42,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useItem, useItemBatches, useItems } from "@/hooks/useItems";
+import { useItem, useItems } from "@/hooks/useItems";
+import { useLookupStockRequestBatches } from "@/hooks/useLookups";
+import type { LookupStockRequestBatchOption } from "@/hooks/useLookups";
 
 const createLineItemSchema = (
   tValidation: (key: "itemRequired" | "uomRequired" | "requestedQtyMin") => string
@@ -52,8 +54,8 @@ const createLineItemSchema = (
     itemCode: z.string().optional(),
     itemName: z.string().optional(),
     itemUnitOptionId: z.string().min(1, tValidation("uomRequired")),
+    selectedItemBatchId: z.string().optional(),
     uomId: z.string().min(1, tValidation("uomRequired")),
-    selectedItemBatchId: z.string().optional().nullable(),
     requestedQty: z.number().min(0.01, tValidation("requestedQtyMin")),
     notes: z.string().optional(),
   });
@@ -64,20 +66,23 @@ export type StockRequestLineItemPayload = StockRequestLineItemFormValues & {
   uomLabel?: string;
   unitBarcode?: string;
   qtyPerUnit?: number;
-  batchLabel?: string;
-  batchCode?: string;
-  batchReceivedAt?: string;
-  batchQtyAvailable?: number;
+  selectedBatchCode?: string;
+  selectedBatchWarehouseId?: string;
+  selectedBatchWarehouseCode?: string;
+  selectedBatchWarehouseName?: string;
+  selectedBatchRackSummary?: string;
+  selectedBatchReceivedAt?: string;
+  selectedBatchAvailableBaseQty?: number;
 };
 
-interface StockRequestLineItemDialogProps {
+type StockRequestLineItemDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (item: StockRequestLineItemPayload) => void;
   item?: StockRequestLineItemPayload | null;
   mode?: "add" | "edit";
-  fulfillingWarehouseId?: string;
-}
+  fulfillingBusinessUnitId: string;
+};
 
 export function StockRequestLineItemDialog({
   open,
@@ -85,7 +90,7 @@ export function StockRequestLineItemDialog({
   onSave,
   item,
   mode = "add",
-  fulfillingWarehouseId = "",
+  fulfillingBusinessUnitId,
 }: StockRequestLineItemDialogProps) {
   const t = useTranslations("stockRequestLineItemDialog");
   const tValidation = useTranslations("stockRequestLineItemValidation");
@@ -95,7 +100,9 @@ export function StockRequestLineItemDialog({
   const [itemSearch, setItemSearch] = useState("");
   const [batchSearchInput, setBatchSearchInput] = useState("");
   const [batchSearch, setBatchSearch] = useState("");
-  const previousWarehouseIdRef = useRef(fulfillingWarehouseId);
+  const [selectedBatchSnapshot, setSelectedBatchSnapshot] =
+    useState<LookupStockRequestBatchOption | null>(null);
+  const previousFulfillingBusinessUnitIdRef = useRef(fulfillingBusinessUnitId);
   const {
     data: itemsData,
     isLoading: isItemsLoading,
@@ -116,8 +123,8 @@ export function StockRequestLineItemDialog({
       itemCode: "",
       itemName: "",
       itemUnitOptionId: "",
-      uomId: "",
       selectedItemBatchId: "",
+      uomId: "",
       requestedQty: 1,
       notes: "",
     },
@@ -133,31 +140,39 @@ export function StockRequestLineItemDialog({
     data: batchOptionsResponse,
     isLoading: isBatchOptionsLoading,
     isFetching: isBatchOptionsFetching,
-  } = useItemBatches({
+  } = useLookupStockRequestBatches({
+    fulfillingBusinessUnitId,
     itemId: selectedItemId,
-    warehouseId: fulfillingWarehouseId,
     search: batchSearch || undefined,
-    limit: 5,
-    enabled: open && !!selectedItemId && !!fulfillingWarehouseId,
+    page: 1,
+    enabled: open,
   });
-  const batchOptions = useMemo(() => batchOptionsResponse?.data || [], [batchOptionsResponse?.data]);
-
+  const batchOptions = useMemo(
+    () => batchOptionsResponse?.data || [],
+    [batchOptionsResponse?.data]
+  );
   // Reset form when dialog opens/closes or item changes
   useEffect(() => {
     if (open && item) {
       const formItem = { ...item };
       form.reset(formItem);
+      setBatchSearchInput(item.selectedBatchCode || "");
+      setBatchSearch(item.selectedBatchCode || "");
+      setSelectedBatchSnapshot(null);
     } else if (open) {
       form.reset({
         itemId: "",
         itemCode: "",
         itemName: "",
         itemUnitOptionId: "",
-        uomId: "",
         selectedItemBatchId: "",
+        uomId: "",
         requestedQty: 1,
         notes: "",
       });
+      setBatchSearchInput("");
+      setBatchSearch("");
+      setSelectedBatchSnapshot(null);
     }
   }, [open, item, form]);
 
@@ -209,12 +224,13 @@ export function StockRequestLineItemDialog({
   }, [batchSearchInput]);
 
   useEffect(() => {
-    if (previousWarehouseIdRef.current === fulfillingWarehouseId) return;
-    previousWarehouseIdRef.current = fulfillingWarehouseId;
+    if (previousFulfillingBusinessUnitIdRef.current === fulfillingBusinessUnitId) return;
+    previousFulfillingBusinessUnitIdRef.current = fulfillingBusinessUnitId;
     form.setValue("selectedItemBatchId", "", { shouldValidate: true });
     setBatchSearchInput("");
     setBatchSearch("");
-  }, [form, fulfillingWarehouseId]);
+    setSelectedBatchSnapshot(null);
+  }, [form, fulfillingBusinessUnitId]);
 
   const handleItemSelect = (itemId: string) => {
     const selectedItem = items.find((i) => i.id === itemId);
@@ -223,8 +239,11 @@ export function StockRequestLineItemDialog({
       form.setValue("itemCode", selectedItem.code);
       form.setValue("itemName", selectedItem.name);
       form.setValue("itemUnitOptionId", "", { shouldValidate: true });
+      form.setValue("selectedItemBatchId", "");
       form.setValue("uomId", "", { shouldValidate: true });
-      form.setValue("selectedItemBatchId", "", { shouldValidate: true });
+      setBatchSearchInput("");
+      setBatchSearch("");
+      setSelectedBatchSnapshot(null);
     }
   };
 
@@ -254,34 +273,45 @@ export function StockRequestLineItemDialog({
   const selectedBatch = useMemo(
     () =>
       batchOptions.find((batch) => batch.id === selectedItemBatchId) ||
+      (selectedBatchSnapshot?.id === selectedItemBatchId ? selectedBatchSnapshot : null) ||
       (item?.selectedItemBatchId &&
       item.selectedItemBatchId === selectedItemBatchId &&
-      item.batchCode
+      item.selectedBatchCode
         ? {
             id: item.selectedItemBatchId,
-            batchCode: item.batchCode,
-            receivedAt: item.batchReceivedAt || "",
-            qtyAvailable: item.batchQtyAvailable ?? 0,
+            batchCode: item.selectedBatchCode,
+            warehouseId: item.selectedBatchWarehouseId || "",
+            warehouseCode: item.selectedBatchWarehouseCode || "",
+            warehouseName: item.selectedBatchWarehouseName || "",
+            rackSummary: item.selectedBatchRackSummary || "",
+            receivedAt: item.selectedBatchReceivedAt || "",
+            availableBaseQty: item.selectedBatchAvailableBaseQty,
           }
         : null),
     [
       batchOptions,
-      item?.batchCode,
-      item?.batchQtyAvailable,
-      item?.batchReceivedAt,
+      item?.selectedBatchAvailableBaseQty,
+      item?.selectedBatchCode,
+      item?.selectedBatchRackSummary,
+      item?.selectedBatchReceivedAt,
+      item?.selectedBatchWarehouseCode,
+      item?.selectedBatchWarehouseId,
+      item?.selectedBatchWarehouseName,
       item?.selectedItemBatchId,
+      selectedBatchSnapshot,
       selectedItemBatchId,
     ]
   );
   const qtyPerUnit = selectedUnitOption?.qtyPerUnit ?? item?.qtyPerUnit ?? 1;
   const requestedBaseQty = requestedQty * qtyPerUnit;
-
   const batchQuantityError = useMemo(() => {
-    if (!selectedItemBatchId || !selectedBatch) return null;
-    if (selectedBatch.qtyAvailable >= requestedBaseQty) return null;
+    if (!selectedItemBatchId || !selectedBatch || selectedBatch.availableBaseQty === undefined) {
+      return null;
+    }
+    if (selectedBatch.availableBaseQty >= requestedBaseQty) return null;
 
     return t("batchInsufficient", {
-      available: selectedBatch.qtyAvailable.toLocaleString(locale, {
+      available: selectedBatch.availableBaseQty.toLocaleString(locale, {
         minimumFractionDigits: 0,
         maximumFractionDigits: 4,
       }),
@@ -319,23 +349,23 @@ export function StockRequestLineItemDialog({
       unitOptions.find((option) => option.id === data.itemUnitOptionId) ||
       selectedItemDetail?.unitOptions?.find((option) => option.id === data.itemUnitOptionId);
     const uomLabel = selectedUnitOption?.displayLabel || item?.uomLabel || "";
-    const selectedBatch = batchOptions.find((batch) => batch.id === data.selectedItemBatchId);
+
+    const savedBatch =
+      batchOptions.find((batch) => batch.id === data.selectedItemBatchId) || selectedBatch;
 
     onSave({
       ...data,
-      selectedItemBatchId: data.selectedItemBatchId || null,
+      selectedItemBatchId: data.selectedItemBatchId || "",
       uomLabel,
       unitBarcode: selectedUnitOption?.barcode,
       qtyPerUnit: selectedUnitOption?.qtyPerUnit ?? item?.qtyPerUnit ?? 1,
-      batchLabel: selectedBatch
-        ? `${selectedBatch.batchCode} (${selectedBatch.qtyAvailable.toLocaleString(locale, {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 4,
-          })})`
-        : item?.batchLabel,
-      batchCode: selectedBatch?.batchCode ?? item?.batchCode,
-      batchReceivedAt: selectedBatch?.receivedAt ?? item?.batchReceivedAt,
-      batchQtyAvailable: selectedBatch?.qtyAvailable ?? item?.batchQtyAvailable,
+      selectedBatchCode: savedBatch?.batchCode,
+      selectedBatchWarehouseId: savedBatch?.warehouseId,
+      selectedBatchWarehouseCode: savedBatch?.warehouseCode,
+      selectedBatchWarehouseName: savedBatch?.warehouseName,
+      selectedBatchRackSummary: savedBatch?.rackSummary,
+      selectedBatchReceivedAt: savedBatch?.receivedAt,
+      selectedBatchAvailableBaseQty: savedBatch?.availableBaseQty,
     });
     onOpenChange(false);
   };
@@ -533,19 +563,30 @@ export function StockRequestLineItemDialog({
                 <FormItem>
                   <FormLabel>{t("batchLabel")}</FormLabel>
                   <Select
-                    onValueChange={(value) => field.onChange(value === "__auto__" ? "" : value)}
+                    onValueChange={(value) => {
+                      if (value === "__auto__") {
+                        field.onChange("");
+                        setSelectedBatchSnapshot(null);
+                        return;
+                      }
+
+                      field.onChange(value);
+                      setSelectedBatchSnapshot(
+                        batchOptions.find((batch) => batch.id === value) || null
+                      );
+                    }}
                     value={field.value || "__auto__"}
-                    disabled={!selectedItemId || !fulfillingWarehouseId || isBatchOptionsLoading}
+                    disabled={!fulfillingBusinessUnitId || !selectedItemId || isSelectedItemLoading}
                   >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue
                           placeholder={
-                            !fulfillingWarehouseId
+                            !fulfillingBusinessUnitId
                               ? t("selectWarehouseFirst")
                               : !selectedItemId
                                 ? t("selectItemFirst")
-                                : isBatchOptionsLoading || isBatchOptionsFetching
+                                : isBatchOptionsLoading
                                   ? t("loadingBatches")
                                   : t("autoBatchAllocation")
                           }
@@ -557,39 +598,46 @@ export function StockRequestLineItemDialog({
                         <Input
                           value={batchSearchInput}
                           onChange={(event) => setBatchSearchInput(event.target.value)}
+                          onKeyDown={(event) => event.stopPropagation()}
                           placeholder={t("searchBatch")}
                           className="h-8"
                         />
                       </div>
                       <SelectItem value="__auto__">{t("autoBatchAllocation")}</SelectItem>
-                      {selectedBatch && !batchOptions.some((batch) => batch.id === selectedBatch.id) && (
-                        <SelectItem value={selectedBatch.id}>
-                          {selectedBatch.batchCode}
-                          {selectedBatch.qtyAvailable > 0
-                            ? ` · ${t("available")}: ${selectedBatch.qtyAvailable.toLocaleString(
-                                locale,
-                                {
-                                  minimumFractionDigits: 0,
-                                  maximumFractionDigits: 4,
-                                }
-                              )}`
-                            : ""}
-                        </SelectItem>
-                      )}
+                      {selectedBatch &&
+                        !batchOptions.some((batch) => batch.id === selectedBatch.id) && (
+                          <SelectItem value={selectedBatch.id}>
+                            {selectedBatch.batchCode}
+                            {selectedBatch.warehouseCode ? ` · ${selectedBatch.warehouseCode}` : ""}
+                            {selectedBatch.availableBaseQty !== undefined
+                              ? ` · ${t("available")}: ${selectedBatch.availableBaseQty.toLocaleString(
+                                  locale,
+                                  {
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 4,
+                                  }
+                                )}`
+                              : ""}
+                          </SelectItem>
+                        )}
                       {batchOptions.map((batch) => (
                         <SelectItem key={batch.id} value={batch.id}>
-                          {batch.batchCode} · {t("available")}:{" "}
-                          {batch.qtyAvailable.toLocaleString(locale, {
+                          {batch.batchCode} · {batch.warehouseCode} · {t("available")}:{" "}
+                          {batch.availableBaseQty.toLocaleString(locale, {
                             minimumFractionDigits: 0,
                             maximumFractionDigits: 4,
                           })}
                         </SelectItem>
                       ))}
-                      {batchOptions.length === 0 && (
+                      {isBatchOptionsLoading || isBatchOptionsFetching ? (
+                        <SelectItem value="__loading_batches__" disabled>
+                          {t("loadingBatches")}
+                        </SelectItem>
+                      ) : batchOptions.length === 0 ? (
                         <SelectItem value="__no_batches__" disabled>
                           {t("noBatchesAvailable")}
                         </SelectItem>
-                      )}
+                      ) : null}
                     </SelectContent>
                   </Select>
                   <FormMessage />

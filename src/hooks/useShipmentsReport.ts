@@ -19,9 +19,8 @@ export type ShipmentsReportRow = {
   supplierLlNumber: string | null;
   supplierName: string;
   supplierCode: string | null;
-  warehouseName: string;
-  warehouseCode: string | null;
-  businessUnitName: string | null;
+  sourceBusinessUnitName: string | null;
+  destinationBusinessUnitName: string | null;
   containerNumber: string | null;
   sealNumber: string | null;
   batchNumber: string | null;

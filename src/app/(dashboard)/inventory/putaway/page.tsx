@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { CheckCircle2, Loader2, PackageCheck, Printer } from "lucide-react";
 import { toast } from "sonner";
@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/table";
 import { usePostPutawayTask, usePutawayTasks } from "@/hooks/usePutawayTasks";
 import { putawayTasksApi } from "@/lib/api/putaway-tasks";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
+import { useLookupWarehouseLocations, type LookupWarehouseOption } from "@/hooks/useLookups";
 import type { BarcodeData } from "@/lib/barcode";
 import { cn } from "@/lib/utils";
 import type {
@@ -35,7 +37,6 @@ import type {
   PutawayTaskLabel,
   PutawayTaskStatus,
 } from "@/types/putaway-task";
-import type { WarehouseLocation } from "@/types/inventory-location";
 
 const formatQty = (value: number) =>
   new Intl.NumberFormat(undefined, {
@@ -104,13 +105,13 @@ export default function PutawayStationPage() {
   const [statusFilter, setStatusFilter] = useState<PutawayTaskStatus | "open" | "all">("open");
   const [page, setPage] = useState(1);
   const [selectedTask, setSelectedTask] = useState<PutawayTask | null>(null);
+  const [warehouseId, setWarehouseId] = useState("");
+  const [selectedWarehouse, setSelectedWarehouse] = useState<LookupWarehouseOption | null>(null);
   const [locationId, setLocationId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [batchCode, setBatchCode] = useState("");
   const [shouldPrintLabels, setShouldPrintLabels] = useState(true);
   const [labelCount, setLabelCount] = useState("1");
-  const [locations, setLocations] = useState<WarehouseLocation[]>([]);
-  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [isPrintingLabels, setIsPrintingLabels] = useState(false);
   const [printingTaskId, setPrintingTaskId] = useState<string | null>(null);
 
@@ -121,8 +122,15 @@ export default function PutawayStationPage() {
     limit: 50,
   });
   const postPutaway = usePostPutawayTask();
+  const { data: locationsData, isLoading: isLoadingLocations } = useLookupWarehouseLocations(
+    warehouseId || null,
+    { limit: 50, storableOnly: true }
+  );
 
   const tasks = data?.data ?? [];
+  const storableLocations = (locationsData?.data ?? []).filter(
+    (location) => location.isActive && location.isStorable
+  );
   const pagination = data?.pagination;
   const putawayStatusLabel: Record<PutawayTaskStatus, string> = {
     pending: t("statusPending"),
@@ -132,60 +140,28 @@ export default function PutawayStationPage() {
   };
 
   useEffect(() => {
-    if (!selectedTask) {
-      setLocations([]);
-      return;
-    }
-    if (selectedTask.status === "completed") {
-      setLocations([]);
-      return;
-    }
-
-    let cancelled = false;
-
-    const loadLocations = async () => {
-      setIsLoadingLocations(true);
-      try {
-        const response = await fetch(`/api/warehouses/${selectedTask.warehouseId}/locations`);
-        if (!response.ok) throw new Error("Failed to load locations");
-        const json = await response.json();
-        if (!cancelled) {
-          setLocations(json.data ?? []);
-        }
-      } catch {
-        if (!cancelled) {
-          setLocations([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoadingLocations(false);
-        }
-      }
-    };
-
-    loadLocations();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedTask]);
-
-  useEffect(() => {
     setSelectedTask(null);
     setPage(1);
   }, [statusFilter]);
-
-  const storableLocations = useMemo(
-    () => locations.filter((location) => location.isActive && location.isStorable),
-    [locations]
-  );
 
   const selectTask = (task: PutawayTask) => {
     const selectedBaseQuantity =
       task.status === "completed" ? task.postedQuantity : task.pendingQuantity;
     const selectedItemQuantity = selectedBaseQuantity / task.sourceQtyPerUnit;
     setSelectedTask(task);
-    setLocationId(task.suggestedLocationId ?? "");
+    setWarehouseId(task.warehouseId ?? "");
+    setSelectedWarehouse(
+      task.warehouseId
+        ? {
+            id: task.warehouseId,
+            code: task.warehouseCode ?? "",
+            name: task.warehouseName ?? "",
+            businessUnitId: task.businessUnitId,
+            isActive: true,
+          }
+        : null
+    );
+    setLocationId(task.warehouseId ? (task.suggestedLocationId ?? "") : "");
     setQuantity(String(selectedItemQuantity));
     setBatchCode(task.sourceBatchCode ?? "");
     setShouldPrintLabels(true);
@@ -241,6 +217,7 @@ export default function PutawayStationPage() {
 
     if (
       !locationId ||
+      !warehouseId ||
       !batchCode.trim() ||
       !Number.isFinite(parsedItemQuantity) ||
       parsedItemQuantity <= 0 ||
@@ -283,7 +260,7 @@ export default function PutawayStationPage() {
           boxNumber: index + 1,
           qtyPerBox: selectedTask.sourceQtyPerUnit,
           deliveryDate: postResult.postedDate,
-          warehouseCode: selectedTask.warehouseCode || undefined,
+          warehouseCode: selectedWarehouse?.code || selectedTask.warehouseCode || undefined,
           locationId: postResult.locationId,
           locationCode: selectedLocation.code,
         }));
@@ -301,6 +278,8 @@ export default function PutawayStationPage() {
     }
 
     setSelectedTask(null);
+    setWarehouseId("");
+    setSelectedWarehouse(null);
     setLocationId("");
     setQuantity("");
     setBatchCode("");
@@ -315,6 +294,7 @@ export default function PutawayStationPage() {
   const labelCountNumber = Number.parseInt(labelCount, 10);
   const canPost =
     !!selectedTask &&
+    !!warehouseId &&
     !!locationId &&
     !!batchCode.trim() &&
     Number.isFinite(itemQuantityNumber) &&
@@ -413,10 +393,18 @@ export default function PutawayStationPage() {
                         <div className="text-sm text-muted-foreground">{task.itemCode || "-"}</div>
                       </TableCell>
                       <TableCell>
-                        <div>{task.warehouseName || "-"}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {task.warehouseCode || "-"}
-                        </div>
+                        {task.warehouseId ? (
+                          <>
+                            <div>{task.warehouseName || "-"}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {task.warehouseCode || "-"}
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">
+                            {t("assignAtPutaway")}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="font-medium">{formatQty(sourceQuantity)}</span>
@@ -435,10 +423,7 @@ export default function PutawayStationPage() {
                       </TableCell>
                       <TableCell>
                         <span
-                          className={cn(
-                            "text-sm font-medium",
-                            putawayStatusClassName[task.status]
-                          )}
+                          className={cn("text-sm font-medium", putawayStatusClassName[task.status])}
                         >
                           {putawayStatusLabel[task.status]}
                         </span>
@@ -472,7 +457,9 @@ export default function PutawayStationPage() {
             </TableBody>
           </Table>
           {isFetching && !isLoading ? (
-            <div className="border-t px-4 py-2 text-sm text-muted-foreground">{t("refreshing")}</div>
+            <div className="border-t px-4 py-2 text-sm text-muted-foreground">
+              {t("refreshing")}
+            </div>
           ) : null}
           {pagination ? (
             <div className="flex flex-col gap-2 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -580,11 +567,28 @@ export default function PutawayStationPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label>{t("warehouse")}</Label>
+                  <WarehouseSelect
+                    value={warehouseId}
+                    onValueChange={(nextWarehouseId) => {
+                      setWarehouseId(nextWarehouseId);
+                      setLocationId("");
+                    }}
+                    onOptionChange={setSelectedWarehouse}
+                    selectedOption={selectedWarehouse}
+                    scope="current_business_unit"
+                    disabled={Boolean(selectedTask.warehouseId)}
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label>{t("location")}</Label>
                   <Select value={locationId} onValueChange={setLocationId}>
                     <SelectTrigger>
                       <SelectValue
-                        placeholder={isLoadingLocations ? t("loadingLocations") : t("selectLocation")}
+                        placeholder={
+                          isLoadingLocations ? t("loadingLocations") : t("selectLocation")
+                        }
                       />
                     </SelectTrigger>
                     <SelectContent>

@@ -145,19 +145,43 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   };
 
   const locations = useMemo(() => data?.data || [], [data]);
-  const warehouses = useMemo(() => {
-    const map = new Map<string, { id: string; code: string; name: string }>();
+  const warehouseGroups = useMemo(() => {
+    const map = new Map<
+      string,
+      { id: string; code: string; name: string; locations: ItemLocation[] }
+    >();
+
     locations.forEach((loc) => {
       if (!map.has(loc.warehouseId)) {
         map.set(loc.warehouseId, {
           id: loc.warehouseId,
           code: loc.warehouseCode,
           name: loc.warehouseName,
+          locations: [],
         });
       }
+
+      map.get(loc.warehouseId)?.locations.push(loc);
     });
-    return Array.from(map.values());
+
+    return Array.from(map.values())
+      .sort((left, right) => left.code.localeCompare(right.code))
+      .map((warehouse) => ({
+        ...warehouse,
+        locations: warehouse.locations.sort((left, right) =>
+          left.locationCode.localeCompare(right.locationCode)
+        ),
+      }));
   }, [locations]);
+  const warehouses = useMemo(
+    () =>
+      warehouseGroups.map((warehouse) => ({
+        id: warehouse.id,
+        code: warehouse.code,
+        name: warehouse.name,
+      })),
+    [warehouseGroups]
+  );
 
   const fromLocations = useMemo(
     () => locations.filter((loc) => loc.warehouseId === selectedWarehouseId),
@@ -183,11 +207,11 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId] });
-      toast.success(t("defaultUpdated"));
+      toast.success(t("preferredRackUpdated"));
     },
     onError: (mutationError) => {
       const message =
-        mutationError instanceof Error ? mutationError.message : t("updateDefaultError");
+        mutationError instanceof Error ? mutationError.message : t("updatePreferredRackError");
       toast.error(message);
     },
   });
@@ -361,7 +385,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle>{t("title")}</CardTitle>
             <CardDescription>{t("description")}</CardDescription>
@@ -377,195 +401,221 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
         ) : locations.length === 0 ? (
           <div className="text-sm text-muted-foreground">{t("empty")}</div>
         ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]"></TableHead>
-                  <TableHead>{t("warehouse")}</TableHead>
-                  <TableHead>{t("location")}</TableHead>
-                  <TableHead>{t("type")}</TableHead>
-                  <TableHead className="text-right">{t("onHand")}</TableHead>
-                  <TableHead className="text-right">{t("reserved")}</TableHead>
-                  <TableHead className="text-right">{t("available")}</TableHead>
-                  <TableHead className="text-right">{t("maxStock")}</TableHead>
-                  <TableHead className="text-right">{t("inTransit")}</TableHead>
-                  <TableHead>{t("estArrival")}</TableHead>
-                  <TableHead className="text-right">{tCommon("actions")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {locations.map((location) => {
-                  const isExpanded = expandedLocations.has(location.locationId);
-                  const hasBatches = (location.batches?.length || 0) > 0;
+          <div className="space-y-4">
+            {warehouseGroups.map((warehouse) => {
+              const warehouseSettings = warehouse.locations[0];
+              const warehouseOnHand = warehouse.locations.reduce(
+                (total, location) => total + location.qtyOnHand,
+                0
+              );
 
-                  return (
-                    <Fragment key={location.id}>
-                      <TableRow>
-                        <TableCell>
-                          {hasBatches && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              onClick={() => toggleLocation(location.locationId)}
-                            >
-                              {isExpanded ? (
-                                <ChevronDown className="h-4 w-4" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4" />
-                              )}
-                            </Button>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm font-medium">{location.warehouseCode}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {location.warehouseName}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2 text-sm font-medium">
-                            {location.locationCode}
-                            {location.isDefault && (
-                              <Badge variant="secondary" className="text-xs">
-                                {t("defaultBadge")}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {location.locationName}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm capitalize">
-                          {location.locationType}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatQty(location.qtyOnHand, locale)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatQty(location.qtyReserved, locale)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatQty(location.qtyAvailable, locale)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {location.maxQuantity == null
+              return (
+                <section key={warehouse.id} className="overflow-hidden rounded-md border">
+                  <div className="flex flex-col gap-3 border-b bg-muted/30 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <div className="font-semibold">{warehouse.code}</div>
+                      <div className="text-sm text-muted-foreground">{warehouse.name}</div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                      <div>
+                        <div className="text-xs text-muted-foreground">{t("onHand")}</div>
+                        <div className="text-sm font-medium">
+                          {formatQty(warehouseOnHand, locale)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">{t("maxStock")}</div>
+                        <div className="text-sm font-medium">
+                          {warehouseSettings.maxQuantity == null
                             ? "--"
-                            : formatQty(location.maxQuantity, locale)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatQty(location.inTransit || 0, locale)}
-                        </TableCell>
-                        <TableCell>
-                          {location.estimatedArrivalDate
-                            ? new Date(location.estimatedArrivalDate).toLocaleDateString(locale)
-                            : "--"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={location.isDefault || setDefaultLocation.isPending}
-                            onClick={() => setDefaultLocation.mutate(location)}
-                          >
-                            {t("setDefault")}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openMaxStockDialog(location)}
-                          >
-                            {t("editMaxStock")}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                      {hasBatches && isExpanded && (
+                            : formatQty(warehouseSettings.maxQuantity, locale)}
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openMaxStockDialog(warehouseSettings)}
+                      >
+                        {t("editMaxStock")}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
                         <TableRow>
-                          <TableCell colSpan={11} className="bg-muted/50 p-0">
-                            <div className="px-4 py-2">
-                              <Table>
-                                <TableHeader>
-                                  <TableRow className="hover:bg-transparent">
-                                    <TableHead className="h-8 text-xs">{t("batchCode")}</TableHead>
-                                    <TableHead className="h-8 text-xs">
-                                      {t("receivedDate")}
-                                    </TableHead>
-                                    <TableHead className="h-8 text-right text-xs">
-                                      {t("onHand")}
-                                    </TableHead>
-                                    <TableHead className="h-8 text-right text-xs">
-                                      {t("reserved")}
-                                    </TableHead>
-                                    <TableHead className="h-8 text-right text-xs">
-                                      {t("available")}
-                                    </TableHead>
-                                    {canPrintBatchQr ? (
-                                      <TableHead className="h-8 text-right text-xs">
-                                        {tCommon("actions")}
-                                      </TableHead>
-                                    ) : null}
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {location.batches?.map((batch) => (
-                                    <TableRow key={batch.id} className="hover:bg-transparent">
-                                      <TableCell className="py-2 text-xs font-medium">
-                                        {batch.batchCode}
-                                      </TableCell>
-                                      <TableCell className="py-2 text-xs">
-                                        {new Date(batch.receivedAt).toLocaleDateString(locale)}
-                                      </TableCell>
-                                      <TableCell className="py-2 text-right text-xs">
-                                        {formatQty(batch.qtyOnHand, locale)}
-                                      </TableCell>
-                                      <TableCell className="py-2 text-right text-xs">
-                                        {formatQty(batch.qtyReserved, locale)}
-                                      </TableCell>
-                                      <TableCell className="py-2 text-right text-xs">
-                                        {formatQty(batch.qtyAvailable, locale)}
-                                      </TableCell>
-                                      {canPrintBatchQr ? (
-                                        <TableCell className="py-2 text-right">
-                                          <div className="flex justify-end gap-2">
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              className="h-8 px-2"
-                                              aria-label={t("printBatchQr")}
-                                              disabled={
-                                                batchPrintUnitOptions.length === 0 ||
-                                                printingBatchLocationId !== null
-                                              }
-                                              onClick={() => openBatchPrintDialog(batch)}
-                                            >
-                                              {printingBatchLocationId === batch.id ? (
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                              ) : (
-                                                <Printer className="mr-2 h-4 w-4" />
-                                              )}
-                                              <span>
-                                                {printingBatchLocationId === batch.id
-                                                  ? t("printingBatchQr")
-                                                  : t("printBatchQr")}
-                                              </span>
-                                            </Button>
-                                          </div>
-                                        </TableCell>
-                                      ) : null}
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </div>
-                          </TableCell>
+                          <TableHead className="w-12"></TableHead>
+                          <TableHead>{t("location")}</TableHead>
+                          <TableHead>{t("type")}</TableHead>
+                          <TableHead className="text-right">{t("onHand")}</TableHead>
+                          <TableHead className="text-right">{t("reserved")}</TableHead>
+                          <TableHead className="text-right">{t("available")}</TableHead>
+                          <TableHead className="text-right">{tCommon("actions")}</TableHead>
                         </TableRow>
-                      )}
-                    </Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {warehouse.locations.map((location) => {
+                          const isExpanded = expandedLocations.has(location.locationId);
+                          const hasBatches = (location.batches?.length || 0) > 0;
+
+                          return (
+                            <Fragment key={location.id}>
+                              <TableRow>
+                                <TableCell>
+                                  {hasBatches && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                      onClick={() => toggleLocation(location.locationId)}
+                                    >
+                                      {isExpanded ? (
+                                        <ChevronDown className="h-4 w-4" />
+                                      ) : (
+                                        <ChevronRight className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2 text-sm font-medium">
+                                    {location.locationCode}
+                                    {location.isDefault && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        {t("preferredRackBadge")}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {location.locationName}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-sm capitalize">
+                                  {location.locationType}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {formatQty(location.qtyOnHand, locale)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {formatQty(location.qtyReserved, locale)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {formatQty(location.qtyAvailable, locale)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {location.isDefault ? (
+                                    <span className="inline-flex h-9 items-center px-3 text-sm text-muted-foreground">
+                                      {t("currentPreferredRack")}
+                                    </span>
+                                  ) : (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      disabled={setDefaultLocation.isPending}
+                                      onClick={() => setDefaultLocation.mutate(location)}
+                                    >
+                                      {t("setPreferredRack")}
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                              {hasBatches && isExpanded && (
+                                <TableRow>
+                                  <TableCell colSpan={7} className="bg-muted/50 p-0">
+                                    <div className="px-4 py-2">
+                                      <Table>
+                                        <TableHeader>
+                                          <TableRow className="hover:bg-transparent">
+                                            <TableHead className="h-8 text-xs">
+                                              {t("batchCode")}
+                                            </TableHead>
+                                            <TableHead className="h-8 text-xs">
+                                              {t("receivedDate")}
+                                            </TableHead>
+                                            <TableHead className="h-8 text-right text-xs">
+                                              {t("onHand")}
+                                            </TableHead>
+                                            <TableHead className="h-8 text-right text-xs">
+                                              {t("reserved")}
+                                            </TableHead>
+                                            <TableHead className="h-8 text-right text-xs">
+                                              {t("available")}
+                                            </TableHead>
+                                            {canPrintBatchQr ? (
+                                              <TableHead className="h-8 text-right text-xs">
+                                                {tCommon("actions")}
+                                              </TableHead>
+                                            ) : null}
+                                          </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                          {location.batches?.map((batch) => (
+                                            <TableRow
+                                              key={batch.id}
+                                              className="hover:bg-transparent"
+                                            >
+                                              <TableCell className="py-2 text-xs font-medium">
+                                                {batch.batchCode}
+                                              </TableCell>
+                                              <TableCell className="py-2 text-xs">
+                                                {new Date(
+                                                  batch.receivedAt
+                                                ).toLocaleDateString(locale)}
+                                              </TableCell>
+                                              <TableCell className="py-2 text-right text-xs">
+                                                {formatQty(batch.qtyOnHand, locale)}
+                                              </TableCell>
+                                              <TableCell className="py-2 text-right text-xs">
+                                                {formatQty(batch.qtyReserved, locale)}
+                                              </TableCell>
+                                              <TableCell className="py-2 text-right text-xs">
+                                                {formatQty(batch.qtyAvailable, locale)}
+                                              </TableCell>
+                                              {canPrintBatchQr ? (
+                                                <TableCell className="py-2 text-right">
+                                                  <div className="flex justify-end gap-2">
+                                                    <Button
+                                                      variant="outline"
+                                                      size="sm"
+                                                      className="h-8 px-2"
+                                                      aria-label={t("printBatchQr")}
+                                                      disabled={
+                                                        batchPrintUnitOptions.length === 0 ||
+                                                        printingBatchLocationId !== null
+                                                      }
+                                                      onClick={() => openBatchPrintDialog(batch)}
+                                                    >
+                                                      {printingBatchLocationId === batch.id ? (
+                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                      ) : (
+                                                        <Printer className="mr-2 h-4 w-4" />
+                                                      )}
+                                                      <span>
+                                                        {printingBatchLocationId === batch.id
+                                                          ? t("printingBatchQr")
+                                                          : t("printBatchQr")}
+                                                      </span>
+                                                    </Button>
+                                                  </div>
+                                                </TableCell>
+                                              ) : null}
+                                            </TableRow>
+                                          ))}
+                                        </TableBody>
+                                      </Table>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </Fragment>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </section>
+              );
+            })}
           </div>
         )}
       </CardContent>

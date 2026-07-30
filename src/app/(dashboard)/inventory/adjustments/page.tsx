@@ -26,7 +26,6 @@ import {
   useDeleteStockAdjustment,
   usePostStockAdjustment,
 } from "@/hooks/useStockAdjustments";
-import { useWarehouses } from "@/hooks/useWarehouses";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -85,6 +84,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import type { BarcodeData } from "@/lib/barcode";
 import type { StockAdjustmentFormSubmitPayload } from "@/components/stock-adjustments/StockAdjustmentFormDialog";
 import { StockAdjustmentBatchPrintDialog } from "@/components/stock-adjustments/StockAdjustmentBatchPrintDialog";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 
 const StockAdjustmentFormDialog = dynamic(
   () =>
@@ -105,6 +105,7 @@ export default function StockAdjustmentsPage() {
   const [pageSize, setPageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [warehouseFilter, setWarehouseFilter] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAdjustment, setSelectedAdjustment] = useState<StockAdjustment | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -122,19 +123,12 @@ export default function StockAdjustmentsPage() {
 
   const { data, isLoading, error } = useStockAdjustments({
     search: search || undefined,
+    warehouseId: warehouseFilter || undefined,
     status: statusFilter === "all" ? undefined : (statusFilter as StockAdjustmentStatus),
     adjustmentType: typeFilter === "all" ? undefined : (typeFilter as StockAdjustmentType),
     page,
     limit: pageSize,
   });
-
-  const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
-
-  const warehouses = warehousesData?.data || [];
-  const currentWarehouse =
-    warehouses.find(
-      (warehouse) => warehouse.isActive && warehouse.businessUnitId === currentBusinessUnit?.id
-    ) || null;
 
   const createMutation = useCreateStockAdjustment();
   const updateMutation = useUpdateStockAdjustment();
@@ -152,6 +146,11 @@ export default function StockAdjustmentsPage() {
 
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
+
+  useEffect(() => {
+    setWarehouseFilter("");
+    setPage(1);
+  }, [currentBusinessUnit?.id]);
 
   const getStatusBadge = (status: StockAdjustmentStatus) => {
     switch (status) {
@@ -235,9 +234,6 @@ export default function StockAdjustmentsPage() {
       return;
     }
 
-    const selectedWarehouse = warehouses.find(
-      (warehouse) => warehouse.id === adjustment.warehouseId
-    );
     setBatchLabelToPrint({
       boxId: item.itemBatchLocationId,
       itemId: item.itemId,
@@ -249,7 +245,7 @@ export default function StockAdjustmentsPage() {
       boxNumber: 1,
       qtyPerBox: item.adjustedQty,
       deliveryDate: item.batchReceivedAt || adjustment.adjustmentDate,
-      warehouseCode: selectedWarehouse?.code || undefined,
+      warehouseCode: adjustment.warehouseCode,
       locationId: item.batchWarehouseLocationId || null,
       locationCode: item.batchLocationCode || undefined,
     });
@@ -282,29 +278,32 @@ export default function StockAdjustmentsPage() {
   };
 
   const handleSaveAdjustment = async (payload: StockAdjustmentFormSubmitPayload) => {
-    const warehouseId = payload.selectedAdjustment?.warehouseId || currentWarehouse?.id || "";
-    const submitData = {
-      ...payload.values,
-      companyId,
-      warehouseId,
-      items: payload.lineItems.map((item) => ({
-        itemId: item.itemId,
-        itemBatchLocationId: item.itemBatchLocationId,
-        batchCode: item.batchCode,
-        currentQty: item.currentQty,
-        adjustedQty: item.adjustedQty,
-        unitCost: item.unitCost,
-        uomId: item.uomId,
-      })),
-    };
+    const { warehouseId, ...values } = payload.values;
+    const items = payload.lineItems.map((item) => ({
+      itemId: item.itemId,
+      itemBatchLocationId: item.itemBatchLocationId,
+      batchCode: item.batchCode,
+      currentQty: item.currentQty,
+      adjustedQty: item.adjustedQty,
+      unitCost: item.unitCost,
+      uomId: item.uomId,
+    }));
 
     if (payload.selectedAdjustment) {
       await updateMutation.mutateAsync({
         id: payload.selectedAdjustment.id,
-        data: submitData,
+        data: {
+          ...values,
+          items,
+        },
       });
     } else {
-      await createMutation.mutateAsync(submitData);
+      await createMutation.mutateAsync({
+        ...values,
+        companyId,
+        warehouseId,
+        items,
+      });
     }
   };
 
@@ -361,6 +360,17 @@ export default function StockAdjustmentsPage() {
                 <SelectItem value="rejected">{t("rejected")}</SelectItem>
               </SelectContent>
             </Select>
+            <WarehouseSelect
+              value={warehouseFilter}
+              onValueChange={(value) => {
+                setWarehouseFilter(value);
+                setPage(1);
+              }}
+              scope="current_business_unit"
+              allowAll
+              disabled={!currentBusinessUnit?.id}
+              buttonClassName="w-full sm:w-56"
+            />
             <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
@@ -598,7 +608,6 @@ export default function StockAdjustmentsPage() {
               if (!open) setSelectedAdjustment(null);
             }}
             selectedAdjustment={selectedAdjustment}
-            currentWarehouse={currentWarehouse}
             isSaving={createMutation.isPending || updateMutation.isPending}
             onSave={handleSaveAdjustment}
             formatCurrency={formatCurrency}

@@ -6,7 +6,6 @@ import {
   fetchDeliveryNote,
   fetchDeliveryNoteHeader,
   getAuthContext,
-  syncStockRequestStatusCache,
   toNumber,
 } from "../../../_lib";
 
@@ -48,7 +47,7 @@ async function PATCHHandler(request: NextRequest, context: RouteContext) {
 
     const { data: line, error: lineError } = await auth.supabase
       .from("delivery_note_items")
-      .select("id, sr_id, dispatched_qty")
+      .select("id, dispatched_qty")
       .eq("company_id", auth.companyId)
       .eq("dn_id", id)
       .eq("id", itemId)
@@ -85,16 +84,18 @@ async function PATCHHandler(request: NextRequest, context: RouteContext) {
     });
 
     if (adjustError) {
-      return NextResponse.json({ error: adjustError.message }, { status: 400 });
+      console.error("Failed to adjust dispatched delivery note item:", adjustError);
+      return NextResponse.json(
+        { error: "The dispatched quantity could not be adjusted. Refresh and try again." },
+        { status: 400 }
+      );
     }
-
-    await syncStockRequestStatusCache(auth.supabase, auth.companyId, [line.sr_id], auth.userId);
 
     const dn = await fetchDeliveryNote(auth.supabase, auth.companyId, id);
     return NextResponse.json(dn);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Unexpected delivery note item adjustment error:", error);
+    return NextResponse.json({ error: "Failed to adjust delivery note item" }, { status: 500 });
   }
 }
 

@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "../../stock-request-mapper";
+import { STOCK_REQUEST_SELECT } from "../../stock-request-select";
 
 type StockRequestDbRecord = Parameters<typeof mapStockRequest>[0];
 
@@ -25,7 +26,7 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
     // Check if request exists and is submitted
     const { data: existingRequest, error: checkError } = await supabase
       .from("stock_requests")
-      .select("id, status")
+      .select("id, status, fulfilling_business_unit_id")
       .eq("id", id)
       .eq("company_id", companyId)
       .is("deleted_at", null)
@@ -46,21 +47,7 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
 
-    const { data: destinationWarehouse } = await supabase
-      .from("stock_requests")
-      .select(
-        "fulfilling_warehouse_id, fulfilling_warehouse:warehouses!stock_requests_fulfilling_warehouse_id_fkey(business_unit_id)"
-      )
-      .eq("id", id)
-      .single();
-
-    const destinationWarehouseRecord = destinationWarehouse?.fulfilling_warehouse;
-    const destinationWarehouseRow = Array.isArray(destinationWarehouseRecord)
-      ? (destinationWarehouseRecord[0] ?? null)
-      : (destinationWarehouseRecord ?? null);
-    const destinationBusinessUnitId = destinationWarehouseRow?.business_unit_id || null;
-
-    if (!destinationBusinessUnitId || destinationBusinessUnitId !== currentBusinessUnitId) {
+    if (existingRequest.fulfilling_business_unit_id !== currentBusinessUnitId) {
       return NextResponse.json(
         { error: "Only the fulfillment business unit can approve this request" },
         { status: 403 }
@@ -82,46 +69,13 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
 
     if (updateError) {
       console.error("Error approving stock request:", updateError);
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      return NextResponse.json({ error: "Failed to approve stock request" }, { status: 500 });
     }
 
     // Fetch updated request
     const { data: updatedRequest } = await supabase
       .from("stock_requests")
-      .select(
-        `
-        *,
-        requesting_warehouse:warehouses!stock_requests_requesting_warehouse_id_fkey(
-          id,
-          warehouse_code,
-          warehouse_name,
-          business_unit_id
-        ),
-        fulfilling_warehouse:warehouses!stock_requests_fulfilling_warehouse_id_fkey(
-          id,
-          warehouse_code,
-          warehouse_name,
-          business_unit_id
-        ),
-        requested_by_user:users!stock_requests_requested_by_user_id_fkey(
-          id,
-          email,
-          first_name,
-          last_name
-        ),
-        received_by_user:users!stock_requests_received_by_fkey(
-          id,
-          email,
-          first_name,
-          last_name
-        ),
-        stock_request_items(
-          *,
-          items(item_code, item_name),
-          units_of_measure(code, symbol)
-        )
-      `
-      )
+      .select(STOCK_REQUEST_SELECT)
       .eq("id", id)
       .eq("company_id", companyId)
       .single();

@@ -5,7 +5,6 @@ import {
   fetchDeliveryNote,
   fetchDeliveryNoteHeader,
   getAuthContext,
-  isReceivingBusinessUnit,
 } from "../../_lib";
 
 type RouteContext = {
@@ -13,7 +12,33 @@ type RouteContext = {
 };
 
 // POST /api/delivery-notes/[id]/start-receiving
-async function POSTHandler(_request: NextRequest, context: RouteContext) {
+type StartReceivingBody = {
+  receivingWarehouseId?: string;
+};
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const START_RECEIVING_ERROR: Record<string, { message: string; status: number }> = {
+  DELIVERY_NOTE_NOT_FOUND: { message: "Delivery note not found", status: 404 },
+  DELIVERY_NOTE_NOT_DISPATCHED: {
+    message: "Only dispatched delivery notes can be received",
+    status: 409,
+  },
+  DELIVERY_NOTE_RECEIVING_FORBIDDEN: {
+    message: "Only the requesting business unit can start receiving",
+    status: 403,
+  },
+  DELIVERY_NOTE_RECEIVING_WAREHOUSE_INVALID: {
+    message: "Select an active receiving warehouse in the current business unit",
+    status: 400,
+  },
+  DELIVERY_NOTE_RECEIVING_WAREHOUSE_IMMUTABLE: {
+    message: "The receiving warehouse cannot be changed after receiving has started",
+    status: 409,
+  },
+};
+
+async function POSTHandler(request: NextRequest, context: RouteContext) {
   try {
     const unauthorized = await requireDeliveryNoteReceivingAccess("edit");
     if (unauthorized) return unauthorized;
@@ -36,37 +61,42 @@ async function POSTHandler(_request: NextRequest, context: RouteContext) {
     if (!auth.currentBusinessUnitId) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
-    const canReceive = await isReceivingBusinessUnit(
-      auth.supabase,
-      auth.companyId,
-      auth.currentBusinessUnitId,
-      header.requesting_warehouse_id
-    );
-    if (!canReceive) {
+    if (header.requesting_business_unit_id !== auth.currentBusinessUnitId) {
       return NextResponse.json(
         { error: "Only the receiving business unit can start receiving" },
         { status: 403 }
       );
     }
 
-    const { error } = await auth.supabase
-      .from("delivery_notes")
-      .update({
-        receiving_started_at: header.receiving_started_at || new Date().toISOString(),
-        receiving_started_by: header.receiving_started_by || auth.userId,
-        updated_by: auth.userId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .eq("company_id", auth.companyId)
-      .is("deleted_at", null);
+    const body = (await request.json().catch(() => ({}))) as StartReceivingBody;
+    if (!body.receivingWarehouseId || !UUID_PATTERN.test(body.receivingWarehouseId)) {
+      return NextResponse.json(
+        { code: "DELIVERY_NOTE_RECEIVING_WAREHOUSE_INVALID", error: "Select a receiving warehouse" },
+        { status: 400 }
+      );
+    }
+
+    const { error } = await auth.supabase.rpc(
+      "start_delivery_note_receiving_transactionally",
+      {
+        p_company_id: auth.companyId,
+        p_user_id: auth.userId,
+        p_business_unit_id: auth.currentBusinessUnitId,
+        p_delivery_note_id: id,
+        p_receiving_warehouse_id: body.receivingWarehouseId,
+      }
+    );
 
     if (error) {
       console.error("Error starting delivery note receiving:", error);
-      return NextResponse.json(
-        { error: "Failed to start delivery note receiving" },
-        { status: 500 }
-      );
+      const code =
+        Object.keys(START_RECEIVING_ERROR).find((candidate) => error.message.includes(candidate)) ||
+        "DELIVERY_NOTE_START_RECEIVING_FAILED";
+      const mapped = START_RECEIVING_ERROR[code] || {
+        message: "Failed to start delivery note receiving",
+        status: 500,
+      };
+      return NextResponse.json({ code, error: mapped.message }, { status: mapped.status });
     }
 
     const dn = await fetchDeliveryNote(

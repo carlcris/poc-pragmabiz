@@ -7,16 +7,9 @@ export type LoadListSummary = {
   itemCount: number;
 };
 
-export type ReceivingWarehouse = {
-  id: string;
-  warehouseId: string;
-  code: string;
-  name: string;
-};
-
 export type LoadListDetail = LoadListSummary & {
   supplierLlNumber: string | null;
-  warehouseName: string | null;
+  destinationBusinessUnitName: string | null;
   actualArrivalDate: string | null;
   containerNumber: string | null;
   sealNumber: string | null;
@@ -59,6 +52,7 @@ export type GrnDetail = {
   id: string;
   grnNumber: string;
   status: string;
+  warehouseId: string | null;
   receivingDate: string | null;
   deliveryDate: string | null;
   items: GrnLine[];
@@ -98,6 +92,12 @@ export type ReceivingLine = {
 export type DeliveryNoteDetail = DeliveryNoteSummary & {
   notes: string | null;
   items: ReceivingLine[];
+};
+
+export type ReceivingWarehouseOption = {
+  id: string;
+  code: string;
+  name: string;
 };
 
 export type RecordDeliveryNoteReceivingScanPayload = {

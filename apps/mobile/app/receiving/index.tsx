@@ -4,7 +4,7 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Card, ErrorState, LoadingState, Screen, SearchInput, StatusBadge } from "@/components/ui";
-import { queryKeys, useDeliveryNotes, useLoadLists, useReceivingWarehouse } from "@/hooks/queries";
+import { queryKeys, useDeliveryNotes, useLoadLists } from "@/hooks/queries";
 import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
 import { borderRadius, shadows, spacing } from "@/theme/spacing";
@@ -55,39 +55,43 @@ export default function ReceivingScreen() {
   const canViewLoadListReceiving = canAccessLoadListReceiving(session);
   const canViewDeliveryNoteReceiving = canAccessDeliveryNoteReceiving(session);
   const canViewReceiving = canAccessReceiving(session);
-  const receivingWarehouse = useReceivingWarehouse(
-    currentBusinessUnit?.id,
-    canViewLoadListReceiving
-  );
-  const loadLists = useLoadLists(
-    status,
-    search,
-    receivingWarehouse.data?.warehouseId,
-    canViewLoadListReceiving
-  );
+  const canLoadLoadLists = Boolean(currentBusinessUnit?.id && canViewLoadListReceiving);
+  const loadLists = useLoadLists(status, search, canLoadLoadLists);
   const deliveryNotes = useDeliveryNotes(deliveryNoteStatus, search, canViewDeliveryNoteReceiving);
-  const canLoadLoadLists = Boolean(currentBusinessUnit?.id && receivingWarehouse.data?.warehouseId);
   const isLoadListTab = tab === "load-lists";
-  const isWarehouseInitialLoading =
-    Boolean(currentBusinessUnit?.id) && !receivingWarehouse.data && receivingWarehouse.isFetching;
   const isLoadListsInitialLoading = canLoadLoadLists && !loadLists.data && loadLists.isFetching;
-  const isLoadListsLoading =
-    isSwitchingBusinessUnit || isWarehouseInitialLoading || isLoadListsInitialLoading;
+  const isLoadListsLoading = isSwitchingBusinessUnit || isLoadListsInitialLoading;
 
   const loading = isLoadListTab ? isLoadListsLoading : deliveryNotes.isLoading;
-  const error = isLoadListTab ? receivingWarehouse.error || loadLists.error : deliveryNotes.error;
+  const error = isLoadListTab ? loadLists.error : deliveryNotes.error;
+  const isRefreshing = isLoadListTab ? loadLists.isRefetching : deliveryNotes.isRefetching;
   const selectedStatus = statusFilters.find((item) => item.value === status) || statusFilters[0];
   const selectedDeliveryNoteStatus =
     deliveryNoteStatusFilters.find((item) => item.value === deliveryNoteStatus) ||
     deliveryNoteStatusFilters[0];
 
+  const handleRefresh = useCallback(async () => {
+    if (tab === "load-lists") {
+      if (canLoadLoadLists) {
+        await loadLists.refetch();
+      }
+      return;
+    }
+
+    if (canViewDeliveryNoteReceiving) {
+      await deliveryNotes.refetch();
+    }
+  }, [
+    canLoadLoadLists,
+    canViewDeliveryNoteReceiving,
+    deliveryNotes,
+    loadLists,
+    tab
+  ]);
+
   refreshOnFocusRef.current = () => {
     if (tab === "load-lists") {
-      const queryKey = queryKeys.loadLists(
-        status,
-        search,
-        receivingWarehouse.data?.warehouseId || ""
-      );
+      const queryKey = queryKeys.loadLists(status, search);
       if (canLoadLoadLists && queryClient.getQueryState(queryKey)?.isInvalidated) {
         void loadLists.refetch();
       }
@@ -134,14 +138,24 @@ export default function ReceivingScreen() {
 
   if (!canViewReceiving) {
     return (
-      <Screen title="Receiving" subtitle="Manage incoming deliveries">
+      <Screen
+        title="Receiving"
+        subtitle="Manage incoming deliveries"
+        onRefresh={handleRefresh}
+        refreshing={isRefreshing}
+      >
         <ErrorState message="You do not have permission to access receiving." />
       </Screen>
     );
   }
 
   return (
-    <Screen title="Receiving" subtitle="Manage incoming deliveries">
+    <Screen
+      title="Receiving"
+      subtitle="Manage incoming deliveries"
+      onRefresh={handleRefresh}
+      refreshing={isRefreshing}
+    >
       <TopTabs
         value={tab}
         onChange={setTab}
@@ -193,9 +207,8 @@ export default function ReceivingScreen() {
             <>
               <ReceivingEmptyState
                 title={selectedStatus.emptyTitle}
-                subtitle={`There are no loads currently ${selectedStatus.label.toLowerCase()} for ${receivingWarehouse.data?.name || "this warehouse"}.`}
+                subtitle={`There are no loads currently ${selectedStatus.label.toLowerCase()} for ${currentBusinessUnit?.name || "this business unit"}.`}
                 onRefresh={() => {
-                  void receivingWarehouse.refetch();
                   void loadLists.refetch();
                 }}
                 onShowAll={() => setStatus("all")}

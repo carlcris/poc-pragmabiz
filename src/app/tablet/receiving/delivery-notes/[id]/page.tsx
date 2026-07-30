@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   AlertCircle,
@@ -23,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import {
   useAcceptDeliveryNoteReceivingException,
   useDeliveryNote,
@@ -169,6 +171,7 @@ type ReceivingLine = {
 };
 
 export default function TabletDeliveryNoteReceivingPage() {
+  const t = useTranslations("deliveryNotesPage");
   const params = useParams();
   const router = useRouter();
   const deliveryNoteId = params.id as string;
@@ -182,6 +185,7 @@ export default function TabletDeliveryNoteReceivingPage() {
   const rejectExceptionMutation = useRejectDeliveryNoteReceivingException();
 
   const [scanCode, setScanCode] = useState("");
+  const [receivingWarehouseId, setReceivingWarehouseId] = useState("");
   const [showCamera, setShowCamera] = useState(false);
   const [discrepancyNotes, setDiscrepancyNotes] = useState("");
   const discrepancyNotesRef = useRef<HTMLTextAreaElement | null>(null);
@@ -230,8 +234,12 @@ export default function TabletDeliveryNoteReceivingPage() {
   }, [lines]);
 
   const handleStartReceiving = async () => {
+    if (!receivingWarehouseId) {
+      toast.error(t("receivingWarehouseRequired"));
+      return;
+    }
     try {
-      await startReceivingMutation.mutateAsync(deliveryNoteId);
+      await startReceivingMutation.mutateAsync({ id: deliveryNoteId, receivingWarehouseId });
       toast.success("Receiving started");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to start receiving");
@@ -474,14 +482,21 @@ export default function TabletDeliveryNoteReceivingPage() {
 
               <div className="flex flex-col gap-2 sm:flex-row">
                 {canViewReceivingDetails && isReceiving && !deliveryNote.receiving_started_at && (
-                  <Button
-                    onClick={handleStartReceiving}
-                    disabled={startReceivingMutation.isPending}
-                    variant="outline"
-                  >
-                    <Scan className="mr-2 h-4 w-4" />
-                    Start Receiving
-                  </Button>
+                  <div className="flex min-w-64 flex-col gap-2">
+                    <WarehouseSelect
+                      value={receivingWarehouseId}
+                      onValueChange={setReceivingWarehouseId}
+                      scope="current_business_unit"
+                    />
+                    <Button
+                      onClick={handleStartReceiving}
+                      disabled={!receivingWarehouseId || startReceivingMutation.isPending}
+                      variant="outline"
+                    >
+                      <Scan className="mr-2 h-4 w-4" />
+                      Start Receiving
+                    </Button>
+                  </div>
                 )}
                 {canViewReceivingDetails && isReceiving && (
                   <Button onClick={handleSubmitReceiving} disabled={!canSubmit}>

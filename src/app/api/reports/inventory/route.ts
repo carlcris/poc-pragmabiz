@@ -4,8 +4,8 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
-type InventoryStatus = "all" | "on_hand" | "available" | "allocated" | "in_transit" | "zero";
-type SortBy = "updated_at" | "current_stock" | "reserved_stock" | "available_stock" | "in_transit";
+type InventoryStatus = "all" | "on_hand" | "available" | "allocated" | "zero";
+type SortBy = "updated_at" | "current_stock" | "reserved_stock" | "available_stock";
 
 type InventorySourceRow = {
   id: string;
@@ -14,7 +14,6 @@ type InventorySourceRow = {
   current_stock: number | string | null;
   reserved_stock: number | string | null;
   available_stock: number | string | null;
-  in_transit: number | string | null;
   max_quantity: number | string | null;
   updated_at: string;
   item?:
@@ -63,14 +62,12 @@ const SORT_FIELDS = new Set<SortBy>([
   "current_stock",
   "reserved_stock",
   "available_stock",
-  "in_transit",
 ]);
 const STATUSES = new Set<InventoryStatus>([
   "all",
   "on_hand",
   "available",
   "allocated",
-  "in_transit",
   "zero",
 ]);
 const DEFAULT_PAGE_SIZE = 25;
@@ -103,13 +100,11 @@ const resolveStatus = (
   currentStock: number,
   reservedStock: number,
   availableStock: number,
-  inTransit: number,
   reorderLevel: number
 ): InventoryStatus => {
-  if (currentStock <= 0 && inTransit <= 0) return "zero";
+  if (currentStock <= 0) return "zero";
   if (availableStock > 0 && reorderLevel > 0 && availableStock <= reorderLevel) return "available";
   if (reservedStock > 0) return "allocated";
-  if (inTransit > 0) return "in_transit";
   if (currentStock > 0) return "on_hand";
   return "zero";
 };
@@ -166,7 +161,6 @@ async function GETHandler(request: NextRequest) {
       current_stock,
       reserved_stock,
       available_stock,
-      in_transit,
       max_quantity,
       updated_at,
       item:items!inner(
@@ -248,12 +242,9 @@ async function GETHandler(request: NextRequest) {
     } else if (stockStatus === "allocated") {
       countQuery = countQuery.gt("reserved_stock", 0);
       dataQuery = dataQuery.gt("reserved_stock", 0);
-    } else if (stockStatus === "in_transit") {
-      countQuery = countQuery.gt("in_transit", 0);
-      dataQuery = dataQuery.gt("in_transit", 0);
     } else if (stockStatus === "zero") {
-      countQuery = countQuery.lte("current_stock", 0).lte("in_transit", 0);
-      dataQuery = dataQuery.lte("current_stock", 0).lte("in_transit", 0);
+      countQuery = countQuery.lte("current_stock", 0);
+      dataQuery = dataQuery.lte("current_stock", 0);
     }
 
     const { count, error: countError } = await countQuery;
@@ -281,7 +272,6 @@ async function GETHandler(request: NextRequest) {
       const currentStock = toNumber(row.current_stock);
       const reservedStock = toNumber(row.reserved_stock);
       const availableStock = toNumber(row.available_stock);
-      const inTransit = toNumber(row.in_transit);
       const reorderLevel = toNumber(item?.reorder_level);
       const reorderQuantity = toNumber(item?.reorder_quantity);
       const unitCost = Math.max(0, toNumber(item?.purchase_price));
@@ -299,13 +289,12 @@ async function GETHandler(request: NextRequest) {
         currentStock,
         reservedStock,
         availableStock,
-        inTransit,
         reorderLevel,
         reorderQuantity,
         maxQuantity: row.max_quantity == null ? null : toNumber(row.max_quantity),
         unitCost,
         stockValue: currentStock * unitCost,
-        status: resolveStatus(currentStock, reservedStock, availableStock, inTransit, reorderLevel),
+        status: resolveStatus(currentStock, reservedStock, availableStock, reorderLevel),
         updatedAt: row.updated_at,
       };
     });
@@ -319,13 +308,12 @@ async function GETHandler(request: NextRequest) {
         pageQtyOnHand: rows.reduce((sum, row) => sum + row.currentStock, 0),
         pageQtyReserved: rows.reduce((sum, row) => sum + row.reservedStock, 0),
         pageQtyAvailable: rows.reduce((sum, row) => sum + row.availableStock, 0),
-        pageQtyInTransit: rows.reduce((sum, row) => sum + row.inTransit, 0),
         pageStockValue: rows.reduce((sum, row) => sum + row.stockValue, 0),
         lowStockRows: rows.filter(
           (row) =>
             row.reorderLevel > 0 && row.availableStock > 0 && row.availableStock <= row.reorderLevel
         ).length,
-        outOfStockRows: rows.filter((row) => row.currentStock <= 0 && row.inTransit <= 0).length,
+        outOfStockRows: rows.filter((row) => row.currentStock <= 0).length,
       },
       pagination: {
         page,

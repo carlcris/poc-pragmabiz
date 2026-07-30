@@ -37,7 +37,6 @@ type StockAdjustmentItemInput = {
 type StockAdjustmentPatchBody = {
   adjustmentType?: string;
   adjustmentDate?: string;
-  warehouseId?: string;
   reason?: string;
   notes?: string | null;
   locationId?: string | null;
@@ -76,6 +75,48 @@ type BatchLocationRow = {
     | null;
 };
 
+const STOCK_ADJUSTMENT_COLUMNS = `
+  id,
+  company_id,
+  adjustment_code,
+  adjustment_type,
+  adjustment_date,
+  warehouse_id,
+  status,
+  reason,
+  notes,
+  total_value,
+  stock_transaction_id,
+  approved_by,
+  approved_at,
+  posted_by,
+  posted_at,
+  custom_fields,
+  created_by,
+  updated_by,
+  created_at,
+  updated_at
+`;
+
+const STOCK_ADJUSTMENT_ITEM_COLUMNS = `
+  id,
+  adjustment_id,
+  item_id,
+  item_batch_location_id,
+  item_code,
+  item_name,
+  current_qty,
+  adjusted_qty,
+  difference,
+  unit_cost,
+  total_cost,
+  uom_id,
+  uom_name,
+  reason,
+  created_at,
+  updated_at
+`;
+
 const toOne = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
@@ -93,10 +134,7 @@ const STOCK_ADJUSTMENT_UPDATE_ERROR_RESPONSES = new Map<
     "Only draft adjustments can be updated",
     { message: "Only draft adjustments can be updated", status: 400 },
   ],
-  [
-    "Business unit context required",
-    { message: "Business unit context required", status: 400 },
-  ],
+  ["Business unit context required", { message: "Business unit context required", status: 400 }],
   [
     "Missing required stock adjustment fields",
     { message: "Missing required stock adjustment fields", status: 400 },
@@ -144,9 +182,7 @@ const STOCK_ADJUSTMENT_UPDATE_ERROR_RESPONSES = new Map<
 ]);
 
 const getStockAdjustmentUpdateErrorResponse = (error: RpcErrorLike | null | undefined) => {
-  const mapped = error?.message
-    ? STOCK_ADJUSTMENT_UPDATE_ERROR_RESPONSES.get(error.message)
-    : null;
+  const mapped = error?.message ? STOCK_ADJUSTMENT_UPDATE_ERROR_RESPONSES.get(error.message) : null;
 
   if (mapped) {
     return NextResponse.json({ error: mapped.message }, { status: mapped.status });
@@ -177,7 +213,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     // Fetch adjustment
     const { data: adjustment, error } = await supabase
       .from("stock_adjustments")
-      .select("*")
+      .select(STOCK_ADJUSTMENT_COLUMNS)
       .eq("id", id)
       .eq("company_id", companyId)
       .is("deleted_at", null)
@@ -190,7 +226,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     // Fetch items
     const { data: items } = await supabase
       .from("stock_adjustment_items")
-      .select("*")
+      .select(STOCK_ADJUSTMENT_ITEM_COLUMNS)
       .eq("adjustment_id", id);
 
     // Fetch related data
@@ -199,7 +235,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       adjustment.warehouse_id
         ? supabase
             .from("warehouses")
-            .select("warehouse_name")
+            .select("warehouse_code, warehouse_name")
             .eq("id", adjustment.warehouse_id)
             .single()
         : Promise.resolve(null),
@@ -279,6 +315,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       locationId: adjustment.custom_fields?.locationId || null,
       locationCode: location?.data?.code || null,
       locationName: location?.data?.name || null,
+      warehouseCode: warehouse?.data?.warehouse_code || null,
       warehouseName: warehouse?.data?.warehouse_name || null,
       status: adjustment.status,
       reason: adjustment.reason,
@@ -358,6 +395,13 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
 
+    if ("warehouseId" in body) {
+      return NextResponse.json(
+        { error: "The warehouse cannot be changed after an adjustment is created" },
+        { status: 400 }
+      );
+    }
+
     if (body.items) {
       if (body.items.some((item) => !item.itemBatchLocationId && !item.batchCode?.trim())) {
         return NextResponse.json(
@@ -382,7 +426,7 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
         p_notes_provided: "notes" in body,
         p_reason: body.reason || null,
         p_user_id: userId,
-        p_warehouse_id: body.warehouseId || null,
+        p_warehouse_id: null,
       }
     );
     const savedAdjustment = (savedAdjustments as StockAdjustmentSaveResult[] | null)?.[0];
@@ -401,16 +445,21 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
     }
 
     // Fetch updated adjustment
-    const { data: updatedAdjustment } = await supabase
+    const { data: updatedAdjustment, error: updatedAdjustmentError } = await supabase
       .from("stock_adjustments")
-      .select("*")
+      .select(STOCK_ADJUSTMENT_COLUMNS)
       .eq("id", id)
       .single();
 
     const { data: updatedItems } = await supabase
       .from("stock_adjustment_items")
-      .select("*")
+      .select(STOCK_ADJUSTMENT_ITEM_COLUMNS)
       .eq("adjustment_id", id);
+
+    if (updatedAdjustmentError || !updatedAdjustment) {
+      console.error("Error fetching updated stock adjustment:", updatedAdjustmentError);
+      return NextResponse.json({ error: "Failed to load updated stock adjustment" }, { status: 500 });
+    }
 
     const updatedLocationId = updatedAdjustment?.custom_fields?.locationId;
     const location = updatedLocationId

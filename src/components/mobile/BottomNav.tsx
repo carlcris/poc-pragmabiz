@@ -2,17 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Package, ShoppingCart, PackagePlus, Home, Menu } from "lucide-react";
+import { Package, ShoppingCart, Home, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface NavItem {
+type NavItem = {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   isCenter?: boolean;
-}
+};
 
-// Reorder: 2 items, center dashboard, 2 items
+// Two actions on the left, the elevated dashboard action, and one action on the right.
 const navItems: NavItem[] = [
   {
     href: "/mobile/van-sales/sell",
@@ -29,11 +29,6 @@ const navItems: NavItem[] = [
     label: "",
     icon: Home,
     isCenter: true,
-  },
-  {
-    href: "/mobile/van-sales/load",
-    label: "Load",
-    icon: PackagePlus,
   },
   {
     href: "/mobile/more",
@@ -96,12 +91,11 @@ export function BottomNav() {
               }
 
               // Spacing configuration
-              // index 0: Sell, index 1: Inventory, index 2: Home (center), index 3: Load, index 4: More
+              // index 0: Sell, index 1: Inventory, index 2: Home (center), index 3: More
               const getSpacing = () => {
                 if (index === 0) return "mr-auto"; // Sell - push to left
                 if (index === 1) return "mr-16"; // Inventory - extra space before home
-                if (index === 3) return "ml-16"; // Load - extra space after home
-                if (index === 4) return "ml-auto"; // More - push to right
+                if (index === 3) return "ml-16 ml-auto"; // More - push to the right
                 return "";
               };
 

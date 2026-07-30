@@ -57,6 +57,12 @@ const menuItems = [
         icon: Package,
       },
       {
+        title: "Stock In Transit",
+        href: "/inventory/stock-in-transit",
+        resource: RESOURCES.ITEMS as Resource,
+        icon: Truck,
+      },
+      {
         title: "Warehouses",
         href: "/inventory/warehouses",
         resource: RESOURCES.WAREHOUSES as Resource,
@@ -71,7 +77,7 @@ const menuItems = [
       {
         title: "Stock Transactions",
         href: "/inventory/stock",
-        resource: RESOURCES.STOCK_TRANSFERS as Resource,
+        resource: RESOURCES.STOCK_TRANSACTIONS as Resource,
         icon: ArrowRightLeft,
       },
       {

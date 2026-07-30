@@ -109,7 +109,9 @@ export type PickList = {
     id: string;
     dn_no: string;
     status: string;
-    requesting_warehouse_id: string;
+    requesting_business_unit_id: string;
+    fulfilling_business_unit_id: string;
+    requesting_warehouse_id: string | null;
     fulfilling_warehouse_id: string;
   } | null;
   pick_list_items?: PickListItem[];

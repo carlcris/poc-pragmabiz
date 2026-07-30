@@ -7,14 +7,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { Package, Calendar, Truck, Send, AlertCircle, Play } from "lucide-react";
 import { useLoadList } from "@/hooks/useLoadLists";
-import {
-  useCreateGRN,
-  useGRN,
-  useGRNs,
-  useStartGRNReceiving,
-  useSubmitGRN,
-  useUpdateGRN,
-} from "@/hooks/useGRNs";
+import { useGRN, useGRNs, useStartGRNReceiving, useSubmitGRN, useUpdateGRN } from "@/hooks/useGRNs";
 import { TabletHeader } from "@/components/tablet/TabletHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,9 +19,9 @@ import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import { useCanView } from "@/hooks/usePermissions";
 import type { GRNStatus } from "@/types/grn";
 
-interface TabletGRNPageProps {
+type TabletGRNPageProps = {
   params: Promise<{ id: string }>;
-}
+};
 
 export default function TabletGRNPage({ params }: TabletGRNPageProps) {
   const t = useTranslations("grnDetailPage");
@@ -50,7 +43,6 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
   // Fetch full GRN details if we have a GRN
   const { data: grn, isLoading: isLoadingGRN } = useGRN(grnId || "");
 
-  const createGRNMutation = useCreateGRN();
   const startReceivingMutation = useStartGRNReceiving();
   const submitMutation = useSubmitGRN();
   const updateMutation = useUpdateGRN();
@@ -80,32 +72,6 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
       }
     >
   >({});
-
-  const handleCreateGRN = async () => {
-    if (!loadList) return;
-
-    try {
-      await createGRNMutation.mutateAsync({
-        loadListId: loadList.id,
-        warehouseId: loadList.warehouseId,
-        containerNumber: loadList.containerNumber,
-        sealNumber: loadList.sealNumber,
-        batchNumber: loadList.batchNumber,
-        deliveryDate: loadList.actualArrivalDate || new Date().toISOString().split("T")[0],
-        items: loadList.items.map((item) => ({
-          loadListItemId: item.id,
-          itemId: item.itemId,
-          loadListQty: item.loadListQty,
-          receivedQty: 0,
-          damagedQty: 0,
-          numBoxes: 0,
-        })),
-      });
-      toast.success("GRN created successfully");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create GRN");
-    }
-  };
 
   const handleSubmit = async () => {
     if (!grn) return;
@@ -142,7 +108,7 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
     if (!grn) return;
 
     try {
-      await startReceivingMutation.mutateAsync(grn.id);
+      await startReceivingMutation.mutateAsync({ id: grn.id });
       toast.success(t("startReceivingSuccess"));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("startReceivingError"));
@@ -276,8 +242,7 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
     );
   }
 
-  // If no GRN exists, show create button
-  if (!grn && !createGRNMutation.isPending) {
+  if (!grn) {
     return (
       <div className="min-h-screen">
         <TabletHeader
@@ -285,47 +250,17 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
           subtitle="Goods Receipt Note"
           showBack={true}
           backHref="/tablet/receiving"
-          warehouseName={loadList.warehouse?.name || "Main Warehouse"}
+          warehouseName={loadList.destinationBusinessUnit?.name}
         />
         <div className="flex h-[calc(100vh-200px)] flex-col items-center justify-center gap-6 p-6">
           <Package className="h-20 w-20 text-gray-400" />
           <div className="text-center">
-            <h3 className="text-xl font-semibold text-gray-900">No GRN Found</h3>
-            <p className="mt-2 text-gray-600">
-              Create a Goods Receipt Note to start receiving items from this load list.
-            </p>
-          </div>
-          <Button onClick={handleCreateGRN} size="lg" className="px-8">
-            <Package className="mr-2 h-5 w-5" />
-            Create GRN
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (createGRNMutation.isPending) {
-    return (
-      <div className="min-h-screen">
-        <TabletHeader
-          title={loadList.llNumber}
-          subtitle="Creating GRN"
-          showBack={true}
-          backHref="/tablet/receiving"
-          warehouseName={loadList.warehouse?.name || "Main Warehouse"}
-        />
-        <div className="flex h-[calc(100vh-200px)] items-center justify-center">
-          <div className="flex flex-col items-center gap-4">
-            <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-            <p className="text-gray-500">Creating GRN...</p>
+            <h3 className="text-xl font-semibold text-gray-900">{t("grnNotGenerated")}</h3>
+            <p className="mt-2 text-gray-600">{t("grnNotGeneratedDescription")}</p>
           </div>
         </div>
       </div>
     );
-  }
-
-  if (!grn) {
-    return null;
   }
 
   return (
@@ -335,7 +270,7 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
         subtitle={loadList.llNumber}
         showBack={true}
         backHref="/tablet/receiving"
-        warehouseName={loadList.warehouse?.name || "Main Warehouse"}
+        warehouseName={loadList.destinationBusinessUnit?.name}
       />
 
       <div className="space-y-4 p-6">

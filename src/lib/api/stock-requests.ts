@@ -5,9 +5,6 @@ import type {
   StockRequestListResponse,
   CreateStockRequestPayload,
   UpdateStockRequestPayload,
-  ReceiveStockRequestPayload,
-  PickStockRequestPayload,
-  DispatchStockRequestPayload,
 } from "@/types/stock-request";
 
 export const stockRequestsApi = {
@@ -18,11 +15,11 @@ export const stockRequestsApi = {
     const searchParams = new URLSearchParams();
 
     if (params?.search) searchParams.append("search", params.search);
-    if (params?.requestingWarehouseId) {
-      searchParams.append("requestingWarehouseId", params.requestingWarehouseId);
+    if (params?.requestingBusinessUnitId) {
+      searchParams.append("requestingBusinessUnitId", params.requestingBusinessUnitId);
     }
-    if (params?.fulfillingWarehouseId) {
-      searchParams.append("fulfillingWarehouseId", params.fulfillingWarehouseId);
+    if (params?.fulfillingBusinessUnitId) {
+      searchParams.append("fulfillingBusinessUnitId", params.fulfillingBusinessUnitId);
     }
     if (params?.status) searchParams.append("status", params.status);
     if (params?.priority) searchParams.append("priority", params.priority);
@@ -85,44 +82,10 @@ export const stockRequestsApi = {
   },
 
   /**
-   * Save picking progress
-   */
-  async pick(id: string, data: PickStockRequestPayload): Promise<StockRequest> {
-    return apiClient.post<StockRequest>(`/api/stock-requests/${id}/pick`, data);
-  },
-
-  /**
-   * Dispatch picked quantities and deduct inventory
-   */
-  async dispatch(id: string, data?: DispatchStockRequestPayload): Promise<StockRequest> {
-    return apiClient.post<StockRequest>(`/api/stock-requests/${id}/dispatch`, data || {});
-  },
-
-  /**
-   * Compatibility alias: Mark stock request as delivered (dispatch)
-   */
-  async markDelivered(id: string): Promise<StockRequest> {
-    return apiClient.post<StockRequest>(`/api/stock-requests/${id}/dispatch`, {});
-  },
-
-  /**
-   * Complete stock request (received → completed)
-   */
-  async complete(id: string): Promise<StockRequest> {
-    return apiClient.post<StockRequest>(`/api/stock-requests/${id}/complete`, {});
-  },
-
-  /**
    * Cancel stock request (any status → cancelled)
    */
   async cancel(id: string, reason?: string): Promise<StockRequest> {
     return apiClient.post<StockRequest>(`/api/stock-requests/${id}/cancel`, { reason });
   },
 
-  /**
-   * Receive delivered stock request
-   */
-  async receive(id: string, data: ReceiveStockRequestPayload): Promise<StockRequest> {
-    return apiClient.post<StockRequest>(`/api/stock-requests/${id}/receive`, data);
-  },
 };

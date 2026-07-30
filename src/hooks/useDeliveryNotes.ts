@@ -187,8 +187,14 @@ export function useStartReceivingDeliveryNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => deliveryNotesApi.startReceiving(id),
-    onSuccess: (_data, id) => {
+    mutationFn: ({
+      id,
+      receivingWarehouseId,
+    }: {
+      id: string;
+      receivingWarehouseId: string;
+    }) => deliveryNotesApi.startReceiving(id, receivingWarehouseId),
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, id] });
     },

@@ -4,10 +4,8 @@ import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "../../stock-request-mapper";
-import {
-  getWarehouseBusinessUnitMap,
-  notifyBusinessUnits,
-} from "@/app/api/_lib/workflow-notifications";
+import { notifyBusinessUnits } from "@/app/api/_lib/workflow-notifications";
+import { STOCK_REQUEST_SELECT } from "../../stock-request-select";
 
 type StockRequestDbRecord = Parameters<typeof mapStockRequest>[0];
 
@@ -23,13 +21,13 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
 
     const requestContext = await requireRequestContext();
     if ("status" in requestContext) return requestContext;
-    const { supabase, userId, companyId } = requestContext;
+    const { supabase, userId, companyId, currentBusinessUnitId } = requestContext;
     const { id } = await context.params;
 
     // Check if request exists and is draft
     const { data: existingRequest, error: checkError } = await supabase
       .from("stock_requests")
-      .select("id, status, request_code, requesting_warehouse_id, fulfilling_warehouse_id")
+      .select("id, status, request_code, business_unit_id, fulfilling_business_unit_id")
       .eq("id", id)
       .eq("company_id", companyId)
       .is("deleted_at", null)
@@ -43,6 +41,12 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
       return NextResponse.json(
         { error: "Only draft stock requests can be submitted" },
         { status: 400 }
+      );
+    }
+    if (existingRequest.business_unit_id !== currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: "Only the requesting business unit can submit this stock request" },
+        { status: 403 }
       );
     }
 
@@ -59,22 +63,15 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
 
     if (updateError) {
       console.error("Error submitting stock request:", updateError);
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      return NextResponse.json({ error: "Failed to submit stock request" }, { status: 500 });
     }
 
     try {
-      const warehouseBuMap = await getWarehouseBusinessUnitMap(supabase, companyId, [
-        existingRequest.fulfilling_warehouse_id,
-      ]);
-      const fulfillingBuId = existingRequest.fulfilling_warehouse_id
-        ? warehouseBuMap.get(existingRequest.fulfilling_warehouse_id)
-        : null;
-
       await notifyBusinessUnits({
         supabase,
         companyId,
         actorUserId: userId,
-        businessUnitIds: [fulfillingBuId],
+        businessUnitIds: [existingRequest.fulfilling_business_unit_id],
         title: "New stock request",
         message: `New Stock request ${existingRequest.request_code} received.`,
         type: "stock_request_workflow",
@@ -82,8 +79,8 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
           stock_request_id: existingRequest.id,
           request_code: existingRequest.request_code,
           status: "submitted",
-          requesting_warehouse_id: existingRequest.requesting_warehouse_id,
-          fulfilling_warehouse_id: existingRequest.fulfilling_warehouse_id,
+          requesting_business_unit_id: existingRequest.business_unit_id,
+          fulfilling_business_unit_id: existingRequest.fulfilling_business_unit_id,
         },
       });
     } catch (notificationError) {
@@ -93,40 +90,7 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
     // Fetch updated request
     const { data: updatedRequest } = await supabase
       .from("stock_requests")
-      .select(
-        `
-        *,
-        requesting_warehouse:warehouses!stock_requests_requesting_warehouse_id_fkey(
-          id,
-          warehouse_code,
-          warehouse_name,
-          business_unit_id
-        ),
-        fulfilling_warehouse:warehouses!stock_requests_fulfilling_warehouse_id_fkey(
-          id,
-          warehouse_code,
-          warehouse_name,
-          business_unit_id
-        ),
-        requested_by_user:users!stock_requests_requested_by_user_id_fkey(
-          id,
-          email,
-          first_name,
-          last_name
-        ),
-        received_by_user:users!stock_requests_received_by_fkey(
-          id,
-          email,
-          first_name,
-          last_name
-        ),
-        stock_request_items(
-          *,
-          items(item_code, item_name),
-          units_of_measure(code, symbol)
-        )
-      `
-      )
+      .select(STOCK_REQUEST_SELECT)
       .eq("id", id)
       .eq("company_id", companyId)
       .single();

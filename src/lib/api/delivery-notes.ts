@@ -3,6 +3,7 @@ import type {
   AddDeliveryNoteItemsPayload,
   AdjustDispatchedDeliveryNoteItemPayload,
   CreateDeliveryNotePayload,
+  CreateDeliveryNotesResponse,
   DeliveryNoteAllocationAvailabilityResponse,
   DeliveryNoteAllocatableItem,
   DeliveryNote,
@@ -30,6 +31,8 @@ export const deliveryNotesApi = {
         searchParams.set("requestingWarehouseId", params.requestingWarehouseId);
       }
       if (params.search) searchParams.set("search", params.search);
+      if (params.page) searchParams.set("page", String(params.page));
+      if (params.limit) searchParams.set("limit", String(params.limit));
     }
 
     const query = searchParams.toString();
@@ -42,8 +45,8 @@ export const deliveryNotesApi = {
     return apiClient.get<DeliveryNote>(`/api/delivery-notes/${id}`);
   },
 
-  async create(data: CreateDeliveryNotePayload): Promise<DeliveryNote> {
-    return apiClient.post<DeliveryNote>("/api/delivery-notes", data);
+  async create(data: CreateDeliveryNotePayload): Promise<CreateDeliveryNotesResponse> {
+    return apiClient.post<CreateDeliveryNotesResponse>("/api/delivery-notes", data);
   },
 
   async getAllocationAvailability(
@@ -79,8 +82,10 @@ export const deliveryNotesApi = {
     return apiClient.post<DeliveryNote>(`/api/delivery-notes/${id}/receive`, data || {});
   },
 
-  async startReceiving(id: string): Promise<DeliveryNote> {
-    return apiClient.post<DeliveryNote>(`/api/delivery-notes/${id}/start-receiving`, {});
+  async startReceiving(id: string, receivingWarehouseId: string): Promise<DeliveryNote> {
+    return apiClient.post<DeliveryNote>(`/api/delivery-notes/${id}/start-receiving`, {
+      receivingWarehouseId,
+    });
   },
 
   async recordReceivingScan(

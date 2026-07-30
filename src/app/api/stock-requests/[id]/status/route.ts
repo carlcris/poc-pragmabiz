@@ -2,7 +2,8 @@ import { withActivityLogging } from "@/lib/activity-logging/route-activity-logge
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { computeStockRequestDerivedStatus, getAuthContext } from "@/app/api/delivery-notes/_lib";
+import { getAuthContext } from "@/app/api/delivery-notes/_lib";
+import { getStockRequestStatusProjection } from "@/app/api/stock-requests/stock-request-status-projection";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -18,7 +19,7 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
     if (auth instanceof NextResponse) return auth;
 
     const { id } = await context.params;
-    const result = await computeStockRequestDerivedStatus(auth.supabase, auth.companyId, id);
+    const result = await getStockRequestStatusProjection(auth.supabase, auth.companyId, id);
 
     if (!result) {
       return NextResponse.json({ error: "Stock request not found" }, { status: 404 });
@@ -26,8 +27,8 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
 
     return NextResponse.json(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Failed to load stock request status projection:", error);
+    return NextResponse.json({ error: "Failed to load stock request status" }, { status: 500 });
   }
 }
 

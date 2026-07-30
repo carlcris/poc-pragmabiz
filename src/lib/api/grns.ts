@@ -1,6 +1,5 @@
 import type {
   GRN,
-  CreateGRNRequest,
   UpdateGRNRequest,
   GRNFilters,
   GRNsResponse,
@@ -8,6 +7,7 @@ import type {
   CreateDamagedItemRequest,
   UpdateDamagedItemRequest,
   DamagedItem,
+  StartGRNReceivingRequest,
 } from "@/types/grn";
 
 const API_BASE = "/api/grns";
@@ -44,19 +44,6 @@ export const grnsApi = {
     return response.json();
   },
 
-  createGRN: async (data: CreateGRNRequest): Promise<GRN> => {
-    const response = await fetch(API_BASE, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to create GRN");
-    }
-    return response.json();
-  },
-
   updateGRN: async (id: string, data: UpdateGRNRequest): Promise<GrnUpdateResponse> => {
     const response = await fetch(`${API_BASE}/${id}`, {
       method: "PUT",
@@ -70,7 +57,7 @@ export const grnsApi = {
     return response.json();
   },
 
-  startReceiving: async (id: string): Promise<StartGrnReceivingResponse> => {
+  startReceiving: async ({ id }: StartGRNReceivingRequest): Promise<StartGrnReceivingResponse> => {
     const response = await fetch(`${API_BASE}/${id}/start-receiving`, {
       method: "POST",
     });

@@ -5,11 +5,36 @@ import { useEffect, useMemo } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { BottomNav } from "@/components/ui";
+import { ApiError } from "@/api/client";
 import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
 
+const shouldRetryQuery = (failureCount: number, error: Error) => {
+  if (
+    error instanceof ApiError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408 &&
+    error.status !== 429
+  ) {
+    return false;
+  }
+
+  return failureCount < 3;
+};
+
 export default function RootLayout() {
-  const queryClient = useMemo(() => new QueryClient(), []);
+  const queryClient = useMemo(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: shouldRetryQuery
+          }
+        }
+      }),
+    []
+  );
   const { session, isRestoring, restore } = useAuthStore();
   const segments = useSegments();
 

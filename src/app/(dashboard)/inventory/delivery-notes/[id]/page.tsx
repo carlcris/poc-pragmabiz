@@ -14,6 +14,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { getApiErrorCode } from "@/lib/api";
 import {
   useAddDeliveryNoteItems,
   useAdjustDispatchedDeliveryNoteItem,
@@ -31,7 +32,6 @@ import {
 import type { ItemUnitOption } from "@/types/item";
 import { useCreatePickList } from "@/hooks/usePickLists";
 import { useUsers } from "@/hooks/useUsers";
-import { useWarehouse } from "@/hooks/useWarehouses";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { MetricCard } from "@/components/shared/MetricCard";
@@ -83,6 +83,23 @@ const formatQty = (value: number) => (Number.isInteger(value) ? String(value) : 
 
 const getMutationErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
+
+const ADD_ITEMS_ERROR_CODES = [
+  "DELIVERY_NOTE_UNAUTHORIZED",
+  "DELIVERY_NOTE_NOT_FOUND",
+  "DELIVERY_NOTE_NOT_DISPATCHED",
+  "DELIVERY_NOTE_BUSINESS_UNIT_MISMATCH",
+  "DELIVERY_NOTE_INVALID_LINES",
+  "DELIVERY_NOTE_INVALID_LINE_QUANTITY",
+  "DELIVERY_NOTE_INVALID_STOCK_REQUEST_ITEM",
+  "DELIVERY_NOTE_DUPLICATE_STOCK_REQUEST_ITEM",
+  "DELIVERY_NOTE_INELIGIBLE_STOCK_REQUEST",
+  "DELIVERY_NOTE_REQUEST_QUANTITY_EXCEEDED",
+  "PICK_LIST_PICKER_REQUIRED",
+  "PICK_LIST_INVALID_PICKER",
+  "PICK_LIST_ACTIVE_EXISTS",
+  "PICK_ALLOCATION_INSUFFICIENT_BATCH_QUANTITY",
+] as const;
 
 export default function DeliveryNoteDetailPage() {
   const params = useParams();
@@ -166,8 +183,6 @@ export default function DeliveryNoteDetailPage() {
     () => allocatableItemsData?.data || [],
     [allocatableItemsData?.data]
   );
-  const { data: sourceWarehouseData } = useWarehouse(dn?.requesting_warehouse_id || "");
-  const { data: destinationWarehouseData } = useWarehouse(dn?.fulfilling_warehouse_id || "");
 
   const activePickList = useMemo(() => {
     const rows = dn?.pick_lists || [];
@@ -269,21 +284,20 @@ export default function DeliveryNoteDetailPage() {
   const one = <T,>(value: T | T[] | null | undefined): T | null =>
     Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
-  const sourceWarehouseLabel =
-    [sourceWarehouseData?.data?.code, sourceWarehouseData?.data?.name]
-      .filter(Boolean)
-      .join(" - ") || t("unknownSourceWarehouse");
-
-  const destinationWarehouseLabel =
-    [destinationWarehouseData?.data?.code, destinationWarehouseData?.data?.name]
-      .filter(Boolean)
-      .join(" - ") || t("unknownDestinationWarehouse");
+  const fulfillingBusinessUnit = one(dn?.fulfilling_business_unit);
+  const sourceBusinessUnitLabel =
+    [fulfillingBusinessUnit?.code, fulfillingBusinessUnit?.name].filter(Boolean).join(" - ") ||
+    t("unknownSourceBusinessUnit");
+  const requestingBusinessUnit = one(dn?.requesting_business_unit);
+  const destinationBusinessUnitLabel =
+    [requestingBusinessUnit?.code, requestingBusinessUnit?.name].filter(Boolean).join(" - ") ||
+    t("unknownDestinationBusinessUnit");
 
   const canConfirmReceive =
     !!dn &&
     dn.status === "dispatched" &&
-    (!currentBusinessUnit?.id ||
-      destinationWarehouseData?.data?.businessUnitId !== currentBusinessUnit.id);
+    !!dn.requesting_warehouse_id &&
+    (!currentBusinessUnit?.id || dn.requesting_business_unit_id === currentBusinessUnit.id);
 
   const statusLabel = (status: string) => {
     switch (status) {
@@ -357,7 +371,9 @@ export default function DeliveryNoteDetailPage() {
     const unitOptionRef = one(row.item_unit_options);
     const ref = one(row.units_of_measure);
     if (unitOptionRef) {
-      return unitOptionRef.displayLabel || unitOptionRef.optionLabel || ref?.code || t("unknownUnit");
+      return (
+        unitOptionRef.displayLabel || unitOptionRef.optionLabel || ref?.code || t("unknownUnit")
+      );
     }
     return ref?.code || ref?.symbol || ref?.name || t("unknownUnit");
   };
@@ -634,23 +650,37 @@ export default function DeliveryNoteDetailPage() {
           pickerUserIds: Array.from(selectedAddPickerIds),
           notes: addItemNotes.trim() || undefined,
           items: selectedItems.map((item) => ({
-            srId: item.srId,
             srItemId: item.srItemId,
-            itemId: item.itemId,
-            uomId: item.uomId,
             allocatedQty: item.allocatedQty,
           })),
         },
       });
 
-      toast.success("Delivery note items added and queued for picking");
+      toast.success(t("itemsAddedSuccess"));
       setAddItemsOpen(false);
       setAddItemSearch("");
       setAddItemNotes("");
       setSelectedAddPickerIds(new Set());
       setSelectedAddQtyMap({});
     } catch (error) {
-      toast.error(getMutationErrorMessage(error, "Failed to add delivery note items"));
+      const errorCode = getApiErrorCode(error, ADD_ITEMS_ERROR_CODES);
+      const messageByCode: Partial<Record<(typeof ADD_ITEMS_ERROR_CODES)[number], string>> = {
+        DELIVERY_NOTE_UNAUTHORIZED: t("itemsAddForbidden"),
+        DELIVERY_NOTE_NOT_FOUND: t("itemsAddNotFound"),
+        DELIVERY_NOTE_NOT_DISPATCHED: t("itemsAddNotDispatched"),
+        DELIVERY_NOTE_BUSINESS_UNIT_MISMATCH: t("itemsAddBusinessUnitMismatch"),
+        DELIVERY_NOTE_INVALID_LINES: t("itemsAddInvalid"),
+        DELIVERY_NOTE_INVALID_LINE_QUANTITY: t("itemsAddInvalid"),
+        DELIVERY_NOTE_INVALID_STOCK_REQUEST_ITEM: t("itemsAddInvalid"),
+        DELIVERY_NOTE_DUPLICATE_STOCK_REQUEST_ITEM: t("itemsAddDuplicate"),
+        DELIVERY_NOTE_INELIGIBLE_STOCK_REQUEST: t("itemsAddIneligible"),
+        DELIVERY_NOTE_REQUEST_QUANTITY_EXCEEDED: t("itemsAddQuantityExceeded"),
+        PICK_LIST_PICKER_REQUIRED: t("itemsAddPickerInvalid"),
+        PICK_LIST_INVALID_PICKER: t("itemsAddPickerInvalid"),
+        PICK_LIST_ACTIVE_EXISTS: t("itemsAddActivePickList"),
+        PICK_ALLOCATION_INSUFFICIENT_BATCH_QUANTITY: t("itemsAddInsufficientInventory"),
+      };
+      toast.error((errorCode && messageByCode[errorCode]) || t("itemsAddFailed"));
     }
   };
 
@@ -681,15 +711,15 @@ export default function DeliveryNoteDetailPage() {
           </div>
         </div>
         <div className="rounded-lg border bg-card p-4">
-          <div className="text-xs text-muted-foreground">{t("sourceWarehouse")}</div>
+          <div className="text-xs text-muted-foreground">{t("sourceBusinessUnit")}</div>
           <div className="mt-1 text-sm font-medium">
-            {dn ? sourceWarehouseLabel : <Skeleton className="h-5 w-40" />}
+            {dn ? sourceBusinessUnitLabel : <Skeleton className="h-5 w-40" />}
           </div>
         </div>
         <div className="rounded-lg border bg-card p-4">
-          <div className="text-xs text-muted-foreground">{t("destinationWarehouse")}</div>
+          <div className="text-xs text-muted-foreground">{t("destinationBusinessUnit")}</div>
           <div className="mt-1 text-sm font-medium">
-            {dn ? destinationWarehouseLabel : <Skeleton className="h-5 w-40" />}
+            {dn ? destinationBusinessUnitLabel : <Skeleton className="h-5 w-40" />}
           </div>
         </div>
         <div className="rounded-lg border bg-card p-4">
@@ -728,17 +758,13 @@ export default function DeliveryNoteDetailPage() {
                 <div className="mt-1 text-sm font-medium">{dn.helper_name || t("noValue")}</div>
               </div>
               <div>
-                <div className="text-xs font-medium text-muted-foreground">
-                  {t("deliveryTime")}
-                </div>
+                <div className="text-xs font-medium text-muted-foreground">{t("deliveryTime")}</div>
                 <div className="mt-1 text-sm font-medium">
                   {formatDeliveryTime(dn.delivery_time)}
                 </div>
               </div>
               <div>
-                <div className="text-xs font-medium text-muted-foreground">
-                  {t("plateNumber")}
-                </div>
+                <div className="text-xs font-medium text-muted-foreground">{t("plateNumber")}</div>
                 <div className="mt-1 text-sm font-medium">{dn.plate_number || t("noValue")}</div>
               </div>
             </CardContent>
@@ -753,9 +779,7 @@ export default function DeliveryNoteDetailPage() {
           <CardContent className="space-y-4">
             {dn.receiving_notes && (
               <div>
-                <div className="text-xs font-medium text-muted-foreground">
-                  {t("receiveNotes")}
-                </div>
+                <div className="text-xs font-medium text-muted-foreground">{t("receiveNotes")}</div>
                 <p className="mt-1 whitespace-pre-wrap text-sm">{dn.receiving_notes}</p>
               </div>
             )}
@@ -764,9 +788,7 @@ export default function DeliveryNoteDetailPage() {
                 <div className="text-xs font-medium text-muted-foreground">
                   {t("discrepancyNotes")}
                 </div>
-                <p className="mt-1 whitespace-pre-wrap text-sm">
-                  {dn.receiving_discrepancy_notes}
-                </p>
+                <p className="mt-1 whitespace-pre-wrap text-sm">{dn.receiving_discrepancy_notes}</p>
               </div>
             )}
           </CardContent>
@@ -1049,8 +1071,8 @@ export default function DeliveryNoteDetailPage() {
             </CardTitle>
             <p className="text-sm text-muted-foreground">
               Over-received quantities are recorded from tablet receiving but posted separately
-              after review. Accepting adds only the extra quantity to inventory; rejecting creates no
-              stock movement.
+              after review. Accepting adds only the extra quantity to inventory; rejecting creates
+              no stock movement.
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -1087,9 +1109,7 @@ export default function DeliveryNoteDetailPage() {
                       <TableRow key={item.id}>
                         <TableCell>
                           <div className="font-medium">{itemLabel(item)}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {requestLabel(item)}
-                          </div>
+                          <div className="text-xs text-muted-foreground">{requestLabel(item)}</div>
                           {item.receiving_overage_review_notes && (
                             <div className="mt-1 text-xs text-muted-foreground">
                               {item.receiving_overage_review_notes}

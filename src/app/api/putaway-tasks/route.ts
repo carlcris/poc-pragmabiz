@@ -9,7 +9,7 @@ type PutawayTaskRow = {
   id: string;
   company_id: string;
   business_unit_id: string | null;
-  warehouse_id: string;
+  warehouse_id: string | null;
   item_id: string;
   uom_id: string | null;
   source_unit_name: string;
@@ -31,8 +31,14 @@ type PutawayTaskRow = {
     | { warehouse_code: string | null; warehouse_name: string | null }
     | { warehouse_code: string | null; warehouse_name: string | null }[]
     | null;
-  item: { item_code: string | null; item_name: string | null } | { item_code: string | null; item_name: string | null }[] | null;
-  uom: { code: string | null; name: string | null } | { code: string | null; name: string | null }[] | null;
+  item:
+    | { item_code: string | null; item_name: string | null }
+    | { item_code: string | null; item_name: string | null }[]
+    | null;
+  uom:
+    | { code: string | null; name: string | null }
+    | { code: string | null; name: string | null }[]
+    | null;
 };
 
 const parsePositiveInt = (value: string | null, fallback: number, max: number) => {
@@ -49,7 +55,7 @@ const parseNumber = (value: number | string | null | undefined) => {
 const quotePostgrestFilterValue = (value: string) =>
   `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 
-const one = <T,>(value: T | T[] | null | undefined): T | null =>
+const one = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 const mapTask = (row: PutawayTaskRow): PutawayTask => {

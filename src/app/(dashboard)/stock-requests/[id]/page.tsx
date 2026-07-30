@@ -100,9 +100,9 @@ export default function StockRequestDetailPage() {
   const [rejectReason, setRejectReason] = useState("");
 
   const canFulfillRequest = useMemo(() => {
-    if (!currentBusinessUnit?.id || !request?.fulfilling_warehouse?.businessUnitId) return false;
-    return request.fulfilling_warehouse.businessUnitId === currentBusinessUnit.id;
-  }, [currentBusinessUnit?.id, request?.fulfilling_warehouse?.businessUnitId]);
+    if (!currentBusinessUnit?.id || !request?.fulfilling_business_unit_id) return false;
+    return request.fulfilling_business_unit_id === currentBusinessUnit.id;
+  }, [currentBusinessUnit?.id, request?.fulfilling_business_unit_id]);
 
   const handleApprove = async () => {
     if (!request) return;
@@ -191,16 +191,16 @@ export default function StockRequestDetailPage() {
                   <div>
                     <span className="text-muted-foreground">Requested By:</span>
                     <div className="font-medium">
-                      {request.requesting_warehouse?.warehouse_code
-                        ? `${request.requesting_warehouse.warehouse_code} - ${request.requesting_warehouse.warehouse_name}`
+                      {request.requesting_business_unit?.code
+                        ? `${request.requesting_business_unit.code} - ${request.requesting_business_unit.name}`
                         : "--"}
                     </div>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Requested To:</span>
                     <div className="font-medium">
-                      {request.fulfilling_warehouse?.warehouse_code
-                        ? `${request.fulfilling_warehouse.warehouse_code} - ${request.fulfilling_warehouse.warehouse_name}`
+                      {request.fulfilling_business_unit?.code
+                        ? `${request.fulfilling_business_unit.code} - ${request.fulfilling_business_unit.name}`
                         : "--"}
                     </div>
                   </div>

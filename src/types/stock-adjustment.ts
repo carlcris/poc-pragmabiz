@@ -59,6 +59,7 @@ export interface StockAdjustment {
   locationId?: string;
   locationCode?: string;
   locationName?: string;
+  warehouseCode?: string;
   warehouseName?: string;
   status: StockAdjustmentStatus;
   reason: string;
@@ -105,7 +106,6 @@ export interface CreateStockAdjustmentRequest {
 export interface UpdateStockAdjustmentRequest {
   adjustmentType?: StockAdjustmentType;
   adjustmentDate?: string;
-  warehouseId?: string;
   locationId?: string;
   reason?: string;
   notes?: string;

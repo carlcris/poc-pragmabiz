@@ -216,7 +216,7 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
     if (!grn) return;
 
     try {
-      await startReceivingMutation.mutateAsync(grn.id);
+      await startReceivingMutation.mutateAsync({ id: grn.id });
       toast.success(t("startReceivingSuccess"));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("startReceivingError"));
@@ -421,15 +421,6 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pt-5">
-            <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {t("warehouse")}
-              </Label>
-              <p className="mt-1 text-sm font-semibold text-gray-900">
-                {grn.warehouse?.name || t("noValue")}
-              </p>
-              {grn.warehouse?.code && <p className="text-xs text-gray-500">{grn.warehouse.code}</p>}
-            </div>
             <div>
               <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                 {t("businessUnit")}

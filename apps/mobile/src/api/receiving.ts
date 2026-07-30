@@ -7,7 +7,6 @@ import type {
   LoadListDetail,
   LoadListReceivingDetail,
   LoadListSummary,
-  ReceivingWarehouse,
   ReceivingLine,
   RecordDeliveryNoteReceivingScanResult,
   RecordDeliveryNoteReceivingScanPayload,
@@ -34,24 +33,18 @@ const normalizeLoadList = (value: unknown): LoadListSummary => {
   };
 };
 
-const normalizeReceivingWarehouse = (value: unknown): ReceivingWarehouse => {
-  const record = asRecord(value);
-  return {
-    id: str(record.id || record.warehouseId),
-    warehouseId: str(record.warehouseId || record.id),
-    code: str(record.code),
-    name: str(record.name),
-  };
-};
-
 const normalizeLoadListDetail = (value: unknown): LoadListDetail => {
   const record = asRecord(value);
   const summary = normalizeLoadList(record);
-  const warehouse = asRecord(record.warehouse);
+  const destinationBusinessUnit = asRecord(
+    record.destinationBusinessUnit || record.destination_business_unit
+  );
   return {
     ...summary,
     supplierLlNumber: maybeStr(record.supplierLlNumber || record.supplier_ll_number),
-    warehouseName: maybeStr(warehouse.name || warehouse.warehouse_name),
+    destinationBusinessUnitName: maybeStr(
+      destinationBusinessUnit.name || destinationBusinessUnit.code
+    ),
     actualArrivalDate: maybeStr(record.actualArrivalDate || record.actual_arrival_date),
     containerNumber: maybeStr(record.containerNumber || record.container_number),
     sealNumber: maybeStr(record.sealNumber || record.seal_number),
@@ -99,6 +92,7 @@ const normalizeGrn = (value: unknown): GrnDetail => {
     id: str(record.id),
     grnNumber: str(record.grnNumber || record.grn_number),
     status: str(record.status, "unknown"),
+    warehouseId: maybeStr(record.warehouseId || record.warehouse_id),
     receivingDate: maybeStr(record.receivingDate || record.receiving_date),
     deliveryDate: maybeStr(record.deliveryDate || record.delivery_date),
     items: asArray(record.items).map(normalizeGrnLine),
@@ -209,14 +203,15 @@ const normalizeReceivingScanResult = (value: unknown): RecordDeliveryNoteReceivi
   };
 };
 
-export const getReceivingWarehouse = async () => {
-  const response = await apiRequest<unknown>("/api/load-lists/receiving-warehouse");
-  return normalizeReceivingWarehouse(response);
-};
-
-export const listLoadLists = async (status: string, search: string, warehouseId: string) => {
+export const listLoadLists = async (status: string, search: string) => {
   const response = await apiRequest<ListResponse>("/api/load-lists", {
-    query: { status, search, receivingOnly: true, warehouseId, page: 1, limit: 20 },
+    query: {
+      status,
+      search,
+      receivingOnly: true,
+      page: 1,
+      limit: 20,
+    },
   });
   return asArray(response.data).map(normalizeLoadList);
 };
@@ -293,9 +288,28 @@ export const getDeliveryNote = async (id: string) => {
   return normalizeDeliveryDetail(asRecord(response).data || response);
 };
 
-export const startReceiving = (id: string) =>
+export const listReceivingWarehouses = async () => {
+  const response = await apiRequest<ListResponse>("/api/lookups/warehouses", {
+    query: {
+      scope: "current_business_unit",
+      page: 1,
+      limit: 50,
+    },
+  });
+  return asArray(response.data).map((row) => {
+    const record = asRecord(row);
+    return {
+      id: str(record.id),
+      code: str(record.code),
+      name: str(record.name),
+    };
+  });
+};
+
+export const startReceiving = (id: string, receivingWarehouseId: string) =>
   apiRequest<{ data?: unknown }>(`/api/delivery-notes/${id}/start-receiving`, {
     method: "POST",
+    body: { receivingWarehouseId },
   });
 
 export const recordDeliveryNoteReceivingScan = async (

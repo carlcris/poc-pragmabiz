@@ -48,22 +48,16 @@ async function GETHandler() {
         canViewIncomingShipmentsCard
           ? supabase
               .from("load_lists")
-              .select(
-                "id, receiving_warehouse:warehouses!load_lists_warehouse_id_fkey!inner(business_unit_id)",
-                { count: "exact", head: true }
-              )
-              .in("receiving_warehouse.business_unit_id", scopedBUIds)
+              .select("id", { count: "exact", head: true })
+              .in("destination_business_unit_id", scopedBUIds)
               .in("status", ["arrived", "receiving"])
               .is("deleted_at", null)
           : Promise.resolve({ count: 0, error: null }),
         canViewIncomingShipmentsCard
           ? supabase
               .from("delivery_notes")
-              .select(
-                "id, requesting_warehouse:warehouses!delivery_notes_requesting_warehouse_id_fkey!inner(business_unit_id)",
-                { count: "exact", head: true }
-              )
-              .in("requesting_warehouse.business_unit_id", scopedBUIds)
+              .select("id", { count: "exact", head: true })
+              .in("requesting_business_unit_id", scopedBUIds)
               .eq("status", "dispatched")
               .is("deleted_at", null)
           : Promise.resolve({ count: 0, error: null }),
@@ -78,7 +72,7 @@ async function GETHandler() {
         supabase
           .from("stock_requests")
           .select("id", { count: "exact", head: true })
-          .in("business_unit_id", scopedBUIds)
+          .in("fulfilling_business_unit_id", scopedBUIds)
           .in("status", ["submitted", "approved"])
           .eq("priority", "urgent")
           .is("deleted_at", null),

@@ -15,7 +15,6 @@ import {
   QrCode,
   Lock,
   Warehouse,
-  Truck,
   Ruler,
   Layers,
   Plus,
@@ -256,11 +255,10 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
             <Skeleton className="h-10 w-28" />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-3">
             <MetricCard title={t("availableQtyLabel")} icon={Package} isLoading />
             <MetricCard title={t("reservedQtyLabel")} icon={Lock} isLoading />
             <MetricCard title={t("onHandLabel")} icon={Warehouse} isLoading />
-            <MetricCard title={t("inTransitLabel")} icon={Truck} isLoading />
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -402,11 +400,10 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3">
           <MetricCard title={t("availableQtyLabel")} icon={Package} value="--" />
           <MetricCard title={t("reservedQtyLabel")} icon={Lock} value="--" />
           <MetricCard title={t("onHandLabel")} icon={Warehouse} value="--" />
-          <MetricCard title={t("inTransitLabel")} icon={Truck} value="--" />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -465,7 +462,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <MetricCard
           title={t("availableQtyLabel")}
           icon={Package}
@@ -477,11 +474,6 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
           value={formatQuantity(item.allocated)}
         />
         <MetricCard title={t("onHandLabel")} icon={Warehouse} value={formatQuantity(item.onHand)} />
-        <MetricCard
-          title={t("inTransitLabel")}
-          icon={Truck}
-          value={formatQuantity(item.inTransit)}
-        />
       </div>
 
       {/* Tabs */}
@@ -835,16 +827,6 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                   </span>
                   <span className="text-lg font-bold">{item.maxStockLevel || "0"}</span>
                 </div>
-                {item.inTransit !== undefined && item.inTransit > 0 && (
-                  <div className="flex items-center justify-between border-t pt-2">
-                    <span className="text-sm font-medium text-muted-foreground">
-                      {t("inTransitLabel")}
-                    </span>
-                    <span className="text-lg font-bold text-amber-600 dark:text-amber-500">
-                      {item.inTransit}
-                    </span>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>

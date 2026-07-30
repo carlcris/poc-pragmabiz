@@ -31,7 +31,8 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
       .eq("dn_id", id);
 
     if (existingDnItemsError) {
-      return NextResponse.json({ error: existingDnItemsError.message }, { status: 500 });
+      console.error("Failed to load existing delivery note items:", existingDnItemsError);
+      return NextResponse.json({ error: "Failed to load allocatable items" }, { status: 500 });
     }
 
     const existingSrItemIds = new Set((existingDnItems || []).map((row) => row.sr_item_id));
@@ -72,19 +73,20 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
           id,
           request_code,
           status,
-          requesting_warehouse_id,
-          fulfilling_warehouse_id
+          business_unit_id,
+          fulfilling_business_unit_id
         )
       `
       )
       .eq("stock_requests.company_id", auth.companyId)
-      .eq("stock_requests.requesting_warehouse_id", header.requesting_warehouse_id)
-      .eq("stock_requests.fulfilling_warehouse_id", header.fulfilling_warehouse_id)
+      .eq("stock_requests.business_unit_id", header.requesting_business_unit_id)
+      .eq("stock_requests.fulfilling_business_unit_id", header.fulfilling_business_unit_id)
       .not("stock_requests.status", "in", "(draft,cancelled,completed,fulfilled)")
       .order("created_at", { ascending: true });
 
     if (requestItemsError) {
-      return NextResponse.json({ error: requestItemsError.message }, { status: 500 });
+      console.error("Failed to load stock request items for allocation:", requestItemsError);
+      return NextResponse.json({ error: "Failed to load allocatable items" }, { status: 500 });
     }
 
     const candidateSrItemIds = (requestItems || [])
@@ -109,7 +111,8 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
       .in("sr_item_id", candidateSrItemIds);
 
     if (otherAllocationsError) {
-      return NextResponse.json({ error: otherAllocationsError.message }, { status: 500 });
+      console.error("Failed to load existing delivery note allocations:", otherAllocationsError);
+      return NextResponse.json({ error: "Failed to load allocatable items" }, { status: 500 });
     }
 
     const allocatedByItem = new Map<string, number>();
@@ -174,8 +177,8 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ data });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Unexpected allocatable delivery note items error:", error);
+    return NextResponse.json({ error: "Failed to load allocatable items" }, { status: 500 });
   }
 }
 

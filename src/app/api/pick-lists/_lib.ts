@@ -2,10 +2,7 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { canAccessCapability } from "@/services/permissions/permissionResolver";
 import { getAuthContext } from "../delivery-notes/_lib";
-import {
-  getWarehouseBusinessUnitMap,
-  notifyBusinessUnits,
-} from "@/app/api/_lib/workflow-notifications";
+import { notifyBusinessUnits } from "@/app/api/_lib/workflow-notifications";
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"];
 
@@ -80,7 +77,15 @@ export const fetchPickList = async (supabase: SupabaseClient, companyId: string,
       updated_by,
       updated_at,
       deleted_at,
-      delivery_notes(id, dn_no, status, requesting_warehouse_id, fulfilling_warehouse_id),
+      delivery_notes(
+        id,
+        dn_no,
+        status,
+        requesting_business_unit_id,
+        fulfilling_business_unit_id,
+        requesting_warehouse_id,
+        fulfilling_warehouse_id
+      ),
       delivery_note_item_picks(
         id,
         company_id,
@@ -190,14 +195,18 @@ export const mapPickListRecord = <T extends Record<string, unknown>>(record: T) 
         id: string;
         dn_no: string;
         status: string;
-        requesting_warehouse_id: string;
+        requesting_business_unit_id: string;
+        fulfilling_business_unit_id: string;
+        requesting_warehouse_id: string | null;
         fulfilling_warehouse_id: string;
       }
     | Array<{
         id: string;
         dn_no: string;
         status: string;
-        requesting_warehouse_id: string;
+        requesting_business_unit_id: string;
+        fulfilling_business_unit_id: string;
+        requesting_warehouse_id: string | null;
         fulfilling_warehouse_id: string;
       }>
     | null
@@ -244,7 +253,7 @@ export const notifyPickListReadyForDispatch = async (
 ) => {
   const { data: dnDetails, error: dnDetailsError } = await supabase
     .from("delivery_notes")
-    .select("id, dn_no, requesting_warehouse_id, fulfilling_warehouse_id")
+    .select("id, dn_no, requesting_business_unit_id, fulfilling_business_unit_id")
     .eq("id", pickList.dn_id)
     .eq("company_id", companyId)
     .is("deleted_at", null)
@@ -254,18 +263,13 @@ export const notifyPickListReadyForDispatch = async (
     throw new Error(dnDetailsError?.message || "Delivery note details not found");
   }
 
-  const warehouseBuMap = await getWarehouseBusinessUnitMap(supabase, companyId, [
-    dnDetails.requesting_warehouse_id,
-    dnDetails.fulfilling_warehouse_id,
-  ]);
-
   await notifyBusinessUnits({
     supabase,
     companyId,
     actorUserId,
     businessUnitIds: [
-      warehouseBuMap.get(dnDetails.requesting_warehouse_id),
-      warehouseBuMap.get(dnDetails.fulfilling_warehouse_id),
+      dnDetails.requesting_business_unit_id,
+      dnDetails.fulfilling_business_unit_id,
     ],
     title: "Ready for dispatch",
     message: `Delivery note ${dnDetails.dn_no} is ready for dispatch.`,
@@ -363,30 +367,6 @@ export const getPickListAllocationChoice = async (
   }
 
   const dnItemRows = (dnItems || []) as Array<Record<string, unknown>>;
-  const srItemIds = Array.from(
-    new Set(dnItemRows.map((row) => toText(row.sr_item_id)).filter((id): id is string => !!id))
-  );
-  const selectedBatchBySrItemId = new Map<string, string>();
-
-  if (srItemIds.length > 0) {
-    const { data: stockRequestItems, error: stockRequestItemsError } = await supabase
-      .from("stock_request_items")
-      .select("id, selected_item_batch_id")
-      .in("id", srItemIds);
-
-    if (stockRequestItemsError) {
-      throw new Error(stockRequestItemsError.message);
-    }
-
-    for (const item of (stockRequestItems || []) as Array<Record<string, unknown>>) {
-      const id = toText(item.id);
-      const selectedBatchId = toText(item.selected_item_batch_id);
-      if (id && selectedBatchId) {
-        selectedBatchBySrItemId.set(id, selectedBatchId);
-      }
-    }
-  }
-
   const lines: PickListAllocationChoiceLine[] = [];
   const insufficientLines: PickListAllocationChoiceLine[] = [];
 
@@ -419,9 +399,7 @@ export const getPickListAllocationChoice = async (
     const requiredBaseQty = requiredQty * qtyPerUnit;
     const itemId = String(rawLine.item_id || "");
     const warehouseId = String(rawLine.fulfilling_warehouse_id || "");
-    const selectedBatchId = selectedBatchBySrItemId.get(String(rawLine.sr_item_id || "")) || null;
-
-    let sourceQuery = supabase
+    const sourceQuery = supabase
       .from("item_batch_locations")
       .select(
         `
@@ -444,10 +422,6 @@ export const getPickListAllocationChoice = async (
       .eq("item_id", itemId)
       .eq("warehouse_id", warehouseId)
       .is("deleted_at", null);
-
-    if (selectedBatchId) {
-      sourceQuery = sourceQuery.eq("item_batch_id", selectedBatchId);
-    }
 
     const { data: sourceRows, error: sourceError } = await sourceQuery.limit(100);
 
@@ -473,11 +447,9 @@ export const getPickListAllocationChoice = async (
           }>
         );
         const batchCode = toText(batch?.batch_code);
-        const batchId = toText(batch?.id);
         const receivedAt = toText(batch?.received_at);
         const locationId = toText(row.location_id);
         if (!batchCode || !receivedAt || !locationId) return null;
-        if (selectedBatchId && batchId !== selectedBatchId) return null;
 
         const locationAvailable = Math.max(
           0,

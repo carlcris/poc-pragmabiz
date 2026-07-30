@@ -48,7 +48,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     // Check permission using Lookup Data Access Pattern
     // User can access if they have EITHER:
     // 1. Direct 'warehouses' view permission, OR
-    // 2. Permission to a feature that depends on warehouses (van_sales, stock_transfers, etc.)
+    // 2. Permission to a feature that depends on warehouse inventory.
     const unauthorized = await requireLookupDataAccess(RESOURCES.WAREHOUSES);
     if (unauthorized) return unauthorized;
 

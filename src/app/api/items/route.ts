@@ -33,12 +33,10 @@ export interface ItemWithStock {
   allocated: number;
   // Aggregated from item_warehouse.available_stock across the scoped warehouse set.
   available: number;
-  // Aggregated from item_warehouse.putaway_qty across the scoped warehouse set.
+  // Derived from open putaway tasks in the selected BU or warehouse scope.
   putawayQty: number;
   reorderPoint: number;
   maxStockLevel: number;
-  inTransit: number;
-  estimatedArrivalDate?: string | null;
   status: "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued";
   uom: string;
   uomId: string;
@@ -80,8 +78,6 @@ type ItemsRpcRow = {
   putaway_qty: number;
   reorder_point: number;
   max_stock_level: number;
-  in_transit: number;
-  estimated_arrival_date: string | null;
   status: ItemStatus;
   total_count: number;
 };
@@ -767,8 +763,6 @@ async function GETHandler(request: NextRequest) {
         putawayQty: row.putaway_qty,
         reorderPoint: row.reorder_point,
         maxStockLevel: row.max_stock_level,
-        inTransit: row.in_transit,
-        estimatedArrivalDate: row.estimated_arrival_date,
         status: row.status,
         uom: row.uom_code || "",
         uomId: row.uom_id || "",

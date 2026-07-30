@@ -19,8 +19,8 @@ import { useRouter } from "next/navigation";
 import { useLoadLists, useDeleteLoadList, useUpdateLoadListStatus } from "@/hooks/useLoadLists";
 import { useResourcePermissions } from "@/hooks/usePermissions";
 import { useSuppliers } from "@/hooks/useSuppliers";
-import { useWarehouses } from "@/hooks/useWarehouses";
 import { RESOURCES } from "@/constants/resources";
+import { BusinessUnitSelect } from "@/components/business-units/BusinessUnitSelect";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -93,7 +93,7 @@ export default function LoadListsPage() {
   const [selectedLL, setSelectedLL] = useState<LoadList | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
-  const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
+  const [destinationBusinessUnitFilter, setDestinationBusinessUnitFilter] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [llToDelete, setLLToDelete] = useState<LoadList | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -113,7 +113,7 @@ export default function LoadListsPage() {
     search,
     status: statusFilter !== "all" ? (statusFilter as LoadListStatus) : undefined,
     supplierId: supplierFilter !== "all" ? supplierFilter : undefined,
-    warehouseId: warehouseFilter !== "all" ? warehouseFilter : undefined,
+    destinationBusinessUnitId: destinationBusinessUnitFilter || undefined,
     page,
     limit: pageSize,
   });
@@ -121,9 +121,6 @@ export default function LoadListsPage() {
 
   const { data: suppliersData } = useSuppliers({ page: 1, limit: 50 });
   const suppliers = useMemo(() => suppliersData?.data || [], [suppliersData?.data]);
-
-  const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
-  const warehouses = useMemo(() => warehousesData?.data || [], [warehousesData?.data]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -332,26 +329,31 @@ export default function LoadListsPage() {
             </Select>
           </ClientOnly>
           <ClientOnly fallback={<Skeleton className="h-10 w-full sm:w-[200px]" />}>
-            <Select
-              value={warehouseFilter}
-              onValueChange={(value) => {
-                setWarehouseFilter(value);
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder={t("warehousePlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allWarehouses")}</SelectItem>
-                {warehouses.map((warehouse) => (
-                  <SelectItem key={warehouse.id} value={warehouse.id}>
-                    {warehouse.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex w-full gap-2 sm:w-64">
+              <BusinessUnitSelect
+                value={destinationBusinessUnitFilter}
+                onValueChange={(value) => {
+                  setDestinationBusinessUnitFilter(value);
+                  setPage(1);
+                }}
+                buttonClassName="h-10"
+              />
+              {destinationBusinessUnitFilter && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="shrink-0"
+                  aria-label={t("clearDestinationBusinessUnit")}
+                  onClick={() => {
+                    setDestinationBusinessUnitFilter("");
+                    setPage(1);
+                  }}
+                >
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </ClientOnly>
         </div>
 
@@ -362,7 +364,7 @@ export default function LoadListsPage() {
                 <TableRow>
                   <TableHead>{t("llNumber")}</TableHead>
                   <TableHead>{t("supplier")}</TableHead>
-                  <TableHead>{t("warehouse")}</TableHead>
+                  <TableHead>{t("destinationBusinessUnit")}</TableHead>
                   <TableHead>{t("containerSeal")}</TableHead>
                   <TableHead>{t("batch")}</TableHead>
                   {canViewTotalAmount && (
@@ -434,7 +436,7 @@ export default function LoadListsPage() {
                   <TableRow>
                     <TableHead>{t("llNumber")}</TableHead>
                     <TableHead>{t("supplier")}</TableHead>
-                    <TableHead>{t("warehouse")}</TableHead>
+                    <TableHead>{t("destinationBusinessUnit")}</TableHead>
                     <TableHead>{t("containerSeal")}</TableHead>
                     <TableHead>{t("batch")}</TableHead>
                     {canViewTotalAmount && (
@@ -474,8 +476,10 @@ export default function LoadListsPage() {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{ll.warehouse?.name}</div>
-                          <div className="text-xs text-muted-foreground">{ll.warehouse?.code}</div>
+                          <div className="font-medium">{ll.destinationBusinessUnit?.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {ll.destinationBusinessUnit?.code}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -626,11 +630,7 @@ export default function LoadListsPage() {
       </div>
 
       {dialogOpen && (
-        <LoadListFormDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          loadList={selectedLL}
-        />
+        <LoadListFormDialog open={dialogOpen} onOpenChange={setDialogOpen} loadList={selectedLL} />
       )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

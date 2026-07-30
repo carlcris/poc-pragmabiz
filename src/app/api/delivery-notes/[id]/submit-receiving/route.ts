@@ -1,17 +1,13 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireDeliveryNoteReceivingAccess } from "@/lib/delivery-notes/permissions";
-import {
-  getWarehouseBusinessUnitMap,
-  notifyBusinessUnits,
-} from "@/app/api/_lib/workflow-notifications";
+import { notifyBusinessUnits } from "@/app/api/_lib/workflow-notifications";
 import {
   fetchDeliveryNote,
   fetchDeliveryNoteHeader,
   fetchDeliveryNoteItems,
   getAuthContext,
   isReceivingBusinessUnit,
-  syncStockRequestStatusCache,
 } from "../../_lib";
 
 type RouteContext = {
@@ -61,12 +57,7 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
     if (!businessUnitId) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
-    const canReceive = await isReceivingBusinessUnit(
-      auth.supabase,
-      auth.companyId,
-      businessUnitId,
-      header.requesting_warehouse_id
-    );
+    const canReceive = isReceivingBusinessUnit(businessUnitId, header.requesting_business_unit_id);
     if (!canReceive) {
       return NextResponse.json(
         { error: "Only the receiving business unit can submit receiving" },
@@ -95,24 +86,12 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: userSafeSubmitMessage(error.message) }, { status: 400 });
     }
 
-    await syncStockRequestStatusCache(
-      auth.supabase,
-      auth.companyId,
-      dnItems.map((item) => item.sr_id),
-      auth.userId
-    );
-
     try {
-      const warehouseBuMap = await getWarehouseBusinessUnitMap(auth.supabase, auth.companyId, [
-        header.fulfilling_warehouse_id,
-      ]);
-      const fulfillingBuId = warehouseBuMap.get(header.fulfilling_warehouse_id);
-
       await notifyBusinessUnits({
         supabase: auth.supabase,
         companyId: auth.companyId,
         actorUserId: auth.userId,
-        businessUnitIds: [fulfillingBuId],
+        businessUnitIds: [header.fulfilling_business_unit_id],
         title: "Delivery received",
         message: `Delivery note ${header.dn_no} has been received.`,
         type: "delivery_note_workflow",

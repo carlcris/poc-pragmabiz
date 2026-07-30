@@ -2,10 +2,7 @@ import { withActivityLogging } from "@/lib/activity-logging/route-activity-logge
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import {
-  getWarehouseBusinessUnitMap,
-  notifyBusinessUnits,
-} from "@/app/api/_lib/workflow-notifications";
+import { notifyBusinessUnits } from "@/app/api/_lib/workflow-notifications";
 import {
   fetchDeliveryNote,
   fetchDeliveryNoteHeader,
@@ -150,20 +147,19 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
     });
 
     if (postingError) {
-      return NextResponse.json({ error: postingError.message }, { status: 400 });
+      console.error("Failed to dispatch delivery note:", postingError);
+      return NextResponse.json(
+        { error: "The delivery note could not be dispatched. Refresh and try again." },
+        { status: 400 }
+      );
     }
 
     try {
-      const warehouseBuMap = await getWarehouseBusinessUnitMap(auth.supabase, auth.companyId, [
-        header.requesting_warehouse_id,
-      ]);
-      const requestingBuId = warehouseBuMap.get(header.requesting_warehouse_id);
-
       await notifyBusinessUnits({
         supabase: auth.supabase,
         companyId: auth.companyId,
         actorUserId: auth.userId,
-        businessUnitIds: [requestingBuId],
+        businessUnitIds: [header.requesting_business_unit_id],
         title: "Delivery dispatched",
         message: `Delivery note ${header.dn_no} has been dispatched.`,
         type: "delivery_note_workflow",
@@ -180,8 +176,8 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
     const dn = await fetchDeliveryNote(auth.supabase, auth.companyId, id);
     return NextResponse.json(dn);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Unexpected delivery note dispatch error:", error);
+    return NextResponse.json({ error: "Failed to dispatch delivery note" }, { status: 500 });
   }
 }
 

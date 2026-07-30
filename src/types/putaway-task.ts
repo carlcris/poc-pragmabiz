@@ -6,7 +6,7 @@ export type PutawayTask = {
   id: string;
   companyId: string;
   businessUnitId: string | null;
-  warehouseId: string;
+  warehouseId: string | null;
   warehouseCode: string | null;
   warehouseName: string | null;
   itemId: string;

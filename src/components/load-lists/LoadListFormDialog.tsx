@@ -18,8 +18,8 @@ import {
 import { toast } from "sonner";
 import { useCreateLoadList, useLoadList, useUpdateLoadList } from "@/hooks/useLoadLists";
 import { useSuppliers } from "@/hooks/useSuppliers";
-import { useWarehouses } from "@/hooks/useWarehouses";
 import { useItem, useItems } from "@/hooks/useItems";
+import { BusinessUnitSelect } from "@/components/business-units/BusinessUnitSelect";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -163,9 +163,6 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
   const { data: suppliersData } = useSuppliers({ limit: 50 });
   const suppliers = suppliersData?.data || [];
 
-  const { data: warehousesData } = useWarehouses({ limit: 50 });
-  const warehouses = warehousesData?.data || [];
-
   // Line items state
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState("");
@@ -225,7 +222,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
   const defaultValues = useMemo<LoadListFormValues>(
     () => ({
       supplierId: "",
-      warehouseId: "",
+      destinationBusinessUnitId: "",
       supplierLlNumber: "",
       containerNumber: "",
       sealNumber: "",
@@ -261,7 +258,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     if (open && resolvedLoadList) {
       form.reset({
         supplierId: resolvedLoadList.supplierId,
-        warehouseId: resolvedLoadList.warehouseId,
+        destinationBusinessUnitId: resolvedLoadList.destinationBusinessUnitId,
         supplierLlNumber: resolvedLoadList.supplierLlNumber || "",
         containerNumber: resolvedLoadList.containerNumber || "",
         sealNumber: resolvedLoadList.sealNumber || "",
@@ -404,7 +401,6 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     try {
       const requestData = {
         supplierId: values.supplierId,
-        warehouseId: values.warehouseId,
         supplierLlNumber: values.supplierLlNumber,
         containerNumber: values.containerNumber,
         sealNumber: values.sealNumber,
@@ -433,7 +429,10 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
         });
         toast.success(t("updateSuccess"));
       } else {
-        const createData: CreateLoadListRequest = requestData;
+        const createData: CreateLoadListRequest = {
+          ...requestData,
+          destinationBusinessUnitId: values.destinationBusinessUnitId,
+        };
 
         await createMutation.mutateAsync(createData);
         toast.success(t("createSuccess"));
@@ -540,26 +539,31 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
 
                     <FormField
                       control={form.control}
-                      name="warehouseId"
+                      name="destinationBusinessUnitId"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-xs font-medium">
-                            {t("warehouseLabel")}
+                            {t("destinationBusinessUnitLabel")}
                           </FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="h-9 text-sm">
-                                <SelectValue placeholder={t("selectWarehouse")} />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {warehouses.map((warehouse) => (
-                                <SelectItem key={warehouse.id} value={warehouse.id}>
-                                  {warehouse.name} ({warehouse.code})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <BusinessUnitSelect
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              selectedOption={
+                                resolvedLoadList?.destinationBusinessUnit
+                                  ? {
+                                      id: resolvedLoadList.destinationBusinessUnit.id,
+                                      code: resolvedLoadList.destinationBusinessUnit.code,
+                                      name: resolvedLoadList.destinationBusinessUnit.name,
+                                      type: "",
+                                      is_active: true,
+                                    }
+                                  : null
+                              }
+                              disabled={isEditMode}
+                              buttonClassName="h-9 text-sm"
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}

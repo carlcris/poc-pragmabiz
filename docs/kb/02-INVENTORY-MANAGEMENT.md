@@ -16,7 +16,7 @@ The Inventory Management module is a comprehensive multi-warehouse inventory tra
 - **Barcode/QR code** support
 - **Batch tracking** for perishables
 - **Stock adjustments** with approval workflow
-- **Inter-warehouse transfers**
+- **Business-unit stock fulfillment** across multiple warehouses
 - **Stock requisitions** for internal requests
 
 ## Architecture
@@ -50,6 +50,7 @@ The Inventory Management module is a comprehensive multi-warehouse inventory tra
 The **Item** is the central entity representing a product or material in the system.
 
 **Key Attributes**:
+
 - **Code**: Unique item identifier (SKU)
 - **Name**: Product name
 - **Description**: Detailed description
@@ -69,7 +70,10 @@ Each item can have multiple unit options (e.g., box, piece, dozen) with conversi
 The Item Master export supports CSV, XLSX, and PDF formats. Each export uses the current search,
 category, status, warehouse, and business-unit scope filters. Export requests are bounded to 5,000
 filtered rows; users must narrow filters before exporting larger result sets. The Item Master list
-and export show pending putaway quantity separately from in-transit and available stock.
+and export show open putaway quantity separately from available stock. The warehouse selector calls
+its business-unit-wide option **All Inventories**. That option aggregates warehouse inventory for the
+selected business unit and includes open putaway tasks that do not have a final warehouse yet. A
+specific warehouse filter includes only putaway tasks already assigned to that warehouse.
 
 ```typescript
 // Example: Item with multiple units
@@ -86,6 +90,7 @@ Item: "Widget ABC"
 A **Warehouse** represents a physical storage location where inventory is held.
 
 **Key Attributes**:
+
 - **Code**: Unique warehouse identifier
 - **Name**: Warehouse name
 - **Locations**: Sub-locations within warehouse
@@ -93,6 +98,11 @@ A **Warehouse** represents a physical storage location where inventory is held.
 
 **Warehouse Locations**:
 Each warehouse can have multiple storage locations (aisles, shelves, bins) for granular stock tracking.
+
+The item **Locations** tab groups rack rows by warehouse. Each warehouse section shows its aggregate
+on-hand quantity, warehouse-level maximum stock, and maximum-stock action, while preferred-rack
+selection and batch expansion remain available on individual rack rows. Supplier shipment transit
+and estimated-arrival information is intentionally not attached to a warehouse before putaway.
 
 Users with Items view access and the `items.operation.print_batch_qr.view` capability can expand a warehouse location on an item's **Locations** tab and print 1–100 4 × 4-inch (101.6 × 101.6 mm) QR labels for each batch. The user selects an active item unit option, and every label's quantity is that option's `qtyPerUnit`; current batch on-hand is informational and is never divided or changed by printing. Each label and QR payload uses the same item, batch-location SKU, batch, warehouse, and location contract as completed putaway labels.
 
@@ -118,22 +128,24 @@ Company Level
 ```
 
 **Stock Metrics**:
-- **On Hand**: Physical quantity in warehouse
-- **Available**: On hand - reserved - pending putaway
+
+- **On Hand**: Physical quantity assigned to a warehouse
+- **Available**: On hand - reserved - warehouse-bound pending putaway
 - **Reserved**: Allocated to sales orders/delivery notes
-- **Putaway**: Physically received or produced stock awaiting final batch/location placement
-- **In Transit**: Expected inbound quantity not yet submitted into receiving/putaway
+- **Putaway**: The sum of `pending_quantity` on open putaway tasks in the selected BU or warehouse
+- **In Transit**: Supplier load-list quantities moving to a business unit, shown on the separate Stock In Transit page
 - **Reorder Alert Basis**: Total available stock across all company warehouses compared to the effective item reorder point
 
-Stock-aware item lists subscribe to `item_warehouse` realtime changes. Stock movement screens also subscribe to `stock_transactions` and `stock_transaction_items` realtime changes. Posted stock adjustments, GRN receiving submissions, putaway postings, and other stock movements invalidate the loaded items, item statistics, stock transaction, stock balance, dashboard, and reorder queries so on-hand, reserved, putaway, available, and movement history refresh without leaving the page. Putaway posting also invalidates item-location and batch selectors, delivery-note allocation availability, stock requests, reorder notifications, and inventory, batch-location, aging, stock-movement, product-movement, and ledger reports because final placement makes staged stock available at a specific batch and location.
+Stock-aware item lists subscribe to `item_warehouse` realtime changes and invalidate when putaway tasks change. Stock movement screens also subscribe to `stock_transactions` and `stock_transaction_items` realtime changes. Posted stock adjustments, GRN receiving submissions, putaway postings, and other stock movements invalidate the loaded items, item statistics, stock transaction, stock balance, dashboard, and reorder queries so on-hand, reserved, putaway, available, and movement history refresh without leaving the page. Putaway posting also invalidates item-location and batch selectors, delivery-note allocation availability, stock requests, reorder notifications, and inventory, batch-location, aging, stock-movement, product-movement, and ledger reports because final placement makes staged stock available at a specific batch and location.
 
-Putaway tasks store their own source-unit name and quantity-per-unit conversion when they are created. The Putaway Station derives source quantities and every printed label's quantity from that immutable task snapshot rather than re-reading a live item unit option or upstream GRN line. Users enter the posting quantity in the task's source unit, and the Putaway Station converts it to base units before submission. Label copies default to that source-unit posting quantity, update when it changes, remain independently editable, and are applied directly to every applicable posted batch/location label without redistribution based on source count or posted quantity.
+Putaway tasks store their own source-unit name and quantity-per-unit conversion when they are created. Supplier GRN tasks remain scoped only to their destination business unit until posting; the operator selects the warehouse and then a storable rack at the Putaway Station, where the warehouse stock and final batch/location quantities are written atomically. Warehouse-bound production tasks retain their assigned warehouse. The Putaway Station derives source quantities and every printed label's quantity from the immutable task snapshot rather than re-reading a live item unit option or upstream GRN line. Users enter the posting quantity in the task's source unit, and the Putaway Station converts it to base units before submission. Label copies default to that source-unit posting quantity, update when it changes, remain independently editable, and are applied directly to every applicable posted batch/location label without redistribution based on source count or posted quantity.
 
 ### 4. Stock Transactions
 
 Every stock movement is recorded as a **Stock Transaction** for full audit trail and stock ledger reporting.
 
 **Transaction Types**:
+
 - `purchase_receipt` - Goods received from suppliers
 - `sales_delivery` - Goods shipped to customers
 - `stock_adjustment` - Manual adjustments (count, damage, etc.)
@@ -143,6 +155,7 @@ Every stock movement is recorded as a **Stock Transaction** for full audit trail
 - `pos_sale` - POS transactions
 
 **Transaction Fields**:
+
 - **Item**: Item reference
 - **Warehouse**: Warehouse reference
 - **Location**: Location reference (optional)
@@ -173,6 +186,7 @@ New Average Cost = (
 ### Core Tables
 
 #### items
+
 ```sql
 CREATE TABLE items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -206,6 +220,7 @@ CREATE TABLE items (
 The item-level SOP field is nullable, non-negative, and protected by granular permissions. `items.field.sop.view` controls whether item detail/list responses can expose the value. `items.field.sop.edit` controls whether create or update requests may submit the field. SOP currently has no downstream stock, pricing, report, or allocation behavior.
 
 #### item_unit_options
+
 ```sql
 CREATE TABLE item_unit_options (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -220,6 +235,7 @@ CREATE TABLE item_unit_options (
 ```
 
 #### units_of_measure
+
 ```sql
 CREATE TABLE units_of_measure (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -230,6 +246,7 @@ CREATE TABLE units_of_measure (
 ```
 
 #### item_categories
+
 ```sql
 CREATE TABLE item_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -241,6 +258,7 @@ CREATE TABLE item_categories (
 ```
 
 #### warehouses
+
 ```sql
 CREATE TABLE warehouses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -254,6 +272,7 @@ CREATE TABLE warehouses (
 ```
 
 #### warehouse_locations
+
 ```sql
 CREATE TABLE warehouse_locations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -270,23 +289,30 @@ CREATE TABLE warehouse_locations (
 ```
 
 #### item_warehouse
+
 ```sql
 CREATE TABLE item_warehouse (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
   item_id UUID REFERENCES items(id) ON DELETE CASCADE,
   warehouse_id UUID REFERENCES warehouses(id) ON DELETE CASCADE,
-  on_hand DECIMAL(12,3) DEFAULT 0,
-  reserved DECIMAL(12,3) DEFAULT 0,
-  available DECIMAL(12,3) GENERATED ALWAYS AS (on_hand - reserved) STORED,
-  last_purchase_price DECIMAL(12,2),
-  average_cost DECIMAL(12,2),
+  current_stock NUMERIC DEFAULT 0,
+  reserved_stock NUMERIC DEFAULT 0,
+  putaway_qty NUMERIC DEFAULT 0,
+  available_stock NUMERIC GENERATED ALWAYS AS
+    (current_stock - reserved_stock - putaway_qty) STORED,
+  max_quantity NUMERIC,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(item_id, warehouse_id)
+  UNIQUE(company_id, item_id, warehouse_id)
 );
 ```
 
+`item_warehouse` does not store supplier `in_transit` or estimated-arrival values. Those remain on
+the business-unit-scoped load-list workflow until receiving and final warehouse placement.
+
 #### item_batches
+
 ```sql
 CREATE TABLE item_batches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -304,6 +330,7 @@ CREATE TABLE item_batches (
 ```
 
 #### item_batch_locations
+
 ```sql
 CREATE TABLE item_batch_locations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -322,6 +349,7 @@ CREATE TABLE item_batch_locations (
 ```
 
 #### stock_transactions
+
 ```sql
 CREATE TABLE stock_transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -343,6 +371,7 @@ CREATE TABLE stock_transactions (
 ```
 
 #### stock_adjustments
+
 ```sql
 CREATE TABLE stock_adjustments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -360,6 +389,7 @@ CREATE TABLE stock_adjustments (
 ```
 
 #### stock_adjustment_items
+
 ```sql
 CREATE TABLE stock_adjustment_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -375,44 +405,16 @@ CREATE TABLE stock_adjustment_items (
 );
 ```
 
-#### stock_transfers
-```sql
-CREATE TABLE stock_transfers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_id UUID REFERENCES companies(id),
-  from_warehouse_id UUID REFERENCES warehouses(id),
-  to_warehouse_id UUID REFERENCES warehouses(id),
-  transfer_date TIMESTAMPTZ DEFAULT now(),
-  status VARCHAR DEFAULT 'draft',  -- 'draft', 'in_transit', 'completed'
-  notes TEXT,
-  created_by UUID REFERENCES users(id),
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
-#### stock_transfer_lines
-```sql
-CREATE TABLE stock_transfer_lines (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  transfer_id UUID REFERENCES stock_transfers(id) ON DELETE CASCADE,
-  item_id UUID REFERENCES items(id),
-  from_location_id UUID REFERENCES warehouse_locations(id),
-  to_location_id UUID REFERENCES warehouse_locations(id),
-  quantity DECIMAL(12,3) NOT NULL,
-  unit_id UUID REFERENCES units_of_measure(id),
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
 #### stock_requests
+
 ```sql
 CREATE TABLE stock_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_id UUID REFERENCES companies(id),
-  requesting_warehouse_id UUID REFERENCES warehouses(id),
-  supplying_warehouse_id UUID REFERENCES warehouses(id),
+  company_id UUID NOT NULL REFERENCES companies(id),
+  business_unit_id UUID NOT NULL REFERENCES business_units(id),
+  fulfilling_business_unit_id UUID NOT NULL REFERENCES business_units(id),
   request_date TIMESTAMPTZ DEFAULT now(),
-  status VARCHAR DEFAULT 'pending',  -- 'pending', 'approved', 'rejected', 'fulfilled'
+  status VARCHAR DEFAULT 'draft',
   requested_by UUID REFERENCES users(id),
   approved_by UUID REFERENCES users(id),
   approved_at TIMESTAMPTZ,
@@ -421,6 +423,7 @@ CREATE TABLE stock_requests (
 ```
 
 #### stock_request_items
+
 ```sql
 CREATE TABLE stock_request_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -428,7 +431,6 @@ CREATE TABLE stock_request_items (
   item_id UUID REFERENCES items(id),
   requested_qty DECIMAL(20,4) NOT NULL,
   item_unit_option_id UUID REFERENCES item_unit_options(id),
-  selected_item_batch_id UUID REFERENCES item_batches(id), -- optional source batch preference
   uom_id UUID REFERENCES units_of_measure(id),
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -437,6 +439,7 @@ CREATE TABLE stock_request_items (
 ```
 
 #### stock_requisitions
+
 ```sql
 CREATE TABLE stock_requisitions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -452,6 +455,7 @@ CREATE TABLE stock_requisitions (
 ```
 
 #### reorder_seasons
+
 ```sql
 CREATE TABLE reorder_seasons (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -471,6 +475,7 @@ Active reorder seasons are selected automatically by the current date. Active se
 RLS restricts season rows to the authenticated user's company.
 
 #### reorder_season_item_policies
+
 ```sql
 CREATE TABLE reorder_season_item_policies (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -500,6 +505,7 @@ Seasonal policy list responses include the selected unit context and active item
 RLS restricts seasonal item policy rows to the authenticated user's company.
 
 #### reorder_alert_acknowledgments
+
 ```sql
 CREATE TABLE reorder_alert_acknowledgments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -524,6 +530,7 @@ Reorder alerts are generated from live stock levels, not stored as alert rows. A
 ### Item Management
 
 #### GET /api/items
+
 List all items with pagination and filtering.
 
 **Permissions**: `view` on `items`
@@ -531,6 +538,7 @@ List all items with pagination and filtering.
 **Cost Contract**: Item API request and response payloads use `purchasePrice`.
 
 **Query Parameters**:
+
 - `page` - Page number (default: 1)
 - `limit` - Items per page (default: 20)
 - `search` - Search by code/name
@@ -538,6 +546,7 @@ List all items with pagination and filtering.
 - `is_active` - Filter active/inactive
 
 **Response**:
+
 ```json
 {
   "items": [
@@ -548,7 +557,7 @@ List all items with pagination and filtering.
       "description": "High-quality widget",
       "category": { "id": "uuid", "name": "Widgets" },
       "base_unit": { "id": "uuid", "name": "piece" },
-      "sales_price": 10.50,
+      "sales_price": 10.5,
       "reorder_point": 100,
       "max_stock_level": 500,
       "is_active": true,
@@ -565,11 +574,13 @@ List all items with pagination and filtering.
 ```
 
 #### POST /api/items
+
 Create a new item.
 
 **Permissions**: `create` on `items`
 
 **Request**:
+
 ```json
 {
   "code": "ITEM-002",
@@ -577,7 +588,7 @@ Create a new item.
   "description": "Description here",
   "category_id": "uuid",
   "base_unit_id": "uuid",
-  "sales_price": 15.00,
+  "sales_price": 15.0,
   "reorder_point": 50,
   "max_stock_level": 300,
   "unit_options": [
@@ -588,11 +599,13 @@ Create a new item.
 ```
 
 #### GET /api/items/[id]
+
 Get item details.
 
 **Permissions**: `view` on `items`
 
 **Response**:
+
 ```json
 {
   "id": "uuid",
@@ -621,12 +634,14 @@ Get item details.
 The item detail page displays `customFields` as editable key/value rows for users with `edit` permission on `items`.
 
 #### PUT /api/items/[id]/custom-fields
+
 Add or update one custom field for an item. This endpoint owns item custom-field mutations rather than the general item update endpoint.
 Custom-field writes are handled by DB RPCs that lock the item row before changing `custom_fields`, so concurrent edits do not replace unrelated fields.
 
 **Permissions**: `edit` on `items`
 
 **Request**:
+
 ```json
 {
   "key": "color",
@@ -638,31 +653,44 @@ Custom-field writes are handled by DB RPCs that lock the item row before changin
 `originalKey` is optional and is used when renaming an existing field.
 
 #### DELETE /api/items/[id]/custom-fields
+
 Delete one custom field from an item.
 
 **Permissions**: `edit` on `items`
 
 **Query Parameters**:
+
 - `key` - Custom field key to delete
 
 #### PUT /api/items/[id]
+
 Update item details.
 
 **Permissions**: `edit` on `items`
 
 #### DELETE /api/items/[id]
+
 Delete (deactivate) item.
 
 **Permissions**: `delete` on `items`
 
 ### Warehouse Management
 
+A business unit may own multiple active warehouses. The selected business unit remains the
+application, permission, and data-access context; a warehouse is an inventory location within that
+context, not a replacement context. Inventory list and report screens aggregate all warehouses in
+the current business unit by default unless a warehouse filter is selected. Warehouse-specific
+operations such as stock ledger review, POS checkout, stock adjustments, and transformation item
+selection require an explicit warehouse.
+
 #### GET /api/warehouses
+
 List all warehouses.
 
 **Permissions**: `view` on `warehouses`
 
 **Response**:
+
 ```json
 {
   "warehouses": [
@@ -672,25 +700,26 @@ List all warehouses.
       "name": "Main Warehouse",
       "address": "123 Main St",
       "is_active": true,
-      "locations": [
-        { "id": "uuid", "code": "A-01-01", "name": "Aisle A, Row 1, Bin 1" }
-      ]
+      "locations": [{ "id": "uuid", "code": "A-01-01", "name": "Aisle A, Row 1, Bin 1" }]
     }
   ]
 }
 ```
 
 #### POST /api/warehouses
+
 Create new warehouse.
 
 **Permissions**: `create` on `warehouses`
 
 #### GET /api/warehouses/[id]/inventory
+
 Get all inventory in a warehouse.
 
 **Permissions**: `view` on `warehouses`
 
 **Response**:
+
 ```json
 {
   "inventory": [
@@ -699,22 +728,27 @@ Get all inventory in a warehouse.
       "on_hand": 150,
       "reserved": 25,
       "available": 125,
-      "average_cost": 8.50,
-      "value": 1275.00
+      "average_cost": 8.5,
+      "value": 1275.0
     }
   ],
-  "total_value": 125000.00
+  "total_value": 125000.0
 }
 ```
 
 ### Stock Adjustments
 
 #### POST /api/stock-adjustments
-Create stock adjustment (draft) for the current business unit. The UI shows the current business unit's warehouse as read-only context; users do not select a warehouse. The API submits that current-BU warehouse ID to the transactional RPC, and the RPC validates that it belongs to the current business unit before writing the draft.
+
+Create a stock adjustment draft for an explicitly selected active warehouse in the current business
+unit. The warehouse must be selected before lines are added and cannot be changed on an existing
+draft. The transactional RPC validates that the warehouse belongs to the current business unit
+before writing the draft.
 
 **Permissions**: `create` on `stock_adjustments`
 
 **Request**:
+
 ```json
 {
   "adjustmentType": "physical_count",
@@ -736,16 +770,18 @@ Create stock adjustment (draft) for the current business unit. The UI shows the 
 }
 ```
 
-Each adjustment line explicitly chooses **Existing Batch** or **Create New Batch**. The existing-batch selector is server-filtered by item, the current business unit warehouse, optional location, and batch/QR search text. The selected batch-location row supplies the current quantity and QR label metadata.
+Each adjustment line explicitly chooses **Existing Batch** or **Create New Batch**. The existing-batch selector is server-filtered by item, the selected warehouse, optional location, and batch/QR search text. The selected batch-location row supplies the current quantity and QR label metadata.
 
-Creating a new batch requires an adjustment location, a batch code, and a positive stock increase. New batches start at zero, so stock removal is unavailable in this mode. The form checks whether the same batch already exists at the selected location and directs the user to the existing-batch path when it does. Saving the draft creates or reuses the `item_batches` row and creates its missing `item_batch_locations` row for the current business unit warehouse/location inside the same database transaction as the adjustment header and lines. If any part of the save fails, no manual batch, batch-location, header, or line write remains committed.
+Creating a new batch requires an adjustment location, a batch code, and a positive stock increase. New batches start at zero, so stock removal is unavailable in this mode. The form checks whether the same batch already exists at the selected location and directs the user to the existing-batch path when it does. Saving the draft creates or reuses the `item_batches` row and creates its missing `item_batch_locations` row for the selected warehouse/location inside the same database transaction as the adjustment header and lines. If any part of the save fails, no manual batch, batch-location, header, or line write remains committed.
 
 #### POST /api/stock-adjustments/[id]/post
+
 Post stock adjustment (apply to inventory).
 
 **Permissions**: `edit` on `stock_adjustments`
 
 **Process**:
+
 1. Validates all lines
 2. Calls the transactional `post_stock_adjustment` RPC
 3. Creates stock transactions for adjustments
@@ -755,48 +791,19 @@ Post stock adjustment (apply to inventory).
 
 Stock adjustment lines can reprint 1–100 batch QR labels using the same QR payload and PDF label generator as GRN box labels. The user selects an active item unit option, and each printed copy uses that option's `qtyPerUnit` together with the selected batch code, batch-location SKU, item details, warehouse, and location metadata. The adjusted quantity is informational and is not divided across the labels.
 
-### Stock Transfers
-
-#### POST /api/stock-transfers
-Create stock transfer.
-
-**Permissions**: `create` on `stock_transfers`
-
-**Request**:
-```json
-{
-  "from_warehouse_id": "uuid",
-  "to_warehouse_id": "uuid",
-  "transfer_date": "2025-06-14",
-  "lines": [
-    {
-      "item_id": "uuid",
-      "from_location_id": "uuid",
-      "to_location_id": "uuid",
-      "quantity": 50,
-      "unit_id": "uuid"
-    }
-  ]
-}
-```
-
-#### POST /api/stock-transfers/[id]/complete
-Complete transfer (update inventory).
-
-**Permissions**: `edit` on `stock_transfers`
-
-### Stock Transfers
+### Stock Requests
 
 #### POST /api/stock-requests
-Create stock replenishment transfer request.
+
+Create a stock request from the current business unit to a fulfilling business unit.
 
 **Permissions**: `create` on `stock_requests`
 
 **Request**:
+
 ```json
 {
-  "requesting_warehouse_id": "uuid",
-  "fulfilling_warehouse_id": "uuid",
+  "fulfilling_business_unit_id": "uuid",
   "items": [
     {
       "item_id": "uuid",
@@ -809,32 +816,56 @@ Create stock replenishment transfer request.
 }
 ```
 
-`selected_item_batch_id` is optional. When provided, the API validates that the batch belongs to the requested item and fulfilling warehouse and has enough available base quantity for the line. Downstream pick-list allocation treats the selected batch as authoritative: it allocates from that batch instead of FIFO, and insufficient selected-batch quantity fails the operation.
+The current business unit is the requesting side. The user selects only the fulfilling business
+unit and never selects a source warehouse. Each line defaults to automatic FIFO allocation, but the
+user may optionally require a specific eligible batch. The searchable batch picker queries the
+server using the item and fulfilling business unit and returns at most five results at a time,
+independent of the selected request unit. Each option identifies its warehouse and shows the
+batch's available base-unit quantity; batch, warehouse, and rack text are searchable. After a batch
+is selected, the form compares its base-unit availability with the requested quantity converted
+through the selected unit and blocks an insufficient selection. The two business units must differ,
+and both identities are fixed after creation. Draft create and update operations call one
+database-owned transaction that validates the header, units, items, quantities, and optional batch
+constraint before saving the header and all lines. A failure leaves no partial header or line
+changes.
 
-When the field is null, delivery-note availability and pick-list creation use automatic whole-unit FIFO allocation. Capacity is calculated independently for each FIFO batch-location source as `floor(available base quantity / qty_per_unit)`, so an incomplete remainder is never combined with another source to form one requested unit. A source with 96 base units contributes zero `BOX (144)` units; a source with 150 contributes one box and leaves six base units. Allocation continues through later FIFO sources until the requested unit quantity is covered. Insufficient inventory is reported only when the summed complete-unit capacity, after warehouse reservations and putaway exclusions, is below the requested quantity.
+Delivery-note availability and creation aggregate stock across all active warehouses in the
+fulfilling business unit. The database allocates whole requested units by FIFO batch/location source,
+splits the request into one delivery note per source warehouse, reserves each source atomically, and
+creates warehouse-specific pick lists. Capacity is calculated independently for each source as
+`floor(available base quantity / qty_per_unit)`, so an incomplete remainder is never combined with
+another source to form one requested unit. Insufficient total capacity rolls the operation back
+without delivery notes or partial reservations.
+
+When a request line specifies a batch, availability, delivery-note creation, and pick-list source
+suggestions are restricted to that batch and its warehouse/racks. If that batch can no longer supply
+the complete requested quantity, the transaction fails with actionable guidance; it never falls
+back to another batch. Lines without a selected batch retain business-unit-wide FIFO allocation.
 
 `POST /api/delivery-notes/allocation-availability` accepts a bounded list of up to 100 stock-request item IDs and returns availability in each line's requested unit. `POST /api/delivery-notes` revalidates the same whole-unit capacity while locking the stock-request and inventory rows, then creates the header, sources, lines, and warehouse reservation in one transaction.
 
-The delivery-note creation table displays availability in the stock-request line's unit, for example `100 BOX (144)`. `Qty / Unit` shows the conversion factor, while `Total Qty` shows the current allocated quantity converted to base units. Availability requests are sent in bounded groups of up to 100 stock-request lines; every group must load successfully before allocation controls and delivery-note creation are enabled.
+The delivery-note creation table displays business-unit-wide availability in the stock-request
+line's unit, for example `100 BOX (144)`. `Qty / Unit` shows the conversion factor, while `Total Qty`
+shows the current allocated quantity converted to base units. Availability requests are sent in
+bounded groups of up to 100 stock-request lines; every group must load successfully before
+allocation controls and delivery-note creation are enabled.
 
 #### POST /api/stock-requests/[id]/approve
-Approve stock transfer.
 
-**Permissions**: `approve_stock_requests` capability
+Approve a submitted stock request from the fulfilling business unit.
+
+**Permissions**: `edit` on `stock_requests`
 
 #### POST /api/stock-requests/[id]/reject
-Reject stock transfer.
 
-**Permissions**: `approve_stock_requests` capability
-
-#### POST /api/stock-requests/[id]/fulfill
-Fulfill stock transfer.
+Reject a submitted stock request from the fulfilling business unit.
 
 **Permissions**: `edit` on `stock_requests`
 
 ### Reorder Management
 
 #### GET /api/reorder/alerts
+
 Get items whose total available stock across all company warehouses is below the effective reorder point.
 
 **Permissions**: `view` on `reorder_management`
@@ -843,6 +874,7 @@ By default, acknowledged alert conditions are hidden. Passing `acknowledged=true
 The `warehouseBreakdown` includes all company warehouses; warehouses without item stock rows are returned with zero stock values.
 
 **Response**:
+
 ```json
 {
   "data": [
@@ -861,9 +893,7 @@ The `warehouseBreakdown` includes all company warehouses; warehouses without ite
       "requisitionQtyPerUnit": 1,
       "requisitionUnitPrice": 10.5,
       "requisitionUnitPriceCurrency": null,
-      "warehouseBreakdown": [
-        { "warehouseName": "Main Warehouse", "availableStock": 45 }
-      ]
+      "warehouseBreakdown": [{ "warehouseName": "Main Warehouse", "availableStock": 45 }]
     }
   ],
   "pagination": { "page": 1, "limit": 50, "total": 1, "totalPages": 1 }
@@ -871,11 +901,13 @@ The `warehouseBreakdown` includes all company warehouses; warehouses without ite
 ```
 
 #### POST /api/reorder/seasons
+
 Create a date-effective reorder season.
 
 **Permissions**: `create` on `reorder_management`
 
 #### POST /api/reorder/alerts/acknowledge
+
 Persist acknowledgment for selected generated reorder alert IDs.
 
 **Permissions**: `edit` on `reorder_management`
@@ -883,6 +915,7 @@ Persist acknowledgment for selected generated reorder alert IDs.
 Acknowledgment suppresses the same item/policy/season/severity/stock snapshot from the active alerts list. If the stock level changes, the severity changes, or the effective reorder policy changes, the alert is generated again. Direct RPC calls are bound to the authenticated user and company.
 
 #### POST /api/reorder/alerts/unacknowledge
+
 Restore selected acknowledged reorder alert IDs to the active alerts list.
 
 **Permissions**: `edit` on `reorder_management`
@@ -890,6 +923,7 @@ Restore selected acknowledged reorder alert IDs to the active alerts list.
 Restoring an alert soft-deletes the matching acknowledgment row for the current generated alert condition, so the alert returns to the active alerts list.
 
 #### POST /api/reorder/season-policies
+
 Create a per-item seasonal reorder override.
 
 **Permissions**: `create` on `reorder_management`
@@ -906,18 +940,18 @@ Seasonal policy requests must include `itemUnitOptionId`. Requests store `reorde
 class StockTransactionService {
   // Record stock transaction
   async createTransaction(data: {
-    itemId: string
-    warehouseId: string
-    locationId?: string
-    quantity: number  // Positive = in, Negative = out
-    unitId: string
-    transactionType: string
-    referenceType?: string
-    referenceId?: string
-    cost?: number
-    transactionDate?: Date
-    notes?: string
-  }): Promise<StockTransaction>
+    itemId: string;
+    warehouseId: string;
+    locationId?: string;
+    quantity: number; // Positive = in, Negative = out
+    unitId: string;
+    transactionType: string;
+    referenceType?: string;
+    referenceId?: string;
+    cost?: number;
+    transactionDate?: Date;
+    notes?: string;
+  }): Promise<StockTransaction>;
 
   // Get stock ledger for item
   async getItemLedger(
@@ -925,13 +959,13 @@ class StockTransactionService {
     warehouseId?: string,
     startDate?: Date,
     endDate?: Date
-  ): Promise<StockTransaction[]>
+  ): Promise<StockTransaction[]>;
 
   // Get stock value
   async getStockValuation(warehouseId?: string): Promise<{
-    items: Array<{ item: Item; quantity: number; value: number }>
-    total: number
-  }>
+    items: Array<{ item: Item; quantity: number; value: number }>;
+    total: number;
+  }>;
 }
 ```
 
@@ -947,10 +981,10 @@ class LocationService {
     locationId: string,
     quantity: number,
     reason: string
-  ): Promise<void>
+  ): Promise<void>;
 
   // Get default location for warehouse
-  async getDefaultLocation(warehouseId: string): Promise<WarehouseLocation>
+  async getDefaultLocation(warehouseId: string): Promise<WarehouseLocation>;
 
   // Move stock between locations
   async moveStock(
@@ -958,7 +992,7 @@ class LocationService {
     fromLocationId: string,
     toLocationId: string,
     quantity: number
-  ): Promise<void>
+  ): Promise<void>;
 }
 ```
 
@@ -979,7 +1013,7 @@ class LocationService {
 ### Workflow 2: Stock Adjustment (Physical Count)
 
 1. User navigates to Stock Adjustments
-2. Creates a new adjustment in the current business unit; the assigned warehouse is shown but cannot be changed
+2. Selects an active warehouse in the current business unit before adding lines
 3. Adds lines by selecting an item and the exact batch-location row being counted, or enters a new batch code when no initial batch-location exists
 4. Enters the adjustment quantity
 5. System calculates the new batch quantity and variance
@@ -990,19 +1024,22 @@ class LocationService {
 10. Updates item_warehouse, item_batches, and item_batch_locations balances
 11. Adjustment marked as posted
 
-### Workflow 3: Inter-Warehouse Transfer
+### Workflow 3: Business-Unit Stock Fulfillment
 
-1. User creates stock transfer
-2. Selects from/to warehouses
-3. Adds items with quantities
-4. Submits transfer (status: draft)
-5. Transfer dispatched (status: in_transit)
-6. Receiving warehouse confirms receipt
-7. System creates stock transactions:
-   - Negative transaction at from_warehouse
-   - Positive transaction at to_warehouse
-8. Stock levels updated at both warehouses
-9. Transfer marked as completed
+1. A user creates a stock request from the current business unit and selects a different fulfilling
+   business unit.
+2. The user adds items and quantities, optionally constrains a line to one eligible batch, then
+   submits the request for approval.
+3. A user on the fulfilling side approves the request.
+4. The system checks inventory across all active warehouses in the fulfilling business unit.
+5. The system allocates unconstrained lines by FIFO and routes batch-constrained lines only through
+   the selected batch's warehouse and racks, creating one delivery note and pick list per source
+   warehouse.
+6. Each source warehouse picks and dispatches its delivery note.
+7. The delivery-note detail identifies the source and destination business units. At receiving
+   start, the receiver selects an active destination warehouse in the destination business unit.
+8. Receiving posts inventory to the selected destination warehouse.
+9. The stock-request status is reconciled atomically from its linked delivery notes.
 
 ### Workflow 4: Reorder Alert Response
 
@@ -1023,27 +1060,35 @@ class LocationService {
 ### Key Components
 
 #### ItemList
+
 **Location**: `src/components/inventory/ItemList.tsx`
+
 - Displays paginated item table
 - Search and filter by category
 - Actions: Create, Edit, View, Delete
 
 #### ItemForm
+
 **Location**: `src/components/inventory/ItemForm.tsx`
+
 - Create/edit item form
 - Unit options management
 - Image upload
 - Validation via Zod schema
 
 #### WarehouseInventory
+
 **Location**: `src/components/inventory/WarehouseInventory.tsx`
+
 - Shows all items in warehouse
 - Displays on hand, reserved, available
 - Location-level drill-down
 - Stock valuation summary
 
 #### StockAdjustmentForm
+
 **Location**: `src/components/stock-adjustments/StockAdjustmentFormDialog.tsx`
+
 - Create stock adjustment
 - Add adjustment lines using an existing batch-location or a new batch code at the selected location
 - View adjustment header and line-item details from the stock adjustments list
@@ -1052,14 +1097,18 @@ class LocationService {
 - Post adjustment workflow
 
 #### StockTransferForm
+
 **Location**: `src/components/inventory/StockTransferForm.tsx`
+
 - Create transfer between warehouses
 - Select from/to locations
 - Validate available stock
 - Submit and track transfer
 
 #### ReorderAlerts
+
 **Location**: `src/components/inventory/ReorderAlerts.tsx`
+
 - Display items below effective reorder point using company-wide available stock
 - Display active and acknowledged reorder alerts separately
 - Create stock requisition from selected alerts
@@ -1069,6 +1118,7 @@ class LocationService {
 ## Reports
 
 ### Stock Valuation Report
+
 **Location**: `/api/reports/stock-valuation`
 
 Shows total inventory value by warehouse using the configured default pricing tier for item valuation, with sales price and purchase price fallback.
@@ -1076,6 +1126,7 @@ Shows total inventory value by warehouse using the configured default pricing ti
 Requests that would aggregate more than 5,000 source rows are rejected so the report does not perform unbounded database and application work. Narrow the warehouse, item, or category filters before regenerating the report.
 
 ### Stock Aging Report
+
 **Location**: `/api/reports/stock-aging`
 
 Shows how long inventory has been in stock, categorized by age buckets (0-30, 31-60, 61-90, 90+ days).
@@ -1083,6 +1134,7 @@ Shows how long inventory has been in stock, categorized by age buckets (0-30, 31
 The report applies business-unit scope and rejects requests that would aggregate more than 5,000 source rows. Narrow age bucket, category, or search filters before regenerating the report.
 
 ### Stock Movement Report
+
 **Location**: `/api/reports/stock-movement`
 
 Shows all stock transactions for a date range, grouped by item/warehouse.
@@ -1090,33 +1142,41 @@ Shows all stock transactions for a date range, grouped by item/warehouse.
 The report rejects current or comparison periods above 5,000 source transaction rows. Narrow the date range, warehouse, or item filters before regenerating the report.
 
 ### Inventory Report
+
 **Location**: `/api/reports/inventory`
 
-Current stock levels across all warehouses with location details.
+Current stock levels across all active warehouses in the current business unit by default, with an
+optional warehouse filter and location details.
 
 Normal list calls are capped at 50 rows per page. PDF preview uses `exportMode=pdf` and can include up to 500 matching rows in one preview request.
 
 ## Troubleshooting
 
 ### Issue: Stock Discrepancies
+
 **Symptoms**: Stock levels don't match physical count
 **Solution**:
+
 1. Run inventory report for warehouse
 2. Compare with physical count
 3. Create stock adjustment with reason "count"
 4. Post adjustment to reconcile
 
 ### Issue: Negative Stock
+
 **Symptoms**: Available stock shows negative
 **Solution**:
+
 1. Check for excessive reservations
 2. Review recent transactions
 3. Verify sales orders aren't over-allocated
 4. Adjust stock if needed
 
 ### Issue: Unit Conversion Errors
+
 **Symptoms**: Quantities don't calculate correctly
 **Solution**:
+
 1. Verify conversion factors in item_unit_options
 2. Ensure base unit is correctly marked
 3. Check that transactions use correct unit_id

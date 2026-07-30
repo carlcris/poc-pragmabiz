@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Plus, Printer, MapPin, Package } from "lucide-react";
+import { Plus, Printer, Package } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,15 +24,7 @@ import {
 } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { GRN, GRNItem, GRNBox } from "@/types/grn";
-import type { WarehouseLocation } from "@/types/inventory-location";
 import { printBarcodeLabels, type BarcodeData } from "@/lib/barcode";
 
 interface BoxManagementSectionProps {
@@ -46,12 +38,9 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<GRNItem | null>(null);
   const [numBoxes, setNumBoxes] = useState(1);
-  const [locationId, setLocationId] = useState<string | undefined>(undefined);
   const [boxes, setBoxes] = useState<GRNBox[]>([]);
-  const [locations, setLocations] = useState<WarehouseLocation[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
-  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
 
   const fetchBoxes = useCallback(async (): Promise<GRNBox[]> => {
     try {
@@ -71,29 +60,6 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
     fetchBoxes();
   }, [fetchBoxes]);
 
-  const fetchLocations = useCallback(async () => {
-    if (!grn.warehouseId) return;
-
-    try {
-      setIsLoadingLocations(true);
-      const response = await fetch(`/api/warehouses/${grn.warehouseId}/locations`);
-      if (!response.ok) throw new Error(t("loadLocationsError"));
-      const data = await response.json();
-      setLocations(data.data || []);
-    } catch (error) {
-      console.error("Error fetching locations:", error);
-      toast.error(t("loadLocationsError"));
-    } finally {
-      setIsLoadingLocations(false);
-    }
-  }, [grn.warehouseId, t]);
-
-  useEffect(() => {
-    if (generateDialogOpen) {
-      fetchLocations();
-    }
-  }, [generateDialogOpen, fetchLocations]);
-
   const handleOpenDialog = (item: GRNItem) => {
     setSelectedItem(item);
     setNumBoxes(item.numBoxes || 1);
@@ -112,7 +78,6 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
         body: JSON.stringify({
           grnItemId: selectedItem.id,
           numBoxes,
-          warehouseLocationId: locationId || null,
         }),
       });
 
@@ -149,19 +114,15 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
         return {
           boxId: box.id,
           itemId: box.itemId,
-          batchLocationSku: box.batchLocationSku || null,
           batchNumber: grn.batchNumber || "",
           grnNumber: grn.grnNumber,
           itemCode: item?.item?.code || "",
           itemName: item?.item?.name || "",
           boxNumber: box.boxNumber,
           qtyPerBox: box.qtyPerBox,
-          deliveryDate: box.deliveryDate,
+          deliveryDate: box.deliveryDate || "",
           containerNumber: box.containerNumber,
           sealNumber: box.sealNumber,
-          warehouseCode: grn.warehouse?.code,
-          locationId: box.warehouseLocationId ?? null,
-          locationCode: box.warehouseLocation?.code,
         };
       });
 
@@ -258,7 +219,6 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
                           <TableHead className="w-24">{t("boxNumber")}</TableHead>
                           <TableHead>{t("barcode")}</TableHead>
                           <TableHead className="text-right">{t("qty")}</TableHead>
-                          <TableHead>{t("location")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -267,27 +227,6 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
                             <TableCell className="font-medium">#{box.boxNumber}</TableCell>
                             <TableCell className="font-mono text-xs">{box.barcode}</TableCell>
                             <TableCell className="text-right">{box.qtyPerBox}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {box.warehouseLocation ? (
-                                  <>
-                                    <MapPin className="h-3 w-3 text-green-600" />
-                                    <span className="text-sm">
-                                      {box.warehouseLocation.code} - {box.warehouseLocation.name}
-                                    </span>
-                                  </>
-                                ) : (
-                                  <span className="text-sm text-muted-foreground">
-                                    {t("notAssigned")}
-                                  </span>
-                                )}
-                              </div>
-                              {box.batchLocationSku ? (
-                                <div className="mt-1 font-mono text-xs text-muted-foreground">
-                                  {box.batchLocationSku}
-                                </div>
-                              ) : null}
-                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -328,45 +267,12 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
                 {t("qtyPerBox", {
                   count: selectedItem
                     ? (
-                        ((selectedItem.receivedQty || 0) *
-                          selectedItem.qtyPerUnit) /
+                        ((selectedItem.receivedQty || 0) * selectedItem.qtyPerUnit) /
                         numBoxes
                       ).toFixed(2)
                     : 0,
                 })}
               </p>
-            </div>
-            <div>
-              <Label htmlFor="location">{t("warehouseLocationOptional")}</Label>
-              <Select
-                value={locationId}
-                onValueChange={(value) => setLocationId(value === "none" ? undefined : value)}
-                disabled={isLoadingLocations}
-              >
-                <SelectTrigger id="location">
-                  <SelectValue
-                    placeholder={
-                      isLoadingLocations ? t("loadingLocations") : t("assignLocationLater")
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t("noLocation")}</SelectItem>
-                  {locations
-                    .filter((loc) => loc.isActive && loc.isStorable)
-                    .map((loc) => (
-                      <SelectItem key={loc.id} value={loc.id}>
-                        {loc.code} - {loc.name || t("unnamed")}
-                      </SelectItem>
-                    ))}
-                  {locations.length === 0 && !isLoadingLocations && (
-                    <SelectItem value="no-locations" disabled>
-                      {t("noLocationsAvailable")}
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              <p className="mt-1 text-sm text-muted-foreground">{t("assignLaterDescription")}</p>
             </div>
           </div>
           <DialogFooter>

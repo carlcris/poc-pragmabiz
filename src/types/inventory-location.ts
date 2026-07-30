@@ -21,8 +21,6 @@ export type ItemLocation = {
   qtyReserved: number;
   qtyAvailable: number;
   maxQuantity?: number | null;
-  inTransit?: number;
-  estimatedArrivalDate?: string | null;
   isDefault?: boolean;
   defaultLocationId?: string | null;
   batches?: ItemLocationBatch[];

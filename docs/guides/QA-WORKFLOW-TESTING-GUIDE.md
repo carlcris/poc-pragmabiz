@@ -257,7 +257,12 @@ These are the records everything else in the app is built on. Before testing any
 
 **Business unit note**: a warehouse is created under whichever business unit/branch is currently active for the user creating it, and **this cannot be changed afterward** — there's no field anywhere to move a warehouse to a different business unit once it exists. If you need a warehouse under a different business unit for testing, you must switch your active business unit _before_ creating it.
 
-**Automatic setup**: every new warehouse automatically gets one default storage location called "Main" — a general-purpose bin marked as active, pickable, and storable. Any stock movement that doesn't specify an exact shelf/location lands here by default. You don't create this yourself; it's there the moment the warehouse is.
+A business unit can own multiple warehouses. The business unit remains the active application and
+permission context; warehouse selection only identifies the inventory location. Create at least two
+active warehouses under one business unit when testing aggregation and warehouse-specific
+workflows.
+
+**Automatic setup**: every new warehouse automatically gets one default storage location called "Main" — a general-purpose rack marked as active, pickable, and storable. Any stock movement that doesn't specify an exact shelf/location lands here by default. You don't create this yourself; it's there the moment the warehouse is.
 
 **What must already exist first**: you must have an active business unit context selected (the app will refuse to create a warehouse otherwise).
 
@@ -271,6 +276,8 @@ These are the records everything else in the app is built on. Before testing any
 
 - Create stock in a warehouse (receive something into it), then delete the warehouse, and check whether stock reports/item detail pages still behave sensibly afterward.
 - Confirm a warehouse created while Business Unit A is active cannot later be reassigned to Business Unit B.
+- With two warehouses in Business Unit A, confirm item lists and inventory reports show their combined stock when no warehouse filter is selected.
+- Confirm warehouse-specific screens require a warehouse and never silently choose the first warehouse.
 - Confirm the automatic "Main" location exists immediately after creating a new warehouse, without any extra setup step.
 
 ---
@@ -293,6 +300,8 @@ These are the records everything else in the app is built on. Before testing any
 - **Pickable does not currently do anything.** Despite the name and despite it being a real switch on the location form, the actual picking logic used by Pick Lists does not check this flag at all — a location marked "not pickable" is still fully usable as a picking source today. This is a confirmed defect, not a hedge: mark a location not-pickable and it will still be offered and usable in a real Pick List. Report it as a bug if you confirm the same in your test environment; don't treat "not pickable" as meaning what it sounds like it means.
 
 **What must already exist first**: the warehouse it belongs to.
+
+**Seeded multi-rack scenario**: when imported opening-balance items are available, the first eligible existing whole-quantity `STICK` item in Warehouse B (`WHB-002`) is distributed across Rack A–D while preserving its original total. Rack A receives the whole-unit floor of 40% and remains the preferred rack, Rack B receives the floor of 30%, Rack C receives the floor of 20%, and Rack D receives the remaining whole sticks.
 
 **Edit / deactivate / delete behavior**:
 
@@ -446,13 +455,22 @@ These are the records everything else in the app is built on. Before testing any
 
 ## 12. Stock Requests
 
-**What it's for**: requesting stock be moved from one warehouse or branch to another, internally — this is not a customer sale.
+**What it's for**: requesting stock from another business unit. Warehouses are inventory locations
+chosen internally during fulfillment and receiving; this is not a customer sale.
 
 > Naming note: this is different from "Stock Requisitions" (section 17b), which is a request to purchase from a supplier. Don't mix them up when writing tickets.
 
 **How a record starts**: click **New** on the Stock Requests list page, or use **New stock request**
 from the desktop quick-action rail. Both paths open the same creation form. Fill in the item(s),
-quantities, source warehouse, and destination.
+quantities, and fulfilling business unit.
+
+The current business unit is the requesting side. Select a different active business unit as the
+fulfilling side; the request does not ask the user to select either warehouse. A request line
+defaults to automatic FIFO allocation, or the user can optionally search for and require a specific
+batch in the fulfilling business unit. The batch search loads only the first five server-filtered
+matches and shows their warehouse, racks, and availability in the selected request unit. Both
+business-unit choices are fixed once the draft is created, and saving a draft header plus lines is
+atomic.
 
 **Stages**: Draft → Submitted → Approved → Picking → Picked → Delivered → Received → Completed, or Cancelled / Rejected along the way.
 
@@ -460,20 +478,45 @@ quantities, source warehouse, and destination.
 
 1. **Create** → status Draft. Nothing has moved yet; freely editable.
 2. **Submit** → status Submitted. Locks the request for editing and sends it for approval.
-3. **Approve** (done by someone at the _fulfilling_ warehouse/branch) → status Approved. This is the point where the request becomes actionable.
+3. **Approve** (done by someone in the _fulfilling_ business unit) → status Approved. This is the point where the request becomes actionable.
    - **Reject** is the alternative to Approve at this stage — sends it back, does not delete it.
 4. From here, the actual picking and delivery happen through a linked **Delivery Note** (section 13) and **Pick List** (section 14) — not through buttons on the Stock Request itself. The status shown on the Stock Request is a read-out of how far the linked delivery has progressed, not something you click through directly.
-5. **Complete** → status Completed, once the linked delivery has been received.
+5. **Complete** → status Completed automatically once all linked deliveries have been received.
 6. **Cancel** is available any time before Completed.
 
-**Who can do it**: users with edit access to Stock Requests; Approve additionally requires the approving user to belong to the _fulfilling_ warehouse/branch (a user at the _requesting_ side cannot approve their own request).
+**Who can do it**: the requesting business unit can create, edit, submit, and cancel its requests.
+The fulfilling business unit can view submitted requests and approve or reject them. Receiving also
+requires the granular delivery-note receiving capability.
 
 **Things to test**:
 
-- **Completing a Stock Request does not move any inventory.** Test that stock quantities are unaffected by clicking Complete — this action currently only changes the status. If your test expects Complete to actually deduct/transfer stock, that's a documented gap, not something you're missing.
+- Confirm the form selects only a fulfilling business unit and does not expose source or destination
+  warehouse selectors.
+- Open a line's optional batch selector and confirm it initially loads no more than five eligible
+  results. Search by batch, warehouse, and rack text and confirm filtering happens against the
+  fulfilling business unit. Confirm each option identifies its source warehouse and displays the
+  available quantity in the item's base unit.
+- Change the request unit and confirm the available batch results and current batch selection do not
+  change. Confirm the insufficiency error appears or clears based on requested quantity multiplied
+  by the selected unit's base-unit conversion.
+- Leave the batch on automatic, allocate more than one warehouse can supply, and confirm normal FIFO
+  splitting across warehouses remains available.
+- Select a batch stored across multiple racks, create the delivery note and pick list, and confirm
+  the delivery note uses that batch's warehouse while every suggested pick rack belongs to the
+  selected batch.
+- Reduce the selected batch below the requested quantity before fulfillment and confirm creation
+  fails without falling back to another batch or leaving a partial delivery note/reservation.
+- Force a line validation error while updating a draft and confirm the previous header and all
+  previous lines remain unchanged.
 - Confirm a user at the requesting side cannot see or click Approve/Reject.
+- Confirm a fulfilling-side user cannot see the request while it is Draft, but can see it after
+  submission.
 - Confirm the status shown on the Stock Request updates correctly as the linked pick list moves through its own stages (in progress, paused, done).
-- There is a "pick" screen reachable from this module that is a placeholder with sample data and does not actually do anything — do not use it as the real picking flow (that's section 14, Pick Lists).
+- Seed stock for one item in at least two warehouses in the fulfilling business unit, allocate more
+  than the first warehouse can supply, and confirm the system creates one delivery note and pick
+  list per source warehouse.
+- Force an insufficient-stock allocation after one warehouse could have supplied part of the
+  quantity and confirm no delivery notes or partial reservations remain.
 
 ---
 
@@ -481,19 +524,24 @@ quantities, source warehouse, and destination.
 
 **What it's for**: the actual dispatch-and-receive workflow — physically moving goods out of one warehouse and into another warehouse or to a customer.
 
-**How a record starts**: on the Delivery Notes list, click **New**, then select one or more _approved_ Stock Requests to bundle into it.
+**How a record starts**: on the Delivery Notes list, click **New**, then select approved Stock Request
+lines. The system allocates across active warehouses in the fulfilling business unit and may create
+multiple warehouse-specific delivery notes from one action.
 
 **Stages**: Draft → Confirmed → Queued for Picking → Picking in Progress → Dispatch Ready → Dispatched → Received, or Voided.
 
 **Step-by-step workflow**:
 
-1. **Create** from approved Stock Requests → status Draft.
+1. **Create** from approved Stock Requests → one Draft delivery note per allocated source warehouse.
 2. **Confirm** → status Confirmed. Locks the item list.
 3. **Queue Picking** → opens a dialog to assign one or more pickers; this creates a linked Pick List (section 14) and the status becomes Queued for Picking, then Picking in Progress once picking actually starts.
 4. Once the pick list is fully picked and marked done, the delivery automatically becomes Dispatch Ready — there is no separate button for this.
 5. **Confirm Dispatch** → opens a dialog to capture driver name, signature, helper name, plate number, and delivery time. Status becomes Dispatched. This is the point of no return for most edits.
 6. **Receiving** — depends on how the delivery is set up:
-   - **Warehouse-to-warehouse transfer**: on the _receiving_ side, a user (usually on a tablet) clicks **Start Receiving**, then scans each box as it arrives, then clicks **Submit Receiving**. If what's scanned doesn't match what was dispatched (short, over, or damaged), the app requires the user to explicitly acknowledge the discrepancy before it lets them submit.
+   - **Business-unit stock fulfillment**: on the receiving side, a user selects an active destination
+     warehouse in the requesting business unit when clicking **Start Receiving**, scans each box,
+     then clicks **Submit Receiving**. If scanned quantities differ from dispatched quantities, the
+     app requires explicit discrepancy acknowledgement before submission.
    - **Customer pickup at the warehouse**: instead of scan-based receiving, there's a direct "confirm the customer picked this up" action — no destination-inventory receipt is posted, because the goods left the warehouse directly into the customer's hands.
 7. **Void** — available any time before Dispatched. This is a hard stop; it will refuse if anything has already been dispatched.
 8. **Add Items** — even after a delivery is Dispatched, more line items can still be added to it (useful for topping up a delivery in flight). Worth testing as a deliberate edge case.
@@ -502,8 +550,24 @@ quantities, source warehouse, and destination.
 
 **Things to test**:
 
+- Confirm the cashier must select a warehouse before searching for items, and that the selector is
+  locked while the cart contains lines.
+- Switch between two warehouses in the same business unit with an empty cart and confirm item
+  availability reflects only the selected location.
 - Try to dispatch more than what was actually picked — should be blocked.
 - Confirm a user cannot Start Receiving on a delivery that isn't Dispatched yet.
+- Confirm the delivery-note detail shows the fulfilling business unit as the source business unit
+  and the requesting business unit as the destination business unit, without displaying either
+  warehouse.
+- Confirm Start Receiving requires a destination warehouse from the requesting business unit and
+  rejects a warehouse from any other business unit.
+- Confirm the mobile scan and submit controls remain unavailable until Start Receiving succeeds,
+  then verify a user in the requesting business unit can scan without a false receiving-unit 403.
+- Confirm the mobile app automatically selects the receiving warehouse when only one active
+  warehouse is available, hides the redundant warehouse field, and enables Start Receiving without
+  an extra selection tap.
+- Confirm the acknowledgement warning is absent at `0 / expected` and appears only after receiving
+  has started and at least one recorded quantity produces a current shortage or overage.
 - Test the discrepancy path deliberately: receive fewer (or more, or damaged) units than dispatched and confirm the app requires an acknowledgement/reason before letting the submit go through.
 - Cancelling the linked pick list _before_ dispatch should roll the delivery's status back down to Confirmed — test this reversal explicitly.
 - Test both receiving paths (scan-based vs. customer-pickup) since they behave very differently.
@@ -616,21 +680,23 @@ For each line, choose either **Existing Batch** or **Create New Batch**. Creatin
 
 **Step-by-step workflow**:
 
-1. **Create** → status Draft.
+1. **Create** → status Draft. Select the destination business unit; there is no warehouse field.
 2. **Confirm** → status Confirmed.
 3. **Link Stock Requisitions** (optional) — attaches one or more purchasing requisitions (section 17b) to this shipment's line items, marking those requisitions as fully or partially fulfilled.
 4. **Mark In Transit** → status In Transit. Captures an estimated arrival date and carrier name.
-5. **Mark Arrived** → status Arrived. **This is the key trigger: it automatically creates the linked Goods Receipt Note** (section 18) — you never manually create one from scratch. The confirmation will show the new receipt's number.
-   - **Reverse Arrival** is available immediately after, to undo an accidental click — puts it back to In Transit.
+5. In the destination business-unit context, **Mark Arrived** → status Arrived. **This is the key trigger: it automatically creates the linked Goods Receipt Note** (section 18) without assigning a warehouse — you never manually create one from scratch. The confirmation will show the new receipt's number.
+   - **Reverse Arrival** is available to the destination business unit immediately after, to undo an accidental click — puts it back to In Transit.
 6. From here, Receiving and Pending Approval are driven entirely by progress on the linked Goods Receipt Note, not by any button on the Load List itself.
 7. **Received** can only happen by confirming the linked Goods Receipt Note — trying to set a Load List straight to Received from this screen is explicitly refused with a message pointing you to the receipt.
-8. **Cancel** — only available up through In Transit. Once Arrived or later, it must be reversed step-by-step first; the app will explain this if you try. Cancelling correctly rolls back any "in transit" stock quantity that had been reserved.
+8. **Cancel** — only available to the source business unit up through In Transit. Once Arrived or later, the destination business unit must reverse arrival first; no warehouse inventory has been assigned before receiving starts.
 
 **Who can do it**: edit access to Load Lists; Mark In Transit and Mark Arrived each require their own separate, more specific permission on top of that.
 
 **Things to test**:
 
 - Confirm Mark Arrived actually creates a receipt and that its number matches what appears in the receipts list.
+- Create a Load List for a business unit with multiple warehouses and confirm creation asks only for the destination business unit.
+- Confirm the destination business unit can see the inbound Load List while an unrelated business unit cannot.
 - Try to cancel an Arrived Load List directly — should be refused with guidance to reverse first.
 - Test Reverse Arrival and confirm it doesn't leave a duplicate/orphaned receipt behind.
 - Confirm a user with base Load List edit access but _not_ the Mark Arrived permission cannot see/click that button.
@@ -674,10 +740,10 @@ requisition** from the desktop quick-action rail. Both paths open the same creat
 **Step-by-step workflow**:
 
 1. Created automatically in Draft when its Load List arrives.
-2. **Start Receiving** → status Receiving. Requires the linked Load List to actually be Arrived.
+2. In the destination business unit, select **Start Receiving** → status Receiving. No warehouse is selected or assigned during receiving. Starting is blocked when the acting business unit is not the destination business unit or the linked Load List is not Arrived.
 3. While receiving, **Save Changes** lets you record received/damaged quantities and box counts as you go, without changing status — useful for a long receiving session done in stages.
 4. Receiving can be **paused** and resumed later without losing progress. Pausing changes only the GRN to Paused; its Load List remains Receiving.
-5. **Submit for Approval** → status Pending Approval. On mobile, Submit also saves any unsaved line changes in the same transaction; a submission failure must leave those edits unsaved and must not leave stock or putaway records behind. Submit requires at least one item to actually have a received quantity greater than zero. This is the point where received stock is staged into **Putaway** (section 19) — it counts as on-hand but isn't sellable/pickable yet.
+5. **Submit for Approval** → status Pending Approval. On mobile, Submit also saves any unsaved line changes in the same transaction; a submission failure must leave those edits unsaved and must not leave stock or putaway records behind. Submit requires at least one item to actually have a received quantity greater than zero. This is the point where received stock is staged at business-unit level into **Putaway** (section 19); it does not count in any warehouse until putaway is posted.
 6. **Confirm** → status Approved. Notifies whoever created the Load List that it's been received.
 7. Damaged items reported during receiving have their own small lifecycle (reported → being processed → resolved) tracked separately.
 
@@ -686,9 +752,10 @@ requisition** from the desktop quick-action rail. Both paths open the same creat
 **Things to test**:
 
 - Confirm Start Receiving is blocked if the Load List isn't actually Arrived yet.
+- Confirm Start Receiving accepts no warehouse input, succeeds only in the destination business unit, and does not change warehouse-level stock.
 - Try to Submit for Approval with every line at zero received quantity — should be refused.
 - On mobile, change a line without tapping Save and then Submit; confirm the line and submission commit together. Repeat with a forced submission failure and confirm neither the line change nor any stock/putaway write is committed.
-- After Submit, confirm the received quantity shows up in on-hand stock but **not** in available/sellable stock, until Putaway (section 19) is completed for it.
+- After Submit, confirm the received quantity appears as a business-unit-level Putaway task but does **not** appear in any warehouse's on-hand or available stock until Putaway (section 19) is completed.
 - Test with a user who has, say, Start and Save permissions but not Confirm — confirm the Confirm button/action is genuinely unavailable to them, not just hidden but still triggerable another way.
 - Report a damaged item during receiving and follow it through its own lifecycle.
 - Mobile: use the mobile receiving screens for the same shipment and confirm behavior matches the web version (Start Receiving → enter received/damaged quantities → Save/Submit).
@@ -714,7 +781,7 @@ requisition** from the desktop quick-action rail. Both paths open the same creat
 
 **Things to test**:
 
-- Confirm stock that's sitting in Putaway (not yet posted) shows up in on-hand totals but is genuinely excluded from available-to-sell/available-to-pick stock everywhere this is shown (item detail, inventory reports, reorder calculations) — this is called out as not fully verified yet, so it's a good area to spend extra time on.
+- Confirm warehouse-bound production stock sitting in Putaway shows in that warehouse's on-hand total but remains excluded from available stock. Confirm supplier GRN stock remains business-unit staged and absent from every warehouse total until the operator selects a warehouse and rack and posts the Putaway task.
 - Post a task partially, confirm the remaining quantity is correct and the task stays open, then post the remainder and confirm it completes.
 - Try to post more than the pending quantity — should be refused.
 - For a receiving-sourced task, check whether a batch code is pre-filled/suggested from the receiving batch, and confirm the destination _location_ can still be freely chosen regardless.

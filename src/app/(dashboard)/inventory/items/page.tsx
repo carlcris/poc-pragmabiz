@@ -24,7 +24,6 @@ import {
   useItemsStats,
   type ItemsWithStockResponse,
 } from "@/hooks/useItems";
-import { useWarehouses } from "@/hooks/useWarehouses";
 import { useItemCategories } from "@/hooks/useItemCategories";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
@@ -55,6 +54,7 @@ import {
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { MetricCard } from "@/components/shared/MetricCard";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
 import { ItemImage } from "@/components/items/ItemImage";
@@ -82,6 +82,7 @@ function ItemsPageContent() {
   const [pageSize, setPageSize] = useState(10);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [warehouseFilter, setWarehouseFilter] = useState("");
   const [exportingFormat, setExportingFormat] = useState<ItemExportFormat | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<ItemWithStock | null>(null);
@@ -91,20 +92,8 @@ function ItemsPageContent() {
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
   const hasBusinessUnitHydrated = useBusinessUnitStore((state) => state.hasHydrated);
   const isBusinessUnitLoading = useBusinessUnitStore((state) => state.isLoading);
-  // Fetch warehouses to resolve the current BU's default warehouse scope.
-  const { data: warehousesData, isLoading: isWarehousesLoading } = useWarehouses({ limit: 50 });
-  const warehouses = useMemo(
-    () => warehousesData?.data?.filter((wh) => wh.isActive) || [],
-    [warehousesData?.data]
-  );
-  const currentBusinessUnitWarehouseId = useMemo(() => {
-    if (!currentBusinessUnit?.id) return undefined;
-    return warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit.id)?.id;
-  }, [currentBusinessUnit?.id, warehouses]);
-  const isBusinessUnitScopeReady = hasBusinessUnitHydrated && !isBusinessUnitLoading;
-  const isWarehouseScopeReady =
-    !currentBusinessUnit?.id || (!!currentBusinessUnitWarehouseId && !isWarehousesLoading);
-  const areItemQueriesEnabled = isBusinessUnitScopeReady && isWarehouseScopeReady;
+  const areItemQueriesEnabled =
+    hasBusinessUnitHydrated && !isBusinessUnitLoading && Boolean(currentBusinessUnit?.id);
 
   const itemsQueryParams = useMemo<{
     search: string;
@@ -121,7 +110,7 @@ function ItemsPageContent() {
       page,
       limit: pageSize,
       category: categoryFilter !== "all" ? categoryFilter : undefined,
-      warehouseId: currentBusinessUnitWarehouseId,
+      warehouseId: warehouseFilter || undefined,
       status:
         statusFilter !== "all"
           ? (statusFilter as "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued")
@@ -129,7 +118,7 @@ function ItemsPageContent() {
       includeStock: true,
       includeStats: false,
     }),
-    [search, page, pageSize, categoryFilter, currentBusinessUnitWarehouseId, statusFilter]
+    [search, page, pageSize, categoryFilter, warehouseFilter, statusFilter]
   );
 
   const { data, isLoading, isFetching, error } = useItems({
@@ -141,7 +130,7 @@ function ItemsPageContent() {
     isLoading: isStatsLoading,
     error: statsError,
   } = useItemsStats({
-    warehouseId: currentBusinessUnitWarehouseId,
+    warehouseId: warehouseFilter || undefined,
     includeStock: true,
     enabled: areItemQueriesEnabled,
   });
@@ -157,6 +146,11 @@ function ItemsPageContent() {
 
     return () => window.clearTimeout(timeoutId);
   }, [searchInput]);
+
+  useEffect(() => {
+    setWarehouseFilter("");
+    setPage(1);
+  }, [currentBusinessUnit?.id]);
 
   // Fetch categories for filter
   const { data: categoriesData } = useItemCategories();
@@ -304,7 +298,6 @@ function ItemsPageContent() {
     t("uom"),
     t("onHand"),
     t("allocated"),
-    t("inTransitQty"),
     t("putawayQty"),
     t("available"),
     tCommon("status"),
@@ -332,7 +325,6 @@ function ItemsPageContent() {
       item.uom || "",
       item.onHand,
       item.allocated,
-      item.inTransit,
       item.putawayQty,
       item.available,
       getStatusLabel(item.status),
@@ -489,9 +481,7 @@ function ItemsPageContent() {
                 className="w-full flex-shrink-0 sm:w-auto"
               >
                 <Download className="mr-2 h-4 w-4" />
-                <span className="sm:inline">
-                  {exportingFormat ? t("exporting") : t("export")}
-                </span>
+                <span className="sm:inline">{exportingFormat ? t("exporting") : t("export")}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -603,6 +593,19 @@ function ItemsPageContent() {
               ))}
             </SelectContent>
           </Select>
+          <WarehouseSelect
+            value={warehouseFilter}
+            onValueChange={(value) => {
+              setWarehouseFilter(value);
+              setPage(1);
+            }}
+            scope="current_business_unit"
+            allowAll
+            allOptionLabel={t("buInventory")}
+            showCodeInLabel={false}
+            disabled={!currentBusinessUnit?.id}
+            buttonClassName="w-full sm:w-56"
+          />
           <Select
             value={statusFilter}
             onValueChange={(value) => {
@@ -638,7 +641,6 @@ function ItemsPageContent() {
                     <TableHead>{t("category")}</TableHead>
                     <TableHead className="text-right">{t("onHand")}</TableHead>
                     <TableHead className="text-right">{t("allocated")}</TableHead>
-                    <TableHead className="text-right">{t("inTransitQty")}</TableHead>
                     <TableHead className="text-right">{t("putawayQty")}</TableHead>
                     <TableHead className="text-right">{t("available")}</TableHead>
                     <TableHead>{tCommon("status")}</TableHead>
@@ -659,9 +661,6 @@ function ItemsPageContent() {
                       </TableCell>
                       <TableCell>
                         <Skeleton className="h-4 w-28" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Skeleton className="ml-auto h-4 w-16" />
                       </TableCell>
                       <TableCell className="text-right">
                         <Skeleton className="ml-auto h-4 w-16" />
@@ -718,7 +717,6 @@ function ItemsPageContent() {
                     <TableHead>{t("category")}</TableHead>
                     <TableHead className="text-right">{t("onHand")}</TableHead>
                     <TableHead className="text-right">{t("allocated")}</TableHead>
-                    <TableHead className="text-right">{t("inTransitQty")}</TableHead>
                     <TableHead className="text-right">{t("putawayQty")}</TableHead>
                     <TableHead className="text-right">{t("available")}</TableHead>
                     <TableHead>{tCommon("status")}</TableHead>
@@ -762,9 +760,6 @@ function ItemsPageContent() {
                       </TableCell>
                       <TableCell className="text-right text-orange-600">
                         {Math.trunc(toNumber(item.allocated))}
-                      </TableCell>
-                      <TableCell className="text-right text-blue-600">
-                        {Math.trunc(toNumber(item.inTransit))}
                       </TableCell>
                       <TableCell className="text-right text-purple-600">
                         {Math.trunc(toNumber(item.putawayQty))}

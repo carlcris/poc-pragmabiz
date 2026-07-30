@@ -57,38 +57,7 @@ async function GETHandler(request: NextRequest) {
     if ("status" in context) return context;
     const { supabase, userId, companyId, currentBusinessUnitId } = context;
     const capabilities = await resolveLoadListCapabilities(userId, currentBusinessUnitId);
-    const warehouseId = searchParams.get("warehouseId");
     if (!currentBusinessUnitId) {
-      return NextResponse.json({
-        data: [],
-        capabilities,
-        pagination: {
-          total: 0,
-          page: 1,
-          limit: DEFAULT_PAGE_SIZE,
-          totalPages: 0,
-        },
-      });
-    }
-
-    const { data: businessUnitWarehouses, error: warehousesError } = await supabase
-      .from("warehouses")
-      .select("id")
-      .eq("company_id", companyId)
-      .eq("business_unit_id", currentBusinessUnitId)
-      .eq("is_active", true)
-      .is("deleted_at", null);
-
-    if (warehousesError) {
-      console.error("Error loading business-unit warehouses:", warehousesError);
-      return NextResponse.json({ error: "Failed to fetch load lists" }, { status: 500 });
-    }
-
-    const businessUnitWarehouseIds = (businessUnitWarehouses ?? []).map(
-      (warehouse) => warehouse.id
-    );
-
-    if (receivingOnly && (!warehouseId || !businessUnitWarehouseIds.includes(warehouseId))) {
       return NextResponse.json({
         data: [],
         capabilities,
@@ -111,8 +80,8 @@ async function GETHandler(request: NextRequest) {
         supplier_ll_number,
         company_id,
         business_unit_id,
+        destination_business_unit_id,
         supplier_id,
-        warehouse_id,
         container_number,
         seal_number,
         batch_number,
@@ -131,8 +100,8 @@ async function GETHandler(request: NextRequest) {
         created_at,
         updated_at,
         supplier:suppliers(id, supplier_name, supplier_code),
-        warehouse:warehouses(id, warehouse_name, warehouse_code, business_unit_id),
-        business_unit:business_units(id, name, code),
+        source_business_unit:business_units!load_lists_business_unit_id_fkey(id, name, code),
+        destination_business_unit:business_units!load_lists_destination_business_unit_id_fkey(id, name, code),
         created_by_user:users!load_lists_created_by_fkey(id, email, first_name, last_name),
         received_by_user:users!load_lists_received_by_fkey(id, email, first_name, last_name),
         approved_by_user:users!load_lists_approved_by_fkey(id, email, first_name, last_name),
@@ -147,15 +116,12 @@ async function GETHandler(request: NextRequest) {
       .eq("company_id", companyId)
       .is("deleted_at", null);
 
-    query =
-      businessUnitWarehouseIds.length > 0
-        ? query.or(
-            `business_unit_id.eq.${currentBusinessUnitId},warehouse_id.in.(${businessUnitWarehouseIds.join(",")})`
-          )
-        : query.eq("business_unit_id", currentBusinessUnitId);
+    query = query.or(
+      `business_unit_id.eq.${currentBusinessUnitId},destination_business_unit_id.eq.${currentBusinessUnitId}`
+    );
 
     if (receivingOnly) {
-      query = query.eq("warehouse_id", warehouseId);
+      query = query.eq("destination_business_unit_id", currentBusinessUnitId);
     }
 
     // Apply filters
@@ -171,13 +137,9 @@ async function GETHandler(request: NextRequest) {
       query = query.eq("supplier_id", supplierId);
     }
 
-    if (!receivingOnly && warehouseId) {
-      query = query.eq("warehouse_id", warehouseId);
-    }
-
-    const businessUnitId = searchParams.get("businessUnitId");
-    if (businessUnitId) {
-      query = query.eq("business_unit_id", businessUnitId);
+    const destinationBusinessUnitId = searchParams.get("destinationBusinessUnitId");
+    if (!receivingOnly && destinationBusinessUnitId) {
+      query = query.eq("destination_business_unit_id", destinationBusinessUnitId);
     }
 
     const search = searchParams.get("search");
@@ -219,11 +181,13 @@ async function GETHandler(request: NextRequest) {
 
     // Format response
     const formattedLoadLists = loadLists?.map((ll) => {
-      const businessUnit = Array.isArray(ll.business_unit)
-        ? ll.business_unit[0]
-        : (ll.business_unit ?? null);
+      const sourceBusinessUnit = Array.isArray(ll.source_business_unit)
+        ? ll.source_business_unit[0]
+        : (ll.source_business_unit ?? null);
+      const destinationBusinessUnit = Array.isArray(ll.destination_business_unit)
+        ? ll.destination_business_unit[0]
+        : (ll.destination_business_unit ?? null);
       const supplier = Array.isArray(ll.supplier) ? ll.supplier[0] : (ll.supplier ?? null);
-      const warehouse = Array.isArray(ll.warehouse) ? ll.warehouse[0] : (ll.warehouse ?? null);
       const createdByUser = Array.isArray(ll.created_by_user)
         ? ll.created_by_user[0]
         : (ll.created_by_user ?? null);
@@ -248,12 +212,20 @@ async function GETHandler(request: NextRequest) {
         llNumber: ll.ll_number,
         supplierLlNumber: ll.supplier_ll_number,
         companyId: ll.company_id,
-        businessUnitId: ll.business_unit_id,
-        businessUnit: businessUnit
+        sourceBusinessUnitId: ll.business_unit_id,
+        sourceBusinessUnit: sourceBusinessUnit
           ? {
-              id: businessUnit.id,
-              name: businessUnit.name,
-              code: businessUnit.code,
+              id: sourceBusinessUnit.id,
+              name: sourceBusinessUnit.name,
+              code: sourceBusinessUnit.code,
+            }
+          : null,
+        destinationBusinessUnitId: ll.destination_business_unit_id,
+        destinationBusinessUnit: destinationBusinessUnit
+          ? {
+              id: destinationBusinessUnit.id,
+              name: destinationBusinessUnit.name,
+              code: destinationBusinessUnit.code,
             }
           : null,
         supplierId: ll.supplier_id,
@@ -264,16 +236,8 @@ async function GETHandler(request: NextRequest) {
               code: supplier.supplier_code,
             }
           : null,
-        warehouseId: ll.warehouse_id,
-        warehouse: warehouse
-          ? {
-              id: warehouse.id,
-              name: warehouse.warehouse_name,
-              code: warehouse.warehouse_code,
-            }
-          : null,
         isSourceBusinessUnit: ll.business_unit_id === currentBusinessUnitId,
-        isTargetBusinessUnit: warehouse?.business_unit_id === currentBusinessUnitId,
+        isTargetBusinessUnit: ll.destination_business_unit_id === currentBusinessUnitId,
         containerNumber: ll.container_number,
         sealNumber: ll.seal_number,
         batchNumber: ll.batch_number,
@@ -355,8 +319,8 @@ async function POSTHandler(request: NextRequest) {
       return NextResponse.json({ error: "Supplier is required" }, { status: 400 });
     }
 
-    if (!body.warehouseId) {
-      return NextResponse.json({ error: "Warehouse is required" }, { status: 400 });
+    if (!body.destinationBusinessUnitId) {
+      return NextResponse.json({ error: "Destination business unit is required" }, { status: 400 });
     }
 
     if (!body.items || body.items.length === 0) {
@@ -391,59 +355,52 @@ async function POSTHandler(request: NextRequest) {
     const estimatedArrivalDate = normalizeOptionalDate(body.estimatedArrivalDate);
     const loadDate = normalizeOptionalDate(body.loadDate);
 
-    // Create load list
-    const { data: ll, error: llError } = await supabase
-      .from("load_lists")
-      .insert({
-        company_id: companyId,
-        business_unit_id: currentBusinessUnitId,
-        supplier_ll_number: body.supplierLlNumber,
-        supplier_id: body.supplierId,
-        warehouse_id: body.warehouseId,
-        container_number: body.containerNumber,
-        seal_number: body.sealNumber,
-        batch_number: body.batchNumber,
-        liner_name: body.linerName,
-        estimated_arrival_date: estimatedArrivalDate,
-        load_date: loadDate,
-        status: body.status || "draft",
-        currency,
-        notes: body.notes,
-        created_by: userId,
-        updated_by: userId,
-      })
-      .select("id, ll_number, status, currency")
-      .single();
-
-    if (llError) {
-      console.error("Error creating load list:", llError);
-      return NextResponse.json({ error: "Failed to create load list" }, { status: 500 });
-    }
-
-    // Create line items
-    const itemsToInsert = resolvedLineItems.map((item) => ({
-      load_list_id: ll.id,
+    const rpcItems = resolvedLineItems.map((item) => ({
       item_id: item.itemId,
       item_unit_option_id: item.item_unit_option_id,
-      uom_id: item.uom_id,
-      unit_name: item.unit_name,
-      qty_per_unit: item.qty_per_unit,
       load_list_qty: item.loadListQty,
       unit_price: Number(item.unitPrice),
-      received_qty: 0,
-      damaged_qty: 0,
-      notes: item.notes,
+      notes: item.notes ?? null,
     }));
 
-    const { error: itemsError } = await supabase.from("load_list_items").insert(itemsToInsert);
+    const { data: createdRows, error: createError } = await supabase.rpc("create_load_list", {
+      p_company_id: companyId,
+      p_source_business_unit_id: currentBusinessUnitId,
+      p_destination_business_unit_id: body.destinationBusinessUnitId,
+      p_user_id: userId,
+      p_supplier_id: body.supplierId,
+      p_supplier_ll_number: body.supplierLlNumber ?? null,
+      p_container_number: body.containerNumber ?? null,
+      p_seal_number: body.sealNumber ?? null,
+      p_batch_number: body.batchNumber ?? null,
+      p_liner_name: body.linerName ?? null,
+      p_estimated_arrival_date: estimatedArrivalDate,
+      p_load_date: loadDate,
+      p_currency: currency,
+      p_notes: body.notes ?? null,
+      p_items: rpcItems,
+    });
 
-    if (itemsError) {
-      console.error("Error creating load list items:", itemsError);
-      // Rollback: delete the created LL
-      await supabase.from("load_lists").delete().eq("id", ll.id);
-      return NextResponse.json({ error: "Failed to create load list items" }, { status: 500 });
+    if (createError) {
+      console.error("Error creating load list:", createError);
+      const safeMessages = new Set([
+        "Destination business unit not found",
+        "Source business unit not found",
+        "Supplier not found",
+        "Load list items must contain between 1 and 500 lines",
+        "Load list contains an invalid line",
+      ]);
+      const status = createError.message === "Unauthorized" ? 403 : 400;
+      const error = safeMessages.has(createError.message)
+        ? createError.message
+        : "Failed to create load list";
+      return NextResponse.json({ error }, { status });
     }
 
+    const ll = createdRows?.[0];
+    if (!ll) {
+      return NextResponse.json({ error: "Failed to create load list" }, { status: 500 });
+    }
     return NextResponse.json(
       {
         id: ll.id,

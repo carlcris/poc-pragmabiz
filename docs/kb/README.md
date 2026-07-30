@@ -314,7 +314,7 @@ Real-time workflow notifications and user alerts:
 - User-specific and group notifications
 - Notification metadata for contextual information
 - Integration with all major workflows
-- Pick lists, stock transfers, delivery notes
+- Pick lists, business-unit stock requests, delivery notes
 - Approval and status change notifications
 
 **Use this when**:

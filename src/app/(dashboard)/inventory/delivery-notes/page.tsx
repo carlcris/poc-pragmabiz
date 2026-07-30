@@ -26,15 +26,17 @@ import {
   useDeliveryNote,
   useDeliveryNotes,
   useDispatchDeliveryNote,
-  useReceiveDeliveryNote,
+  useStartReceivingDeliveryNote,
   useVoidDeliveryNote,
 } from "@/hooks/useDeliveryNotes";
 import { useCreatePickList } from "@/hooks/usePickLists";
 import { useStockRequests } from "@/hooks/useStockRequests";
 import { useUsers } from "@/hooks/useUsers";
 import { useWarehouses } from "@/hooks/useWarehouses";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
+import { getApiErrorCode } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -81,8 +83,9 @@ import type { CreatePickListPayload } from "@/types/pick-list";
 import type { Warehouse } from "@/types/warehouse";
 import { toProperCase } from "@/lib/string";
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 
-const getStatusBadge = (status: string, label: string) => {
+const getStatusText = (status: string, label: string) => {
   const baseClass = "text-xs font-medium";
 
   switch (status) {
@@ -131,19 +134,14 @@ const getStatusIcon = (status: string) => {
 };
 
 type DraftLine = {
-  srId: string;
   requestCode: string;
   srItemId: string;
-  itemId: string;
-  uomId: string;
   uomLabel: string;
   itemName: string;
   requestedQty: number;
   allocatableQty: number;
   allocatedQty: number;
-  requestingWarehouseId: string;
-  fulfillingWarehouseId: string;
-  sourceBuId: string;
+  requestingBusinessUnitId: string;
 };
 
 const resolveActivePickList = (deliveryNote: DeliveryNote): DeliveryNotePickListSummary | null => {
@@ -158,11 +156,14 @@ const resolveActivePickList = (deliveryNote: DeliveryNote): DeliveryNotePickList
 const getMutationErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
 
+const CREATE_DELIVERY_NOTE_ERROR_CODES = ["DELIVERY_NOTE_SELECTED_BATCH_INSUFFICIENT"] as const;
+
 export default function DeliveryNotesPage() {
   const router = useRouter();
   const t = useTranslations("deliveryNotesPage");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
   const [actionOpen, setActionOpen] = useState(false);
   const [actionType, setActionType] = useState<
@@ -178,26 +179,33 @@ export default function DeliveryNotesPage() {
   const [plateNumber, setPlateNumber] = useState("");
   const [dispatchNotes, setDispatchNotes] = useState("");
   const [printingDnId, setPrintingDnId] = useState<string | null>(null);
-  const [receiveNotes, setReceiveNotes] = useState("");
+  const [receivingWarehouseId, setReceivingWarehouseId] = useState("");
   const [voidReason, setVoidReason] = useState("");
-  const [selectedSourceBuId, setSelectedSourceBuId] = useState<string>("");
+  const [selectedRequestingBuId, setSelectedRequestingBuId] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [createFulfillmentMode, setCreateFulfillmentMode] =
     useState<DeliveryNoteFulfillmentMode>("transfer_to_store");
   const [draftLines, setDraftLines] = useState<DraftLine[]>([]);
   const [selectedLineIds, setSelectedLineIds] = useState<Set<string>>(new Set());
   const [createValidationError, setCreateValidationError] = useState<string>("");
-  const { data: deliveryNotesData, isLoading } = useDeliveryNotes();
+  const debouncedSearch = useDebouncedValue(search.trim(), 300);
+  const { data: deliveryNotesData, isLoading } = useDeliveryNotes({
+    status: statusFilter === "all" ? undefined : statusFilter,
+    search: debouncedSearch || undefined,
+    page,
+    limit: 50,
+  });
   const { data: stockRequestsData } = useStockRequests({ page: 1, limit: 50 });
   const { data: usersData } = useUsers();
   const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
   const { data: actionDn, isLoading: isLoadingActionDn } = useDeliveryNote(actionDnId);
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
+  const availableBusinessUnits = useBusinessUnitStore((state) => state.availableBusinessUnits);
   const createMutation = useCreateDeliveryNote();
   const createPickListMutation = useCreatePickList();
   const confirmMutation = useConfirmDeliveryNote();
   const dispatchMutation = useDispatchDeliveryNote();
-  const receiveMutation = useReceiveDeliveryNote();
+  const startReceivingMutation = useStartReceivingDeliveryNote();
   const voidMutation = useVoidDeliveryNote();
   const availabilitySrItemIds = useMemo(
     () => draftLines.map((line) => line.srItemId),
@@ -205,7 +213,7 @@ export default function DeliveryNotesPage() {
   );
   const allocationAvailability = useDeliveryNoteAllocationAvailability(
     availabilitySrItemIds,
-    createOpen && Boolean(selectedSourceBuId) && availabilitySrItemIds.length > 0
+    createOpen && Boolean(selectedRequestingBuId) && availabilitySrItemIds.length > 0
   );
   const availabilityBySrItemId = useMemo<Record<string, DeliveryNoteAllocationAvailability>>(
     () =>
@@ -215,7 +223,7 @@ export default function DeliveryNotesPage() {
     [allocationAvailability.data]
   );
   const isInventoryAvailabilityRequired =
-    createOpen && Boolean(selectedSourceBuId) && availabilitySrItemIds.length > 0;
+    createOpen && Boolean(selectedRequestingBuId) && availabilitySrItemIds.length > 0;
   const isLoadingInventory = isInventoryAvailabilityRequired && allocationAvailability.isFetching;
   const isInventoryAvailabilityComplete =
     !isInventoryAvailabilityRequired ||
@@ -244,29 +252,19 @@ export default function DeliveryNotesPage() {
     return map;
   }, [warehousesData?.data]);
 
-  // Client-side filtering
-  const allDeliveryNotes = useMemo(() => deliveryNotesData?.data || [], [deliveryNotesData?.data]);
+  const businessUnitLabelById = useMemo(
+    () =>
+      new Map(
+        availableBusinessUnits.map((businessUnit) => [
+          businessUnit.id,
+          `${businessUnit.code} - ${businessUnit.name}`,
+        ])
+      ),
+    [availableBusinessUnits]
+  );
 
-  const deliveryNotes = useMemo(() => {
-    let filtered = allDeliveryNotes;
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((dn) => dn.status === statusFilter);
-    }
-
-    // Apply search filter
-    if (search.trim()) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(
-        (dn) =>
-          dn.dn_no?.toLowerCase().includes(searchLower) ||
-          warehouseLabelById.get(dn.requesting_warehouse_id)?.toLowerCase().includes(searchLower) ||
-          warehouseLabelById.get(dn.fulfilling_warehouse_id)?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    return filtered;
-  }, [allDeliveryNotes, search, statusFilter, warehouseLabelById]);
+  const deliveryNotes = useMemo(() => deliveryNotesData?.data || [], [deliveryNotesData?.data]);
+  const deliveryNotesPagination = deliveryNotesData?.pagination;
 
   const stockRequests = useMemo(() => stockRequestsData?.data || [], [stockRequestsData?.data]);
 
@@ -301,16 +299,6 @@ export default function DeliveryNotesPage() {
     return pickerUsers.filter((user) => user.label.toLowerCase().includes(q));
   }, [pickerUsers, queuePickerSearch]);
 
-  const warehouseBusinessUnitById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const warehouse of warehousesData?.data || []) {
-      if (warehouse.businessUnitId) {
-        map.set(warehouse.id, warehouse.businessUnitId);
-      }
-    }
-    return map;
-  }, [warehousesData?.data]);
-
   const resolveWarehouseLabel = (warehouseId?: string | null) => {
     if (!warehouseId) return t("unknownWarehouse");
     return warehouseLabelById.get(warehouseId) || t("unknownWarehouse");
@@ -342,16 +330,14 @@ export default function DeliveryNotesPage() {
     [t]
   );
 
-  const canReceiveDn = (dn: Pick<DeliveryNote, "fulfilling_warehouse_id">) => {
+  const canReceiveDn = (dn: Pick<DeliveryNote, "requesting_business_unit_id">) => {
     if (!currentBusinessUnit?.id) return true;
-    const fulfillingWarehouseBuId = warehouseBusinessUnitById.get(dn.fulfilling_warehouse_id);
-    return fulfillingWarehouseBuId !== currentBusinessUnit.id;
+    return dn.requesting_business_unit_id === currentBusinessUnit.id;
   };
 
-  const canDispatchDn = (dn: Pick<DeliveryNote, "fulfilling_warehouse_id">) => {
+  const canDispatchDn = (dn: Pick<DeliveryNote, "fulfilling_business_unit_id">) => {
     if (!currentBusinessUnit?.id) return true;
-    const fulfillingWarehouseBuId = warehouseBusinessUnitById.get(dn.fulfilling_warehouse_id);
-    return fulfillingWarehouseBuId === currentBusinessUnit.id;
+    return dn.fulfilling_business_unit_id === currentBusinessUnit.id;
   };
 
   const formatWarehouseAddress = (warehouseId?: string | null) => {
@@ -384,10 +370,15 @@ export default function DeliveryNotesPage() {
       const blob = await pdf(
         <DeliveryNotePDFDocument
           deliveryNote={fullDn}
-          sourceLabel={resolveWarehouseLabel(fullDn.requesting_warehouse_id)}
-          sourceAddress={formatWarehouseAddress(fullDn.requesting_warehouse_id)}
-          destinationLabel={resolveWarehouseLabel(fullDn.fulfilling_warehouse_id)}
-          destinationAddress={formatWarehouseAddress(fullDn.fulfilling_warehouse_id)}
+          sourceLabel={resolveWarehouseLabel(fullDn.fulfilling_warehouse_id)}
+          sourceAddress={formatWarehouseAddress(fullDn.fulfilling_warehouse_id)}
+          destinationLabel={
+            fullDn.requesting_warehouse_id
+              ? resolveWarehouseLabel(fullDn.requesting_warehouse_id)
+              : businessUnitLabelById.get(fullDn.requesting_business_unit_id) ||
+                t("receivingWarehousePending")
+          }
+          destinationAddress={formatWarehouseAddress(fullDn.requesting_warehouse_id)}
           logoUrl={logoUrl}
         />
       ).toBlob();
@@ -501,42 +492,27 @@ export default function DeliveryNotesPage() {
 
   const selectableRequests = useMemo(() => {
     return stockRequests.filter(
-      (request) => !["draft", "cancelled", "completed", "fulfilled"].includes(request.status)
+      (request) =>
+        request.fulfilling_business_unit_id === currentBusinessUnit?.id &&
+        ["approved", "partially_allocated", "allocated"].includes(request.status)
     );
-  }, [stockRequests]);
+  }, [currentBusinessUnit?.id, stockRequests]);
 
-  const allocatedBySrItemId = useMemo(() => {
-    const totals = new Map<string, number>();
-
-    for (const dn of allDeliveryNotes) {
-      if (["voided", "dispatched", "received"].includes(dn.status)) continue;
-      for (const item of dn.delivery_note_items || []) {
-        const srItemId = item.sr_item_id;
-        if (!srItemId) continue;
-        totals.set(srItemId, (totals.get(srItemId) || 0) + Number(item.allocated_qty || 0));
-      }
-    }
-
-    return totals;
-  }, [allDeliveryNotes]);
-
-  const sourceBusinessUnits = useMemo(() => {
+  const requestingBusinessUnits = useMemo(() => {
     const map = new Map<string, string>();
     for (const request of selectableRequests) {
-      const sourceBuId =
-        request.requesting_warehouse?.businessUnitId || request.business_unit_id || "";
-      if (!sourceBuId) continue;
-      const label =
-        request.requesting_warehouse?.warehouse_name ||
-        request.requesting_warehouse?.warehouse_code ||
-        sourceBuId;
-      if (!map.has(sourceBuId)) map.set(sourceBuId, label);
+      const requestingBusinessUnitId = request.business_unit_id || "";
+      if (!requestingBusinessUnitId) continue;
+      const label = request.requesting_business_unit
+        ? `${request.requesting_business_unit.code} - ${request.requesting_business_unit.name}`
+        : businessUnitLabelById.get(requestingBusinessUnitId) || requestingBusinessUnitId;
+      if (!map.has(requestingBusinessUnitId)) map.set(requestingBusinessUnitId, label);
     }
     return Array.from(map.entries()).map(([id, label]) => ({ id, label }));
-  }, [selectableRequests]);
+  }, [businessUnitLabelById, selectableRequests]);
 
   const resetCreateState = () => {
-    setSelectedSourceBuId("");
+    setSelectedRequestingBuId("");
     setNotes("");
     setCreateFulfillmentMode("transfer_to_store");
     setDraftLines([]);
@@ -555,7 +531,7 @@ export default function DeliveryNotesPage() {
     setDeliveryTime("");
     setPlateNumber("");
     setDispatchNotes("");
-    setReceiveNotes("");
+    setReceivingWarehouseId("");
     setVoidReason("");
   };
 
@@ -569,34 +545,21 @@ export default function DeliveryNotesPage() {
     }
   };
 
-  const onSelectSourceBu = (buId: string) => {
-    setSelectedSourceBuId(buId);
+  const onSelectRequestingBu = (buId: string) => {
+    setSelectedRequestingBuId(buId);
     setSelectedLineIds(new Set());
     setCreateValidationError("");
 
     const lines = selectableRequests
-      .filter((request) => {
-        const sourceBuId =
-          request.requesting_warehouse?.businessUnitId || request.business_unit_id || "";
-        return sourceBuId === buId;
-      })
+      .filter((request) => request.business_unit_id === buId)
       .flatMap((request) =>
         (request.stock_request_items || [])
           .filter((item) => !!item.uom_id)
           .map((item) => {
             const requestedQty = Number(item.requested_qty || 0);
-            const dispatchedQty = Number(item.dispatch_qty || 0);
-            const alreadyAllocatedQty = allocatedBySrItemId.get(item.id) || 0;
-            const allocatableQty = Math.max(
-              0,
-              requestedQty - dispatchedQty - alreadyAllocatedQty
-            );
             return {
-              srId: request.id,
               requestCode: request.request_code,
               srItemId: item.id,
-              itemId: item.item_id,
-              uomId: item.uom_id,
               uomLabel:
                 item.item_unit_option?.displayLabel ||
                 item.units_of_measure?.code ||
@@ -604,15 +567,12 @@ export default function DeliveryNotesPage() {
                 "",
               itemName: item.items?.item_name || item.items?.item_code || item.item_id,
               requestedQty,
-              allocatableQty,
-              allocatedQty: allocatableQty,
-              requestingWarehouseId: request.requesting_warehouse_id,
-              fulfillingWarehouseId: request.fulfilling_warehouse_id || "",
-              sourceBuId:
-                request.requesting_warehouse?.businessUnitId || request.business_unit_id || "",
+              allocatableQty: requestedQty,
+              allocatedQty: requestedQty,
+              requestingBusinessUnitId: request.business_unit_id || "",
             } satisfies DraftLine;
           })
-          .filter((line) => line.allocatableQty > 0 && !!line.fulfillingWarehouseId)
+          .filter((line) => line.allocatableQty > 0 && !!line.requestingBusinessUnitId)
       );
 
     setDraftLines(lines);
@@ -625,11 +585,11 @@ export default function DeliveryNotesPage() {
 
   const getMaxAllowedQty = useCallback(
     (line: DraftLine) => {
-      const availableQty = getAvailableQty(line);
-      if (availableQty === undefined) return 0;
-      return Math.max(0, Math.min(line.allocatableQty, availableQty));
+      const availability = availabilityBySrItemId[line.srItemId];
+      if (!availability) return 0;
+      return Math.max(0, Math.min(availability.remainingRequestQty, availability.availableQty));
     },
-    [getAvailableQty]
+    [availabilityBySrItemId]
   );
 
   const updateAllocatedQty = (lineId: string, qty: number) => {
@@ -637,7 +597,10 @@ export default function DeliveryNotesPage() {
     setDraftLines((prev) =>
       prev.map((line) => {
         if (line.srItemId !== lineId) return line;
-        const safeQty = Math.max(0, Math.min(line.allocatableQty, Number.isFinite(qty) ? qty : 0));
+        const safeQty = Math.max(
+          0,
+          Math.min(getMaxAllowedQty(line), Number.isFinite(qty) ? qty : 0)
+        );
         return { ...line, allocatedQty: safeQty };
       })
     );
@@ -695,32 +658,25 @@ export default function DeliveryNotesPage() {
       return;
     }
 
-    const distinctSrIds = Array.from(new Set(lines.map((line) => line.srId)));
-    const requestingWarehouseId = lines[0]?.requestingWarehouseId;
-    const fulfillingWarehouseId = lines[0]?.fulfillingWarehouseId;
-    if (!requestingWarehouseId || !fulfillingWarehouseId) return;
-
     try {
-      await createMutation.mutateAsync({
-        requestingWarehouseId,
-        fulfillingWarehouseId,
+      const response = await createMutation.mutateAsync({
         fulfillmentMode: createFulfillmentMode,
-        srIds: distinctSrIds,
         notes: notes.trim() || undefined,
         items: lines.map((line) => ({
-          srId: line.srId,
           srItemId: line.srItemId,
-          itemId: line.itemId,
-          uomId: line.uomId,
           allocatedQty: line.allocatedQty,
         })),
       });
 
-      toast.success(t("createSuccess"));
+      toast.success(t("createSuccessCount", { count: response.data.length }));
       setCreateOpen(false);
       resetCreateState();
     } catch (error) {
-      const message = getMutationErrorMessage(error, t("createError"));
+      const errorCode = getApiErrorCode(error, CREATE_DELIVERY_NOTE_ERROR_CODES);
+      const message =
+        errorCode === "DELIVERY_NOTE_SELECTED_BATCH_INSUFFICIENT"
+          ? t("selectedBatchInsufficient")
+          : getMutationErrorMessage(error, t("createError"));
       toast.error(message);
       setCreateValidationError(message);
     }
@@ -814,22 +770,19 @@ export default function DeliveryNotesPage() {
       if (!canReceiveDn(actionDn)) {
         return;
       }
+      if (!receivingWarehouseId) {
+        toast.error(t("receivingWarehouseRequired"));
+        return;
+      }
 
       try {
-        await receiveMutation.mutateAsync({
+        await startReceivingMutation.mutateAsync({
           id: actionDn.id,
-          fulfillmentMode: actionDn.fulfillment_mode || "transfer_to_store",
-          data: {
-            notes: receiveNotes.trim() || undefined,
-            items: actionItems.map((item) => ({
-              deliveryNoteItemId: item.id,
-              receivedQty: Number(item.dispatched_qty || 0),
-            })),
-          },
+          receivingWarehouseId,
         });
-        toast.success("Delivery note received");
+        toast.success(t("startReceivingSuccess"));
       } catch (error) {
-        toast.error(getMutationErrorMessage(error, "Failed to receive delivery note"));
+        toast.error(getMutationErrorMessage(error, t("startReceivingError")));
         return;
       }
     }
@@ -879,12 +832,21 @@ export default function DeliveryNotesPage() {
             <Input
               placeholder={t("searchPlaceholder")}
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
               className="pl-8"
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => {
+              setStatusFilter(value);
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-48">
               <Filter className="mr-2 h-4 w-4" />
               <SelectValue placeholder={t("statusPlaceholder")} />
             </SelectTrigger>
@@ -1004,7 +966,7 @@ export default function DeliveryNotesPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
-                        {resolveWarehouseLabel(dn.requesting_warehouse_id)}
+                        {businessUnitLabelById.get(dn.requesting_business_unit_id) || t("noValue")}
                       </TableCell>
                       <TableCell className="text-sm">
                         {resolveWarehouseLabel(dn.fulfilling_warehouse_id)}
@@ -1021,7 +983,7 @@ export default function DeliveryNotesPage() {
                           <span className="text-xs text-muted-foreground">{t("noValue")}</span>
                         )}
                       </TableCell>
-                      <TableCell>{getStatusBadge(dn.status, statusLabel(dn.status))}</TableCell>
+                      <TableCell>{getStatusText(dn.status, statusLabel(dn.status))}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
@@ -1079,6 +1041,38 @@ export default function DeliveryNotesPage() {
             </Table>
           </div>
         )}
+        {deliveryNotesPagination && deliveryNotesPagination.totalPages > 1 ? (
+          <div className="flex items-center justify-end gap-3">
+            <span className="text-sm text-muted-foreground">
+              {t("pageOf", {
+                page: deliveryNotesPagination.page,
+                totalPages: deliveryNotesPagination.totalPages,
+              })}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={deliveryNotesPagination.page <= 1 || isLoading}
+              onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
+            >
+              {t("previous")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={
+                deliveryNotesPagination.page >= deliveryNotesPagination.totalPages || isLoading
+              }
+              onClick={() =>
+                setPage((currentPage) =>
+                  Math.min(deliveryNotesPagination.totalPages, currentPage + 1)
+                )
+              }
+            >
+              {t("next")}
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       <Dialog
@@ -1096,13 +1090,13 @@ export default function DeliveryNotesPage() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>{t("requestSourceBusinessUnit")}</Label>
-              <Select value={selectedSourceBuId} onValueChange={onSelectSourceBu}>
+              <Label>{t("requestingBusinessUnit")}</Label>
+              <Select value={selectedRequestingBuId} onValueChange={onSelectRequestingBu}>
                 <SelectTrigger>
-                  <SelectValue placeholder={t("selectSourceBusinessUnit")} />
+                  <SelectValue placeholder={t("selectRequestingBusinessUnit")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {sourceBusinessUnits.map((bu) => (
+                  {requestingBusinessUnits.map((bu) => (
                     <SelectItem key={bu.id} value={bu.id}>
                       {bu.label}
                     </SelectItem>
@@ -1157,14 +1151,14 @@ export default function DeliveryNotesPage() {
               </div>
             ) : null}
 
-            {selectedSourceBuId && (
+            {selectedRequestingBuId && (
               <div className="rounded-lg border bg-blue-50 p-3 text-sm">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs text-muted-foreground">{t("sourceBuLabel")}</span>{" "}
                     <span className="font-medium">
-                      {sourceBusinessUnits.find((bu) => bu.id === selectedSourceBuId)?.label ||
-                        t("noValue")}
+                      {requestingBusinessUnits.find((bu) => bu.id === selectedRequestingBuId)
+                        ?.label || t("noValue")}
                     </span>
                   </div>
                   <div className="flex gap-4 text-xs">
@@ -1181,9 +1175,9 @@ export default function DeliveryNotesPage() {
               </div>
             )}
 
-            {!selectedSourceBuId ? (
+            {!selectedRequestingBuId ? (
               <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-center">
-                <p className="text-sm text-muted-foreground">{t("selectSourceBuHint")}</p>
+                <p className="text-sm text-muted-foreground">{t("selectRequestingBuHint")}</p>
               </div>
             ) : draftLines.length > 0 ? (
               <div className="overflow-x-auto rounded-lg border">
@@ -1192,9 +1186,7 @@ export default function DeliveryNotesPage() {
                     <TableRow className="bg-muted/50">
                       <TableHead className="w-12">{t("use")}</TableHead>
                       <TableHead>{t("sr")}</TableHead>
-                      <TableHead className="w-48 max-w-48 whitespace-normal">
-                        {t("item")}
-                      </TableHead>
+                      <TableHead className="w-48 max-w-48 whitespace-normal">{t("item")}</TableHead>
                       <TableHead className="text-right">{t("requested")}</TableHead>
                       <TableHead>{t("unit")}</TableHead>
                       <TableHead className="text-right">{t("qtyPerUnit")}</TableHead>
@@ -1261,14 +1253,14 @@ export default function DeliveryNotesPage() {
                             {(line.allocatedQty * (availability?.qtyPerUnit || 1)).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {line.allocatableQty.toFixed(2)}
+                            {(availability?.remainingRequestQty ?? 0).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right">
                             <Input
                               className="ml-auto w-28 text-right"
                               type="number"
                               min="0"
-                              max={line.allocatableQty}
+                              max={maxAllowedQty}
                               step="0.01"
                               value={line.allocatedQty}
                               disabled={
@@ -1303,7 +1295,7 @@ export default function DeliveryNotesPage() {
             <Button
               onClick={handleCreate}
               disabled={
-                !selectedSourceBuId ||
+                !selectedRequestingBuId ||
                 selectedLines.length === 0 ||
                 !!invalidSelectedLine ||
                 isInventoryAvailabilityBlocked ||
@@ -1351,19 +1343,22 @@ export default function DeliveryNotesPage() {
                 <div>
                   <div className="text-xs text-muted-foreground">{t("status")}</div>
                   <div className="font-medium">
-                    {getStatusBadge(actionDn.status, statusLabel(actionDn.status))}
+                    {getStatusText(actionDn.status, statusLabel(actionDn.status))}
                   </div>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">{t("source")}</div>
                   <div className="font-medium">
-                    {resolveWarehouseLabel(actionDn.requesting_warehouse_id)}
+                    {resolveWarehouseLabel(actionDn.fulfilling_warehouse_id)}
                   </div>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">{t("destination")}</div>
                   <div className="font-medium">
-                    {resolveWarehouseLabel(actionDn.fulfilling_warehouse_id)}
+                    {actionDn.requesting_warehouse_id
+                      ? resolveWarehouseLabel(actionDn.requesting_warehouse_id)
+                      : businessUnitLabelById.get(actionDn.requesting_business_unit_id) ||
+                        t("receivingWarehousePending")}
                   </div>
                 </div>
               </div>
@@ -1508,13 +1503,13 @@ export default function DeliveryNotesPage() {
 
               {actionType === "receive" && (
                 <div className="space-y-2 rounded-lg border bg-muted/20 p-4">
-                  <Label className="text-sm font-medium">{t("receiveNotes")}</Label>
-                  <Textarea
-                    placeholder={t("optionalReceiveNotes")}
-                    value={receiveNotes}
-                    onChange={(event) => setReceiveNotes(event.target.value)}
-                    rows={3}
+                  <Label className="text-sm font-medium">{t("receivingWarehouse")}</Label>
+                  <WarehouseSelect
+                    value={receivingWarehouseId}
+                    onValueChange={setReceivingWarehouseId}
+                    scope="current_business_unit"
                   />
+                  <p className="text-xs text-muted-foreground">{t("receivingWarehouseHint")}</p>
                 </div>
               )}
 
@@ -1541,7 +1536,8 @@ export default function DeliveryNotesPage() {
                     confirmMutation.isPending ||
                     createPickListMutation.isPending ||
                     dispatchMutation.isPending ||
-                    receiveMutation.isPending ||
+                    startReceivingMutation.isPending ||
+                    (actionType === "receive" && !receivingWarehouseId) ||
                     voidMutation.isPending
                   }
                 >
@@ -1550,7 +1546,7 @@ export default function DeliveryNotesPage() {
                     : actionType === "dispatch"
                       ? t("confirmDispatch")
                       : actionType === "receive"
-                        ? t("confirmReceive")
+                        ? t("confirmStartReceiving")
                         : actionType === "void"
                           ? t("confirmVoid")
                           : t("confirm")}

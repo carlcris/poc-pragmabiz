@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Card, ErrorState, LoadingState, Screen, StatusBadge } from "@/components/ui";
 import {
@@ -8,7 +8,7 @@ import {
   usePauseGrnReceiving,
   useStartGrnReceiving,
   useSubmitGrnReceiving,
-  useUpdateGrnReceiving
+  useUpdateGrnReceiving,
 } from "@/hooks/queries";
 import { useAuthStore } from "@/stores/authStore";
 import type { GrnLine, UpdateGrnLinePayload } from "@/contracts/receiving";
@@ -21,7 +21,7 @@ import {
   canSaveGrnReceiving,
   canStartGrnReceiving,
   canSubmitGrnReceiving,
-  hasResourcePermission
+  hasResourcePermission,
 } from "@/utils/permissions";
 
 type GrnLineDraft = Omit<UpdateGrnLinePayload, "id" | "numBoxes">;
@@ -36,7 +36,7 @@ const parseQuantity = (value: string) => {
 const getInitialDraft = (item: GrnLine): GrnLineDraft => ({
   receivedQty: item.receivedQty,
   damagedQty: item.damagedQty,
-  notes: item.notes || ""
+  notes: item.notes || "",
 });
 
 export default function LoadListReceivingDetailScreen() {
@@ -52,8 +52,9 @@ export default function LoadListReceivingDetailScreen() {
   const [actionError, setActionError] = useState("");
   const detail = useLoadListReceiving(id, {
     enabled: canViewReceiving,
-    includeGrn: canViewGrn
+    includeGrn: canViewGrn,
   });
+  const refetchDetail = detail.refetch;
   const loadList = detail.data?.loadList;
   const grn = detail.data?.grn;
   const updateGrn = useUpdateGrnReceiving(id, grn?.id || "");
@@ -64,7 +65,14 @@ export default function LoadListReceivingDetailScreen() {
   const canPause = grn?.status === "receiving" && canStartReceiving;
   const canEdit = grn?.status === "receiving" && canSaveReceiving;
   const hasUnsavedChanges = Object.keys(lineEdits).length > 0;
-  const busy = updateGrn.isPending || startGrn.isPending || pauseGrn.isPending || submitGrn.isPending;
+  const busy =
+    updateGrn.isPending || startGrn.isPending || pauseGrn.isPending || submitGrn.isPending;
+
+  const handleRefresh = useCallback(async () => {
+    if (canViewReceiving) {
+      await refetchDetail();
+    }
+  }, [canViewReceiving, refetchDetail]);
 
   useEffect(() => {
     setLineEdits({});
@@ -74,19 +82,16 @@ export default function LoadListReceivingDetailScreen() {
 
   const getLineDraft = (item: GrnLine) => lineEdits[item.id] || getInitialDraft(item);
 
-  const checkedItems = grn?.items.filter((item) => {
-    const draft = getLineDraft(item);
-    return draft.receivedQty > 0 || draft.damagedQty > 0;
-  }).length || 0;
+  const checkedItems =
+    grn?.items.filter((item) => {
+      const draft = getLineDraft(item);
+      return draft.receivedQty > 0 || draft.damagedQty > 0;
+    }).length || 0;
   const totalItems = grn?.items.length || 0;
   const progress = totalItems > 0 ? checkedItems / totalItems : 0;
   const hasReceivedQty = Boolean(grn?.items.some((item) => getLineDraft(item).receivedQty > 0));
 
-  const handleLineChange = (
-    item: GrnLine,
-    field: keyof GrnLineDraft,
-    value: number | string
-  ) => {
+  const handleLineChange = (item: GrnLine, field: keyof GrnLineDraft, value: number | string) => {
     setActionError("");
     setActionMessage("");
     setLineEdits((current) => ({
@@ -94,8 +99,8 @@ export default function LoadListReceivingDetailScreen() {
       [item.id]: {
         ...getInitialDraft(item),
         ...current[item.id],
-        [field]: value
-      }
+        [field]: value,
+      },
     }));
   };
 
@@ -106,7 +111,7 @@ export default function LoadListReceivingDetailScreen() {
       receivedQty: draft.receivedQty,
       damagedQty: draft.damagedQty,
       numBoxes: grn.items.find((item) => item.id === lineId)?.boxCount || 0,
-      notes: draft.notes
+      notes: draft.notes,
     }));
   };
 
@@ -123,7 +128,7 @@ export default function LoadListReceivingDetailScreen() {
     try {
       await updateGrn.mutateAsync({
         receivingDate: grn.receivingDate || todayIsoDate(),
-        items
+        items,
       });
       setLineEdits({});
       if (!silent) {
@@ -131,7 +136,9 @@ export default function LoadListReceivingDetailScreen() {
       }
       return true;
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Failed to save receiving quantities.");
+      setActionError(
+        error instanceof Error ? error.message : "Failed to save receiving quantities."
+      );
       return false;
     }
   };
@@ -155,9 +162,9 @@ export default function LoadListReceivingDetailScreen() {
         receivingPatch: hasUnsavedChanges
           ? {
               receivingDate: grn.receivingDate || todayIsoDate(),
-              items: buildUpdatePayload()
+              items: buildUpdatePayload(),
             }
-          : undefined
+          : undefined,
       });
       setLineEdits({});
       setActionMessage("GRN submitted to putaway.");
@@ -175,7 +182,6 @@ export default function LoadListReceivingDetailScreen() {
       setActionError("You do not have permission to start receiving.");
       return;
     }
-
     try {
       await startGrn.mutateAsync();
       setActionMessage("Receiving started.");
@@ -208,14 +214,26 @@ export default function LoadListReceivingDetailScreen() {
 
   if (!canViewReceiving) {
     return (
-      <Screen title="Load List" subtitle="Goods Receipt Note" back>
+      <Screen
+        title="Load List"
+        subtitle="Goods Receipt Note"
+        back
+        onRefresh={handleRefresh}
+        refreshing={detail.isRefetching}
+      >
         <ErrorState message="You do not have permission to access receiving." />
       </Screen>
     );
   }
 
   return (
-    <Screen title={loadList?.llNumber || "Load List"} subtitle="Goods Receipt Note" back>
+    <Screen
+      title={loadList?.llNumber || "Load List"}
+      subtitle="Goods Receipt Note"
+      back
+      onRefresh={handleRefresh}
+      refreshing={detail.isRefetching}
+    >
       {detail.isLoading ? <LoadingState /> : null}
       {detail.error ? <ErrorState message="Unable to load load list receiving details." /> : null}
 
@@ -234,7 +252,10 @@ export default function LoadListReceivingDetailScreen() {
             </View>
             <View style={styles.detailGrid}>
               <DetailItem label="Supplier" value={loadList.supplierName} />
-              <DetailItem label="Warehouse" value={loadList.warehouseName || "-"} />
+              <DetailItem
+                label="Destination BU"
+                value={loadList.destinationBusinessUnitName || "-"}
+              />
               <DetailItem label="Arrived" value={formatDate(loadList.actualArrivalDate)} />
               <DetailItem label="ETA" value={formatDate(loadList.estimatedArrivalDate)} />
               {loadList.containerNumber ? (
@@ -280,9 +301,7 @@ export default function LoadListReceivingDetailScreen() {
                         </Text>
                       ) : null}
                     </View>
-                    {hasUnsavedChanges ? (
-                      <Text style={styles.unsavedText}>Unsaved</Text>
-                    ) : null}
+                    {hasUnsavedChanges ? <Text style={styles.unsavedText}>Unsaved</Text> : null}
                   </View>
                   {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
                   {actionMessage ? <Text style={styles.successText}>{actionMessage}</Text> : null}
@@ -293,7 +312,7 @@ export default function LoadListReceivingDetailScreen() {
                       style={({ pressed }) => [
                         styles.primaryButton,
                         busy && styles.buttonDisabled,
-                        pressed && !busy ? styles.primaryButtonPressed : null
+                        pressed && !busy ? styles.primaryButtonPressed : null,
                       ]}
                     >
                       <Ionicons name="play-outline" size={18} color="#fff" />
@@ -310,7 +329,7 @@ export default function LoadListReceivingDetailScreen() {
                           style={({ pressed }) => [
                             styles.secondaryButton,
                             busy && styles.buttonDisabled,
-                            pressed && !busy ? styles.secondaryButtonPressed : null
+                            pressed && !busy ? styles.secondaryButtonPressed : null,
                           ]}
                         >
                           <Ionicons name="pause-outline" size={18} color={colors.text} />
@@ -328,7 +347,7 @@ export default function LoadListReceivingDetailScreen() {
                             (!hasUnsavedChanges || busy) && styles.buttonDisabled,
                             pressed && hasUnsavedChanges && !busy
                               ? styles.secondaryButtonPressed
-                              : null
+                              : null,
                           ]}
                         >
                           <Ionicons name="save-outline" size={18} color={colors.text} />
@@ -344,7 +363,7 @@ export default function LoadListReceivingDetailScreen() {
                           style={({ pressed }) => [
                             styles.primaryButton,
                             (busy || !hasReceivedQty) && styles.buttonDisabled,
-                            pressed && !busy && hasReceivedQty ? styles.primaryButtonPressed : null
+                            pressed && !busy && hasReceivedQty ? styles.primaryButtonPressed : null,
                           ]}
                         >
                           <Ionicons name="paper-plane-outline" size={18} color="#fff" />
@@ -362,7 +381,9 @@ export default function LoadListReceivingDetailScreen() {
                 {grn.items.map((item) => {
                   const draft = getLineDraft(item);
                   const hasEntry = draft.receivedQty > 0 || draft.damagedQty > 0;
-                  const variance = hasEntry ? draft.receivedQty + draft.damagedQty - item.expectedQty : null;
+                  const variance = hasEntry
+                    ? draft.receivedQty + draft.damagedQty - item.expectedQty
+                    : null;
                   const hasIssue = draft.damagedQty > 0 || (variance !== null && variance < 0);
 
                   return (
@@ -371,7 +392,7 @@ export default function LoadListReceivingDetailScreen() {
                       style={[
                         styles.itemCard,
                         hasEntry && !hasIssue ? styles.itemCardReceived : null,
-                        hasIssue ? styles.itemCardIssue : null
+                        hasIssue ? styles.itemCardIssue : null,
                       ]}
                     >
                       <View style={styles.itemHeader}>
@@ -459,7 +480,7 @@ const DetailItem = ({ label, value }: { label: string; value: string }) => (
 const QuantityBox = ({
   label,
   value,
-  tone
+  tone,
 }: {
   label: string;
   value: number;
@@ -471,7 +492,7 @@ const QuantityBox = ({
         styles.quantityLabel,
         tone === "green" ? styles.quantityGreen : null,
         tone === "red" ? styles.quantityRed : null,
-        tone === "blue" ? styles.quantityBlue : null
+        tone === "blue" ? styles.quantityBlue : null,
       ]}
     >
       {label}
@@ -485,7 +506,7 @@ const QuantityInput = ({
   value,
   tone,
   disabled,
-  onChange
+  onChange,
 }: {
   label: string;
   value: number;
@@ -502,7 +523,7 @@ const QuantityInput = ({
           styles.quantityLabel,
           tone === "green" ? styles.quantityGreen : null,
           tone === "red" ? styles.quantityRed : null,
-          tone === "blue" ? styles.quantityBlue : null
+          tone === "blue" ? styles.quantityBlue : null,
         ]}
       >
         {label}
@@ -523,12 +544,12 @@ const QuantityInput = ({
 
 const styles = StyleSheet.create({
   summaryCard: {
-    gap: spacing.base
+    gap: spacing.base,
   },
   summaryHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md
+    gap: spacing.md,
   },
   summaryIcon: {
     width: 48,
@@ -536,106 +557,106 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     backgroundColor: colors.primary,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
   },
   summaryTitleBlock: {
-    flex: 1
+    flex: 1,
   },
   summaryEyebrow: {
     ...typography.bodySmall,
-    color: colors.textSecondary
+    color: colors.textSecondary,
   },
   summaryTitle: {
     ...typography.title,
-    color: colors.text
+    color: colors.text,
   },
   detailGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.md
+    gap: spacing.md,
   },
   detailItem: {
     width: "47%",
-    gap: spacing.xs
+    gap: spacing.xs,
   },
   detailLabel: {
     ...typography.caption,
-    color: colors.textSecondary
+    color: colors.textSecondary,
   },
   detailValue: {
     ...typography.bodySmall,
     fontWeight: typography.fontWeights.semibold,
-    color: colors.text
+    color: colors.text,
   },
   progressCard: {
-    gap: spacing.md
+    gap: spacing.md,
   },
   progressHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: spacing.md
+    gap: spacing.md,
   },
   sectionTitle: {
     ...typography.title,
-    color: colors.text
+    color: colors.text,
   },
   sectionSubtitle: {
     ...typography.bodySmall,
     color: colors.textSecondary,
-    marginTop: spacing.xs
+    marginTop: spacing.xs,
   },
   progressCount: {
-    alignItems: "flex-end"
+    alignItems: "flex-end",
   },
   progressCountText: {
     fontSize: 22,
     fontWeight: typography.fontWeights.bold,
-    color: colors.primary
+    color: colors.primary,
   },
   progressCountLabel: {
     ...typography.caption,
-    color: colors.textSecondary
+    color: colors.textSecondary,
   },
   progressTrack: {
     height: 8,
     borderRadius: borderRadius.full,
     backgroundColor: colors.border,
-    overflow: "hidden"
+    overflow: "hidden",
   },
   progressFill: {
     height: "100%",
     borderRadius: borderRadius.full,
-    backgroundColor: colors.primary
+    backgroundColor: colors.primary,
   },
   actionCard: {
-    gap: spacing.md
+    gap: spacing.md,
   },
   actionHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: spacing.md
+    gap: spacing.md,
   },
   actionTitleBlock: {
-    flex: 1
+    flex: 1,
   },
   actionTitle: {
     ...typography.body,
     fontWeight: typography.fontWeights.bold,
-    color: colors.text
+    color: colors.text,
   },
   actionSubtitle: {
     ...typography.bodySmall,
     color: colors.textSecondary,
-    marginTop: spacing.xs
+    marginTop: spacing.xs,
   },
   unsavedText: {
     ...typography.caption,
     fontWeight: typography.fontWeights.bold,
-    color: colors.amberDark
+    color: colors.amberDark,
   },
   actionButtons: {
     flexDirection: "row",
-    gap: spacing.sm
+    gap: spacing.sm,
   },
   primaryButton: {
     flex: 1,
@@ -645,15 +666,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: spacing.sm
+    gap: spacing.sm,
   },
   primaryButtonPressed: {
-    backgroundColor: colors.primaryDark
+    backgroundColor: colors.primaryDark,
   },
   primaryButtonText: {
     ...typography.bodySmall,
     fontWeight: typography.fontWeights.bold,
-    color: "#fff"
+    color: "#fff",
   },
   secondaryButton: {
     flex: 1,
@@ -665,111 +686,111 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: spacing.sm
+    gap: spacing.sm,
   },
   secondaryButtonPressed: {
-    backgroundColor: colors.faint
+    backgroundColor: colors.faint,
   },
   secondaryButtonText: {
     ...typography.bodySmall,
     fontWeight: typography.fontWeights.bold,
-    color: colors.text
+    color: colors.text,
   },
   buttonDisabled: {
-    opacity: 0.45
+    opacity: 0.45,
   },
   errorText: {
     ...typography.bodySmall,
     color: colors.dangerDark,
-    fontWeight: typography.fontWeights.semibold
+    fontWeight: typography.fontWeights.semibold,
   },
   successText: {
     ...typography.bodySmall,
     color: colors.greenDark,
-    fontWeight: typography.fontWeights.semibold
+    fontWeight: typography.fontWeights.semibold,
   },
   itemsSection: {
-    gap: spacing.md
+    gap: spacing.md,
   },
   itemCard: {
-    gap: spacing.md
+    gap: spacing.md,
   },
   itemCardReceived: {
     borderColor: colors.green,
-    backgroundColor: colors.greenSoft
+    backgroundColor: colors.greenSoft,
   },
   itemCardIssue: {
     borderColor: colors.amber,
-    backgroundColor: colors.amberSoft
+    backgroundColor: colors.amberSoft,
   },
   itemHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: spacing.sm
+    gap: spacing.sm,
   },
   itemTitleBlock: {
-    flex: 1
+    flex: 1,
   },
   itemName: {
     ...typography.body,
     fontWeight: typography.fontWeights.bold,
-    color: colors.text
+    color: colors.text,
   },
   itemMeta: {
     ...typography.bodySmall,
     color: colors.textSecondary,
-    marginTop: spacing.xs
+    marginTop: spacing.xs,
   },
   itemUnit: {
     ...typography.caption,
     color: colors.textSecondary,
-    marginTop: spacing.xs
+    marginTop: spacing.xs,
   },
   itemExpected: {
     alignItems: "flex-end",
-    minWidth: 72
+    minWidth: 72,
   },
   itemExpectedLabel: {
     ...typography.caption,
-    color: colors.textSecondary
+    color: colors.textSecondary,
   },
   itemExpectedValue: {
     fontSize: 20,
     fontWeight: typography.fontWeights.bold,
-    color: colors.text
+    color: colors.text,
   },
   quantityGrid: {
     flexDirection: "row",
-    gap: spacing.sm
+    gap: spacing.sm,
   },
   quantityBox: {
     flex: 1,
     borderRadius: borderRadius.md,
     backgroundColor: colors.faint,
     padding: spacing.sm,
-    alignItems: "center"
+    alignItems: "center",
   },
   quantityBoxDisabled: {
-    opacity: 0.6
+    opacity: 0.6,
   },
   quantityLabel: {
     ...typography.caption,
-    fontWeight: typography.fontWeights.semibold
+    fontWeight: typography.fontWeights.semibold,
   },
   quantityGreen: {
-    color: colors.greenDark
+    color: colors.greenDark,
   },
   quantityRed: {
-    color: colors.dangerDark
+    color: colors.dangerDark,
   },
   quantityBlue: {
-    color: colors.blueDark
+    color: colors.blueDark,
   },
   quantityValue: {
     marginTop: spacing.xs,
     fontSize: 18,
     fontWeight: typography.fontWeights.bold,
-    color: colors.text
+    color: colors.text,
   },
   quantityInput: {
     marginTop: spacing.sm,
@@ -783,33 +804,33 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 20,
     fontWeight: typography.fontWeights.bold,
-    color: colors.text
+    color: colors.text,
   },
   quantityInputFocused: {
     borderColor: colors.primary,
-    backgroundColor: colors.primarySoft
+    backgroundColor: colors.primarySoft,
   },
   variance: {
     ...typography.bodySmall,
     color: colors.blueDark,
-    fontWeight: typography.fontWeights.semibold
+    fontWeight: typography.fontWeights.semibold,
   },
   varianceShort: {
-    color: colors.dangerDark
+    color: colors.dangerDark,
   },
   emptyCard: {
     minHeight: 240,
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.md
+    gap: spacing.md,
   },
   emptyTitle: {
     ...typography.title,
-    color: colors.text
+    color: colors.text,
   },
   emptyText: {
     ...typography.bodySmall,
     color: colors.textSecondary,
-    textAlign: "center"
-  }
+    textAlign: "center",
+  },
 });

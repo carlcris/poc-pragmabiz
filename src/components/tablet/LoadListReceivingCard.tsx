@@ -77,10 +77,10 @@ export function LoadListReceivingCard({
             <span>Container: {loadList.containerNumber}</span>
           </div>
         )}
-        {loadList.warehouse && (
+        {loadList.destinationBusinessUnit && (
           <div className="flex items-center gap-2 text-gray-600">
             <MapPin className="h-4 w-4" />
-            <span>{loadList.warehouse.name}</span>
+            <span>{loadList.destinationBusinessUnit.name}</span>
           </div>
         )}
       </div>

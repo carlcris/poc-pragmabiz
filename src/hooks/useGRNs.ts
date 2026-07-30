@@ -15,11 +15,11 @@ import { useRealtimeDomainInvalidation } from "@/hooks/useRealtimeDomainInvalida
 import { grnsApi } from "@/lib/api/grns";
 import type {
   GRNFilters,
-  CreateGRNRequest,
   UpdateGRNRequest,
   GRNStatus,
   CreateDamagedItemRequest,
   UpdateDamagedItemRequest,
+  StartGRNReceivingRequest,
 } from "@/types/grn";
 
 const DAMAGED_ITEMS_QUERY_KEY = "damagedItems";
@@ -44,17 +44,6 @@ export function useGRN(id: string) {
   });
 }
 
-export function useCreateGRN() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CreateGRNRequest) => grnsApi.createGRN(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [GRNS_QUERY_KEY] });
-    },
-  });
-}
-
 export function useUpdateGRN() {
   const queryClient = useQueryClient();
 
@@ -72,10 +61,10 @@ export function useStartGRNReceiving() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => grnsApi.startReceiving(id),
-    onSuccess: (_data, id) => {
+    mutationFn: (request: StartGRNReceivingRequest) => grnsApi.startReceiving(request),
+    onSuccess: (_data, request) => {
       queryClient.invalidateQueries({ queryKey: [GRNS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [GRNS_QUERY_KEY, id] });
+      queryClient.invalidateQueries({ queryKey: [GRNS_QUERY_KEY, request.id] });
       queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
     },
   });

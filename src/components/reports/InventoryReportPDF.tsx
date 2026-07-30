@@ -19,7 +19,6 @@ type InventoryReportPDFProps = {
   qtyOnHandLabel: string;
   qtyReservedLabel: string;
   qtyAvailableLabel: string;
-  qtyInTransitLabel: string;
   statusLabel: string;
   unitCostLabel: string;
   stockValueLabel: string;
@@ -130,7 +129,7 @@ const styles = StyleSheet.create({
   },
   colItem: { width: "22%" },
   colCategory: { width: "10%" },
-  colQty: { width: "8.5%" },
+  colQty: { width: "11.3%" },
   colStatus: { width: "12%" },
   colValuation: { width: "22%" },
   footer: {
@@ -154,7 +153,6 @@ export const InventoryReportPDF = ({
   qtyOnHandLabel,
   qtyReservedLabel,
   qtyAvailableLabel,
-  qtyInTransitLabel,
   statusLabel,
   unitCostLabel,
   stockValueLabel,
@@ -193,9 +191,6 @@ export const InventoryReportPDF = ({
           <View style={[styles.cell, styles.colQty]}>
             <Text style={[styles.tableHeaderText, styles.right]}>{qtyAvailableLabel}</Text>
           </View>
-          <View style={[styles.cell, styles.colQty]}>
-            <Text style={[styles.tableHeaderText, styles.right]}>{qtyInTransitLabel}</Text>
-          </View>
           <View style={[styles.cell, styles.colStatus]}>
             <Text style={styles.tableHeaderText}>{statusLabel}</Text>
           </View>
@@ -224,9 +219,6 @@ export const InventoryReportPDF = ({
             </View>
             <View style={[styles.cell, styles.colQty]}>
               <Text style={[styles.cellText, styles.right]}>{formatQty(row.availableStock)}</Text>
-            </View>
-            <View style={[styles.cell, styles.colQty]}>
-              <Text style={[styles.cellText, styles.right]}>{formatQty(row.inTransit)}</Text>
             </View>
             <View style={[styles.cell, styles.colStatus]}>
               <Text style={styles.cellText}>{statusLabels[row.status]}</Text>

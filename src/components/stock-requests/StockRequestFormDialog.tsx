@@ -33,6 +33,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -49,55 +50,30 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { BusinessUnitSelect } from "@/components/business-units/BusinessUnitSelect";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 
 const createRequestFormSchema = (
   tValidation: (
-    key:
-      | "requestDateRequired"
-      | "requiredDateRequired"
-      | "requestedByRequired"
-      | "requestedToRequired"
-      | "requestingAndFulfillingMustDiffer"
+    key: "requestDateRequired" | "requiredDateRequired" | "requestedToRequired"
   ) => string
 ) =>
-  z
-    .object({
-      request_date: z.string().min(1, tValidation("requestDateRequired")),
-      required_date: z.string().min(1, tValidation("requiredDateRequired")),
-      requesting_warehouse_id: z.string().min(1, tValidation("requestedByRequired")),
-      fulfilling_warehouse_id: z.string().min(1, tValidation("requestedToRequired")),
-      priority: z.enum(["low", "normal", "high", "urgent"]),
-      purpose: z.string().optional(),
-      notes: z.string().optional(),
-    })
-    .superRefine((values, ctx) => {
-      if (
-        values.fulfilling_warehouse_id &&
-        values.fulfilling_warehouse_id === values.requesting_warehouse_id
-      ) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: tValidation("requestingAndFulfillingMustDiffer"),
-          path: ["fulfilling_warehouse_id"],
-        });
-      }
-    });
+  z.object({
+    request_date: z.string().min(1, tValidation("requestDateRequired")),
+    required_date: z.string().min(1, tValidation("requiredDateRequired")),
+    fulfilling_business_unit_id: z.string().min(1, tValidation("requestedToRequired")),
+    priority: z.enum(["low", "normal", "high", "urgent"]),
+    purpose: z.string().optional(),
+    notes: z.string().optional(),
+  });
 
 type StockRequestFormSchema = ReturnType<typeof createRequestFormSchema>;
 export type StockRequestFormValues = z.infer<StockRequestFormSchema>;
-
-type WarehouseOption = {
-  id: string;
-  code: string;
-  name: string;
-};
 
 type StockRequestFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedRequest: StockRequest | null;
-  warehouses: WarehouseOption[];
-  defaultRequestingWarehouseId: string;
   isSaving: boolean;
   onSave: (payload: {
     values: StockRequestFormValues;
@@ -110,8 +86,6 @@ export function StockRequestFormDialog({
   open,
   onOpenChange,
   selectedRequest,
-  warehouses,
-  defaultRequestingWarehouseId,
   isSaving,
   onSave,
 }: StockRequestFormDialogProps) {
@@ -120,6 +94,7 @@ export function StockRequestFormDialog({
   const tValidation = useTranslations("stockRequestValidation");
   const tCommon = useTranslations("common");
   const locale = useLocale();
+  const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
   const [lineItems, setLineItems] = useState<StockRequestLineItemPayload[]>([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<{
@@ -135,30 +110,29 @@ export function StockRequestFormDialog({
     defaultValues: {
       request_date: new Date().toISOString().split("T")[0],
       required_date: new Date().toISOString().split("T")[0],
-      requesting_warehouse_id: "",
-      fulfilling_warehouse_id: "",
+      fulfilling_business_unit_id: "",
       priority: "normal",
       purpose: "",
       notes: "",
     },
   });
-  const requestingWarehouseId = form.watch("requesting_warehouse_id");
-  const requestingWarehouse =
-    warehouses.find((warehouse) => warehouse.id === requestingWarehouseId) ?? null;
-  const requestingWarehouseLabel = requestingWarehouse
-    ? `${requestingWarehouse.code} - ${requestingWarehouse.name}`
-    : t("autoAssignedWarehouseUnavailable");
-  const fulfillingWarehouseOptions = warehouses.filter(
-    (warehouse) => warehouse.id !== requestingWarehouseId
-  );
+  const fulfillingBusinessUnitId = form.watch("fulfilling_business_unit_id");
+  const selectedFulfillingBusinessUnit = selectedRequest?.fulfilling_business_unit
+    ? {
+        id: selectedRequest.fulfilling_business_unit.id,
+        code: selectedRequest.fulfilling_business_unit.code,
+        name: selectedRequest.fulfilling_business_unit.name,
+        type: "",
+        is_active: true,
+      }
+    : null;
 
   useEffect(() => {
     if (open && selectedRequest) {
       form.reset({
         request_date: selectedRequest.request_date,
         required_date: selectedRequest.required_date,
-        requesting_warehouse_id: selectedRequest.requesting_warehouse_id,
-        fulfilling_warehouse_id: selectedRequest.fulfilling_warehouse_id || "",
+        fulfilling_business_unit_id: selectedRequest.fulfilling_business_unit_id,
         priority: selectedRequest.priority,
         purpose: selectedRequest.purpose || "",
         notes: selectedRequest.notes || "",
@@ -170,6 +144,7 @@ export function StockRequestFormDialog({
           itemCode: item.items?.item_code || "",
           itemName: item.items?.item_name || "",
           itemUnitOptionId: item.item_unit_option_id || item.item_unit_option?.id || "",
+          selectedItemBatchId: item.selected_item_batch_id || "",
           uomId: item.uom_id,
           uomLabel:
             item.item_unit_option?.displayLabel ||
@@ -178,18 +153,11 @@ export function StockRequestFormDialog({
             "",
           unitBarcode: item.item_unit_option?.barcode,
           qtyPerUnit: item.item_unit_option?.qtyPerUnit ?? 1,
-          selectedItemBatchId: item.selected_item_batch_id || "",
-          batchLabel: item.selected_item_batch
-            ? `${item.selected_item_batch.batch_code} (${(
-                item.selected_item_batch.qty_available ?? 0
-              ).toLocaleString(locale, {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 4,
-              })})`
-            : "",
-          batchCode: item.selected_item_batch?.batch_code,
-          batchReceivedAt: item.selected_item_batch?.received_at,
-          batchQtyAvailable: item.selected_item_batch?.qty_available ?? undefined,
+          selectedBatchCode: item.selected_item_batch?.batch_code,
+          selectedBatchWarehouseId: item.selected_item_batch?.warehouse?.id,
+          selectedBatchWarehouseCode: item.selected_item_batch?.warehouse?.warehouse_code,
+          selectedBatchWarehouseName: item.selected_item_batch?.warehouse?.warehouse_name,
+          selectedBatchReceivedAt: item.selected_item_batch?.received_at || undefined,
           requestedQty: item.requested_qty,
           notes: item.notes || "",
         })) || [];
@@ -198,15 +166,14 @@ export function StockRequestFormDialog({
       form.reset({
         request_date: new Date().toISOString().split("T")[0],
         required_date: new Date().toISOString().split("T")[0],
-        requesting_warehouse_id: defaultRequestingWarehouseId,
-        fulfilling_warehouse_id: "",
+        fulfilling_business_unit_id: "",
         priority: "normal",
         purpose: "",
         notes: "",
       });
       setLineItems([]);
     }
-  }, [defaultRequestingWarehouseId, form, locale, open, selectedRequest]);
+  }, [form, locale, open, selectedRequest]);
 
   const handleAddItem = () => {
     setEditingItem(null);
@@ -329,52 +296,41 @@ export function StockRequestFormDialog({
                     />
 
                     <div className="col-span-3 grid grid-cols-2 gap-3">
-                      <FormField
-                        control={form.control}
-                        name="requesting_warehouse_id"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs">
-                              {t("requestedByLabel")}
-                              <span className="ml-0.5 text-destructive">*</span>
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                value={requestingWarehouseLabel}
-                                readOnly
-                                disabled
-                                className="h-9"
-                              />
-                            </FormControl>
-                            <input type="hidden" name={field.name} value={field.value} readOnly />
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <div className="space-y-2">
+                        <Label htmlFor="stock-request-requesting-business-unit" className="text-xs">
+                          {t("requestedByLabel")}
+                        </Label>
+                        <Input
+                          id="stock-request-requesting-business-unit"
+                          value={
+                            currentBusinessUnit
+                              ? `${currentBusinessUnit.code} - ${currentBusinessUnit.name}`
+                              : ""
+                          }
+                          readOnly
+                          className="h-9 bg-muted"
+                        />
+                      </div>
 
                       <FormField
                         control={form.control}
-                        name="fulfilling_warehouse_id"
+                        name="fulfilling_business_unit_id"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs">
                               {t("requestedToLabel")}
                               <span className="ml-0.5 text-destructive">*</span>
                             </FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="h-9">
-                                  <SelectValue placeholder={t("selectRequestedTo")} />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {fulfillingWarehouseOptions.map((warehouse) => (
-                                  <SelectItem key={warehouse.id} value={warehouse.id}>
-                                    {warehouse.code} - {warehouse.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <FormControl>
+                              <BusinessUnitSelect
+                                value={field.value}
+                                onValueChange={field.onChange}
+                                excludeId={currentBusinessUnit?.id}
+                                selectedOption={selectedFulfillingBusinessUnit}
+                                disabled={Boolean(selectedRequest) || lineItems.length > 0}
+                                buttonClassName="h-9"
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -424,11 +380,23 @@ export function StockRequestFormDialog({
                         <h3 className="text-sm font-medium">{t("lineItemsTitle")}</h3>
                         <p className="text-xs text-muted-foreground">{t("lineItemsDescription")}</p>
                       </div>
-                      <Button type="button" onClick={handleAddItem} size="sm" className="h-8">
+                      <Button
+                        type="button"
+                        onClick={handleAddItem}
+                        size="sm"
+                        className="h-8"
+                        disabled={!currentBusinessUnit?.id || !fulfillingBusinessUnitId}
+                      >
                         <Plus className="mr-1 h-3 w-3" />
                         {t("addItem")}
                       </Button>
                     </div>
+
+                    {(!currentBusinessUnit?.id || !fulfillingBusinessUnitId) && (
+                      <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-700">
+                        {t("selectBusinessUnitBeforeItems")}
+                      </div>
+                    )}
 
                     {lineItems.length === 0 ? (
                       <div className="rounded-lg border-2 border-dashed py-8 text-center text-muted-foreground">
@@ -436,7 +404,7 @@ export function StockRequestFormDialog({
                         <p className="text-xs">{t("noItemsDescription")}</p>
                       </div>
                     ) : (
-                      <div className="max-h-[300px] overflow-y-auto rounded-lg border">
+                      <div className="max-h-80 overflow-y-auto rounded-lg border">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -448,9 +416,7 @@ export function StockRequestFormDialog({
                                 {t("qtyPerUnit")}
                               </TableHead>
                               <TableHead className="py-2 text-xs">{t("notes")}</TableHead>
-                              <TableHead className="w-[80px] py-2 text-xs">
-                                {t("actions")}
-                              </TableHead>
+                              <TableHead className="w-20 py-2 text-xs">{t("actions")}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -473,10 +439,21 @@ export function StockRequestFormDialog({
                                 <TableCell className="py-2 text-sm">
                                   {item.uomLabel || t("noValue")}
                                 </TableCell>
-                                <TableCell className="py-2 text-sm">
-                                  <div className="max-w-[140px] truncate">
-                                    {item.batchLabel || t("autoBatchAllocation")}
-                                  </div>
+                                <TableCell className="py-2">
+                                  {item.selectedBatchCode ? (
+                                    <div>
+                                      <div className="text-sm font-medium">
+                                        {item.selectedBatchCode}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {item.selectedBatchWarehouseCode || t("noValue")}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">
+                                      {t("autoBatchAllocation")}
+                                    </span>
+                                  )}
                                 </TableCell>
                                 <TableCell className="py-2 text-right text-sm">
                                   {(item.qtyPerUnit ?? 1).toLocaleString(locale, {
@@ -485,7 +462,7 @@ export function StockRequestFormDialog({
                                   })}
                                 </TableCell>
                                 <TableCell className="py-2">
-                                  <div className="max-w-[150px] truncate text-sm">
+                                  <div className="max-w-40 truncate text-sm">
                                     {item.notes || t("noValue")}
                                   </div>
                                 </TableCell>
@@ -558,14 +535,14 @@ export function StockRequestFormDialog({
       </Dialog>
 
       {itemDialogOpen && (
-          <StockRequestLineItemDialog
-            open={itemDialogOpen}
-            onOpenChange={setItemDialogOpen}
-            onSave={handleSaveItem}
-            item={editingItem?.item || null}
-            mode={editingItem ? "edit" : "add"}
-            fulfillingWarehouseId={form.watch("fulfilling_warehouse_id")}
-          />
+        <StockRequestLineItemDialog
+          open={itemDialogOpen}
+          onOpenChange={setItemDialogOpen}
+          onSave={handleSaveItem}
+          item={editingItem?.item || null}
+          mode={editingItem ? "edit" : "add"}
+          fulfillingBusinessUnitId={fulfillingBusinessUnitId}
+        />
       )}
     </>
   );

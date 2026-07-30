@@ -3,7 +3,7 @@ import { z } from "zod";
 export const createLoadListFormSchema = (t: (key: string) => string) =>
   z.object({
     supplierId: z.string().min(1, t("supplierRequired")),
-    warehouseId: z.string().min(1, t("warehouseRequired")),
+    destinationBusinessUnitId: z.string().min(1, t("destinationBusinessUnitRequired")),
     supplierLlNumber: z.string().optional(),
     containerNumber: z.string().optional(),
     sealNumber: z.string().optional(),

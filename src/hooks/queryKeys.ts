@@ -15,6 +15,7 @@ export const STOCK_REQUESTS_QUERY_KEY = "stock-requests";
 export const STOCK_REQUISITIONS_QUERY_KEY = "stockRequisitions";
 export const PURCHASE_ON_ORDER_QUERY_KEY = "purchaseOnOrder";
 export const LOAD_LISTS_QUERY_KEY = "loadLists";
+export const STOCK_IN_TRANSIT_QUERY_KEY = "stock-in-transit";
 export const GRNS_QUERY_KEY = "grns";
 export const PUTAWAY_TASKS_QUERY_KEY = "putaway-tasks";
 export const REORDER_ALERTS_QUERY_KEY = "reorderAlerts";

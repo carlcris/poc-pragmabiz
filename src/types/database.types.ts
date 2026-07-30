@@ -961,7 +961,7 @@ export type Database = {
           receiving_overage_reviewed_by: string | null
           receiving_status: string
           receiving_variance_qty: number
-          requesting_warehouse_id: string
+          requesting_warehouse_id: string | null
           short_qty: number
           sr_id: string
           sr_item_id: string
@@ -993,7 +993,7 @@ export type Database = {
           receiving_overage_reviewed_by?: string | null
           receiving_status?: string
           receiving_variance_qty?: number
-          requesting_warehouse_id: string
+          requesting_warehouse_id?: string | null
           short_qty?: number
           sr_id: string
           sr_item_id: string
@@ -1025,7 +1025,7 @@ export type Database = {
           receiving_overage_reviewed_by?: string | null
           receiving_status?: string
           receiving_variance_qty?: number
-          requesting_warehouse_id?: string
+          requesting_warehouse_id?: string | null
           short_qty?: number
           sr_id?: string
           sr_item_id?: string
@@ -1299,7 +1299,7 @@ export type Database = {
       }
       delivery_notes: {
         Row: {
-          business_unit_id: string | null
+          business_unit_id: string
           company_id: string
           confirmed_at: string | null
           created_at: string
@@ -1310,6 +1310,7 @@ export type Database = {
           dn_no: string
           driver_name: string | null
           driver_signature: string | null
+          fulfilling_business_unit_id: string
           fulfilling_warehouse_id: string
           fulfillment_mode: string
           helper_name: string | null
@@ -1329,7 +1330,8 @@ export type Database = {
           receiving_notes: string | null
           receiving_started_at: string | null
           receiving_started_by: string | null
-          requesting_warehouse_id: string
+          requesting_business_unit_id: string
+          requesting_warehouse_id: string | null
           status: Database["public"]["Enums"]["delivery_note_status"]
           updated_at: string
           updated_by: string | null
@@ -1337,7 +1339,7 @@ export type Database = {
           voided_at: string | null
         }
         Insert: {
-          business_unit_id?: string | null
+          business_unit_id: string
           company_id: string
           confirmed_at?: string | null
           created_at?: string
@@ -1348,6 +1350,7 @@ export type Database = {
           dn_no: string
           driver_name?: string | null
           driver_signature?: string | null
+          fulfilling_business_unit_id: string
           fulfilling_warehouse_id: string
           fulfillment_mode?: string
           helper_name?: string | null
@@ -1367,7 +1370,8 @@ export type Database = {
           receiving_notes?: string | null
           receiving_started_at?: string | null
           receiving_started_by?: string | null
-          requesting_warehouse_id: string
+          requesting_business_unit_id: string
+          requesting_warehouse_id?: string | null
           status?: Database["public"]["Enums"]["delivery_note_status"]
           updated_at?: string
           updated_by?: string | null
@@ -1375,7 +1379,7 @@ export type Database = {
           voided_at?: string | null
         }
         Update: {
-          business_unit_id?: string | null
+          business_unit_id?: string
           company_id?: string
           confirmed_at?: string | null
           created_at?: string
@@ -1386,6 +1390,7 @@ export type Database = {
           dn_no?: string
           driver_name?: string | null
           driver_signature?: string | null
+          fulfilling_business_unit_id?: string
           fulfilling_warehouse_id?: string
           fulfillment_mode?: string
           helper_name?: string | null
@@ -1405,7 +1410,8 @@ export type Database = {
           receiving_notes?: string | null
           receiving_started_at?: string | null
           receiving_started_by?: string | null
-          requesting_warehouse_id?: string
+          requesting_business_unit_id?: string
+          requesting_warehouse_id?: string | null
           status?: Database["public"]["Enums"]["delivery_note_status"]
           updated_at?: string
           updated_by?: string | null
@@ -1432,6 +1438,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_notes_fulfilling_business_unit_id_fkey"
+            columns: ["fulfilling_business_unit_id"]
+            isOneToOne: false
+            referencedRelation: "business_units"
             referencedColumns: ["id"]
           },
           {
@@ -1474,6 +1487,13 @@ export type Database = {
             columns: ["receiving_started_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_notes_requesting_business_unit_id_fkey"
+            columns: ["requesting_business_unit_id"]
+            isOneToOne: false
+            referencedRelation: "business_units"
             referencedColumns: ["id"]
           },
           {
@@ -2172,7 +2192,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           version: number
-          warehouse_id: string
+          warehouse_id: string | null
         }
         Insert: {
           batch_number?: string | null
@@ -2195,7 +2215,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           version?: number
-          warehouse_id: string
+          warehouse_id?: string | null
         }
         Update: {
           batch_number?: string | null
@@ -2218,7 +2238,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           version?: number
-          warehouse_id?: string
+          warehouse_id?: string | null
         }
         Relationships: [
           {
@@ -3174,9 +3194,7 @@ export type Database = {
           current_stock: number | null
           default_location_id: string | null
           deleted_at: string | null
-          estimated_arrival_date: string | null
           id: string
-          in_transit: number
           is_active: boolean | null
           item_id: string
           max_quantity: number | null
@@ -3197,9 +3215,7 @@ export type Database = {
           current_stock?: number | null
           default_location_id?: string | null
           deleted_at?: string | null
-          estimated_arrival_date?: string | null
           id?: string
-          in_transit?: number
           is_active?: boolean | null
           item_id: string
           max_quantity?: number | null
@@ -3220,9 +3236,7 @@ export type Database = {
           current_stock?: number | null
           default_location_id?: string | null
           deleted_at?: string | null
-          estimated_arrival_date?: string | null
           id?: string
-          in_transit?: number
           is_active?: boolean | null
           item_id?: string
           max_quantity?: number | null
@@ -3744,6 +3758,7 @@ export type Database = {
           created_by: string
           currency: string
           deleted_at: string | null
+          destination_business_unit_id: string
           estimated_arrival_date: string | null
           id: string
           liner_name: string | null
@@ -3759,7 +3774,6 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           version: number
-          warehouse_id: string
         }
         Insert: {
           actual_arrival_date?: string | null
@@ -3773,6 +3787,7 @@ export type Database = {
           created_by: string
           currency?: string
           deleted_at?: string | null
+          destination_business_unit_id: string
           estimated_arrival_date?: string | null
           id?: string
           liner_name?: string | null
@@ -3788,7 +3803,6 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           version?: number
-          warehouse_id: string
         }
         Update: {
           actual_arrival_date?: string | null
@@ -3802,6 +3816,7 @@ export type Database = {
           created_by?: string
           currency?: string
           deleted_at?: string | null
+          destination_business_unit_id?: string
           estimated_arrival_date?: string | null
           id?: string
           liner_name?: string | null
@@ -3817,7 +3832,6 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           version?: number
-          warehouse_id?: string
         }
         Relationships: [
           {
@@ -3849,6 +3863,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "load_lists_destination_business_unit_id_fkey"
+            columns: ["destination_business_unit_id"]
+            isOneToOne: false
+            referencedRelation: "business_units"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "load_lists_received_by_fkey"
             columns: ["received_by"]
             isOneToOne: false
@@ -3867,13 +3888,6 @@ export type Database = {
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "load_lists_warehouse_id_fkey"
-            columns: ["warehouse_id"]
-            isOneToOne: false
-            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]
@@ -5776,7 +5790,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           version: number
-          warehouse_id: string
+          warehouse_id: string | null
         }
         Insert: {
           business_unit_id?: string | null
@@ -5804,7 +5818,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           version?: number
-          warehouse_id: string
+          warehouse_id?: string | null
         }
         Update: {
           business_unit_id?: string | null
@@ -5832,7 +5846,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           version?: number
-          warehouse_id?: string
+          warehouse_id?: string | null
         }
         Relationships: [
           {
@@ -8245,7 +8259,7 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
-          business_unit_id: string | null
+          business_unit_id: string
           company_id: string
           created_at: string
           created_by: string | null
@@ -8253,7 +8267,7 @@ export type Database = {
           delivered_at: string | null
           delivered_by: string | null
           department: string | null
-          fulfilling_warehouse_id: string | null
+          fulfilling_business_unit_id: string
           id: string
           notes: string | null
           picked_at: string | null
@@ -8268,7 +8282,6 @@ export type Database = {
           request_date: string
           requested_by_name: string | null
           requested_by_user_id: string
-          requesting_warehouse_id: string
           required_date: string
           status: string | null
           updated_at: string
@@ -8278,7 +8291,7 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
-          business_unit_id?: string | null
+          business_unit_id: string
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -8286,7 +8299,7 @@ export type Database = {
           delivered_at?: string | null
           delivered_by?: string | null
           department?: string | null
-          fulfilling_warehouse_id?: string | null
+          fulfilling_business_unit_id: string
           id?: string
           notes?: string | null
           picked_at?: string | null
@@ -8301,7 +8314,6 @@ export type Database = {
           request_date?: string
           requested_by_name?: string | null
           requested_by_user_id: string
-          requesting_warehouse_id: string
           required_date: string
           status?: string | null
           updated_at?: string
@@ -8311,7 +8323,7 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
-          business_unit_id?: string | null
+          business_unit_id?: string
           company_id?: string
           created_at?: string
           created_by?: string | null
@@ -8319,7 +8331,7 @@ export type Database = {
           delivered_at?: string | null
           delivered_by?: string | null
           department?: string | null
-          fulfilling_warehouse_id?: string | null
+          fulfilling_business_unit_id?: string
           id?: string
           notes?: string | null
           picked_at?: string | null
@@ -8334,7 +8346,6 @@ export type Database = {
           request_date?: string
           requested_by_name?: string | null
           requested_by_user_id?: string
-          requesting_warehouse_id?: string
           required_date?: string
           status?: string | null
           updated_at?: string
@@ -8378,10 +8389,10 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "stock_requests_fulfilling_warehouse_id_fkey"
-            columns: ["fulfilling_warehouse_id"]
+            foreignKeyName: "stock_requests_fulfilling_business_unit_id_fkey"
+            columns: ["fulfilling_business_unit_id"]
             isOneToOne: false
-            referencedRelation: "warehouses"
+            referencedRelation: "business_units"
             referencedColumns: ["id"]
           },
           {
@@ -8410,13 +8421,6 @@ export type Database = {
             columns: ["requested_by_user_id"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_requests_requesting_warehouse_id_fkey"
-            columns: ["requesting_warehouse_id"]
-            isOneToOne: false
-            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
           {
@@ -8758,7 +8762,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           version: number
-          warehouse_id: string
+          warehouse_id: string | null
         }
         Insert: {
           business_unit_id?: string | null
@@ -8782,7 +8786,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           version?: number
-          warehouse_id: string
+          warehouse_id?: string | null
         }
         Update: {
           business_unit_id?: string | null
@@ -8806,7 +8810,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           version?: number
-          warehouse_id?: string
+          warehouse_id?: string | null
         }
         Relationships: [
           {
@@ -8863,238 +8867,6 @@ export type Database = {
             columns: ["warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      stock_transfer_items: {
-        Row: {
-          company_id: string
-          created_at: string
-          created_by: string
-          deleted_at: string | null
-          id: string
-          item_code: string
-          item_id: string
-          item_name: string
-          notes: string | null
-          quantity: number
-          received_quantity: number | null
-          sort_order: number | null
-          transfer_id: string
-          uom_id: string
-          uom_name: string | null
-          updated_at: string
-          updated_by: string
-        }
-        Insert: {
-          company_id: string
-          created_at?: string
-          created_by: string
-          deleted_at?: string | null
-          id?: string
-          item_code: string
-          item_id: string
-          item_name: string
-          notes?: string | null
-          quantity: number
-          received_quantity?: number | null
-          sort_order?: number | null
-          transfer_id: string
-          uom_id: string
-          uom_name?: string | null
-          updated_at?: string
-          updated_by: string
-        }
-        Update: {
-          company_id?: string
-          created_at?: string
-          created_by?: string
-          deleted_at?: string | null
-          id?: string
-          item_code?: string
-          item_id?: string
-          item_name?: string
-          notes?: string | null
-          quantity?: number
-          received_quantity?: number | null
-          sort_order?: number | null
-          transfer_id?: string
-          uom_id?: string
-          uom_name?: string | null
-          updated_at?: string
-          updated_by?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "stock_transfer_items_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_transfer_items_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_transfer_items_item_id_fkey"
-            columns: ["item_id"]
-            isOneToOne: false
-            referencedRelation: "items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_transfer_items_transfer_id_fkey"
-            columns: ["transfer_id"]
-            isOneToOne: false
-            referencedRelation: "stock_transfers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_transfer_items_uom_id_fkey"
-            columns: ["uom_id"]
-            isOneToOne: false
-            referencedRelation: "units_of_measure"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_transfer_items_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      stock_transfers: {
-        Row: {
-          business_unit_id: string | null
-          company_id: string
-          confirmed_at: string | null
-          confirmed_by: string | null
-          created_at: string
-          created_by: string
-          custom_fields: Json | null
-          deleted_at: string | null
-          from_warehouse_id: string
-          id: string
-          notes: string | null
-          requested_at: string | null
-          requested_by: string | null
-          status: string | null
-          to_warehouse_id: string
-          total_items: number | null
-          transfer_code: string
-          transfer_date: string
-          updated_at: string
-          updated_by: string
-          version: number
-        }
-        Insert: {
-          business_unit_id?: string | null
-          company_id: string
-          confirmed_at?: string | null
-          confirmed_by?: string | null
-          created_at?: string
-          created_by: string
-          custom_fields?: Json | null
-          deleted_at?: string | null
-          from_warehouse_id: string
-          id?: string
-          notes?: string | null
-          requested_at?: string | null
-          requested_by?: string | null
-          status?: string | null
-          to_warehouse_id: string
-          total_items?: number | null
-          transfer_code: string
-          transfer_date: string
-          updated_at?: string
-          updated_by: string
-          version?: number
-        }
-        Update: {
-          business_unit_id?: string | null
-          company_id?: string
-          confirmed_at?: string | null
-          confirmed_by?: string | null
-          created_at?: string
-          created_by?: string
-          custom_fields?: Json | null
-          deleted_at?: string | null
-          from_warehouse_id?: string
-          id?: string
-          notes?: string | null
-          requested_at?: string | null
-          requested_by?: string | null
-          status?: string | null
-          to_warehouse_id?: string
-          total_items?: number | null
-          transfer_code?: string
-          transfer_date?: string
-          updated_at?: string
-          updated_by?: string
-          version?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "stock_transfers_business_unit_id_fkey"
-            columns: ["business_unit_id"]
-            isOneToOne: false
-            referencedRelation: "business_units"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_transfers_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_transfers_confirmed_by_fkey"
-            columns: ["confirmed_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_transfers_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_transfers_from_warehouse_id_fkey"
-            columns: ["from_warehouse_id"]
-            isOneToOne: false
-            referencedRelation: "warehouses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_transfers_requested_by_fkey"
-            columns: ["requested_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_transfers_to_warehouse_id_fkey"
-            columns: ["to_warehouse_id"]
-            isOneToOne: false
-            referencedRelation: "warehouses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_transfers_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -10926,6 +10698,18 @@ export type Database = {
           acknowledged_count: number
         }[]
       }
+      add_delivery_note_items_transactionally: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_delivery_note_id: string
+          p_lines: Json
+          p_notes: string
+          p_picker_user_ids: string[]
+          p_user_id: string
+        }
+        Returns: Json
+      }
       adjust_dispatched_delivery_note_item: {
         Args: {
           p_company_id: string
@@ -10947,15 +10731,6 @@ export type Database = {
           p_action: string
           p_manufacturing_order_id: string
           p_note?: string
-        }
-        Returns: string
-      }
-      approve_grn_with_batch_inventory_apply_inventory: {
-        Args: {
-          p_company_id: string
-          p_grn_id: string
-          p_notes?: string
-          p_user_id: string
         }
         Returns: string
       }
@@ -11065,16 +10840,14 @@ export type Database = {
               status: string
             }[]
           }
-      create_delivery_note_transactionally: {
+      create_delivery_notes_transactionally: {
         Args: {
           p_business_unit_id: string
           p_company_id: string
           p_driver_name: string
-          p_fulfilling_warehouse_id: string
           p_fulfillment_mode: string
           p_lines: Json
           p_notes: string
-          p_requesting_warehouse_id: string
           p_user_id: string
         }
         Returns: Json
@@ -11106,6 +10879,31 @@ export type Database = {
         Returns: {
           job_order_code: string
           job_order_id: string
+        }[]
+      }
+      create_load_list: {
+        Args: {
+          p_batch_number: string
+          p_company_id: string
+          p_container_number: string
+          p_currency: string
+          p_destination_business_unit_id: string
+          p_estimated_arrival_date: string
+          p_items: Json
+          p_liner_name: string
+          p_load_date: string
+          p_notes: string
+          p_seal_number: string
+          p_source_business_unit_id: string
+          p_supplier_id: string
+          p_supplier_ll_number: string
+          p_user_id: string
+        }
+        Returns: {
+          currency: string
+          id: string
+          ll_number: string
+          status: string
         }[]
       }
       create_manufacturing_order_from_frame_job_order_transaction: {
@@ -11213,6 +11011,20 @@ export type Database = {
           adjustment_id: string
           status: string
         }[]
+      }
+      create_stock_request_draft: {
+        Args: {
+          p_business_unit_id: string
+          p_department: string
+          p_fulfilling_business_unit_id: string
+          p_items: Json
+          p_notes: string
+          p_priority: string
+          p_purpose: string
+          p_request_date: string
+          p_required_date: string
+        }
+        Returns: string
       }
       create_transformation_order_transaction: {
         Args: {
@@ -11444,7 +11256,7 @@ export type Database = {
           available_qty: number
           base_unit_label: string
           qty_per_unit: number
-          selected_item_batch_id: string
+          remaining_request_qty: number
           sr_item_id: string
         }[]
       }
@@ -11513,12 +11325,10 @@ export type Database = {
           category_id: string
           category_name: string
           custom_fields: Json
-          estimated_arrival_date: string
           id: string
           image_url: string
           import_cost: number
           import_currency: string
-          in_transit: number
           is_active: boolean
           item_code: string
           item_name: string
@@ -11636,6 +11446,36 @@ export type Database = {
           total_items_tracked: number
         }[]
       }
+      get_stock_in_transit_page: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_limit?: number
+          p_page?: number
+          p_search?: string
+        }
+        Returns: {
+          base_quantity: number
+          container_number: string
+          estimated_arrival_date: string
+          id: string
+          item_code: string
+          item_id: string
+          item_name: string
+          liner_name: string
+          ll_number: string
+          load_list_id: string
+          load_list_qty: number
+          qty_per_unit: number
+          source_business_unit_code: string
+          source_business_unit_name: string
+          supplier_code: string
+          supplier_name: string
+          total_base_quantity: number
+          total_count: number
+          unit_name: string
+        }[]
+      }
       get_transformation_template_copy_source: {
         Args: { p_template_id: string }
         Returns: Json
@@ -11665,10 +11505,6 @@ export type Database = {
           can_view: boolean
           resource: string
         }[]
-      }
-      get_van_expected_ending_stock: {
-        Args: { p_date: string; p_van_warehouse_id: string }
-        Returns: Json
       }
       get_warehouse_business_units: {
         Args: { p_company_id: string; p_warehouse_ids: string[] }
@@ -11736,6 +11572,14 @@ export type Database = {
           p_warehouse_id: string
         }
         Returns: string
+      }
+      insert_stock_request_draft_items: {
+        Args: {
+          p_company_id: string
+          p_items: Json
+          p_stock_request_id: string
+        }
+        Returns: undefined
       }
       link_load_list_stock_requisitions: {
         Args: {
@@ -11971,6 +11815,10 @@ export type Database = {
         Args: { p_company_id: string; p_load_list_id: string }
         Returns: undefined
       }
+      reconcile_stock_request_statuses: {
+        Args: { p_stock_request_ids: string[]; p_user_id?: string }
+        Returns: undefined
+      }
       record_delivery_note_receiving_scan: {
         Args: {
           p_accepted_qty?: number
@@ -12018,7 +11866,6 @@ export type Database = {
           p_grn_item_id: string
           p_num_boxes: number
           p_user_id: string
-          p_warehouse_location_id?: string
         }
         Returns: number
       }
@@ -12106,9 +11953,40 @@ export type Database = {
         }
         Returns: undefined
       }
+      search_stock_request_fulfillment_batches: {
+        Args: {
+          p_company_id: string
+          p_fulfilling_business_unit_id: string
+          p_item_id: string
+          p_limit?: number
+          p_page?: number
+          p_search?: string
+        }
+        Returns: {
+          available_base_qty: number
+          batch_code: string
+          batch_id: string
+          rack_summary: string
+          received_at: string
+          total_count: number
+          warehouse_code: string
+          warehouse_id: string
+          warehouse_name: string
+        }[]
+      }
       setup_company_rbac: { Args: { p_company_id: string }; Returns: undefined }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      start_delivery_note_receiving_transactionally: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_delivery_note_id: string
+          p_receiving_warehouse_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       start_grn_receiving: {
         Args: { p_company_id: string; p_grn_id: string; p_user_id: string }
         Returns: undefined
@@ -12180,6 +12058,31 @@ export type Database = {
         Args: { p_business_unit_id: string }
         Returns: Json
       }
+      update_load_list: {
+        Args: {
+          p_batch_number: string
+          p_company_id: string
+          p_container_number: string
+          p_currency: string
+          p_estimated_arrival_date: string
+          p_items: Json
+          p_liner_name: string
+          p_load_date: string
+          p_load_list_id: string
+          p_notes: string
+          p_seal_number: string
+          p_source_business_unit_id: string
+          p_supplier_id: string
+          p_supplier_ll_number: string
+          p_user_id: string
+        }
+        Returns: {
+          currency: string
+          id: string
+          ll_number: string
+          status: string
+        }[]
+      }
       update_sales_quotation_transaction: {
         Args: {
           p_items: Json
@@ -12212,6 +12115,19 @@ export type Database = {
           adjustment_id: string
           status: string
         }[]
+      }
+      update_stock_request_draft: {
+        Args: {
+          p_department: string
+          p_items: Json
+          p_notes: string
+          p_priority: string
+          p_purpose: string
+          p_request_date: string
+          p_required_date: string
+          p_stock_request_id: string
+        }
+        Returns: string
       }
       update_transformation_template: {
         Args: {

@@ -189,7 +189,13 @@ export default function LoadListDetailPage() {
     }).format(new Date(dateString));
   };
 
-  const formatUser = (user?: { firstName?: string; lastName?: string; email?: string }) => {
+  const formatUser = (
+    user?: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+    } | null
+  ) => {
     if (!user) return t("noValue");
     const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
     return fullName || user.email || t("noValue");
@@ -235,10 +241,10 @@ export default function LoadListDetailPage() {
             {ll.isSourceBusinessUnit && canMarkInTransit && ll.status === "confirmed" && (
               <Button onClick={() => setInTransitDialogOpen(true)}>{t("markInTransit")}</Button>
             )}
-            {canMarkArrived && ll.status === "in_transit" && (
+            {ll.isTargetBusinessUnit && canMarkArrived && ll.status === "in_transit" && (
               <Button onClick={() => setArrivedDialogOpen(true)}>{t("markArrived")}</Button>
             )}
-            {ll.isSourceBusinessUnit && ll.status === "arrived" && (
+            {ll.isTargetBusinessUnit && ll.status === "arrived" && (
               <Button
                 variant="outline"
                 onClick={() => setReverseArrivalDialogOpen(true)}
@@ -301,16 +307,17 @@ export default function LoadListDetailPage() {
                     )}
                   </div>
                   <div>
-                    <span className="text-muted-foreground">{t("warehouse")}</span>
+                    <span className="text-muted-foreground">{t("destinationBusinessUnit")}</span>
                     <div className="font-medium">
-                      {ll.warehouse?.name} ({ll.warehouse?.code})
+                      {ll.destinationBusinessUnit?.name || t("noValue")} (
+                      {ll.destinationBusinessUnit?.code || t("noValue")})
                     </div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">{t("businessUnit")}</span>
+                    <span className="text-muted-foreground">{t("sourceBusinessUnit")}</span>
                     <div className="font-medium">
-                      {ll.businessUnit?.name || t("noValue")} (
-                      {ll.businessUnit?.code || t("noValue")})
+                      {ll.sourceBusinessUnit?.name || t("noValue")} (
+                      {ll.sourceBusinessUnit?.code || t("noValue")})
                     </div>
                   </div>
                   {ll.supplierLlNumber && (
@@ -425,9 +432,7 @@ export default function LoadListDetailPage() {
                           <TableCell className="font-medium">{item.item?.code}</TableCell>
                           <TableCell>{item.item?.name}</TableCell>
                           <TableCell>
-                            <div className="font-medium">
-                              {item.unitName}
-                            </div>
+                            <div className="font-medium">{item.unitName}</div>
                             <div className="text-xs text-muted-foreground">
                               {t("qtyPerUnitInlineLabel", {
                                 qty: item.qtyPerUnit.toLocaleString(locale, {
@@ -438,9 +443,9 @@ export default function LoadListDetailPage() {
                           </TableCell>
                           <TableCell className="text-right">{item.loadListQty}</TableCell>
                           <TableCell className="text-right">
-                            {(
-                              item.loadListQty * item.qtyPerUnit
-                            ).toLocaleString(locale, { maximumFractionDigits: 4 })}
+                            {(item.loadListQty * item.qtyPerUnit).toLocaleString(locale, {
+                              maximumFractionDigits: 4,
+                            })}
                           </TableCell>
                           <TableCell className="text-right">
                             <span
@@ -564,7 +569,10 @@ export default function LoadListDetailPage() {
       </Dialog>
 
       {/* Arrived Dialog */}
-      <AlertDialog open={canMarkArrived && arrivedDialogOpen} onOpenChange={setArrivedDialogOpen}>
+      <AlertDialog
+        open={ll?.isTargetBusinessUnit === true && canMarkArrived && arrivedDialogOpen}
+        onOpenChange={setArrivedDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("arrivedTitle")}</AlertDialogTitle>
@@ -583,7 +591,10 @@ export default function LoadListDetailPage() {
       </AlertDialog>
 
       {/* Reverse Arrival Dialog */}
-      <AlertDialog open={reverseArrivalDialogOpen} onOpenChange={setReverseArrivalDialogOpen}>
+      <AlertDialog
+        open={ll?.isTargetBusinessUnit === true && reverseArrivalDialogOpen}
+        onOpenChange={setReverseArrivalDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("reverseArrivalTitle")}</AlertDialogTitle>

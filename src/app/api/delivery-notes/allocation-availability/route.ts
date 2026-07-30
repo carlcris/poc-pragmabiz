@@ -11,10 +11,10 @@ type AvailabilityRequestBody = {
 
 type AvailabilityRow = {
   sr_item_id: string;
+  remaining_request_qty: number | string;
   available_qty: number | string;
   available_base_qty: number | string;
   qty_per_unit: number | string;
-  selected_item_batch_id: string | null;
   base_unit_label: string;
 };
 
@@ -59,10 +59,10 @@ async function POSTHandler(request: NextRequest) {
   return NextResponse.json({
     data: rows.map((row) => ({
       srItemId: row.sr_item_id,
+      remainingRequestQty: Number(row.remaining_request_qty || 0),
       availableQty: Number(row.available_qty || 0),
       availableBaseQty: Number(row.available_base_qty || 0),
       qtyPerUnit: Number(row.qty_per_unit || 1),
-      selectedItemBatchId: row.selected_item_batch_id,
       baseUnitLabel: row.base_unit_label,
     })),
   });

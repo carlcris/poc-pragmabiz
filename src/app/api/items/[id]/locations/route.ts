@@ -178,9 +178,7 @@ async function GETHandler(_request: Request, { params }: { params: Promise<{ id:
       warehouseIds.length > 0
         ? await supabase
             .from("item_warehouse")
-            .select(
-              "warehouse_id, default_location_id, max_quantity, in_transit, estimated_arrival_date"
-            )
+            .select("warehouse_id, default_location_id, max_quantity")
             .eq("company_id", userData.company_id)
             .eq("item_id", id)
             .in("warehouse_id", warehouseIds)
@@ -190,19 +188,12 @@ async function GETHandler(_request: Request, { params }: { params: Promise<{ id:
     const defaultLocationMap = new Map(
       (itemWarehouses || []).map((row) => [row.warehouse_id, row.default_location_id])
     );
-    const inTransitMap = new Map(
-      (itemWarehouses || []).map((row) => [row.warehouse_id, Number(row.in_transit || 0)])
-    );
     const maxQuantityMap = new Map(
       (itemWarehouses || []).map((row) => [
         row.warehouse_id,
         row.max_quantity == null ? null : Number(row.max_quantity),
       ])
     );
-    const estimatedArrivalMap = new Map(
-      (itemWarehouses || []).map((row) => [row.warehouse_id, row.estimated_arrival_date || null])
-    );
-
     const locationsByKey = new Map<
       string,
       {
@@ -219,8 +210,6 @@ async function GETHandler(_request: Request, { params }: { params: Promise<{ id:
         qtyReserved: number;
         qtyAvailable: number;
         maxQuantity: number | null;
-        inTransit: number;
-        estimatedArrivalDate: string | null;
         isDefault: boolean;
         defaultLocationId: string | null;
         batches: Array<{
@@ -263,8 +252,6 @@ async function GETHandler(_request: Request, { params }: { params: Promise<{ id:
         qtyReserved: 0,
         qtyAvailable: 0,
         maxQuantity: maxQuantityMap.get(row.warehouse_id) ?? null,
-        inTransit: inTransitMap.get(row.warehouse_id) || 0,
-        estimatedArrivalDate: estimatedArrivalMap.get(row.warehouse_id) || null,
         isDefault: defaultLocationId === row.location_id,
         defaultLocationId,
         batches: [] as Array<{

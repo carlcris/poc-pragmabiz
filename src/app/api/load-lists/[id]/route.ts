@@ -81,8 +81,8 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
         supplier_ll_number,
         company_id,
         business_unit_id,
+        destination_business_unit_id,
         supplier_id,
-        warehouse_id,
         container_number,
         seal_number,
         batch_number,
@@ -102,8 +102,8 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
         updated_at,
         updated_by,
         supplier:suppliers(id, supplier_name, supplier_code, contact_person, email, phone),
-        warehouse:warehouses(id, warehouse_name, warehouse_code, business_unit_id),
-        business_unit:business_units(id, name, code),
+        source_business_unit:business_units!load_lists_business_unit_id_fkey(id, name, code),
+        destination_business_unit:business_units!load_lists_destination_business_unit_id_fkey(id, name, code),
         created_by_user:users!load_lists_created_by_fkey(id, email, first_name, last_name),
         received_by_user:users!load_lists_received_by_fkey(id, email, first_name, last_name),
         approved_by_user:users!load_lists_approved_by_fkey(id, email, first_name, last_name),
@@ -136,13 +136,15 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Format response
-    const businessUnit = Array.isArray(ll.business_unit)
-      ? ll.business_unit[0]
-      : (ll.business_unit ?? null);
+    const sourceBusinessUnit = Array.isArray(ll.source_business_unit)
+      ? ll.source_business_unit[0]
+      : (ll.source_business_unit ?? null);
+    const destinationBusinessUnit = Array.isArray(ll.destination_business_unit)
+      ? ll.destination_business_unit[0]
+      : (ll.destination_business_unit ?? null);
     const supplier = Array.isArray(ll.supplier) ? ll.supplier[0] : (ll.supplier ?? null);
-    const warehouse = Array.isArray(ll.warehouse) ? ll.warehouse[0] : (ll.warehouse ?? null);
     const isSourceBusinessUnit = ll.business_unit_id === currentBusinessUnitId;
-    const isTargetBusinessUnit = warehouse?.business_unit_id === currentBusinessUnitId;
+    const isTargetBusinessUnit = ll.destination_business_unit_id === currentBusinessUnitId;
 
     if (
       !currentBusinessUnitId ||
@@ -164,12 +166,20 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       llNumber: ll.ll_number,
       supplierLlNumber: ll.supplier_ll_number,
       companyId: ll.company_id,
-      businessUnitId: ll.business_unit_id,
-      businessUnit: businessUnit
+      sourceBusinessUnitId: ll.business_unit_id,
+      sourceBusinessUnit: sourceBusinessUnit
         ? {
-            id: businessUnit.id,
-            name: businessUnit.name,
-            code: businessUnit.code,
+            id: sourceBusinessUnit.id,
+            name: sourceBusinessUnit.name,
+            code: sourceBusinessUnit.code,
+          }
+        : null,
+      destinationBusinessUnitId: ll.destination_business_unit_id,
+      destinationBusinessUnit: destinationBusinessUnit
+        ? {
+            id: destinationBusinessUnit.id,
+            name: destinationBusinessUnit.name,
+            code: destinationBusinessUnit.code,
           }
         : null,
       supplierId: ll.supplier_id,
@@ -181,14 +191,6 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
             contactPerson: supplier.contact_person,
             email: supplier.email,
             phone: supplier.phone,
-          }
-        : null,
-      warehouseId: ll.warehouse_id,
-      warehouse: warehouse
-        ? {
-            id: warehouse.id,
-            name: warehouse.warehouse_name,
-            code: warehouse.warehouse_code,
           }
         : null,
       isSourceBusinessUnit,
@@ -318,7 +320,7 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
-    if (body.items && body.items.length === 0) {
+    if (!Array.isArray(body.items) || body.items.length === 0) {
       return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
     }
 
@@ -340,75 +342,64 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     let resolvedLineItems;
-    if (body.items && body.items.length > 0 && existingLL.status === "draft") {
-      try {
-        resolvedLineItems = await resolveLoadListLineUnitOptions(supabase, companyId, body.items);
-      } catch (error) {
-        if (error instanceof LoadListLineValidationError) {
-          return NextResponse.json({ error: error.message }, { status: 400 });
-        }
-        throw error;
+    try {
+      resolvedLineItems = await resolveLoadListLineUnitOptions(supabase, companyId, body.items);
+    } catch (error) {
+      if (error instanceof LoadListLineValidationError) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
       }
+      throw error;
     }
 
     const estimatedArrivalDate = normalizeOptionalDate(body.estimatedArrivalDate);
     const loadDate = normalizeOptionalDate(body.loadDate);
 
-    // Update load list
-    const { data: ll, error: updateError } = await supabase
-      .from("load_lists")
-      .update({
-        supplier_ll_number: body.supplierLlNumber,
-        supplier_id: body.supplierId,
-        warehouse_id: body.warehouseId,
-        container_number: body.containerNumber,
-        seal_number: body.sealNumber,
-        batch_number: body.batchNumber,
-        liner_name: body.linerName,
-        estimated_arrival_date: estimatedArrivalDate,
-        load_date: loadDate,
-        currency,
-        notes: body.notes,
-        updated_by: userId,
-      })
-      .eq("id", id)
-      .eq("business_unit_id", currentBusinessUnitId)
-      .select("id, ll_number, status, currency")
-      .single();
+    const rpcItems = resolvedLineItems.map((item) => ({
+      item_id: item.itemId,
+      item_unit_option_id: item.item_unit_option_id,
+      load_list_qty: item.loadListQty,
+      unit_price: Number(item.unitPrice),
+      notes: item.notes ?? null,
+    }));
+
+    const { data: updatedRows, error: updateError } = await supabase.rpc("update_load_list", {
+      p_company_id: companyId,
+      p_source_business_unit_id: currentBusinessUnitId,
+      p_user_id: userId,
+      p_load_list_id: id,
+      p_supplier_id: body.supplierId,
+      p_supplier_ll_number: body.supplierLlNumber ?? null,
+      p_container_number: body.containerNumber ?? null,
+      p_seal_number: body.sealNumber ?? null,
+      p_batch_number: body.batchNumber ?? null,
+      p_liner_name: body.linerName ?? null,
+      p_estimated_arrival_date: estimatedArrivalDate,
+      p_load_date: loadDate,
+      p_currency: currency,
+      p_notes: body.notes ?? null,
+      p_items: rpcItems,
+    });
 
     if (updateError) {
       console.error("Error updating load list:", updateError);
+      const safeMessages = new Set([
+        "Load list not found",
+        "Only draft or confirmed load lists can be edited",
+        "Supplier not found",
+        "Load list items must contain between 1 and 500 lines",
+        "Load list contains an invalid line",
+      ]);
+      const status = updateError.message === "Unauthorized" ? 403 : 400;
+      const error = safeMessages.has(updateError.message)
+        ? updateError.message
+        : "Failed to update load list";
+      return NextResponse.json({ error }, { status });
+    }
+
+    const ll = updatedRows?.[0];
+    if (!ll) {
       return NextResponse.json({ error: "Failed to update load list" }, { status: 500 });
     }
-
-    // Update line items if provided and status is draft
-    if (resolvedLineItems && resolvedLineItems.length > 0) {
-      // Delete existing items
-      await supabase.from("load_list_items").delete().eq("load_list_id", id);
-
-      // Insert new items
-      const itemsToInsert = resolvedLineItems.map((item) => ({
-        load_list_id: id,
-        item_id: item.itemId,
-        item_unit_option_id: item.item_unit_option_id,
-        uom_id: item.uom_id,
-        unit_name: item.unit_name,
-        qty_per_unit: item.qty_per_unit,
-        load_list_qty: item.loadListQty,
-        unit_price: Number(item.unitPrice),
-        received_qty: 0,
-        damaged_qty: 0,
-        notes: item.notes,
-      }));
-
-      const { error: itemsError } = await supabase.from("load_list_items").insert(itemsToInsert);
-
-      if (itemsError) {
-        console.error("Error updating load list items:", itemsError);
-        return NextResponse.json({ error: "Failed to update load list items" }, { status: 500 });
-      }
-    }
-
     return NextResponse.json({
       id: ll.id,
       llNumber: ll.ll_number,

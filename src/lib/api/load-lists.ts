@@ -19,10 +19,12 @@ export const loadListsApi = {
     const params = new URLSearchParams();
     if (filters?.search) params.append("search", filters.search);
     if (filters?.status && filters.status !== "all") params.append("status", filters.status);
-    if (filters?.supplierId) params.append("supplier_id", filters.supplierId);
-    if (filters?.warehouseId) params.append("warehouse_id", filters.warehouseId);
-    if (filters?.dateFrom) params.append("from_date", filters.dateFrom);
-    if (filters?.dateTo) params.append("to_date", filters.dateTo);
+    if (filters?.supplierId) params.append("supplierId", filters.supplierId);
+    if (filters?.destinationBusinessUnitId) {
+      params.append("destinationBusinessUnitId", filters.destinationBusinessUnitId);
+    }
+    if (filters?.dateFrom) params.append("startDate", filters.dateFrom);
+    if (filters?.dateTo) params.append("endDate", filters.dateTo);
     if (filters?.page) params.append("page", filters.page.toString());
     if (filters?.limit) params.append("limit", filters.limit.toString());
 

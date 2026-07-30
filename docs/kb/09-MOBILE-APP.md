@@ -127,7 +127,7 @@ apps/mobile/
    ↓
 3. Open linked GRN receiving checklist
    ↓
-4. Start receiving
+4. Start destination-business-unit receiving
    ↓
 5. Enter received and damaged quantities per GRN line
    ↓
@@ -143,8 +143,8 @@ apps/mobile/
 **Mobile Features**:
 
 - Load-list based GRN receiving
-- Load-list receiving queue resolves the current business unit warehouse and fetches load lists with that `warehouseId` filter
-- `GET /api/mobile/warehouse-dashboard` returns a bounded Pending Receipts aggregate containing destination-warehouse load lists in `arrived` or `receiving`, plus dispatched delivery notes awaiting receipt by the current business unit; the dashboard action opens the first non-empty receiving tab with the load-list `pending_receipts` filter or delivery-note `dispatched` filter already applied
+- Load-list receiving queue fetches load lists whose destination is the current business unit
+- `GET /api/mobile/warehouse-dashboard` returns a bounded Pending Receipts aggregate containing destination-business-unit load lists in `arrived` or `receiving`, plus dispatched delivery notes awaiting receipt by the current business unit; the dashboard action opens the first non-empty receiving tab with the load-list `pending_receipts` filter or delivery-note `dispatched` filter already applied
 - Start and pause controls for user-triggered receiving sessions
 - Per-line received and damaged quantity entry
 - Save draft receiving quantities without changing workflow status
@@ -390,15 +390,9 @@ Complete picking.
 - Locks picking (no more changes)
 - Notifies dispatch team
 
-#### GET /api/load-lists/receiving-warehouse
+#### GET /api/load-lists?receivingOnly=true
 
-Resolve the current business unit warehouse used by native mobile load-list receiving.
-
-**Permissions**: `view` on either Load Lists or Goods Receipt Notes
-
-#### GET /api/load-lists?receivingOnly=true&warehouseId=:id
-
-Fetch native mobile load-list receiving candidates. The API only returns rows when `warehouseId` matches the current business unit warehouse.
+Fetch native mobile load-list receiving candidates whose destination is the current business unit.
 
 **Permissions**: `view` on either Load Lists or Goods Receipt Notes. Goods Receipt Notes access grants only the business-unit-scoped load-list context required by the receiving workflow; ordinary load-list APIs still require Load Lists access.
 
@@ -432,7 +426,7 @@ Save native mobile GRN receiving quantities. The GRN must already be in `receivi
 
 #### POST /api/grns/[id]/start-receiving
 
-Start native mobile GRN receiving. This transitions the GRN and linked arrived load list into `receiving`.
+Start native mobile GRN receiving for the current destination business unit. The request has no body and transitions the GRN plus linked arrived load list into `receiving` without selecting or assigning a warehouse.
 
 **Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.start_receiving.edit`
 
@@ -472,6 +466,17 @@ The following operations require `edit` on Stock Requests and granular capabilit
 - `POST /api/delivery-notes/[id]/receiving-overages/[itemId]/accept`
 - `POST /api/delivery-notes/[id]/receiving-overages/[itemId]/reject`
 - `POST /api/delivery-notes/[id]/submit-receiving`
+
+Starting delivery-note receiving requires the receiver to select an active destination warehouse in
+the delivery note's requesting business unit. The database assigns that warehouse to the delivery
+note and all of its lines atomically before scanning begins. Receiving authorization uses the
+delivery note's requesting business unit directly; it does not infer authorization from the
+destination warehouse. Mobile scan and submit controls remain unavailable until Start Receiving
+succeeds. When the destination business unit has exactly one active warehouse, the mobile app
+selects it automatically without showing a redundant warehouse field; business units with multiple
+warehouses still require an explicit choice. The variance acknowledgement warning is hidden before
+receiving and appears only after at least one received quantity creates a current shortage or
+overage.
 
 The native mobile app stores the permission and capability maps returned by login and business-unit
 switching. Bottom navigation keeps Receiving and Picking visible in fixed positions but disables
@@ -544,9 +549,10 @@ Search items for mobile (autocomplete).
 2. **Views inbound load lists**
 3. **Selects an arrived or receiving load list**
 4. **Opens the linked GRN**
-5. **Starts receiving**
+5. **Starts receiving for the destination business unit**
    - GRN status changes to `receiving`
    - Linked load list status changes to `receiving`
+   - No warehouse or rack is selected until Putaway Station
 6. **For each GRN line**:
    - Enters received quantity
    - Enters damaged quantity when applicable
@@ -595,12 +601,14 @@ Search items for mobile (autocomplete).
 **Location**: `apps/mobile/app/receiving/load-lists/[id].tsx`
 
 - Load-list linked GRN receiving interface
-- Mobile receiving list resolves the current business unit warehouse and only fetches load lists with that exact `warehouseId`
+- Mobile receiving list includes load lists whose destination is the current business unit
 - Start and pause receiving controls
 - Per-line received and damaged quantity entry
 - Save receiving quantities without submitting
 - Submit for confirmation and putaway staging, including unsaved quantities atomically
-- Delivery-note receiving is inbound-only: the mobile receiving queue only shows delivery notes whose requesting warehouse belongs to the current business unit.
+- Delivery-note receiving is inbound-only: the mobile receiving queue shows dispatched delivery
+  notes whose requesting business unit is the current business unit. The receiver selects the
+  destination warehouse when receiving starts.
 
 ## Troubleshooting
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Download, Eye, Loader2, Printer } from "lucide-react";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import { useCustomers, useCustomerLedger } from "@/hooks/useCustomers";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useItemCategories } from "@/hooks/useItemCategories";
@@ -43,7 +44,7 @@ import { useTransformationEfficiencyReport } from "@/hooks/useTransformationEffi
 import { useTransformationTemplates } from "@/hooks/useTransformationTemplates";
 import { useUsers } from "@/hooks/useUsers";
 import { useWarehouses } from "@/hooks/useWarehouses";
-import { useBusinessUnitStore } from "@/stores/businessUnitStore";
+import type { LookupWarehouseOption } from "@/hooks/useLookups";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -202,28 +203,21 @@ function InventoryReportPreview({
   const tReports = useTranslations("reportsPage");
   const t = useTranslations("inventoryReportPage");
   const locale = useLocale();
-  const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
-  const { data: warehousesData } = useWarehouses({ limit: 50 });
   const { data: categoriesData } = useItemCategories();
-  const warehouses = useMemo(
-    () => warehousesData?.data?.filter((warehouse) => warehouse.isActive) || [],
-    [warehousesData?.data]
-  );
   const categories = categoriesData?.data || [];
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
+  const [selectedWarehouse, setSelectedWarehouse] = useState<LookupWarehouseOption | null>(null);
   const [category, setCategory] = useState("all");
   const [stockStatus, setStockStatus] = useState<InventoryStockStatus>("all");
   const { previewUrl, isGeneratingPreview, setIsGeneratingPreview, replacePreviewUrl } =
     usePdfPreviewState(open);
-  const selectedWarehouse = useMemo(
-    () => warehouses.find((warehouse) => warehouse.id === warehouseId) ?? null,
-    [warehouseId, warehouses]
-  );
   const selectedWarehouseLabel = selectedWarehouse
-    ? `${selectedWarehouse.code} - ${selectedWarehouse.name}`
-    : t("noValue");
+    ? selectedWarehouse.code
+      ? `${selectedWarehouse.code} - ${selectedWarehouse.name}`
+      : selectedWarehouse.name
+    : t("allWarehouses");
 
   const reportQuery = useInventoryReport({
     enabled: false,
@@ -231,7 +225,7 @@ function InventoryReportPreview({
     limit: PDF_REPORT_ROW_LIMIT,
     exportMode: "pdf",
     search: search || undefined,
-    warehouseId,
+    warehouseId: warehouseId || undefined,
     category: category === "all" ? undefined : category,
     stockStatus,
     sortBy: "updated_at" satisfies InventoryReportSortBy,
@@ -245,15 +239,6 @@ function InventoryReportPreview({
 
     return () => window.clearTimeout(timeoutId);
   }, [searchInput]);
-
-  useEffect(() => {
-    if (!open || warehouseId || warehouses.length === 0) return;
-
-    const currentContextWarehouse =
-      warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit?.id) ??
-      warehouses[0];
-    setWarehouseId(currentContextWarehouse.id);
-  }, [currentBusinessUnit?.id, open, warehouseId, warehouses]);
 
   useEffect(() => {
     replacePreviewUrl(null);
@@ -274,8 +259,6 @@ function InventoryReportPreview({
     }).format(Number.isFinite(value) ? value : 0);
 
   const handlePreview = async () => {
-    if (!warehouseId) return;
-
     setIsGeneratingPreview(true);
     try {
       const { data } = await reportQuery.refetch();
@@ -297,7 +280,6 @@ function InventoryReportPreview({
           qtyOnHandLabel={t("qtyOnHand")}
           qtyReservedLabel={t("qtyReserved")}
           qtyAvailableLabel={t("qtyAvailable")}
-          qtyInTransitLabel={t("qtyInTransit")}
           statusLabel={t("status")}
           unitCostLabel={t("unitCost")}
           stockValueLabel={t("stockValue")}
@@ -312,7 +294,6 @@ function InventoryReportPreview({
             on_hand: t("on_hand"),
             available: t("available"),
             allocated: t("allocated"),
-            in_transit: t("in_transit"),
             zero: t("zero"),
           }}
           rows={data.data}
@@ -342,18 +323,13 @@ function InventoryReportPreview({
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("warehouse")}</label>
-            <Select value={warehouseId} onValueChange={setWarehouseId}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("selectWarehouse")} />
-              </SelectTrigger>
-              <SelectContent>
-                {warehouses.map((warehouse) => (
-                  <SelectItem key={warehouse.id} value={warehouse.id}>
-                    {warehouse.code} - {warehouse.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <WarehouseSelect
+              value={warehouseId}
+              onValueChange={setWarehouseId}
+              onOptionChange={setSelectedWarehouse}
+              scope="current_business_unit"
+              allowAll
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("category")}</label>
@@ -385,7 +361,6 @@ function InventoryReportPreview({
                 <SelectItem value="on_hand">{t("on_hand")}</SelectItem>
                 <SelectItem value="available">{t("available")}</SelectItem>
                 <SelectItem value="allocated">{t("allocated")}</SelectItem>
-                <SelectItem value="in_transit">{t("in_transit")}</SelectItem>
                 <SelectItem value="zero">{t("zero")}</SelectItem>
               </SelectContent>
             </Select>
@@ -395,7 +370,7 @@ function InventoryReportPreview({
           <Button
             className="w-full"
             onClick={handlePreview}
-            disabled={reportQuery.isFetching || isGeneratingPreview || !warehouseId}
+            disabled={reportQuery.isFetching || isGeneratingPreview}
           >
             {isGeneratingPreview ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

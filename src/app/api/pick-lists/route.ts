@@ -3,10 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { fetchDeliveryNoteHeader } from "../delivery-notes/_lib";
-import {
-  getWarehouseBusinessUnitMap,
-  notifyBusinessUnits,
-} from "@/app/api/_lib/workflow-notifications";
+import { notifyBusinessUnits } from "@/app/api/_lib/workflow-notifications";
 import {
   type BatchAllocationMode,
   createPickListForDn,
@@ -105,12 +102,28 @@ async function GETHandler(request: NextRequest) {
       ? "actor_assignment:pick_list_assignees!inner(user_id),"
       : "";
     const pickListSelection: string = `
-      *,
+      id,
+      company_id,
+      business_unit_id,
+      dn_id,
+      pick_list_no,
+      status,
+      notes,
+      cancel_reason,
+      started_at,
+      completed_at,
+      created_by,
+      created_at,
+      updated_by,
+      updated_at,
+      deleted_at,
       ${actorAssignmentSelection}
       delivery_notes(
         id,
         dn_no,
         status,
+        requesting_business_unit_id,
+        fulfilling_business_unit_id,
         requesting_warehouse_id,
         fulfilling_warehouse_id,
         fulfilling_warehouse:warehouses!delivery_notes_fulfilling_warehouse_id_fkey(
@@ -118,10 +131,61 @@ async function GETHandler(request: NextRequest) {
           warehouse_name
         )
       ),
-      delivery_note_item_picks(*),
-      pick_list_assignees(*, users:users!pick_list_assignees_user_id_fkey(id, email, first_name, last_name)),
+      delivery_note_item_picks(
+        id,
+        company_id,
+        dn_id,
+        delivery_note_item_id,
+        pick_list_item_id,
+        pick_list_id,
+        item_id,
+        source_warehouse_id,
+        picked_location_id,
+        picked_batch_code,
+        picked_batch_received_at,
+        batch_location_sku,
+        picked_qty,
+        dispatched_qty,
+        received_qty,
+        reversed_qty,
+        picker_user_id,
+        picked_at,
+        is_mismatch_warning_acknowledged,
+        mismatch_reason,
+        version,
+        created_by,
+        created_at,
+        updated_by,
+        updated_at,
+        deleted_at
+      ),
+      pick_list_assignees(
+        company_id,
+        pick_list_id,
+        user_id,
+        assigned_at,
+        assigned_by,
+        users:users!pick_list_assignees_user_id_fkey(id, email, first_name, last_name)
+      ),
       pick_list_items(
-        *,
+        id,
+        company_id,
+        pick_list_id,
+        dn_item_id,
+        sr_id,
+        sr_item_id,
+        item_id,
+        item_unit_option_id,
+        uom_id,
+        allocated_qty,
+        picked_qty,
+        short_qty,
+        suggested_pick_location_id,
+        suggested_pick_batch_code,
+        suggested_pick_batch_received_at,
+        suggested_batch_location_sku,
+        created_at,
+        updated_at,
         item_unit_options!pick_list_items_item_unit_option_id_fkey(
           id,
           item_id,
@@ -254,16 +318,11 @@ async function POSTHandler(request: NextRequest) {
     }
 
     try {
-      const warehouseBuMap = await getWarehouseBusinessUnitMap(auth.supabase, auth.companyId, [
-        header.requesting_warehouse_id,
-      ]);
-      const requestingBuId = warehouseBuMap.get(header.requesting_warehouse_id);
-
       await notifyBusinessUnits({
         supabase: auth.supabase,
         companyId: auth.companyId,
         actorUserId: auth.userId,
-        businessUnitIds: [requestingBuId],
+        businessUnitIds: [header.requesting_business_unit_id],
         title: "Picking in progress",
         message: `Delivery note ${header.dn_no} has been queued for picking.`,
         type: "pick_list_workflow",

@@ -31,6 +31,7 @@ type GrnReceivingRecord = {
   load_list_id: string;
   company_id: string;
   business_unit_id: string;
+  warehouse_id: string | null;
   receiving_date: string;
   delivery_date: string;
   status: string;
@@ -48,15 +49,15 @@ type LoadListReceivingRecord = {
   container_number: string | null;
   seal_number: string | null;
   batch_number: string | null;
-  warehouse_id: string;
+  destination_business_unit_id: string;
   supplier: RelatedOne<{
     id: string;
     supplier_name: string;
   }>;
-  warehouse: RelatedOne<{
+  destination_business_unit: RelatedOne<{
     id: string;
-    warehouse_name: string;
-    business_unit_id: string;
+    name: string;
+    code: string;
   }>;
   item_count: number;
 };
@@ -87,7 +88,7 @@ export async function fetchMobileGrnReceivingRecord({
   let query = supabase
     .from("grns")
     .select(
-      "id, grn_number, load_list_id, company_id, business_unit_id, receiving_date, delivery_date, status, notes, created_at"
+      "id, grn_number, load_list_id, company_id, business_unit_id, warehouse_id, receiving_date, delivery_date, status, notes, created_at"
     )
     .eq("company_id", companyId)
     .is("deleted_at", null);
@@ -122,6 +123,7 @@ export async function fetchMobileGrnReceivingRecord({
     load_list_id: grn.load_list_id,
     company_id: grn.company_id,
     business_unit_id: grn.business_unit_id,
+    warehouse_id: grn.warehouse_id,
     receiving_date: grn.receiving_date,
     delivery_date: grn.delivery_date,
     status: grn.status,
@@ -150,7 +152,7 @@ export async function fetchMobileLoadListReceivingDetail({
     supabase
       .from("load_lists")
       .select(
-        "id, ll_number, supplier_ll_number, status, estimated_arrival_date, actual_arrival_date, container_number, seal_number, batch_number, warehouse_id, supplier:suppliers(id, supplier_name), warehouse:warehouses(id, warehouse_name, business_unit_id)"
+        "id, ll_number, supplier_ll_number, status, estimated_arrival_date, actual_arrival_date, container_number, seal_number, batch_number, destination_business_unit_id, supplier:suppliers(id, supplier_name), destination_business_unit:business_units!load_lists_destination_business_unit_id_fkey(id, name, code)"
       )
       .eq("id", loadListId)
       .eq("company_id", companyId)
@@ -169,8 +171,8 @@ export async function fetchMobileLoadListReceivingDetail({
   if (loadListResult.error) throw new Error("Failed to load load list receiving detail");
   if (!loadListResult.data || !currentBusinessUnitId) return null;
 
-  const warehouse = one(loadListResult.data.warehouse);
-  if (warehouse?.business_unit_id !== currentBusinessUnitId) return null;
+  const destinationBusinessUnit = one(loadListResult.data.destination_business_unit);
+  if (loadListResult.data.destination_business_unit_id !== currentBusinessUnitId) return null;
 
   const supplier = one(loadListResult.data.supplier);
   return {
@@ -184,9 +186,9 @@ export async function fetchMobileLoadListReceivingDetail({
       container_number: loadListResult.data.container_number,
       seal_number: loadListResult.data.seal_number,
       batch_number: loadListResult.data.batch_number,
-      warehouse_id: loadListResult.data.warehouse_id,
+      destination_business_unit_id: loadListResult.data.destination_business_unit_id,
       supplier,
-      warehouse,
+      destination_business_unit: destinationBusinessUnit,
       item_count: grn?.items.length ?? 0,
     },
     grn,

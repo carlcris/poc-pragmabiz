@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -30,11 +30,8 @@ import {
   useSubmitStockRequest,
   useApproveStockRequest,
   useRejectStockRequest,
-  useDispatchStockRequest,
-  useCompleteStockRequest,
   useCancelStockRequest,
 } from "@/hooks/useStockRequests";
-import { useLookupWarehouses } from "@/hooks/useLookups";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -86,13 +83,6 @@ type StockRequestFormValues =
   import("@/components/stock-requests/StockRequestFormDialog").StockRequestFormValues;
 type StockRequestLineItemPayload =
   import("@/components/stock-requests/StockRequestLineItemDialog").StockRequestLineItemPayload;
-const ReceiveStockRequestDialog = dynamic(
-  () =>
-    import("@/components/stock-requests/ReceiveStockRequestDialog").then(
-      (mod) => mod.ReceiveStockRequestDialog
-    ),
-  { ssr: false }
-);
 const StockRequestViewDialog = dynamic(
   () =>
     import("@/components/stock-requests/StockRequestViewDialog").then(
@@ -121,8 +111,6 @@ export default function StockRequestsPage() {
   const [actionType, setActionType] = useState<string>("");
   const [requestToAction, setRequestToAction] = useState<StockRequest | null>(null);
   const [actionReason, setActionReason] = useState("");
-  const [receiveDialogOpen, setReceiveDialogOpen] = useState(false);
-  const [requestToReceive, setRequestToReceive] = useState<StockRequest | null>(null);
   const [viewRequest, setViewRequest] = useState<StockRequest | null>(null);
 
   const { data, isLoading, error } = useStockRequests({
@@ -134,23 +122,41 @@ export default function StockRequestsPage() {
   });
 
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
-  const { data: warehousesData } = useLookupWarehouses({ limit: 50 });
-  const warehouses = useMemo(() => warehousesData?.data || [], [warehousesData?.data]);
-  const defaultRequestingWarehouseId = useMemo(() => {
-    if (!currentBusinessUnit?.id) return "";
-    return (
-      warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit.id)?.id || ""
-    );
-  }, [currentBusinessUnit?.id, warehouses]);
 
-  const createMutation = useCreateStockRequest();
-  const updateMutation = useUpdateStockRequest();
+  const draftMutationErrors = {
+    STOCK_REQUEST_SAVE_FAILED: t("saveFailed"),
+    STOCK_REQUEST_UNAUTHORIZED: t("authenticationRequired"),
+    STOCK_REQUEST_FORBIDDEN: t("saveForbidden"),
+    STOCK_REQUEST_CONTEXT_INVALID: t("contextRequired"),
+    STOCK_REQUEST_NOT_DRAFT: t("notDraft"),
+    STOCK_REQUEST_HEADER_INVALID: t("invalidDetails"),
+    STOCK_REQUEST_BUSINESS_UNITS_MUST_DIFFER: t("businessUnitsMustDiffer"),
+    STOCK_REQUEST_FULFILLING_BUSINESS_UNIT_INVALID: t("businessUnitUnavailable"),
+    STOCK_REQUEST_ITEMS_INVALID: t("invalidItems"),
+    STOCK_REQUEST_LINE_INVALID: t("invalidLine"),
+    STOCK_REQUEST_ITEM_UNAVAILABLE: t("itemUnavailable"),
+    STOCK_REQUEST_UNIT_OPTION_UNAVAILABLE: t("unitUnavailable"),
+    STOCK_REQUEST_UNIT_OPTION_MISMATCH: t("unitMismatch"),
+    STOCK_REQUEST_SELECTED_BATCH_UNAVAILABLE: t("batchUnavailable"),
+    STOCK_REQUEST_SELECTED_BATCH_ITEM_MISMATCH: t("batchUnavailable"),
+    STOCK_REQUEST_SELECTED_BATCH_BUSINESS_UNIT_MISMATCH: t("batchUnavailable"),
+    STOCK_REQUEST_SELECTED_BATCH_INSUFFICIENT: t("batchQuantityUnavailable"),
+    STOCK_REQUEST_FULFILLING_BUSINESS_UNIT_IMMUTABLE: t("businessUnitImmutable"),
+  };
+  const createMutation = useCreateStockRequest({
+    success: t("createSuccess"),
+    fallbackError: t("saveFailed"),
+    errors: draftMutationErrors,
+  });
+  const updateMutation = useUpdateStockRequest({
+    success: t("updateSuccess"),
+    fallbackError: t("saveFailed"),
+    errors: draftMutationErrors,
+  });
   const deleteMutation = useDeleteStockRequest();
   const submitMutation = useSubmitStockRequest();
   const approveMutation = useApproveStockRequest();
   const rejectMutation = useRejectStockRequest();
-  const dispatchMutation = useDispatchStockRequest();
-  const completeMutation = useCompleteStockRequest();
   const cancelMutation = useCancelStockRequest();
 
   const requests = data?.data || [];
@@ -249,26 +255,21 @@ export default function StockRequestsPage() {
     });
   };
 
-  const canReceiveRequest = (request: StockRequest) => {
-    if (!currentBusinessUnit?.id) return false;
-    if (!request.fulfilling_warehouse?.id) return false;
-    return request.requesting_warehouse?.businessUnitId === currentBusinessUnit.id;
-  };
-
   const canFulfillRequest = (request: StockRequest) => {
     if (!currentBusinessUnit?.id) return false;
-    return request.fulfilling_warehouse?.businessUnitId === currentBusinessUnit.id;
+    return request.fulfilling_business_unit_id === currentBusinessUnit.id;
+  };
+
+  const canManageRequest = (request: StockRequest) => {
+    if (!currentBusinessUnit?.id) return false;
+    return request.business_unit_id === currentBusinessUnit.id;
   };
 
   const hasRowActions = (request: StockRequest) => {
-    if (request.status === "draft") return true;
-    if (request.status === "submitted" && canFulfillRequest(request)) return true;
-    if (request.status === "approved" && canFulfillRequest(request)) return true;
-    if (["picking", "picked"].includes(request.status) && canFulfillRequest(request)) return true;
-    if (request.status === "dispatched" && canReceiveRequest(request)) {
+    if (["draft", "submitted", "approved"].includes(request.status) && canManageRequest(request)) {
       return true;
     }
-    if (["draft", "submitted", "approved"].includes(request.status)) return true;
+    if (request.status === "submitted" && canFulfillRequest(request)) return true;
     return false;
   };
 
@@ -315,12 +316,6 @@ export default function StockRequestsPage() {
   };
 
   const handleAction = (type: string, request: StockRequest) => {
-    if (type === "receive") {
-      setRequestToReceive(request);
-      setReceiveDialogOpen(true);
-      return;
-    }
-
     setActionType(type);
     setRequestToAction(request);
     setActionReason("");
@@ -341,12 +336,6 @@ export default function StockRequestsPage() {
         case "reject":
           await rejectMutation.mutateAsync({ id: requestToAction.id, reason: actionReason });
           break;
-        case "dispatch":
-          await dispatchMutation.mutateAsync({ id: requestToAction.id });
-          break;
-        case "complete":
-          await completeMutation.mutateAsync(requestToAction.id);
-          break;
         case "cancel":
           await cancelMutation.mutateAsync({ id: requestToAction.id, reason: actionReason });
           break;
@@ -365,28 +354,31 @@ export default function StockRequestsPage() {
     selectedRequest: StockRequest | null;
   }) => {
     try {
-      const requestingWarehouseId =
-        payload.selectedRequest?.requesting_warehouse_id || defaultRequestingWarehouseId;
-      const submitData = {
-        ...payload.values,
-        requesting_warehouse_id: requestingWarehouseId,
-        items: payload.lineItems.map((item) => ({
-          item_id: item.itemId,
-          requested_qty: item.requestedQty,
-          item_unit_option_id: item.itemUnitOptionId,
-          selected_item_batch_id: item.selectedItemBatchId || null,
-          uom_id: item.uomId,
-          notes: item.notes,
-        })),
-      };
+      const items = payload.lineItems.map((item) => ({
+        item_id: item.itemId,
+        requested_qty: item.requestedQty,
+        item_unit_option_id: item.itemUnitOptionId,
+        selected_item_batch_id: item.selectedItemBatchId || null,
+        uom_id: item.uomId,
+        notes: item.notes,
+      }));
 
       if (payload.selectedRequest) {
+        const { fulfilling_business_unit_id: _fulfillingBusinessUnitId, ...updateValues } =
+          payload.values;
+        void _fulfillingBusinessUnitId;
         await updateMutation.mutateAsync({
           id: payload.selectedRequest.id,
-          data: submitData,
+          data: {
+            ...updateValues,
+            items,
+          },
         });
       } else {
-        await createMutation.mutateAsync(submitData);
+        await createMutation.mutateAsync({
+          ...payload.values,
+          items,
+        });
       }
     } catch {
       // Error is handled by mutation onError
@@ -434,20 +426,6 @@ export default function StockRequestsPage() {
         confirmText: t("reject"),
         confirmClass: "bg-red-600 hover:bg-red-700",
         needsReason: true,
-      },
-      dispatch: {
-        title: t("dispatchTitle"),
-        description: t("dispatchDescription"),
-        confirmText: t("dispatch"),
-        confirmClass: "bg-indigo-600 hover:bg-indigo-700",
-        needsReason: false,
-      },
-      complete: {
-        title: t("completeTitle"),
-        description: t("completeDescription"),
-        confirmText: t("completed"),
-        confirmClass: "bg-green-600 hover:bg-green-700",
-        needsReason: false,
       },
       cancel: {
         title: t("cancelTitle"),
@@ -500,7 +478,7 @@ export default function StockRequestsPage() {
               />
             </div>
             <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-              <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectTrigger className="w-full sm:w-48">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder={t("statusPlaceholder")} />
               </SelectTrigger>
@@ -523,7 +501,7 @@ export default function StockRequestsPage() {
               </SelectContent>
             </Select>
             <Select value={priorityFilter} onValueChange={handlePriorityFilterChange}>
-              <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectTrigger className="w-full sm:w-48">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder={t("priorityPlaceholder")} />
               </SelectTrigger>
@@ -615,8 +593,8 @@ export default function StockRequestsPage() {
                       <TableHead>{t("requestNumber")}</TableHead>
                       <TableHead>{t("requestDate")}</TableHead>
                       <TableHead>{t("requiredDate")}</TableHead>
-                      <TableHead>{t("requestedByWarehouse")}</TableHead>
-                      <TableHead>{t("requestedToWarehouse")}</TableHead>
+                      <TableHead>{t("requestedByBusinessUnit")}</TableHead>
+                      <TableHead>{t("requestedToBusinessUnit")}</TableHead>
                       <TableHead>{t("priority")}</TableHead>
                       <TableHead>{t("status")}</TableHead>
                       {!hasAnyActions && <TableHead>{t("receivedDate")}</TableHead>}
@@ -642,10 +620,10 @@ export default function StockRequestsPage() {
                         <TableCell>{formatDate(request.request_date)}</TableCell>
                         <TableCell>{formatDate(request.required_date)}</TableCell>
                         <TableCell>
-                          {request.requesting_warehouse?.warehouse_code || t("noWarehouse")}
+                          {request.requesting_business_unit?.code || t("noBusinessUnit")}
                         </TableCell>
                         <TableCell>
-                          {request.fulfilling_warehouse?.warehouse_code || t("noWarehouse")}
+                          {request.fulfilling_business_unit?.code || t("noBusinessUnit")}
                         </TableCell>
                         <TableCell>{getPriorityBadge(request.priority)}</TableCell>
                         <TableCell>{getStatusBadge(request.status)}</TableCell>
@@ -667,7 +645,7 @@ export default function StockRequestsPage() {
                             <div className="flex justify-end gap-2">
                               {hasRowActions(request) ? (
                                 <>
-                                  {request.status === "draft" && (
+                                  {request.status === "draft" && canManageRequest(request) && (
                                     <>
                                       <Button
                                         variant="outline"
@@ -702,38 +680,10 @@ export default function StockRequestsPage() {
                                     </Button>
                                   )}
 
-                                  {["picking", "picked"].includes(request.status) &&
-                                    canFulfillRequest(request) && (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 px-2"
-                                        onClick={() => handleAction("dispatch", request)}
-                                      >
-                                        <Truck className="mr-2 h-4 w-4 text-indigo-600" />
-                                        <span>{t("dispatch")}</span>
-                                      </Button>
-                                    )}
-
-                                  {request.status === "dispatched" &&
-                                    canReceiveRequest(request) && (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 px-2"
-                                        onClick={() => handleAction("receive", request)}
-                                      >
-                                        <CheckCircle className="mr-2 h-4 w-4 text-emerald-600" />
-                                        <span>{t("receive")}</span>
-                                      </Button>
-                                    )}
-
-                                  {(request.status === "draft" ||
-                                    (request.status === "submitted" &&
-                                      canFulfillRequest(request)) ||
-                                    ["draft", "submitted", "approved"].includes(
-                                      request.status
-                                    )) && (
+                                  {((request.status === "submitted" &&
+                                    canFulfillRequest(request)) ||
+                                    (["draft", "submitted", "approved"].includes(request.status) &&
+                                      canManageRequest(request))) && (
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
                                         <Button
@@ -758,24 +708,26 @@ export default function StockRequestsPage() {
                                           )}
                                         {["draft", "submitted", "approved"].includes(
                                           request.status
-                                        ) && (
-                                          <DropdownMenuItem
-                                            onClick={() => handleAction("cancel", request)}
-                                            className="text-destructive focus:text-destructive"
-                                          >
-                                            <XCircle className="h-4 w-4" />
-                                            <span>{t("cancel")}</span>
-                                          </DropdownMenuItem>
-                                        )}
-                                        {request.status === "draft" && (
-                                          <DropdownMenuItem
-                                            onClick={() => handleDeleteRequest(request)}
-                                            className="text-destructive focus:text-destructive"
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                            <span>{t("delete")}</span>
-                                          </DropdownMenuItem>
-                                        )}
+                                        ) &&
+                                          canManageRequest(request) && (
+                                            <DropdownMenuItem
+                                              onClick={() => handleAction("cancel", request)}
+                                              className="text-destructive focus:text-destructive"
+                                            >
+                                              <XCircle className="h-4 w-4" />
+                                              <span>{t("cancel")}</span>
+                                            </DropdownMenuItem>
+                                          )}
+                                        {request.status === "draft" &&
+                                          canManageRequest(request) && (
+                                            <DropdownMenuItem
+                                              onClick={() => handleDeleteRequest(request)}
+                                              className="text-destructive focus:text-destructive"
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                              <span>{t("delete")}</span>
+                                            </DropdownMenuItem>
+                                          )}
                                       </DropdownMenuContent>
                                     </DropdownMenu>
                                   )}
@@ -818,27 +770,8 @@ export default function StockRequestsPage() {
               if (!open) setSelectedRequest(null);
             }}
             selectedRequest={selectedRequest}
-            warehouses={warehouses.map((warehouse) => ({
-              id: warehouse.id,
-              code: warehouse.code ?? "",
-              name: warehouse.name ?? "",
-            }))}
-            defaultRequestingWarehouseId={defaultRequestingWarehouseId}
             onSave={handleSaveRequest}
             isSaving={createMutation.isPending || updateMutation.isPending}
-          />
-        )}
-
-        {receiveDialogOpen && (
-          <ReceiveStockRequestDialog
-            open={receiveDialogOpen}
-            onOpenChange={(open) => {
-              setReceiveDialogOpen(open);
-              if (!open) {
-                setRequestToReceive(null);
-              }
-            }}
-            stockRequest={requestToReceive}
           />
         )}
 
@@ -911,8 +844,6 @@ export default function StockRequestsPage() {
                   submitMutation.isPending ||
                   approveMutation.isPending ||
                   rejectMutation.isPending ||
-                  dispatchMutation.isPending ||
-                  completeMutation.isPending ||
                   cancelMutation.isPending ||
                   (actionConfig.needsReason && !actionReason.trim())
                 }
@@ -920,8 +851,6 @@ export default function StockRequestsPage() {
                 {submitMutation.isPending ||
                 approveMutation.isPending ||
                 rejectMutation.isPending ||
-                dispatchMutation.isPending ||
-                completeMutation.isPending ||
                 cancelMutation.isPending
                   ? t("processing")
                   : actionConfig.confirmText}

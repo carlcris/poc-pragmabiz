@@ -143,16 +143,23 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
     if (!businessUnitId) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
-    const canReceive = await isReceivingBusinessUnit(
-      auth.supabase,
-      auth.companyId,
-      businessUnitId,
-      header.requesting_warehouse_id
-    );
+    const canReceive = isReceivingBusinessUnit(businessUnitId, header.requesting_business_unit_id);
     if (!canReceive) {
       return NextResponse.json(
-        { error: "Only the receiving business unit can record receiving scans" },
+        {
+          code: "DELIVERY_NOTE_RECEIVING_FORBIDDEN",
+          error: "Only the receiving business unit can record receiving scans",
+        },
         { status: 403 }
+      );
+    }
+    if (!header.receiving_started_at || !header.requesting_warehouse_id) {
+      return NextResponse.json(
+        {
+          code: "DELIVERY_NOTE_RECEIVING_NOT_STARTED",
+          error: "Start receiving before recording scans",
+        },
+        { status: 409 }
       );
     }
 

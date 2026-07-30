@@ -263,7 +263,11 @@ export type DashboardLoadList = {
   ll_number: string;
   status: LoadListStatus;
   supplier?: DashboardSupplier | null;
-  warehouse?: DashboardWarehouse | null;
+  destination_business_unit?: {
+    id?: string;
+    name?: string;
+    code?: string;
+  } | null;
   estimated_arrival_date?: string | null;
   actual_arrival_date?: string | null;
   container_number?: string | null;

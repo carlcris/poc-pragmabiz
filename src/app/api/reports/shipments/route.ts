@@ -23,11 +23,8 @@ type LoadListReportRow = {
     | { supplier_name: string | null; supplier_code: string | null }
     | { supplier_name: string | null; supplier_code: string | null }[]
     | null;
-  warehouse?:
-    | { warehouse_name: string | null; warehouse_code: string | null }
-    | { warehouse_name: string | null; warehouse_code: string | null }[]
-    | null;
-  business_unit?: { name: string | null } | { name: string | null }[] | null;
+  source_business_unit?: { name: string | null } | { name: string | null }[] | null;
+  destination_business_unit?: { name: string | null } | { name: string | null }[] | null;
   load_list_items?:
     | {
         load_list_qty: number | string | null;
@@ -106,8 +103,8 @@ async function GETHandler(request: NextRequest) {
         status,
         created_at,
         supplier:suppliers(supplier_name, supplier_code),
-        warehouse:warehouses(warehouse_name, warehouse_code),
-        business_unit:business_units(name),
+        source_business_unit:business_units!load_lists_business_unit_id_fkey(name),
+        destination_business_unit:business_units!load_lists_destination_business_unit_id_fkey(name),
         load_list_items(
           load_list_qty,
           received_qty,
@@ -123,7 +120,9 @@ async function GETHandler(request: NextRequest) {
       .in("status", mapStageToStatuses(shipmentStage));
 
     if (currentBusinessUnitId) {
-      query = query.eq("business_unit_id", currentBusinessUnitId);
+      query = query.or(
+        `business_unit_id.eq.${currentBusinessUnitId},destination_business_unit_id.eq.${currentBusinessUnitId}`
+      );
     }
 
     if (supplierId) {
@@ -147,8 +146,8 @@ async function GETHandler(request: NextRequest) {
 
     const rows = ((data || []) as LoadListReportRow[]).map((row) => {
       const supplier = one(row.supplier);
-      const warehouse = one(row.warehouse);
-      const businessUnit = one(row.business_unit);
+      const sourceBusinessUnit = one(row.source_business_unit);
+      const destinationBusinessUnit = one(row.destination_business_unit);
       const items = row.load_list_items || [];
 
       return {
@@ -157,9 +156,8 @@ async function GETHandler(request: NextRequest) {
         supplierLlNumber: row.supplier_ll_number,
         supplierName: supplier?.supplier_name || "",
         supplierCode: supplier?.supplier_code || null,
-        warehouseName: warehouse?.warehouse_name || "",
-        warehouseCode: warehouse?.warehouse_code || null,
-        businessUnitName: businessUnit?.name || null,
+        sourceBusinessUnitName: sourceBusinessUnit?.name || null,
+        destinationBusinessUnitName: destinationBusinessUnit?.name || null,
         containerNumber: row.container_number,
         sealNumber: row.seal_number,
         batchNumber: row.batch_number,

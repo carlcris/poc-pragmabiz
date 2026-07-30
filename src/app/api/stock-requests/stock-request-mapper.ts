@@ -5,11 +5,10 @@ import {
   type DbItemUnitOptionRow,
 } from "@/lib/items/itemUnitOptions";
 
-type StockRequestLocation = {
+type StockRequestBusinessUnit = {
   id: string;
-  warehouse_code: string;
-  warehouse_name: string;
-  business_unit_id?: string | null;
+  code: string;
+  name: string;
 };
 
 type StockRequestUser = {
@@ -35,6 +34,7 @@ type StockRequestItem = {
   item_id: string;
   requested_qty: number;
   picked_qty: number;
+  dispatch_qty?: number | null;
   item_unit_option_id?: string | null;
   selected_item_batch_id?: string | null;
   uom_id: string;
@@ -103,18 +103,36 @@ type StockRequestItem = {
     | {
         id: string;
         batch_code: string;
-        received_at: string;
-        qty_on_hand?: number | null;
-        qty_reserved?: number | null;
-        qty_available?: number | null;
+        received_at?: string | null;
+        warehouse?:
+          | {
+              id: string;
+              warehouse_code: string;
+              warehouse_name: string;
+            }
+          | {
+              id: string;
+              warehouse_code: string;
+              warehouse_name: string;
+            }[]
+          | null;
       }
     | {
         id: string;
         batch_code: string;
-        received_at: string;
-        qty_on_hand?: number | null;
-        qty_reserved?: number | null;
-        qty_available?: number | null;
+        received_at?: string | null;
+        warehouse?:
+          | {
+              id: string;
+              warehouse_code: string;
+              warehouse_name: string;
+            }
+          | {
+              id: string;
+              warehouse_code: string;
+              warehouse_name: string;
+            }[]
+          | null;
       }[]
     | null;
 };
@@ -135,11 +153,10 @@ type StockRequestDbRecord = {
   id: string;
   company_id: string;
   business_unit_id?: string | null;
+  fulfilling_business_unit_id: string;
   request_code: string;
   request_date: string;
   required_date: string;
-  requesting_warehouse_id: string;
-  fulfilling_warehouse_id?: string | null;
   department?: string | null;
   status: StockRequestStatus;
   priority: StockRequestPriority;
@@ -159,32 +176,30 @@ type StockRequestDbRecord = {
   updated_by?: string | null;
   deleted_at?: string | null;
   version: number;
-  requesting_warehouse?: StockRequestLocation | StockRequestLocation[] | null;
-  fulfilling_warehouse?: StockRequestLocation | StockRequestLocation[] | null;
-  requested_by_user?: StockRequestUser | null;
-  received_by_user?: StockRequestUser | null;
+  requesting_business_unit?: StockRequestBusinessUnit | StockRequestBusinessUnit[] | null;
+  fulfilling_business_unit?: StockRequestBusinessUnit | StockRequestBusinessUnit[] | null;
+  requested_by_user?: StockRequestUser | StockRequestUser[] | null;
+  received_by_user?: StockRequestUser | StockRequestUser[] | null;
   stock_request_items?: StockRequestItem[] | null;
   delivery_note_sources?: DeliveryNoteSource[] | null;
 };
 
 export const mapStockRequest = (record: StockRequestDbRecord): StockRequest => {
   const {
-    requesting_warehouse_id,
-    fulfilling_warehouse_id,
-    requesting_warehouse,
-    fulfilling_warehouse,
+    requesting_business_unit,
+    fulfilling_business_unit,
     stock_request_items,
     delivery_note_sources,
     requested_by_user,
     received_by_user,
     ...rest
   } = record;
-  const requestingWarehouse = Array.isArray(requesting_warehouse)
-    ? (requesting_warehouse[0] ?? null)
-    : (requesting_warehouse ?? null);
-  const fulfillingWarehouse = Array.isArray(fulfilling_warehouse)
-    ? (fulfilling_warehouse[0] ?? null)
-    : (fulfilling_warehouse ?? null);
+  const requestingBusinessUnit = Array.isArray(requesting_business_unit)
+    ? (requesting_business_unit[0] ?? null)
+    : (requesting_business_unit ?? null);
+  const fulfillingBusinessUnit = Array.isArray(fulfilling_business_unit)
+    ? (fulfilling_business_unit[0] ?? null)
+    : (fulfilling_business_unit ?? null);
   const requestedByUser = Array.isArray(requested_by_user)
     ? (requested_by_user[0] ?? null)
     : (requested_by_user ?? null);
@@ -220,22 +235,18 @@ export const mapStockRequest = (record: StockRequestDbRecord): StockRequest => {
 
   return {
     ...rest,
-    requesting_warehouse_id,
-    fulfilling_warehouse_id: fulfilling_warehouse_id ?? null,
-    requesting_warehouse: requestingWarehouse
+    requesting_business_unit: requestingBusinessUnit
       ? {
-          id: requestingWarehouse.id,
-          warehouse_code: requestingWarehouse.warehouse_code,
-          warehouse_name: requestingWarehouse.warehouse_name,
-          businessUnitId: requestingWarehouse.business_unit_id ?? null,
+          id: requestingBusinessUnit.id,
+          code: requestingBusinessUnit.code,
+          name: requestingBusinessUnit.name,
         }
       : null,
-    fulfilling_warehouse: fulfillingWarehouse
+    fulfilling_business_unit: fulfillingBusinessUnit
       ? {
-          id: fulfillingWarehouse.id,
-          warehouse_code: fulfillingWarehouse.warehouse_code,
-          warehouse_name: fulfillingWarehouse.warehouse_name,
-          businessUnitId: fulfillingWarehouse.business_unit_id ?? null,
+          id: fulfillingBusinessUnit.id,
+          code: fulfillingBusinessUnit.code,
+          name: fulfillingBusinessUnit.name,
         }
       : null,
     fulfilling_delivery_note: fulfillingDeliveryNote
@@ -269,9 +280,14 @@ export const mapStockRequest = (record: StockRequestDbRecord): StockRequest => {
       const itemUnitOptionDetails = Array.isArray(item.item_unit_options)
         ? (item.item_unit_options[0] ?? null)
         : (item.item_unit_options ?? null);
-      const selectedItemBatch = Array.isArray(item.selected_item_batch)
+      const selectedBatchDetails = Array.isArray(item.selected_item_batch)
         ? (item.selected_item_batch[0] ?? null)
         : (item.selected_item_batch ?? null);
+      const selectedBatchWarehouse = selectedBatchDetails
+        ? Array.isArray(selectedBatchDetails.warehouse)
+          ? (selectedBatchDetails.warehouse[0] ?? null)
+          : (selectedBatchDetails.warehouse ?? null)
+        : null;
       const baseUomCode = baseUnitDetails?.code || uomDetails?.code || "";
       const mappedItemUnitOption = itemUnitOptionDetails
         ? transformItemUnitOptionRow(itemUnitOptionDetails, baseUomCode)
@@ -283,6 +299,7 @@ export const mapStockRequest = (record: StockRequestDbRecord): StockRequest => {
 
       return {
         ...restItem,
+        dispatch_qty: Number(item.dispatch_qty ?? 0),
         items: itemDetails
           ? {
               id: itemDetails.id ?? item.item_id,
@@ -316,14 +333,18 @@ export const mapStockRequest = (record: StockRequestDbRecord): StockRequest => {
                 sortOrder: 0,
               }
             : undefined,
-        selected_item_batch: selectedItemBatch
+        selected_item_batch: selectedBatchDetails
           ? {
-              id: selectedItemBatch.id,
-              batch_code: selectedItemBatch.batch_code,
-              received_at: selectedItemBatch.received_at,
-              qty_on_hand: Number(selectedItemBatch.qty_on_hand ?? 0),
-              qty_reserved: Number(selectedItemBatch.qty_reserved ?? 0),
-              qty_available: Number(selectedItemBatch.qty_available ?? 0),
+              id: selectedBatchDetails.id,
+              batch_code: selectedBatchDetails.batch_code,
+              received_at: selectedBatchDetails.received_at ?? null,
+              warehouse: selectedBatchWarehouse
+                ? {
+                    id: selectedBatchWarehouse.id,
+                    warehouse_code: selectedBatchWarehouse.warehouse_code,
+                    warehouse_name: selectedBatchWarehouse.warehouse_name,
+                  }
+                : null,
             }
           : null,
       };

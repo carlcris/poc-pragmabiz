@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "../../stock-request-mapper";
+import { STOCK_REQUEST_SELECT } from "../../stock-request-select";
 
 type StockRequestDbRecord = Parameters<typeof mapStockRequest>[0];
 
@@ -19,19 +20,20 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
 
     const requestContext = await requireRequestContext();
     if ("status" in requestContext) return requestContext;
-    const { supabase, userId, companyId } = requestContext;
+    const { supabase, userId, companyId, currentBusinessUnitId } = requestContext;
     const { id } = await context.params;
-    const body = await request.json();
-    const { data: userProfile } = await supabase
-      .from("users")
-      .select("email")
-      .eq("id", userId)
-      .maybeSingle();
+    const body = (await request.json().catch(() => ({}))) as { reason?: unknown };
+    if (
+      body.reason !== undefined &&
+      (typeof body.reason !== "string" || body.reason.length > 1000)
+    ) {
+      return NextResponse.json({ error: "Invalid cancellation reason" }, { status: 400 });
+    }
 
     // Check if request exists and is not already completed or cancelled
     const { data: existingRequest, error: checkError } = await supabase
       .from("stock_requests")
-      .select("id, status, notes")
+      .select("id, status, notes, business_unit_id")
       .eq("id", id)
       .eq("company_id", companyId)
       .is("deleted_at", null)
@@ -41,22 +43,27 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Stock request not found" }, { status: 404 });
     }
 
-    if (existingRequest.status === "completed") {
-      return NextResponse.json(
-        { error: "Completed stock requests cannot be cancelled" },
-        { status: 400 }
-      );
-    }
-
     if (existingRequest.status === "cancelled") {
       return NextResponse.json({ error: "Stock request is already cancelled" }, { status: 400 });
     }
+    if (!["draft", "submitted", "approved"].includes(existingRequest.status)) {
+      return NextResponse.json(
+        { error: "Only draft, submitted, or approved stock requests can be cancelled" },
+        { status: 400 }
+      );
+    }
+    if (existingRequest.business_unit_id !== currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: "Only the requesting business unit can cancel this stock request" },
+        { status: 403 }
+      );
+    }
 
     // Append cancellation reason to notes
-    const actorEmail = userProfile?.email || userId;
+    const actorLabel = userId;
     const cancellationNote = body.reason
-      ? `\n[CANCELLED by ${actorEmail}]: ${body.reason}`
-      : `\n[CANCELLED by ${actorEmail}]`;
+      ? `\n[CANCELLED by ${actorLabel}]: ${body.reason}`
+      : `\n[CANCELLED by ${actorLabel}]`;
     const updatedNotes = (existingRequest.notes || "") + cancellationNote;
 
     // Update status to cancelled
@@ -73,46 +80,13 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
 
     if (updateError) {
       console.error("Error cancelling stock request:", updateError);
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      return NextResponse.json({ error: "Failed to cancel stock request" }, { status: 500 });
     }
 
     // Fetch updated request
     const { data: updatedRequest } = await supabase
       .from("stock_requests")
-      .select(
-        `
-        *,
-        requesting_warehouse:warehouses!stock_requests_requesting_warehouse_id_fkey(
-          id,
-          warehouse_code,
-          warehouse_name,
-          business_unit_id
-        ),
-        fulfilling_warehouse:warehouses!stock_requests_fulfilling_warehouse_id_fkey(
-          id,
-          warehouse_code,
-          warehouse_name,
-          business_unit_id
-        ),
-        requested_by_user:users!stock_requests_requested_by_user_id_fkey(
-          id,
-          email,
-          first_name,
-          last_name
-        ),
-        received_by_user:users!stock_requests_received_by_fkey(
-          id,
-          email,
-          first_name,
-          last_name
-        ),
-        stock_request_items(
-          *,
-          items(item_code, item_name),
-          units_of_measure(code, symbol)
-        )
-      `
-      )
+      .select(STOCK_REQUEST_SELECT)
       .eq("id", id)
       .eq("company_id", companyId)
       .single();

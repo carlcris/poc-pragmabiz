@@ -42,15 +42,8 @@ export type GRNBox = {
   itemId?: string;
   boxNumber: number;
   barcode: string;
-  batchLocationSku?: string | null;
   qtyPerBox: number;
-  warehouseLocationId?: string;
-  warehouseLocation?: {
-    id: string;
-    code: string;
-    name: string;
-  };
-  deliveryDate: string;
+  deliveryDate: string | null;
   containerNumber?: string;
   sealNumber?: string;
   createdAt: string;
@@ -104,7 +97,7 @@ export type GRN = {
     name: string;
     code: string;
   };
-  warehouseId: string;
+  warehouseId?: string | null;
   warehouse?: {
     id: string;
     name: string;
@@ -154,23 +147,8 @@ export type GRN = {
   deletedAt?: string;
 };
 
-export type CreateGRNRequest = {
-  loadListId: string;
-  warehouseId: string;
-  containerNumber?: string;
-  sealNumber?: string;
-  batchNumber?: string;
-  deliveryDate: string;
-  notes?: string;
-  items: {
-    loadListItemId: string;
-    itemId: string;
-    loadListQty: number;
-    receivedQty?: number;
-    damagedQty?: number;
-    numBoxes?: number;
-    notes?: string;
-  }[];
+export type StartGRNReceivingRequest = {
+  id: string;
 };
 
 export type UpdateGRNRequest = {

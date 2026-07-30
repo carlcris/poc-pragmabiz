@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { useCreateTransformationTemplate } from "@/hooks/useTransformationTemplates";
 import { useItemsStock } from "@/hooks/useItemsStock";
-import { useWarehouses } from "@/hooks/useWarehouses";
 import { itemsApi } from "@/lib/api/items";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { toast } from "sonner";
@@ -64,6 +63,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TransformationTemplateCopySourcePicker } from "./TransformationTemplateCopySourcePicker";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import {
   TemplateAdditionalOutputDialog,
   type TemplateAdditionalOutputDialogValue,
@@ -549,13 +549,7 @@ export function TransformationTemplateDesignerPage() {
   const [isSelectingItem, setIsSelectingItem] = useState(false);
   const [recentlyMappedSectionId, setRecentlyMappedSectionId] = useState<string | null>(null);
   const [sliceClipboard, setSliceClipboard] = useState<SliceClipboard | null>(null);
-
-  const { data: warehousesResponse } = useWarehouses({ limit: 50 });
-  const currentWarehouse =
-    warehousesResponse?.data.find(
-      (warehouse) => warehouse.businessUnitId === currentBusinessUnit?.id
-    ) ?? null;
-  const warehouseId = currentWarehouse?.id;
+  const [warehouseId, setWarehouseId] = useState("");
 
   const { data: itemCandidatesResponse, isLoading: isLoadingItemCandidates } = useItemsStock({
     warehouseId,
@@ -573,6 +567,12 @@ export function TransformationTemplateDesignerPage() {
     page: 1,
     limit: 5,
   });
+
+  useEffect(() => {
+    setWarehouseId("");
+    setItemSearch("");
+    setSliceItemSearch("");
+  }, [currentBusinessUnit?.id]);
 
   const selectedSection = useMemo(
     () => sections.find((section) => section.id === selectedSectionId) ?? null,
@@ -1426,7 +1426,7 @@ export function TransformationTemplateDesignerPage() {
 
   const handleOpenParentSheetPicker = () => {
     if (!warehouseId) {
-      setErrorMessage("No warehouse is available for the current business unit.");
+      setErrorMessage(t("warehouseRequired"));
       return;
     }
 
@@ -2740,28 +2740,21 @@ export function TransformationTemplateDesignerPage() {
             </p>
           </DialogHeader>
           <div className="space-y-4">
-            {currentWarehouse ? (
-              <div className="rounded-lg border bg-muted/30 px-3 py-2.5">
-                <p className="text-xs font-medium text-muted-foreground">Warehouse</p>
-                <p className="mt-0.5 text-sm">
-                  <span className="font-semibold">{currentWarehouse.code}</span>
-                  <span className="text-muted-foreground"> · {currentWarehouse.name}</span>
-                </p>
-              </div>
-            ) : (
-              <div className="rounded-lg border border-destructive bg-destructive/5 px-3 py-2.5">
-                <p className="text-sm font-medium text-destructive">
-                  No warehouse is available for the current business unit.
-                </p>
-              </div>
-            )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t("selectWarehouse")}</label>
+              <WarehouseSelect
+                value={warehouseId}
+                onValueChange={setWarehouseId}
+                scope="current_business_unit"
+              />
+            </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Search Items</label>
               <Input
                 value={itemSearch}
                 onChange={(event) => setItemSearch(event.target.value)}
                 placeholder="Search by item code or item name"
-                disabled={!currentWarehouse}
+                disabled={!warehouseId}
               />
             </div>
             <div className="space-y-2">

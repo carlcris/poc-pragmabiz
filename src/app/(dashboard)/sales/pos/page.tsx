@@ -5,13 +5,13 @@ import { useTranslations } from "next-intl";
 import { AlertCircle, Banknote, CreditCard, Search, Smartphone, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useItems } from "@/hooks/useItems";
-import { useWarehouses } from "@/hooks/useWarehouses";
 import { useCustomer, useCustomers } from "@/hooks/useCustomers";
 import { useCreatePOSTransaction } from "@/hooks/usePos";
 import { useResolvedCustomerPricing } from "@/hooks/useCustomerPricing";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import { calculatePOSLineTotal, calculatePOSTotals } from "@/lib/pos/totals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,24 +99,15 @@ export default function POSPage() {
   const [amountReceived, setAmountReceived] = useState("");
   const [showCheckout, setShowCheckout] = useState(false);
   const [itemSearchOpen, setItemSearchOpen] = useState(false);
+  const [warehouseId, setWarehouseId] = useState("");
 
   const { formatCurrency } = useCurrency();
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
   const hasBusinessUnitHydrated = useBusinessUnitStore((state) => state.hasHydrated);
   const isBusinessUnitLoading = useBusinessUnitStore((state) => state.isLoading);
-  const { data: warehousesData, isLoading: isWarehousesLoading } = useWarehouses({ limit: 50 });
-  const warehouses = useMemo(
-    () => warehousesData?.data?.filter((warehouse) => warehouse.isActive) || [],
-    [warehousesData?.data]
-  );
-  const currentBusinessUnitWarehouseId = useMemo(() => {
-    if (!currentBusinessUnit?.id) return undefined;
-    return warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit.id)?.id;
-  }, [currentBusinessUnit?.id, warehouses]);
   const isBusinessUnitScopeReady = hasBusinessUnitHydrated && !isBusinessUnitLoading;
-  const isWarehouseScopeReady =
-    !currentBusinessUnit?.id || (!!currentBusinessUnitWarehouseId && !isWarehousesLoading);
-  const areItemQueriesEnabled = isBusinessUnitScopeReady && isWarehouseScopeReady;
+  const areItemQueriesEnabled =
+    isBusinessUnitScopeReady && Boolean(currentBusinessUnit?.id && warehouseId);
   const {
     data: itemsData,
     isLoading: itemsLoading,
@@ -125,7 +116,7 @@ export default function POSPage() {
     search: debouncedItemSearch || undefined,
     page: 1,
     limit: LOOKUP_PAGE_SIZE,
-    warehouseId: currentBusinessUnitWarehouseId,
+    warehouseId: warehouseId || undefined,
     includeStock: true,
     enabled: areItemQueriesEnabled,
   });
@@ -204,6 +195,14 @@ export default function POSPage() {
 
     return () => window.clearTimeout(timeoutId);
   }, [customerSearchInput]);
+
+  useEffect(() => {
+    setWarehouseId("");
+    setCart([]);
+    setItemSearchOpen(false);
+    setItemSearchInput("");
+    setDebouncedItemSearch("");
+  }, [currentBusinessUnit?.id]);
 
   const { subtotal, totalDiscount, totalTax, totalAmount } = calculatePOSTotals(cart);
   const received = parseFloat(amountReceived) || 0;
@@ -413,8 +412,8 @@ export default function POSPage() {
   const handleCheckout = async () => {
     if (cart.length === 0) return;
 
-    if (!currentBusinessUnitWarehouseId) {
-      toast.error("POS warehouse is not available for the current business unit");
+    if (!warehouseId) {
+      toast.error(t("warehouseRequired"));
       return;
     }
 
@@ -442,7 +441,7 @@ export default function POSPage() {
 
     await createTransaction.mutateAsync({
       customerId: selectedCustomerId !== "walk-in" ? selectedCustomerId : undefined,
-      warehouseId: currentBusinessUnitWarehouseId,
+      warehouseId,
       items: cart.map(
         ({
           id,
@@ -495,9 +494,21 @@ export default function POSPage() {
         </div>
 
         <div className="flex gap-2">
+          <div className="w-64">
+            <WarehouseSelect
+              value={warehouseId}
+              onValueChange={setWarehouseId}
+              scope="current_business_unit"
+              disabled={cart.length > 0}
+            />
+          </div>
           <Popover
             open={itemSearchOpen}
             onOpenChange={(open) => {
+              if (open && !warehouseId) {
+                toast.error(t("warehouseRequired"));
+                return;
+              }
               setItemSearchOpen(open);
               if (!open) {
                 setItemSearchInput("");
@@ -506,7 +517,7 @@ export default function POSPage() {
             }}
           >
             <PopoverTrigger asChild>
-              <Button variant="outline" className="flex-1 justify-start">
+              <Button variant="outline" className="flex-1 justify-start" disabled={!warehouseId}>
                 <Search className="mr-2 h-4 w-4" />
                 {t("searchAndAddItems")}
               </Button>

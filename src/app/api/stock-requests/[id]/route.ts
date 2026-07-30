@@ -1,141 +1,19 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "../stock-request-mapper";
-import {
-  resolveStockRequestLineUnitOptions,
-  StockRequestLineValidationError,
-  type ResolvedStockRequestLineInput,
-} from "../line-item-unit-options";
-import { createAdminClient } from "@/lib/supabase/admin";
-import type { Database } from "@/types/database.types";
 import type { StockRequest, UpdateStockRequestPayload } from "@/types/stock-request";
+import { STOCK_REQUEST_SELECT } from "../stock-request-select";
+import { mapStockRequestDraftRpcError } from "../stock-request-draft-errors";
+import { validateStockRequestDraftPayload } from "../stock-request-draft-validation";
 
 type StockRequestDbRecord = Parameters<typeof mapStockRequest>[0];
-type StockRequestItemInput = ResolvedStockRequestLineInput;
-type SupabaseLikeClient = SupabaseClient<Database>;
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
-
-const validateSelectedItemBatches = async (
-  supabase: SupabaseLikeClient,
-  companyId: string,
-  fulfillingWarehouseId: string,
-  items: StockRequestItemInput[]
-) => {
-  const selectedBatchIds = Array.from(
-    new Set(
-      items
-        .map((item) => item.selected_item_batch_id)
-        .filter((value): value is string => Boolean(value))
-    )
-  );
-
-  if (selectedBatchIds.length === 0) return null;
-
-  const { data: batchRows, error } = await supabase
-    .from("item_batches")
-    .select("id, item_id, warehouse_id, qty_available")
-    .eq("company_id", companyId)
-    .in("id", selectedBatchIds)
-    .is("deleted_at", null);
-
-  if (error) {
-    console.error("Error validating selected stock request batches:", error);
-    return "Failed to validate selected batches";
-  }
-
-  const batchMap = new Map((batchRows || []).map((batch) => [batch.id, batch]));
-
-  for (const item of items) {
-    if (!item.selected_item_batch_id) continue;
-
-    const batch = batchMap.get(item.selected_item_batch_id);
-    if (!batch) return "Selected batch is not available";
-    if (batch.item_id !== item.item_id) return "Selected batch does not match the item";
-    if (batch.warehouse_id !== fulfillingWarehouseId) {
-      return "Selected batch does not belong to the fulfilling warehouse";
-    }
-
-    const requestedBaseQty = Number(item.requested_qty || 0) * Number(item.qty_per_unit || 1);
-    const availableBaseQty = Number(batch.qty_available || 0);
-    if (availableBaseQty < requestedBaseQty) {
-      return "Selected batch does not have enough available quantity";
-    }
-  }
-
-  return null;
-};
-
-async function rehydrateMissingWarehouses(
-  record: StockRequestDbRecord,
-  companyId: string
-): Promise<StockRequestDbRecord> {
-  const requestingWarehouse = Array.isArray(record.requesting_warehouse)
-    ? (record.requesting_warehouse[0] ?? null)
-    : (record.requesting_warehouse ?? null);
-  const fulfillingWarehouse = Array.isArray(record.fulfilling_warehouse)
-    ? (record.fulfilling_warehouse[0] ?? null)
-    : (record.fulfilling_warehouse ?? null);
-
-  const missingWarehouseIds = Array.from(
-    new Set(
-      [
-        !requestingWarehouse ? record.requesting_warehouse_id : null,
-        !fulfillingWarehouse ? (record.fulfilling_warehouse_id ?? null) : null,
-      ].filter((value): value is string => Boolean(value))
-    )
-  );
-
-  if (missingWarehouseIds.length === 0) {
-    return record;
-  }
-
-  const adminSupabase = createAdminClient();
-  const { data: warehouseRows } = await adminSupabase
-    .from("warehouses")
-    .select("id, warehouse_code, warehouse_name, business_unit_id")
-    .eq("company_id", companyId)
-    .in("id", missingWarehouseIds)
-    .is("deleted_at", null);
-
-  if (!warehouseRows || warehouseRows.length === 0) {
-    return record;
-  }
-
-  const warehouseMap = new Map(warehouseRows.map((row) => [row.id, row]));
-
-  if (!requestingWarehouse && record.requesting_warehouse_id) {
-    const row = warehouseMap.get(record.requesting_warehouse_id);
-    if (row) {
-      record.requesting_warehouse = {
-        id: row.id,
-        warehouse_code: row.warehouse_code,
-        warehouse_name: row.warehouse_name,
-        business_unit_id: row.business_unit_id,
-      };
-    }
-  }
-
-  if (!fulfillingWarehouse && record.fulfilling_warehouse_id) {
-    const row = warehouseMap.get(record.fulfilling_warehouse_id);
-    if (row) {
-      record.fulfilling_warehouse = {
-        id: row.id,
-        warehouse_code: row.warehouse_code,
-        warehouse_name: row.warehouse_name,
-        business_unit_id: row.business_unit_id,
-      };
-    }
-  }
-
-  return record;
-}
 
 // GET /api/stock-requests/[id] - Get single stock request
 async function GETHandler(request: NextRequest, context: RouteContext) {
@@ -150,86 +28,7 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
 
     const { data: stockRequest, error } = await supabase
       .from("stock_requests")
-      .select(
-        `
-        *,
-        requesting_warehouse:warehouses!stock_requests_requesting_warehouse_id_fkey(
-          id,
-          warehouse_code,
-          warehouse_name,
-          business_unit_id
-        ),
-        fulfilling_warehouse:warehouses!stock_requests_fulfilling_warehouse_id_fkey(
-          id,
-          warehouse_code,
-          warehouse_name,
-          business_unit_id
-        ),
-        requested_by_user:users!stock_requests_requested_by_user_id_fkey(
-          id,
-          email,
-          first_name,
-          last_name
-        ),
-        received_by_user:users!stock_requests_received_by_fkey(
-          id,
-          email,
-          first_name,
-          last_name
-        ),
-        stock_request_items(
-          *,
-          items(
-            id,
-            item_code,
-            item_name,
-            uom_id,
-            base_unit:units_of_measure!items_uom_id_fkey(
-              id,
-              code,
-              name,
-              symbol
-            )
-          ),
-          units_of_measure(id, code, symbol),
-          item_unit_options(
-            id,
-            item_id,
-            uom_id,
-            option_label,
-            qty_per_unit,
-            barcode,
-            is_base,
-            is_default,
-            is_active,
-            sort_order,
-            units_of_measure(
-              id,
-              code,
-              name,
-              symbol
-            )
-          ),
-          selected_item_batch:item_batches!stock_request_items_selected_item_batch_id_fkey(
-            id,
-            batch_code,
-            received_at,
-            qty_on_hand,
-            qty_reserved,
-            qty_available
-          )
-        ),
-        delivery_note_sources(
-          created_at,
-          delivery_notes!delivery_note_sources_dn_id_fkey(
-            id,
-            dn_no,
-            status,
-            created_at
-          )
-        )
-      `
-      )
+      .select(STOCK_REQUEST_SELECT)
       .eq("id", id)
       .eq("company_id", companyId)
       .is("deleted_at", null)
@@ -237,18 +36,14 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
 
     if (error) {
       console.error("Error fetching stock request:", error);
-      return NextResponse.json({ error: error.message }, { status: 404 });
+      return NextResponse.json({ error: "Stock request not found" }, { status: 404 });
     }
 
     if (!stockRequest) {
       return NextResponse.json({ error: "Stock request not found" }, { status: 404 });
     }
 
-    const hydratedRecord = await rehydrateMissingWarehouses(
-      stockRequest as StockRequestDbRecord,
-      companyId
-    );
-    const mapped = mapStockRequest(hydratedRecord) as StockRequest;
+    const mapped = mapStockRequest(stockRequest as StockRequestDbRecord) as StockRequest;
 
     const [{ data: headerLinks }, { data: itemLinks }] = await Promise.all([
       supabase
@@ -307,14 +102,38 @@ async function PATCHHandler(request: NextRequest, context: RouteContext) {
 
     const requestContext = await requireRequestContext();
     if ("status" in requestContext) return requestContext;
-    const { supabase, userId, companyId } = requestContext;
+    const { supabase, companyId } = requestContext;
     const { id } = await context.params;
-    const body = (await request.json()) as UpdateStockRequestPayload;
+    const body = (await request.json().catch(() => null)) as UpdateStockRequestPayload | null;
+    const validationError = validateStockRequestDraftPayload(body, {
+      requireFulfillingBusinessUnit: false,
+    });
+    if (validationError) {
+      return NextResponse.json(validationError, { status: 400 });
+    }
+    if (!body) {
+      return NextResponse.json(
+        {
+          code: "STOCK_REQUEST_HEADER_INVALID",
+          error: "Complete the required stock request details before saving.",
+        },
+        { status: 400 }
+      );
+    }
 
-    // Check if request exists and is draft
+    if ("fulfilling_business_unit_id" in body) {
+      return NextResponse.json(
+        {
+          code: "STOCK_REQUEST_FULFILLING_BUSINESS_UNIT_IMMUTABLE",
+          error: "The fulfilling business unit cannot be changed after creation.",
+        },
+        { status: 400 }
+      );
+    }
+
     const { data: existingRequest, error: checkError } = await supabase
       .from("stock_requests")
-      .select("id, status, requesting_warehouse_id")
+      .select("id, status, fulfilling_business_unit_id")
       .eq("id", id)
       .eq("company_id", companyId)
       .is("deleted_at", null)
@@ -326,195 +145,65 @@ async function PATCHHandler(request: NextRequest, context: RouteContext) {
 
     if (existingRequest.status !== "draft") {
       return NextResponse.json(
-        { error: "Only draft stock requests can be updated" },
-        { status: 400 }
+        {
+          code: "STOCK_REQUEST_NOT_DRAFT",
+          error: "Only draft stock requests can be updated.",
+        },
+        { status: 409 }
       );
     }
 
-    const requestingWarehouseId = existingRequest.requesting_warehouse_id;
-    const fulfillingWarehouseId = body.fulfilling_warehouse_id;
-
-    if (!requestingWarehouseId) {
-      return NextResponse.json({ error: "Requested by is required" }, { status: 400 });
-    }
-
-    if (!fulfillingWarehouseId) {
-      return NextResponse.json({ error: "Requested to is required" }, { status: 400 });
-    }
-
-    if (requestingWarehouseId === fulfillingWarehouseId) {
+    if (!existingRequest.fulfilling_business_unit_id) {
       return NextResponse.json(
-        { error: "Requested to must be different from requested by" },
-        { status: 400 }
+        {
+          code: "STOCK_REQUEST_FULFILLING_BUSINESS_UNIT_INVALID",
+          error: "The stock request does not have a valid fulfilling business unit.",
+        },
+        { status: 409 }
       );
     }
 
-    // Update stock request header
-    const { error: updateError } = await supabase
+    const rpcItems = (body.items || []).map((item) => ({
+      item_id: item.item_id,
+      requested_qty: item.requested_qty,
+      item_unit_option_id: item.item_unit_option_id,
+      selected_item_batch_id: item.selected_item_batch_id || null,
+      uom_id: item.uom_id,
+      notes: item.notes || null,
+    }));
+
+    const { error: saveError } = await supabase.rpc("update_stock_request_draft", {
+      p_stock_request_id: id,
+      p_request_date: body.request_date,
+      p_required_date: body.required_date,
+      p_department: body.department || null,
+      p_priority: body.priority,
+      p_purpose: body.purpose || null,
+      p_notes: body.notes || null,
+      p_items: rpcItems,
+    });
+
+    if (saveError) {
+      console.error("Error updating stock request draft:", saveError);
+      const mappedError = mapStockRequestDraftRpcError(saveError.message);
+      return NextResponse.json(mappedError.body, { status: mappedError.status });
+    }
+
+    const { data: updatedRequest, error: fetchError } = await supabase
       .from("stock_requests")
-      .update({
-        request_date: body.request_date,
-        required_date: body.required_date,
-        requesting_warehouse_id: requestingWarehouseId,
-        fulfilling_warehouse_id: fulfillingWarehouseId,
-        department: body.department || null,
-        priority: body.priority,
-        purpose: body.purpose || null,
-        notes: body.notes || null,
-        updated_by: userId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .eq("company_id", companyId);
-
-    if (updateError) {
-      console.error("Error updating stock request:", updateError);
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
-    }
-
-    // Update items if provided
-    if (body.items && Array.isArray(body.items)) {
-      const resolvedLineItems = await resolveStockRequestLineUnitOptions(
-        supabase,
-        companyId,
-        body.items
-      );
-      const selectedBatchError = await validateSelectedItemBatches(
-        supabase,
-        companyId,
-        fulfillingWarehouseId,
-        resolvedLineItems
-      );
-      if (selectedBatchError) {
-        return NextResponse.json({ error: selectedBatchError }, { status: 400 });
-      }
-
-      // Delete existing items
-      await supabase.from("stock_request_items").delete().eq("stock_request_id", id);
-
-      // Insert new items
-      const requestItems = resolvedLineItems.map(
-        (item: StockRequestItemInput & { item_unit_option_id: string }) => ({
-          stock_request_id: id,
-          item_id: item.item_id,
-          requested_qty: item.requested_qty,
-          picked_qty: 0,
-          item_unit_option_id: item.item_unit_option_id,
-          selected_item_batch_id: item.selected_item_batch_id || null,
-          uom_id: item.uom_id,
-          notes: item.notes || null,
-        })
-      );
-
-      const { error: itemsError } = await supabase.from("stock_request_items").insert(requestItems);
-
-      if (itemsError) {
-        console.error("Error updating stock request items:", itemsError);
-        return NextResponse.json({ error: "Failed to update request items" }, { status: 500 });
-      }
-    }
-
-    // Fetch updated request
-    const { data: updatedRequest } = await supabase
-      .from("stock_requests")
-      .select(
-        `
-        *,
-        requesting_warehouse:warehouses!stock_requests_requesting_warehouse_id_fkey(
-          id,
-          warehouse_code,
-          warehouse_name,
-          business_unit_id
-        ),
-        fulfilling_warehouse:warehouses!stock_requests_fulfilling_warehouse_id_fkey(
-          id,
-          warehouse_code,
-          warehouse_name,
-          business_unit_id
-        ),
-        requested_by_user:users!stock_requests_requested_by_user_id_fkey(
-          id,
-          email,
-          first_name,
-          last_name
-        ),
-        received_by_user:users!stock_requests_received_by_fkey(
-          id,
-          email,
-          first_name,
-          last_name
-        ),
-        stock_request_items(
-          *,
-          items(
-            id,
-            item_code,
-            item_name,
-            uom_id,
-            base_unit:units_of_measure!items_uom_id_fkey(
-              id,
-              code,
-              name,
-              symbol
-            )
-          ),
-          units_of_measure(id, code, symbol),
-          item_unit_options(
-            id,
-            item_id,
-            uom_id,
-            option_label,
-            qty_per_unit,
-            barcode,
-            is_base,
-            is_default,
-            is_active,
-            sort_order,
-            units_of_measure(
-              id,
-              code,
-              name,
-              symbol
-            )
-          ),
-          selected_item_batch:item_batches!stock_request_items_selected_item_batch_id_fkey(
-            id,
-            batch_code,
-            received_at,
-            qty_on_hand,
-            qty_reserved,
-            qty_available
-          )
-        ),
-        delivery_note_sources(
-          created_at,
-          delivery_notes!delivery_note_sources_dn_id_fkey(
-            id,
-            dn_no,
-            status,
-            created_at
-          )
-        )
-      `
-      )
+      .select(STOCK_REQUEST_SELECT)
       .eq("id", id)
       .eq("company_id", companyId)
+      .is("deleted_at", null)
       .single();
 
-    if (!updatedRequest) {
+    if (fetchError || !updatedRequest) {
+      console.error("Error fetching updated stock request:", fetchError);
       return NextResponse.json({ error: "Stock request not found" }, { status: 404 });
     }
 
-    const hydratedUpdated = await rehydrateMissingWarehouses(
-      updatedRequest as StockRequestDbRecord,
-      companyId
-    );
-
-    return NextResponse.json(mapStockRequest(hydratedUpdated));
+    return NextResponse.json(mapStockRequest(updatedRequest as StockRequestDbRecord));
   } catch (error) {
-    if (error instanceof StockRequestLineValidationError) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
     console.error("Error in stock-request PATCH:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -563,7 +252,7 @@ async function DELETEHandler(request: NextRequest, context: RouteContext) {
 
     if (deleteError) {
       console.error("Error deleting stock request:", deleteError);
-      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+      return NextResponse.json({ error: "Failed to delete stock request" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

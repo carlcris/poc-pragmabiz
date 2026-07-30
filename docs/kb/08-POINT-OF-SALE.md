@@ -43,6 +43,12 @@ The Point of Sale module provides a complete retail transaction system for cash 
 
 A **POS Transaction** represents a direct cash sale to a customer.
 
+The cashier explicitly selects an active warehouse in the current business unit before searching
+for items. Item availability and the completed inventory movement are scoped to that warehouse. The
+warehouse selector is locked while the cart contains lines so a cart cannot mix inventory
+locations. POS view access grants read-only warehouse lookup access for this selector; it does not
+grant access to manage warehouses.
+
 **Transaction Flow**:
 1. **Product Selection**: Scan barcode or search products
 2. **Cart Management**: Add/remove items, adjust quantities
