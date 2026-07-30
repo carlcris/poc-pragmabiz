@@ -175,6 +175,10 @@ When reviewing changes, explicitly check:
 - Completeness: the change fully satisfies the requested workflow, edge cases, and expected user paths.
 - Correctness: the implementation matches the intended data model, API contracts, UI behavior, and business rules.
 - Repo-rule compliance: the change follows this `AGENTS.md`, relevant skills, i18n, API, migration, permission, and transaction rules.
+- Maintainability and spaghetti-code risks: flag tangled control flow or state, mixed responsibilities,
+  oversized components or functions, duplicated business logic, excessive coupling, unclear
+  abstractions, misleading names, mutation chains, and code that is unnecessarily difficult to test
+  or modify. Report only concrete, actionable findings with file locations and severity.
 - Dead code removal: obsolete code, unused imports, redundant migrations, stale helpers, and unreachable branches introduced or made obsolete by the change are removed.
 - Breaking changes and regressions: the change does not break existing workflows, API contracts, schema expectations, permissions, localization, pagination/filtering, or previously supported behavior unless explicitly requested and documented.
 

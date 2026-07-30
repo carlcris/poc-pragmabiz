@@ -354,11 +354,20 @@ export const ScannerModal = ({
 }) => {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const scanLockedRef = useRef(false);
   const flashOpacity = useRef(new Animated.Value(0)).current;
 
-  const handleBarcodeScanned = (result: { data: string }) => {
-    if (scanned) return;
+  useEffect(() => {
+    if (!visible) return;
 
+    scanLockedRef.current = false;
+    setScanned(false);
+  }, [visible]);
+
+  const handleBarcodeScanned = (result: { data: string }) => {
+    if (scanLockedRef.current) return;
+
+    scanLockedRef.current = true;
     setScanned(true);
 
     // Haptic feedback
@@ -382,8 +391,6 @@ export const ScannerModal = ({
     setTimeout(() => {
       onScan(result.data);
       onClose();
-      // Reset for next scan
-      setTimeout(() => setScanned(false), 300);
     }, 300);
   };
 
@@ -403,7 +410,7 @@ export const ScannerModal = ({
               barcodeScannerSettings={{
                 barcodeTypes: ["qr", "code128", "code39", "ean13", "ean8", "upc_a", "upc_e"]
               }}
-              onBarcodeScanned={handleBarcodeScanned}
+              onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
             />
             <View style={styles.scannerOverlay}>
               <View style={styles.scannerFrame}>

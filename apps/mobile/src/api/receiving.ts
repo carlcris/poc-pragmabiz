@@ -105,6 +105,27 @@ const normalizeReceivingLine = (value: unknown): ReceivingLine => {
   const unitOption = firstRecord(
     record.itemUnitOption || record.item_unit_option || record.item_unit_options
   );
+  const latestActiveScan = asArray(
+    record.deliveryNoteItemReceivingScans || record.delivery_note_item_receiving_scans
+  ).reduce<{ id: string; timestamp: string } | null>((latest, value) => {
+    const scan = asRecord(value);
+    const id = str(scan.id);
+    const voidedAt = maybeStr(scan.voidedAt || scan.voided_at);
+    if (!id || voidedAt) return latest;
+
+    const timestamp = str(
+      scan.scannedAt || scan.scanned_at || scan.createdAt || scan.created_at
+    );
+    if (
+      !latest ||
+      timestamp > latest.timestamp ||
+      (timestamp === latest.timestamp && id > latest.id)
+    ) {
+      return { id, timestamp };
+    }
+
+    return latest;
+  }, null);
   const unitOptionUnit = firstRecord(unitOption.units_of_measure);
   const unit = firstRecord(record.unit || record.units_of_measure);
   const allocatedQty = num(
@@ -151,6 +172,7 @@ const normalizeReceivingLine = (value: unknown): ReceivingLine => {
       record.receivingStatus || record.receiving_status,
       varianceQty === 0 ? "exact" : varianceQty < 0 ? "short" : "over"
     ),
+    latestActiveScanId: latestActiveScan?.id || null,
   };
 };
 
@@ -328,6 +350,18 @@ export const recordDeliveryNoteReceivingScan = async (
     result: normalizeReceivingScanResult(response.result),
     deliveryNote: normalizeDeliveryDetail(response.deliveryNote),
   };
+};
+
+export const voidDeliveryNoteReceivingScan = async (id: string, scanId: string) => {
+  const response = await apiRequest<unknown>(
+    `/api/delivery-notes/${id}/receiving-scans/${scanId}/void`,
+    {
+      method: "POST",
+      body: { reason: "Removed from mobile receiving count" },
+    }
+  );
+
+  return normalizeDeliveryDetail(asRecord(response).data || response);
 };
 
 export const submitReceiving = async (id: string, data: SubmitDeliveryNoteReceivingPayload) => {

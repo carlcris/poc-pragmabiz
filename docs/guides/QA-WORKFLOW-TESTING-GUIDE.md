@@ -568,6 +568,9 @@ multiple warehouse-specific delivery notes from one action.
   an extra selection tap.
 - Confirm the acknowledgement warning is absent at `0 / expected` and appears only after receiving
   has started and at least one recorded quantity produces a current shortage or overage.
+- Scan the same delivery-note item more than once, tap its minus action, and confirm exactly one
+  received unit is removed. Confirm Submit and the other scan controls are disabled while the
+  removal is pending. Repeat until zero and confirm the minus action is no longer available.
 - Test the discrepancy path deliberately: receive fewer (or more, or damaged) units than dispatched and confirm the app requires an acknowledgement/reason before letting the submit go through.
 - Cancelling the linked pick list _before_ dispatch should roll the delivery's status back down to Confirmed — test this reversal explicitly.
 - Test both receiving paths (scan-based vs. customer-pickup) since they behave very differently.

@@ -476,7 +476,10 @@ succeeds. When the destination business unit has exactly one active warehouse, t
 selects it automatically without showing a redundant warehouse field; business units with multiple
 warehouses still require an explicit choice. The variance acknowledgement warning is hidden before
 receiving and appears only after at least one received quantity creates a current shortage or
-overage.
+overage. Each delivery-note item with an active receiving scan shows a minus action. The action
+voids the most recent active scan for that item and uses the server-recalculated delivery note to
+reduce the displayed received quantity by one. Scan controls and final submission remain disabled
+while a scan is being recorded or voided.
 
 The native mobile app stores the permission and capability maps returned by login and business-unit
 switching. Bottom navigation keeps Receiving and Picking visible in fixed positions but disables

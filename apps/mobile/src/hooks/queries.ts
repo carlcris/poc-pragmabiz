@@ -267,6 +267,17 @@ export const useRecordDeliveryNoteReceivingScan = (id: string) => {
   });
 };
 
+export const useVoidDeliveryNoteReceivingScan = (id: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (scanId: string) => receivingApi.voidDeliveryNoteReceivingScan(id, scanId),
+    onSuccess: (updated) => {
+      client.setQueryData(queryKeys.deliveryNote(id), updated);
+      markDeliveryNoteReceivingSummariesStale(client);
+    },
+  });
+};
+
 export const useSubmitReceiving = (id: string) => {
   const client = useQueryClient();
   return useMutation({

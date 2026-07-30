@@ -87,6 +87,7 @@ export type ReceivingLine = {
   receivedQty: number;
   varianceQty: number;
   receivingStatus: string;
+  latestActiveScanId: string | null;
 };
 
 export type DeliveryNoteDetail = DeliveryNoteSummary & {

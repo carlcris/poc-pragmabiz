@@ -21,6 +21,7 @@ import {
   useRecordDeliveryNoteReceivingScan,
   useStartReceiving,
   useSubmitReceiving,
+  useVoidDeliveryNoteReceivingScan,
 } from "@/hooks/queries";
 import { useSunmiScanner } from "@/hooks/useSunmiScanner";
 import { useAuthStore } from "@/stores/authStore";
@@ -193,6 +194,7 @@ export default function ReceivingDetailScreen() {
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const discrepancyBackdropOpacity = useRef(new Animated.Value(0)).current;
   const hardwareScanBlockedRef = useRef(false);
+  const scanMutationInFlightRef = useRef(false);
   const pendingScanConfirmationRef = useRef<ScanConfirmation | null>(null);
   const deliveryNote = useDeliveryNote(id, canViewDeliveryNoteReceiving);
   const refetchDeliveryNote = deliveryNote.refetch;
@@ -201,7 +203,10 @@ export default function ReceivingDetailScreen() {
   );
   const startReceiving = useStartReceiving(id);
   const recordScan = useRecordDeliveryNoteReceivingScan(id);
+  const voidScan = useVoidDeliveryNoteReceivingScan(id);
   const submitReceiving = useSubmitReceiving(id);
+  const isScanMutationPending = recordScan.isPending || voidScan.isPending;
+  const isReceivingMutationPending = isScanMutationPending || submitReceiving.isPending;
   const isReceiving = deliveryNote.data?.status === "dispatched";
   const isReceived = deliveryNote.data?.status === "received";
   const isReceivingStarted = Boolean(deliveryNote.data?.receivingStartedAt);
@@ -223,12 +228,15 @@ export default function ReceivingDetailScreen() {
     if (
       !scanConfirmation &&
       !discrepancySheetOpen &&
-      !recordScan.isPending &&
-      !submitReceiving.isPending
+      !isReceivingMutationPending
     ) {
       hardwareScanBlockedRef.current = false;
     }
-  }, [discrepancySheetOpen, recordScan.isPending, scanConfirmation, submitReceiving.isPending]);
+  }, [
+    discrepancySheetOpen,
+    isReceivingMutationPending,
+    scanConfirmation,
+  ]);
 
   useEffect(() => {
     if (!scanConfirmation) return;
@@ -282,6 +290,8 @@ export default function ReceivingDetailScreen() {
   );
 
   const submitReceivingWithNotes = async (notes: string) => {
+    if (scanMutationInFlightRef.current) return;
+
     setSubmitError("");
 
     if (!isReceiving) {
@@ -307,6 +317,8 @@ export default function ReceivingDetailScreen() {
   };
 
   const handleSubmitReceiving = () => {
+    if (scanMutationInFlightRef.current) return;
+
     setSubmitError("");
 
     if (!isReceiving) {
@@ -340,6 +352,9 @@ export default function ReceivingDetailScreen() {
     payload: RecordDeliveryNoteReceivingScanPayload,
     closeConfirmationOnSuccess = false
   ) => {
+    if (scanMutationInFlightRef.current) return;
+
+    scanMutationInFlightRef.current = true;
     try {
       await recordScan.mutateAsync(payload);
       setBarcode("");
@@ -349,11 +364,44 @@ export default function ReceivingDetailScreen() {
       }
     } catch (error) {
       setScanError(error instanceof Error ? error.message : "Failed to record receiving scan.");
+    } finally {
+      scanMutationInFlightRef.current = false;
+    }
+  };
+
+  const decrementReceivingScan = async (item: ReceivingLine) => {
+    if (
+      !item.latestActiveScanId ||
+      scanMutationInFlightRef.current ||
+      hardwareScanBlockedRef.current ||
+      submitReceiving.isPending
+    ) {
+      return;
+    }
+
+    scanMutationInFlightRef.current = true;
+    setScanError("");
+    try {
+      await voidScan.mutateAsync(item.latestActiveScanId);
+    } catch (error) {
+      setScanError(
+        error instanceof Error
+          ? error.message
+          : "Could not reduce the scanned quantity. Refresh and try again."
+      );
+    } finally {
+      scanMutationInFlightRef.current = false;
     }
   };
 
   const processScan = async (rawScan: string) => {
-    if (hardwareScanBlockedRef.current || pendingScanConfirmationRef.current) return;
+    if (
+      hardwareScanBlockedRef.current ||
+      scanMutationInFlightRef.current ||
+      pendingScanConfirmationRef.current
+    ) {
+      return;
+    }
 
     const cleaned = rawScan.trim();
     setScanError("");
@@ -426,7 +474,7 @@ export default function ReceivingDetailScreen() {
       isReceiving &&
       isReceivingStarted &&
       !scannerOpen &&
-      !recordScan.isPending &&
+      !isScanMutationPending &&
       !scanConfirmation &&
       !discrepancySheetOpen &&
       !submitReceiving.isPending,
@@ -529,11 +577,14 @@ export default function ReceivingDetailScreen() {
                 {isReceivingStarted ? (
                   <Pressable
                     onPress={handleSubmitReceiving}
-                    disabled={submitReceiving.isPending}
+                    disabled={isReceivingMutationPending}
                     style={({ pressed }) => [
                       styles.actionButton,
                       styles.actionButtonSecondary,
-                      pressed && styles.actionButtonSecondaryPressed,
+                      isReceivingMutationPending && styles.actionButtonDisabled,
+                      pressed &&
+                        !isReceivingMutationPending &&
+                        styles.actionButtonSecondaryPressed,
                     ]}
                   >
                     <Ionicons name="paper-plane-outline" size={18} color={colors.text} />
@@ -573,14 +624,17 @@ export default function ReceivingDetailScreen() {
                       onChangeText={setBarcode}
                       placeholder="Enter barcode..."
                       placeholderTextColor="#9B8FC4"
+                      editable={!isReceivingMutationPending}
                       style={styles.input}
                     />
                   </View>
                   <Pressable
                     onPress={() => setScannerOpen(true)}
+                    disabled={isReceivingMutationPending}
                     style={({ pressed }) => [
                       styles.scanButton,
-                      pressed && styles.scanButtonPressed,
+                      isReceivingMutationPending && styles.verifyButtonDisabled,
+                      pressed && !isReceivingMutationPending && styles.scanButtonPressed,
                     ]}
                   >
                     <Ionicons name="camera-outline" size={18} color="#fff" />
@@ -588,12 +642,13 @@ export default function ReceivingDetailScreen() {
                   </Pressable>
                   <Pressable
                     onPress={() => void processScan(barcode)}
-                    disabled={!barcode.trim() || recordScan.isPending}
+                    disabled={!barcode.trim() || isReceivingMutationPending}
                     style={({ pressed }) => [
                       styles.verifyButton,
-                      (!barcode.trim() || recordScan.isPending) && styles.verifyButtonDisabled,
+                      (!barcode.trim() || isReceivingMutationPending) &&
+                        styles.verifyButtonDisabled,
                       pressed &&
-                        !(!barcode.trim() || recordScan.isPending) &&
+                        !(!barcode.trim() || isReceivingMutationPending) &&
                         styles.verifyButtonPressed,
                     ]}
                   >
@@ -656,9 +711,32 @@ export default function ReceivingDetailScreen() {
                     <View style={styles.itemProgressSection}>
                       <View style={styles.itemProgressHeader}>
                         <Text style={styles.itemProgressLabel}>Progress</Text>
-                        <Text style={styles.itemProgressValue}>
-                          {item.receivedQty} / {item.allocatedQty}
-                        </Text>
+                        <View style={styles.itemProgressValueRow}>
+                          <Text style={styles.itemProgressValue}>
+                            {item.receivedQty} / {item.allocatedQty}
+                          </Text>
+                          {canManageReceiving &&
+                          isReceiving &&
+                          isReceivingStarted &&
+                          item.receivedQty > 0 &&
+                          item.latestActiveScanId ? (
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel="Reduce scanned quantity"
+                              onPress={() => void decrementReceivingScan(item)}
+                              disabled={isReceivingMutationPending}
+                              style={({ pressed }) => [
+                                styles.decrementButton,
+                                isReceivingMutationPending && styles.decrementButtonDisabled,
+                                pressed &&
+                                  !isReceivingMutationPending &&
+                                  styles.decrementButtonPressed,
+                              ]}
+                            >
+                              <Ionicons name="remove" size={20} color={colors.dangerDark} />
+                            </Pressable>
+                          ) : null}
+                        </View>
                       </View>
                       <View style={styles.itemProgressBarBackground}>
                         <View
@@ -1453,6 +1531,27 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: typography.fontWeights.bold,
     color: colors.text,
+  },
+  itemProgressValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  decrementButton: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.dangerSoft,
+    borderWidth: 1,
+    borderColor: colors.danger,
+  },
+  decrementButtonDisabled: {
+    opacity: 0.5,
+  },
+  decrementButtonPressed: {
+    opacity: 0.75,
   },
   itemProgressBarBackground: {
     height: 8,
