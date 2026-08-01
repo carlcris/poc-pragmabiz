@@ -88,6 +88,10 @@ Item: "Widget ABC"
 ### 2. Warehouse
 
 A **Warehouse** represents a physical storage location where inventory is held.
+The Warehouse Management list, detail, create, update, delete, locations, and floor-map paths are
+scoped to the active business unit. A user who can access several business units must switch the
+active business unit before managing one of its warehouses. Workflows that intentionally select a
+warehouse outside the active unit use explicit cross-business-unit lookup endpoints instead.
 
 **Key Attributes**:
 
@@ -99,11 +103,16 @@ A **Warehouse** represents a physical storage location where inventory is held.
 **Warehouse Locations**:
 Each warehouse can have multiple storage locations (aisles, shelves, bins) for granular stock tracking.
 
-Users with `manage_locations:view` access can open an active warehouse's **Floor Map** in read-only
-mode. Uploading or replacing the private PNG/JPEG/WebP floor-plan image, changing rack mappings, and
-saving require `manage_locations:edit`. Inactive warehouses cannot open or change floor maps. An
-editor drags a rectangle across the complete footprint of each active rack; the editor shows the
-rectangle while drawing and rejects click-sized marker mappings. Overlay
+Users with `warehouses:view` access can open an active warehouse's **Floor Map** in read-only mode.
+Uploading or replacing the private PNG/JPEG/WebP floor-plan image, changing rack mappings, and
+saving require both `warehouses:edit` and the child capability
+`warehouses.operation.manage_floor_map.edit`. The child capability is configured under Warehouse
+Operations in the role-permission editor. `manage_locations` remains responsible for maintaining
+warehouse locations and does not grant floor-map editing. Inactive warehouses cannot open or change
+floor maps. Switching business units while a floor-map detail page is open returns the user to the
+warehouse list without requesting the previous unit's warehouse under the new scope. An editor
+drags a rectangle across the complete footprint of each active rack; the editor shows the rectangle
+while drawing and rejects click-sized marker mappings. Overlay
 coordinates are stored as normalized basis points, so the same full-rack highlights remain aligned
 across desktop and mobile screen sizes. The mobile picking viewer labels all mapped racks by rack
 name along their long axis and scales each label to its rectangle. Replacement-image dimensions are
@@ -698,7 +707,8 @@ selection require an explicit warehouse.
 
 #### GET /api/warehouses
 
-List all warehouses.
+List warehouses owned by the active business unit. Search, status filtering, sorting, and bounded
+pagination are applied on the server.
 
 **Permissions**: `view` on `warehouses`
 

@@ -7,6 +7,8 @@ import { useTranslations } from "next-intl";
 import { Plus, Search, Pencil, Map, MapPin, Filter, Trash2, MoreVertical } from "lucide-react";
 import { useWarehouses, useDeleteWarehouse } from "@/hooks/useWarehouses";
 import { toast } from "sonner";
+import { getApiErrorCode } from "@/lib/api";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -37,6 +39,11 @@ import { ViewGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
 import type { Warehouse } from "@/types/warehouse";
 
+const WAREHOUSE_DELETE_ERROR_CODES = [
+  "BUSINESS_UNIT_CONTEXT_REQUIRED",
+  "WAREHOUSE_NOT_FOUND",
+] as const;
+
 const WarehouseFormDialog = dynamic(
   () =>
     import("@/components/warehouses/WarehouseFormDialog").then((mod) => mod.WarehouseFormDialog),
@@ -50,6 +57,7 @@ const ConfirmDialog = dynamic(
 export default function WarehousesPage() {
   const t = useTranslations("warehousesPage");
   const tCommon = useTranslations("common");
+  const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -82,6 +90,10 @@ export default function WarehousesPage() {
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [currentBusinessUnitId]);
+
   const handleCreateWarehouse = () => {
     setSelectedWarehouse(null);
     setDialogOpen(true);
@@ -104,8 +116,15 @@ export default function WarehousesPage() {
       await deleteWarehouse.mutateAsync(warehouseToDelete.id);
       toast.success(t("deleteSuccess"));
       setWarehouseToDelete(null);
-    } catch {
-      toast.error(t("deleteError"));
+    } catch (error: unknown) {
+      const code = getApiErrorCode(error, WAREHOUSE_DELETE_ERROR_CODES);
+      if (code === "BUSINESS_UNIT_CONTEXT_REQUIRED") {
+        toast.error(t("contextRequiredError"));
+      } else if (code === "WAREHOUSE_NOT_FOUND") {
+        toast.error(t("notFoundError"));
+      } else {
+        toast.error(t("deleteError"));
+      }
     }
   };
 
@@ -285,7 +304,7 @@ export default function WarehousesPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               {warehouse.isActive ? (
-                                <ViewGuard resource={RESOURCES.MANAGE_LOCATIONS}>
+                                <ViewGuard resource={RESOURCES.WAREHOUSES}>
                                   <DropdownMenuItem asChild>
                                     <Link href={`/inventory/warehouses/${warehouse.id}/floor-map`}>
                                       <Map className="h-4 w-4" />

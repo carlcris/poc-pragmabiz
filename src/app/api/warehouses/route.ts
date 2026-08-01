@@ -1,5 +1,6 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, requireLookupDataAccess } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -25,12 +26,6 @@ type DbWarehouse = {
   is_van: boolean | null;
   created_at: string;
   updated_at: string | null;
-};
-
-type UserContext = {
-  userId: string;
-  companyId: string;
-  accessibleBusinessUnitIds: string[];
 };
 
 type WarehousePageRpcRow = {
@@ -71,6 +66,8 @@ type CreateWarehouseBody = {
 
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
+const WAREHOUSE_COLUMNS =
+  "id, company_id, business_unit_id, warehouse_code, warehouse_name, address_line1, address_line2, city, state, postal_code, country, phone, email, contact_person, is_active, is_van, created_at, updated_at";
 
 const transformDbWarehouse = (dbWarehouse: DbWarehouse): Warehouse => ({
   id: dbWarehouse.id,
@@ -112,78 +109,22 @@ function normalizeSearch(raw: string | null): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
-async function getUserContext(): Promise<
-  | {
-      ok: true;
-      context: UserContext;
-      supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"];
-    }
-  | { ok: false; response: NextResponse }
-> {
-  const { supabase } = await createServerClientWithBU();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  }
-
-  const { data: userRow, error: userError } = await supabase
-    .from("users")
-    .select("company_id")
-    .eq("id", user.id)
-    .single();
-
-  if (userError || !userRow?.company_id) {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: "User company not found" }, { status: 400 }),
-    };
-  }
-
-  const { data: buAccess, error: buError } = await supabase
-    .from("user_business_unit_access")
-    .select("business_unit_id")
-    .eq("user_id", user.id);
-
-  if (buError) {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { error: "Failed to resolve business unit access" },
-        { status: 500 }
-      ),
-    };
-  }
-
-  const accessibleBusinessUnitIds = (buAccess || [])
-    .map((row) => row.business_unit_id)
-    .filter((value): value is string => Boolean(value));
-
-  return {
-    ok: true,
-    context: {
-      userId: user.id,
-      companyId: userRow.company_id,
-      accessibleBusinessUnitIds,
-    },
-    supabase,
-  };
-}
-
 // GET /api/warehouses
 async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requireLookupDataAccess(RESOURCES.WAREHOUSES);
     if (unauthorized) return unauthorized;
 
-    const resolved = await getUserContext();
-    if (!resolved.ok) return resolved.response;
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
 
-    const { supabase, context } = resolved;
+    const { supabase, companyId, currentBusinessUnitId } = context;
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: "Business unit context required", code: "BUSINESS_UNIT_CONTEXT_REQUIRED" },
+        { status: 400 }
+      );
+    }
     const searchParams = request.nextUrl.searchParams;
 
     const search = normalizeSearch(searchParams.get("search"));
@@ -197,21 +138,9 @@ async function GETHandler(request: NextRequest) {
     const page = parsePositiveInt(searchParams.get("page"), 1);
     const requestedLimit = parsePositiveInt(searchParams.get("limit"), DEFAULT_LIMIT);
     const limit = Math.min(requestedLimit, MAX_LIMIT);
-    if (context.accessibleBusinessUnitIds.length === 0) {
-      return NextResponse.json({
-        data: [],
-        pagination: {
-          page,
-          total: 0,
-          totalPages: 0,
-          limit,
-        },
-      });
-    }
-
     const { data, error } = await supabase.rpc("get_warehouses", {
-      p_company_id: context.companyId,
-      p_accessible_business_unit_ids: context.accessibleBusinessUnitIds,
+      p_company_id: companyId,
+      p_business_unit_id: currentBusinessUnitId,
       p_search: search,
       p_country: country,
       p_is_active: parsedIsActive,
@@ -220,8 +149,9 @@ async function GETHandler(request: NextRequest) {
     });
 
     if (error) {
+      console.error("Failed to fetch warehouses", error);
       return NextResponse.json(
-        { error: "Failed to fetch warehouses", details: error.message },
+        { error: "Failed to fetch warehouses", code: "WAREHOUSE_LIST_FAILED" },
         { status: 500 }
       );
     }
@@ -247,7 +177,8 @@ async function GETHandler(request: NextRequest) {
         limit,
       },
     });
-  } catch {
+  } catch (error: unknown) {
+    console.error("Unexpected warehouse list error", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -270,7 +201,10 @@ async function POSTHandler(request: NextRequest) {
     }
 
     if (!currentBusinessUnitId) {
-      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Business unit context required", code: "BUSINESS_UNIT_CONTEXT_REQUIRED" },
+        { status: 400 }
+      );
     }
 
     const { data: userRow, error: userError } = await supabase
@@ -289,7 +223,10 @@ async function POSTHandler(request: NextRequest) {
 
     if (!code || !name) {
       return NextResponse.json(
-        { error: "Missing required fields", details: "code and name are required" },
+        {
+          error: "Warehouse code and name are required",
+          code: "WAREHOUSE_REQUIRED_FIELDS_MISSING",
+        },
         { status: 400 }
       );
     }
@@ -303,18 +240,16 @@ async function POSTHandler(request: NextRequest) {
       .maybeSingle();
 
     if (checkError) {
+      console.error("Failed to validate warehouse code", checkError);
       return NextResponse.json(
-        { error: "Failed to validate warehouse code", details: checkError.message },
+        { error: "Failed to validate warehouse code", code: "WAREHOUSE_CODE_CHECK_FAILED" },
         { status: 500 }
       );
     }
 
     if (existing) {
       return NextResponse.json(
-        {
-          error: "Warehouse code already exists",
-          details: `Warehouse code "${code}" is already in use`,
-        },
+        { error: "Warehouse code already exists", code: "WAREHOUSE_CODE_CONFLICT" },
         { status: 409 }
       );
     }
@@ -338,12 +273,13 @@ async function POSTHandler(request: NextRequest) {
         created_by: user.id,
         updated_by: user.id,
       })
-      .select("*")
+      .select(WAREHOUSE_COLUMNS)
       .single();
 
     if (insertError) {
+      console.error("Failed to create warehouse", insertError);
       return NextResponse.json(
-        { error: "Failed to create warehouse", details: insertError.message },
+        { error: "Failed to create warehouse", code: "WAREHOUSE_CREATE_FAILED" },
         { status: 500 }
       );
     }
@@ -359,7 +295,8 @@ async function POSTHandler(request: NextRequest) {
       { data: transformDbWarehouse(newWarehouse as DbWarehouse) },
       { status: 201 }
     );
-  } catch {
+  } catch (error: unknown) {
+    console.error("Unexpected warehouse creation error", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

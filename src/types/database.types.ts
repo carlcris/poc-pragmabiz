@@ -10889,6 +10889,16 @@ export type Database = {
         }
         Returns: string
       }
+      assign_user_role_to_business_unit: {
+        Args: {
+          p_actor_user_id: string
+          p_business_unit_id: string
+          p_company_id: string
+          p_role_id: string
+          p_target_user_id: string
+        }
+        Returns: string
+      }
       calculate_sales_quotation_item: {
         Args: { p_item: Json }
         Returns: {
@@ -11685,7 +11695,7 @@ export type Database = {
       }
       get_warehouses: {
         Args: {
-          p_accessible_business_unit_ids?: string[]
+          p_business_unit_id: string
           p_company_id: string
           p_country?: string
           p_is_active?: boolean
@@ -12068,6 +12078,16 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      remove_user_role_from_business_unit: {
+        Args: {
+          p_actor_user_id: string
+          p_business_unit_id: string
+          p_company_id: string
+          p_role_id: string
+          p_target_user_id: string
+        }
+        Returns: string
       }
       reserve_delivery_note_inventory: {
         Args: { p_company_id: string; p_dn_id: string; p_user_id: string }

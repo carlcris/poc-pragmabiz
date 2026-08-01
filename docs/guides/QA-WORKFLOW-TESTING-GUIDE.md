@@ -274,6 +274,12 @@ workflows.
 
 **Things to test**:
 
+- Give a user access to Business Unit A and Business Unit B. While A is active, confirm Warehouse
+  Management lists only A's warehouses. Switch to B and confirm A's rows disappear immediately and
+  B's warehouses are fetched.
+- While Business Unit A is active, directly open, edit, or delete the URL/API identifier of a
+  Business Unit B warehouse. Confirm the operation returns not found and does not expose or change
+  the other unit's warehouse.
 - Create stock in a warehouse (receive something into it), then delete the warehouse, and check whether stock reports/item detail pages still behave sensibly afterward.
 - Confirm a warehouse created while Business Unit A is active cannot later be reassigned to Business Unit B.
 - With two warehouses in Business Unit A, confirm item lists and inventory reports show their combined stock when no warehouse filter is selected.
@@ -321,7 +327,7 @@ workflows.
 
 **Purpose**: the top-level "branch/division" scope that warehouses, customers, and most permissions sit underneath. Most of what a user sees in the app is implicitly filtered by whichever business unit they currently have active.
 
-**Entry point**: **There isn't one for creating a business unit itself.** The only screen related to business units lets you edit _settings_ for the currently active one (Admin → Settings → Business Unit) — it does not create new business units or edit which ones exist. New business units, and which users are allowed into them, must be set up outside the app (by whoever administers the environment) before testing.
+**Entry point**: **There isn't one for creating a business unit itself.** The only screen related to business units lets you edit _settings_ for the currently active one (Admin → Settings → Business Unit) — it does not create new business units or edit which ones exist. New business units must be set up outside the app. An administrator grants an existing user access by assigning that user a role for the business unit under Admin → Users → Manage Roles.
 
 **Switching business units**: there is a switcher in the app that lets a user with access to more than one business unit change which one is currently active. This is a genuinely testable action.
 
@@ -330,6 +336,10 @@ workflows.
 - Switch your active business unit and confirm that item lists, warehouse lists, etc. immediately reflect the new business unit's data without needing to fully reload the app.
 - Try to switch into a business unit you don't have access to (if you can simulate this) and confirm it's refused.
 - Confirm a user only ever sees the business units they've actually been granted, not every business unit in the company.
+- Assign the test user its first role in another business unit and confirm that unit immediately becomes available in the switcher.
+- Assign two roles in the same business unit, remove one, and confirm access remains because another role is still assigned there.
+- Remove the final role for a business unit and confirm that unit disappears from the switcher. If it was current or default, confirm another accessible unit becomes current/default.
+- Force or simulate a role-assignment failure and confirm neither the role nor business-unit access is partially saved.
 
 ---
 
@@ -356,6 +366,7 @@ workflows.
 
 - Confirm there's genuinely no way to self-register or create a user from inside the app — this should be treated as expected behavior, not a bug to report.
 - Build a custom role with a narrow set of permissions, assign it to a test user, and confirm that user only sees the menu items and can only perform the actions that role actually grants — including trying the restricted actions directly, not just checking that buttons are hidden.
+- Confirm assigning a role also grants access to that role's business unit. Removing the final role in that business unit must revoke access, while removing one of several roles must not.
 - Try to delete a system role — should be blocked.
 - Try to delete a custom role that's still assigned to at least one user — should be blocked with a clear message.
 - Delete a custom role that has no users assigned — should succeed.
@@ -613,10 +624,15 @@ multiple warehouse-specific delivery notes from one action.
 - Cancel a pick list mid-way with a blank reason and confirm cancellation succeeds, no reason is stored, and the Delivery Note's status and picked-quantity totals both roll back correctly.
 - Mobile: test the scan-to-verify flow specifically — the camera-captured value should be processed silently without appearing in the manual-entry field. A correct scan should sail straight through, while a mismatched scan should show the confirmation/warning card before allowing the pick.
 - Configure a warehouse Floor Map by dragging across the suggested rack's complete footprint.
-  Confirm a user with `manage_locations:view` but without `manage_locations:edit` can view an
-  existing map but cannot upload, draw, remove mappings, or save. Confirm inactive warehouses do
-  not expose the Floor Map action and a direct floor-map URL returns the not-found state before any
-  image upload occurs.
+  Confirm a user with `warehouses:view` can view an existing map. Test both sides of the edit gate:
+  `warehouses:edit` without `warehouses.operation.manage_floor_map.edit`, and the child capability
+  without `warehouses:edit`, must both remain read-only and receive the safe
+  `FLOOR_MAP_PERMISSION_DENIED` response from a direct save request. Only a user with both permissions
+  can upload, draw, remove mappings, and save. Confirm inactive warehouses do not expose the Floor
+  Map action and a direct floor-map URL returns the not-found state before any image upload occurs.
+  While a floor-map detail page is open, switch business units and confirm the app returns to the
+  warehouse list without retrying the previous warehouse's floor-map request or briefly displaying
+  its cached map in the new scope.
   Confirm a click without a meaningful drag is rejected, the editor previews the full rectangle,
   and **View Map** on the mobile pick line highlights the complete rack with a blinking red overlay
   rather than showing a point marker. Confirm every mapped rack shows its rack name inside the

@@ -378,6 +378,8 @@ export type TranslationKeys = {
     deleteDescriptionWithName: string;
     deleteSuccess: string;
     deleteError: string;
+    notFoundError: string;
+    contextRequiredError: string;
   };
   warehouseFloorMap: {
     title: string;
@@ -402,6 +404,7 @@ export type TranslationKeys = {
     loadError: string;
     saveSuccess: string;
     saveError: string;
+    savePermissionError: string;
     imageRequired: string;
     imageDecodeError: string;
     rackRequired: string;
@@ -447,6 +450,9 @@ export type TranslationKeys = {
     updateSuccess: string;
     createError: string;
     updateError: string;
+    codeConflictError: string;
+    notFoundError: string;
+    contextRequiredError: string;
     missingCompany: string;
   };
   warehouseValidation: {
@@ -821,6 +827,10 @@ export type TranslationKeys = {
     selectRoleAndBusinessUnit: string;
     roleAssignedSuccess: string;
     roleAssignedError: string;
+    roleAlreadyAssignedError: string;
+    roleManagementForbiddenError: string;
+    roleSelectionStaleError: string;
+    roleAssignmentMissingError: string;
     roleRemovedSuccess: string;
     roleRemovedError: string;
   };
@@ -889,6 +899,8 @@ export type TranslationKeys = {
       viewCustomerSpecialPricesDescription: string;
       manageCustomerSpecialPrices: string;
       manageCustomerSpecialPricesDescription: string;
+      manageWarehouseFloorMap: string;
+      manageWarehouseFloorMapDescription: string;
     };
   };
   adminCreateRoleDialog: {
@@ -3630,6 +3642,8 @@ export const translations: Record<Locale, TranslationKeys> = {
         'Are you sure you want to delete "{name}"? This action cannot be undone.',
       deleteSuccess: "Warehouse deleted successfully",
       deleteError: "Failed to delete warehouse",
+      notFoundError: "This warehouse is not available in the active business unit.",
+      contextRequiredError: "Select a business unit before managing warehouses.",
     },
     warehouseFloorMap: {
       title: "Warehouse Floor Map",
@@ -3654,6 +3668,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       loadError: "Failed to load the warehouse floor map.",
       saveSuccess: "Warehouse floor map saved.",
       saveError: "Failed to save the warehouse floor map.",
+      savePermissionError:
+        "You do not have permission to change this floor map. Ask an administrator for warehouse edit and floor-map management access.",
       imageRequired: "Upload a floor-plan image first.",
       imageDecodeError:
         "The selected image could not be decoded. Choose a valid PNG, JPEG, or WebP file.",
@@ -3700,6 +3716,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       updateSuccess: "Warehouse updated successfully",
       createError: "Failed to create warehouse",
       updateError: "Failed to update warehouse",
+      codeConflictError: "This warehouse code is already in use.",
+      notFoundError: "This warehouse is not available in the active business unit.",
+      contextRequiredError: "Select a business unit before managing warehouses.",
       missingCompany: "User company information not available",
     },
     warehouseValidation: {
@@ -4065,7 +4084,8 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     adminUserRolesDialog: {
       title: "Manage Roles - {name}",
-      description: "Assign or remove roles for this user across different business units",
+      description:
+        "Assigning a role grants access to that business unit. Removing the final role revokes its access.",
       currentRoles: "Current Roles",
       noRoles: "No roles assigned yet",
       unknownBusinessUnit: "Unknown Business Unit",
@@ -4078,9 +4098,15 @@ export const translations: Record<Locale, TranslationKeys> = {
       assignRole: "Assign Role",
       assigning: "Assigning...",
       selectRoleAndBusinessUnit: "Please select both a role and business unit",
-      roleAssignedSuccess: "Role assigned successfully",
+      roleAssignedSuccess: "Role assigned and business unit access granted",
       roleAssignedError: "Failed to assign role",
-      roleRemovedSuccess: "Role removed successfully",
+      roleAlreadyAssignedError: "This user already has that role in the selected business unit.",
+      roleManagementForbiddenError:
+        "You do not have permission to manage roles for the selected business unit.",
+      roleSelectionStaleError:
+        "The selected user, role, or business unit is no longer available. Refresh and try again.",
+      roleAssignmentMissingError: "This role assignment has already been removed.",
+      roleRemovedSuccess: "Role removed and business unit access updated",
       roleRemovedError: "Failed to remove role",
     },
     adminUserPermissionsDialog: {
@@ -4158,6 +4184,9 @@ export const translations: Record<Locale, TranslationKeys> = {
         manageCustomerSpecialPrices: "Manage Customer Special Prices",
         manageCustomerSpecialPricesDescription:
           "Allows creating, editing, and deactivating customer-specific item-tier prices.",
+        manageWarehouseFloorMap: "Manage Warehouse Floor Map",
+        manageWarehouseFloorMapDescription:
+          "Allows uploading floor-plan images and changing rack mappings when Warehouse edit access is also granted.",
       },
     },
     adminCreateRoleDialog: {
@@ -9587,6 +9616,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleteDescriptionWithName: "确定要删除“{name}”吗？此操作无法撤销。",
       deleteSuccess: "仓库删除成功",
       deleteError: "删除仓库失败",
+      notFoundError: "当前业务单位中无法使用此仓库。",
+      contextRequiredError: "管理仓库前，请先选择业务单位。",
     },
     warehouseFloorMap: {
       title: "仓库平面图",
@@ -9611,6 +9642,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       loadError: "加载仓库平面图失败。",
       saveSuccess: "仓库平面图已保存。",
       saveError: "保存仓库平面图失败。",
+      savePermissionError: "您无权更改此平面图。请联系管理员授予仓库编辑及平面图管理权限。",
       imageRequired: "请先上传平面图图片。",
       imageDecodeError: "无法解码所选图片。请选择有效的 PNG、JPEG 或 WebP 文件。",
       rackRequired: "绘制前请选择货架。",
@@ -9656,6 +9688,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       updateSuccess: "仓库更新成功",
       createError: "创建仓库失败",
       updateError: "更新仓库失败",
+      codeConflictError: "此仓库代码已被使用。",
+      notFoundError: "当前业务单位中无法使用此仓库。",
+      contextRequiredError: "管理仓库前，请先选择业务单位。",
       missingCompany: "用户公司信息不可用",
     },
     warehouseValidation: {
@@ -10016,7 +10051,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     adminUserRolesDialog: {
       title: "管理角色 - {name}",
-      description: "为该用户在不同业务单元中分配或移除角色",
+      description: "分配角色会授予该业务单元的访问权限；移除最后一个角色会撤销访问权限。",
       currentRoles: "当前角色",
       noRoles: "尚未分配角色",
       unknownBusinessUnit: "未知业务单元",
@@ -10029,9 +10064,13 @@ export const translations: Record<Locale, TranslationKeys> = {
       assignRole: "分配角色",
       assigning: "分配中...",
       selectRoleAndBusinessUnit: "请选择角色和业务单元",
-      roleAssignedSuccess: "角色分配成功",
+      roleAssignedSuccess: "角色已分配，并已授予业务单元访问权限",
       roleAssignedError: "角色分配失败",
-      roleRemovedSuccess: "角色移除成功",
+      roleAlreadyAssignedError: "该用户已在所选业务单元中拥有此角色。",
+      roleManagementForbiddenError: "您无权管理所选业务单元的角色。",
+      roleSelectionStaleError: "所选用户、角色或业务单元已不可用。请刷新后重试。",
+      roleAssignmentMissingError: "此角色分配已被移除。",
+      roleRemovedSuccess: "角色已移除，业务单元访问权限已更新",
       roleRemovedError: "角色移除失败",
     },
     adminUserPermissionsDialog: {
@@ -10100,6 +10139,9 @@ export const translations: Record<Locale, TranslationKeys> = {
         viewCustomerSpecialPricesDescription: "允许查看客户专属的商品价格层级价格。",
         manageCustomerSpecialPrices: "管理客户特殊价格",
         manageCustomerSpecialPricesDescription: "允许创建、编辑和停用客户专属的商品价格层级价格。",
+        manageWarehouseFloorMap: "管理仓库平面图",
+        manageWarehouseFloorMapDescription:
+          "在同时授予仓库编辑权限时，允许上传平面图图片并更改货架映射。",
       },
     },
     adminCreateRoleDialog: {

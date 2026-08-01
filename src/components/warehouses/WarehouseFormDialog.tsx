@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useCreateWarehouse, useUpdateWarehouse } from "@/hooks/useWarehouses";
+import { getApiErrorCode } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 import { createWarehouseFormSchema } from "@/lib/validations/warehouse";
 import type { z } from "zod";
@@ -30,6 +31,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import type { Warehouse } from "@/types/warehouse";
+
+const WAREHOUSE_FORM_ERROR_CODES = [
+  "BUSINESS_UNIT_CONTEXT_REQUIRED",
+  "WAREHOUSE_CODE_CONFLICT",
+  "WAREHOUSE_NOT_FOUND",
+] as const;
 
 interface WarehouseFormDialogProps {
   open: boolean;
@@ -124,8 +131,17 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
       }
       onOpenChange(false);
       form.reset();
-    } catch {
-      toast.error(warehouse ? t("updateError") : t("createError"));
+    } catch (error: unknown) {
+      const code = getApiErrorCode(error, WAREHOUSE_FORM_ERROR_CODES);
+      if (code === "BUSINESS_UNIT_CONTEXT_REQUIRED") {
+        toast.error(t("contextRequiredError"));
+      } else if (code === "WAREHOUSE_CODE_CONFLICT") {
+        toast.error(t("codeConflictError"));
+      } else if (code === "WAREHOUSE_NOT_FOUND") {
+        toast.error(t("notFoundError"));
+      } else {
+        toast.error(warehouse ? t("updateError") : t("createError"));
+      }
     }
   };
 

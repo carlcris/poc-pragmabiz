@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { RESOURCES } from "@/constants/resources";
-import { requirePermission } from "@/lib/auth";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { requireAllPermissions, requirePermission } from "@/lib/auth";
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { isCompleteRackRectangle } from "@/lib/warehouse-floor-map-geometry";
+import { canAccessCapability } from "@/services/permissions/permissionResolver";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -195,8 +197,15 @@ const getScopedWarehouse = async (warehouseId: string) => {
 };
 
 async function GETHandler(_request: NextRequest, context: RouteContext) {
-  const unauthorized = await requirePermission(RESOURCES.MANAGE_LOCATIONS, "view");
-  if (unauthorized) return unauthorized;
+  const unauthorized = await requirePermission(RESOURCES.WAREHOUSES, "view");
+  if (unauthorized) {
+    if (unauthorized.status === 401) return unauthorized;
+    return safeError(
+      "You do not have permission to view this warehouse floor map",
+      "FLOOR_MAP_PERMISSION_DENIED",
+      403
+    );
+  }
 
   const { id } = await context.params;
   const scoped = await getScopedWarehouse(id);
@@ -213,13 +222,37 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
 }
 
 async function PUTHandler(request: NextRequest, context: RouteContext) {
-  const unauthorized = await requirePermission(RESOURCES.MANAGE_LOCATIONS, "edit");
-  if (unauthorized) return unauthorized;
+  const parentPermissionDenied = await requireAllPermissions([
+    [RESOURCES.WAREHOUSES, "view"],
+    [RESOURCES.WAREHOUSES, "edit"],
+  ]);
+  if (parentPermissionDenied) {
+    if (parentPermissionDenied.status === 401) return parentPermissionDenied;
+    return safeError(
+      "You do not have permission to change this warehouse floor map",
+      "FLOOR_MAP_PERMISSION_DENIED",
+      403
+    );
+  }
 
   const { id } = await context.params;
   const scoped = await getScopedWarehouse(id);
   if (!scoped) {
     return safeError("Warehouse not found", "WAREHOUSE_NOT_FOUND", 404);
+  }
+
+  const canManageFloorMap = await canAccessCapability(
+    scoped.userId,
+    GRANULAR_CAPABILITIES.WAREHOUSE_FLOOR_MAP_MANAGE,
+    "edit",
+    scoped.currentBusinessUnitId
+  );
+  if (!canManageFloorMap) {
+    return safeError(
+      "You do not have permission to change this warehouse floor map",
+      "FLOOR_MAP_PERMISSION_DENIED",
+      403
+    );
   }
 
   const formData = await request.formData();
@@ -309,6 +342,13 @@ async function PUTHandler(request: NextRequest, context: RouteContext) {
         "Draw a rectangle over the complete rack before saving",
         "RACK_MAPPING_TOO_SMALL",
         400
+      );
+    }
+    if (saveError.message.includes("FLOOR_MAP_PERMISSION_DENIED")) {
+      return safeError(
+        "You do not have permission to change this warehouse floor map",
+        "FLOOR_MAP_PERMISSION_DENIED",
+        403
       );
     }
     return safeError("Failed to save warehouse floor map", "FLOOR_MAP_SAVE_FAILED", 500);

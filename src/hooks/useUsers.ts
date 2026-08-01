@@ -5,8 +5,9 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api";
+import { apiClient, getApiErrorCode } from "@/lib/api";
 import { WAREHOUSE_DASHBOARD_QUERY_KEY } from "@/hooks/queryKeys";
+import { useAuthStore } from "@/stores/authStore";
 
 type User = {
   id: string;
@@ -47,6 +48,24 @@ type UserRole = {
 type UserRolesResponse = {
   data: UserRole[];
 };
+
+export const USER_ROLE_MUTATION_ERROR_CODES = [
+  "USER_ROLE_INVALID_REQUEST",
+  "USER_ROLE_UNAUTHORIZED",
+  "USER_ROLE_FORBIDDEN",
+  "USER_ROLE_TARGET_NOT_FOUND",
+  "USER_ROLE_ROLE_NOT_FOUND",
+  "USER_ROLE_BUSINESS_UNIT_NOT_FOUND",
+  "USER_ROLE_ALREADY_ASSIGNED",
+  "USER_ROLE_NOT_ASSIGNED",
+  "USER_ROLE_ASSIGNMENT_FAILED",
+  "USER_ROLE_REMOVAL_FAILED",
+] as const;
+
+export type UserRoleMutationErrorCode = (typeof USER_ROLE_MUTATION_ERROR_CODES)[number];
+
+export const getUserRoleMutationErrorCode = (error: unknown) =>
+  getApiErrorCode(error, USER_ROLE_MUTATION_ERROR_CODES);
 
 /**
  * Fetch all users
@@ -92,6 +111,7 @@ export function useUserRoles(userId: string | undefined) {
  */
 export function useAssignRole() {
   const queryClient = useQueryClient();
+  const currentUserId = useAuthStore((state) => state.user?.id);
 
   return useMutation({
     mutationFn: async ({
@@ -113,6 +133,9 @@ export function useAssignRole() {
       // Invalidate user roles query
       queryClient.invalidateQueries({ queryKey: ["userRoles", variables.userId] });
       queryClient.invalidateQueries({ queryKey: ["users"] });
+      if (variables.userId === currentUserId) {
+        queryClient.invalidateQueries({ queryKey: ["business-units"] });
+      }
       queryClient.invalidateQueries({ queryKey: ["permissions"] });
       queryClient.invalidateQueries({ queryKey: ["granular-capabilities"] });
       queryClient.invalidateQueries({ queryKey: ["analytics"] });
@@ -127,6 +150,7 @@ export function useAssignRole() {
  */
 export function useRemoveRole() {
   const queryClient = useQueryClient();
+  const currentUserId = useAuthStore((state) => state.user?.id);
 
   return useMutation({
     mutationFn: async ({
@@ -146,6 +170,9 @@ export function useRemoveRole() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["userRoles", variables.userId] });
       queryClient.invalidateQueries({ queryKey: ["users"] });
+      if (variables.userId === currentUserId) {
+        queryClient.invalidateQueries({ queryKey: ["business-units"] });
+      }
       queryClient.invalidateQueries({ queryKey: ["permissions"] });
       queryClient.invalidateQueries({ queryKey: ["granular-capabilities"] });
       queryClient.invalidateQueries({ queryKey: ["analytics"] });

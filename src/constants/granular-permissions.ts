@@ -19,6 +19,8 @@ export const GRANULAR_CAPABILITIES = {
   ITEM_SOP_EDIT: "items.field.sop.edit",
   ITEM_BATCH_QR_PRINT: "items.operation.print_batch_qr.view",
 
+  WAREHOUSE_FLOOR_MAP_MANAGE: "warehouses.operation.manage_floor_map.edit",
+
   CUSTOMER_SPECIAL_PRICES_VIEW: "customers.tab.special_prices.view",
   CUSTOMER_SPECIAL_PRICES_MANAGE: "customers.operation.special_prices.edit",
 

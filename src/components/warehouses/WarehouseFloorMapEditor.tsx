@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useLookupWarehouseLocations } from "@/hooks/useLookups";
 import { useSaveWarehouseFloorMap, useWarehouseFloorMap } from "@/hooks/useWarehouseFloorMap";
+import { getApiErrorCode } from "@/lib/api";
 import { isCompleteRackRectangle } from "@/lib/warehouse-floor-map-geometry";
 import type { WarehouseFloorMapRackInput } from "@/types/warehouse-floor-map";
 
@@ -25,6 +26,7 @@ type DrawPoint = {
 };
 
 type Props = {
+  businessUnitId: string;
   warehouseId: string;
   canEdit: boolean;
 };
@@ -34,6 +36,8 @@ type RackOption = {
   code: string;
   name: string | null;
 };
+
+const FLOOR_MAP_PERMISSION_ERROR_CODES = ["FLOOR_MAP_PERMISSION_DENIED"] as const;
 
 const toPoint = (event: React.PointerEvent<HTMLDivElement>): DrawPoint => {
   const bounds = event.currentTarget.getBoundingClientRect();
@@ -66,10 +70,10 @@ const toRackRectangle = (
   };
 };
 
-export const WarehouseFloorMapEditor = ({ warehouseId, canEdit }: Props) => {
+export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }: Props) => {
   const t = useTranslations("warehouseFloorMap");
-  const mapQuery = useWarehouseFloorMap(warehouseId);
-  const saveMap = useSaveWarehouseFloorMap();
+  const mapQuery = useWarehouseFloorMap(businessUnitId, warehouseId);
+  const saveMap = useSaveWarehouseFloorMap(businessUnitId);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
   const drawStartRef = useRef<DrawPoint | null>(null);
@@ -249,8 +253,11 @@ export const WarehouseFloorMapEditor = ({ warehouseId, canEdit }: Props) => {
       });
       setFile(null);
       toast.success(t("saveSuccess"));
-    } catch {
-      toast.error(t("saveError"));
+    } catch (error: unknown) {
+      const code = getApiErrorCode(error, FLOOR_MAP_PERMISSION_ERROR_CODES);
+      toast.error(
+        code === "FLOOR_MAP_PERMISSION_DENIED" ? t("savePermissionError") : t("saveError")
+      );
     }
   };
 

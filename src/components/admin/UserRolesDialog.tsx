@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Shield, Plus, X, Loader2 } from "lucide-react";
-import { useUserRoles, useAssignRole, useRemoveRole } from "@/hooks/useUsers";
+import {
+  getUserRoleMutationErrorCode,
+  useAssignRole,
+  useRemoveRole,
+  useUserRoles,
+} from "@/hooks/useUsers";
 import { useRoles } from "@/hooks/useRoles";
 import { useBusinessUnits } from "@/hooks/useBusinessUnits";
 import { toast } from "sonner";
@@ -41,6 +46,8 @@ type UserRolesDialogProps = {
   user: User;
 };
 
+type RoleMutationOperation = "assign" | "remove";
+
 export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogProps) {
   const t = useTranslations("adminUserRolesDialog");
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
@@ -56,6 +63,28 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
   const userRoles = userRolesData?.data || [];
   const allRoles = rolesData?.data || [];
   const businessUnits = businessUnitsData || [];
+  const roleMutationPending = assignRole.isPending || removeRole.isPending;
+
+  const getRoleMutationErrorMessage = (error: unknown, operation: RoleMutationOperation) => {
+    const code = getUserRoleMutationErrorCode(error);
+
+    switch (code) {
+      case "USER_ROLE_ALREADY_ASSIGNED":
+        return t("roleAlreadyAssignedError");
+      case "USER_ROLE_NOT_ASSIGNED":
+        return t("roleAssignmentMissingError");
+      case "USER_ROLE_UNAUTHORIZED":
+      case "USER_ROLE_FORBIDDEN":
+        return t("roleManagementForbiddenError");
+      case "USER_ROLE_TARGET_NOT_FOUND":
+      case "USER_ROLE_ROLE_NOT_FOUND":
+      case "USER_ROLE_BUSINESS_UNIT_NOT_FOUND":
+      case "USER_ROLE_INVALID_REQUEST":
+        return t("roleSelectionStaleError");
+      default:
+        return operation === "assign" ? t("roleAssignedError") : t("roleRemovedError");
+    }
+  };
 
   const handleAssignRole = async () => {
     if (!selectedRoleId || !selectedBusinessUnitId) {
@@ -73,8 +102,8 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
       toast.success(t("roleAssignedSuccess"));
       setSelectedRoleId("");
       setSelectedBusinessUnitId("");
-    } catch {
-      toast.error(t("roleAssignedError"));
+    } catch (error: unknown) {
+      toast.error(getRoleMutationErrorMessage(error, "assign"));
     }
   };
 
@@ -87,8 +116,8 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
       });
 
       toast.success(t("roleRemovedSuccess"));
-    } catch {
-      toast.error(t("roleRemovedError"));
+    } catch (error: unknown) {
+      toast.error(getRoleMutationErrorMessage(error, "remove"));
     }
   };
 
@@ -132,7 +161,7 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
                       variant="ghost"
                       size="sm"
                       onClick={() => handleRemoveRole(userRole.id, userRole.business_unit_id)}
-                      disabled={removeRole.isPending}
+                      disabled={roleMutationPending}
                     >
                       {removeRole.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -200,7 +229,7 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
 
             <Button
               onClick={handleAssignRole}
-              disabled={!selectedRoleId || !selectedBusinessUnitId || assignRole.isPending}
+              disabled={!selectedRoleId || !selectedBusinessUnitId || roleMutationPending}
               className="w-full"
             >
               {assignRole.isPending ? (

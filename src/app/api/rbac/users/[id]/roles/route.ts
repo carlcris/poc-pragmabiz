@@ -8,6 +8,57 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const USER_ROLE_RPC_ERRORS = {
+  USER_ROLE_UNAUTHORIZED: {
+    error: "Authentication is required to manage user roles",
+    status: 401,
+  },
+  USER_ROLE_FORBIDDEN: {
+    error: "You do not have permission to manage roles for this business unit",
+    status: 403,
+  },
+  USER_ROLE_TARGET_NOT_FOUND: { error: "User not found", status: 404 },
+  USER_ROLE_ROLE_NOT_FOUND: { error: "Role not found", status: 404 },
+  USER_ROLE_BUSINESS_UNIT_NOT_FOUND: {
+    error: "Business unit not found",
+    status: 404,
+  },
+  USER_ROLE_ALREADY_ASSIGNED: {
+    error: "The user already has this role in the selected business unit",
+    status: 409,
+  },
+  USER_ROLE_NOT_ASSIGNED: {
+    error: "The role assignment no longer exists",
+    status: 404,
+  },
+} as const;
+
+type UserRoleRpcErrorCode = keyof typeof USER_ROLE_RPC_ERRORS;
+
+const getUserRoleRpcErrorCode = (message: string): UserRoleRpcErrorCode | null => {
+  const code = Object.keys(USER_ROLE_RPC_ERRORS).find((candidate) => message.includes(candidate));
+  return (code as UserRoleRpcErrorCode | undefined) ?? null;
+};
+
+const userRoleRpcErrorResponse = (
+  error: { message: string },
+  fallback: { code: "USER_ROLE_ASSIGNMENT_FAILED" | "USER_ROLE_REMOVAL_FAILED"; error: string }
+) => {
+  const code = getUserRoleRpcErrorCode(error.message);
+  if (code) {
+    const mapped = USER_ROLE_RPC_ERRORS[code];
+    return NextResponse.json({ error: mapped.error, code }, { status: mapped.status });
+  }
+
+  return NextResponse.json({ error: fallback.error, code: fallback.code }, { status: 500 });
+};
+
+const isUuid = (value: unknown): value is string =>
+  typeof value === "string" && UUID_PATTERN.test(value);
+
 type UserRoleRow = {
   id: string;
   user_id: string;
@@ -102,6 +153,7 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
     const { data: userRoles, error: rolesError } = await query;
 
     if (rolesError) {
+      console.error("Failed to fetch user roles", rolesError);
       return NextResponse.json({ error: "Failed to fetch user roles" }, { status: 500 });
     }
 
@@ -123,7 +175,8 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
     return NextResponse.json({
       data: roles,
     });
-  } catch {
+  } catch (error: unknown) {
+    console.error("Unexpected error while fetching user roles", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -136,83 +189,38 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user has permission to edit users
-    const canEditUsers = await checkPermission(RESOURCES.USERS, "edit");
-    if (!canEditUsers) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const { id: userId } = await context.params;
     const { supabase } = await createServerClientWithBU();
 
-    // Parse request body
-    const body = await request.json();
-    const { roleId, businessUnitId } = body;
+    const body: unknown = await request.json().catch(() => null);
+    const roleId =
+      typeof body === "object" && body !== null && "roleId" in body ? body.roleId : null;
+    const businessUnitId =
+      typeof body === "object" && body !== null && "businessUnitId" in body
+        ? body.businessUnitId
+        : null;
 
-    if (!roleId || !businessUnitId) {
+    if (!isUuid(userId) || !isUuid(roleId) || !isUuid(businessUnitId)) {
       return NextResponse.json(
-        { error: "Invalid request", details: "roleId and businessUnitId are required" },
+        { error: "Select a valid role and business unit", code: "USER_ROLE_INVALID_REQUEST" },
         { status: 400 }
       );
     }
 
-    // Verify target user exists and belongs to same company
-    const { data: targetUser, error: userError } = await supabase
-      .from("users")
-      .select("id, company_id")
-      .eq("id", userId)
-      .eq("company_id", user.companyId)
-      .is("deleted_at", null)
-      .single();
-
-    if (userError || !targetUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Verify role exists and belongs to same company
-    const { data: role, error: roleError } = await supabase
-      .from("roles")
-      .select("id, company_id")
-      .eq("id", roleId)
-      .eq("company_id", user.companyId)
-      .is("deleted_at", null)
-      .single();
-
-    if (roleError || !role) {
-      return NextResponse.json({ error: "Role not found" }, { status: 404 });
-    }
-
-    // Check if user already has this role for this business unit
-    const { data: existing } = await supabase
-      .from("user_roles")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("role_id", roleId)
-      .eq("business_unit_id", businessUnitId)
-      .is("deleted_at", null)
-      .maybeSingle();
-
-    if (existing) {
-      return NextResponse.json(
-        { error: "User already has this role for this business unit" },
-        { status: 409 }
-      );
-    }
-
-    // Assign role to user
-    const { error: insertError } = await supabase.from("user_roles").insert({
-      user_id: userId,
-      role_id: roleId,
-      business_unit_id: businessUnitId,
-      created_by: user.id,
-      updated_by: user.id,
+    const { error: assignmentError } = await supabase.rpc("assign_user_role_to_business_unit", {
+      p_actor_user_id: user.id,
+      p_company_id: user.companyId,
+      p_target_user_id: userId,
+      p_role_id: roleId,
+      p_business_unit_id: businessUnitId,
     });
 
-    if (insertError) {
-      return NextResponse.json(
-        { error: "Failed to assign role", details: insertError.message },
-        { status: 500 }
-      );
+    if (assignmentError) {
+      console.error("Failed to assign user role and business unit access", assignmentError);
+      return userRoleRpcErrorResponse(assignmentError, {
+        code: "USER_ROLE_ASSIGNMENT_FAILED",
+        error: "The role could not be assigned. Try again.",
+      });
     }
 
     // User role assignments directly change effective permissions.
@@ -221,7 +229,8 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
     return NextResponse.json({
       message: "Role assigned successfully",
     });
-  } catch {
+  } catch (error: unknown) {
+    console.error("Unexpected error while assigning a user role", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -234,12 +243,6 @@ async function DELETEHandler(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user has permission to edit users
-    const canEditUsers = await checkPermission(RESOURCES.USERS, "edit");
-    if (!canEditUsers) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const { id: userId } = await context.params;
     const { supabase } = await createServerClientWithBU();
 
@@ -248,39 +251,27 @@ async function DELETEHandler(request: NextRequest, context: RouteContext) {
     const roleId = searchParams.get("roleId");
     const businessUnitId = searchParams.get("businessUnitId");
 
-    if (!roleId || !businessUnitId) {
+    if (!isUuid(userId) || !isUuid(roleId) || !isUuid(businessUnitId)) {
       return NextResponse.json(
-        { error: "Invalid request", details: "roleId and businessUnitId are required" },
+        { error: "Select a valid role assignment", code: "USER_ROLE_INVALID_REQUEST" },
         { status: 400 }
       );
     }
 
-    // Verify target user exists and belongs to same company
-    const { data: targetUser, error: userError } = await supabase
-      .from("users")
-      .select("id, company_id")
-      .eq("id", userId)
-      .eq("company_id", user.companyId)
-      .is("deleted_at", null)
-      .single();
+    const { error: removalError } = await supabase.rpc("remove_user_role_from_business_unit", {
+      p_actor_user_id: user.id,
+      p_company_id: user.companyId,
+      p_target_user_id: userId,
+      p_role_id: roleId,
+      p_business_unit_id: businessUnitId,
+    });
 
-    if (userError || !targetUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Remove role from user
-    const { error: deleteError } = await supabase
-      .from("user_roles")
-      .delete()
-      .eq("user_id", userId)
-      .eq("role_id", roleId)
-      .eq("business_unit_id", businessUnitId);
-
-    if (deleteError) {
-      return NextResponse.json(
-        { error: "Failed to remove role", details: deleteError.message },
-        { status: 500 }
-      );
+    if (removalError) {
+      console.error("Failed to remove user role and reconcile business unit access", removalError);
+      return userRoleRpcErrorResponse(removalError, {
+        code: "USER_ROLE_REMOVAL_FAILED",
+        error: "The role could not be removed. Try again.",
+      });
     }
 
     // User role assignments directly change effective permissions.
@@ -289,7 +280,8 @@ async function DELETEHandler(request: NextRequest, context: RouteContext) {
     return NextResponse.json({
       message: "Role removed successfully",
     });
-  } catch {
+  } catch (error: unknown) {
+    console.error("Unexpected error while removing a user role", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

@@ -223,6 +223,10 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
         title: t("capabilities.startGrnReceiving"),
         description: t("capabilities.startGrnReceivingDescription"),
       },
+      [GRANULAR_CAPABILITIES.WAREHOUSE_FLOOR_MAP_MANAGE]: {
+        title: t("capabilities.manageWarehouseFloorMap"),
+        description: t("capabilities.manageWarehouseFloorMapDescription"),
+      },
       [GRANULAR_CAPABILITIES.GRN_RECEIVING_CONFIRM]: {
         title: t("capabilities.confirmGrnReceiving"),
         description: t("capabilities.confirmGrnReceivingDescription"),

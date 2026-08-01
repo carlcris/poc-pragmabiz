@@ -147,6 +147,8 @@ Marking an in-transit load list as arrived requires `load_lists.view` plus `load
 - `edit_posted_invoices` - Edit invoices after posting
 - `approve_purchase_orders` - PO approval rights
 - `manage_locations` - Warehouse location management
+- `warehouses.operation.manage_floor_map.edit` - Upload floor plans and edit rack mappings when
+  Warehouse edit permission is also granted
 - `view_customer_ledger` - Customer ledger access
 - `export_reports` - Report export functionality
 
@@ -253,6 +255,10 @@ const businessUnitStore = create<BusinessUnitStore>((set) => ({
 
 - Users can access **multiple business units**
 - Stored in `user_business_unit_access` table
+- Assigning a BU-scoped role atomically grants access to that business unit
+- Removing one of several roles keeps access; removing the final role atomically revokes access
+- If the revoked business unit was current or default, another accessible business unit becomes the
+  replacement; users with no remaining BU roles have no business unit access
 - **Context switching** via UI selector
 - **JWT token** includes business unit context
 - **RLS policies** enforce data isolation
