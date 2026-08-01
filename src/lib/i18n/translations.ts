@@ -372,11 +372,44 @@ export type TranslationKeys = {
     manager: string;
     contact: string;
     locations: string;
+    floorMap: string;
     deleteTitle: string;
     deleteDescription: string;
     deleteDescriptionWithName: string;
     deleteSuccess: string;
     deleteError: string;
+  };
+  warehouseFloorMap: {
+    title: string;
+    subtitle: string;
+    mapName: string;
+    mapNamePlaceholder: string;
+    image: string;
+    uploadImage: string;
+    replaceImage: string;
+    imageHelp: string;
+    rack: string;
+    selectRack: string;
+    searchRack: string;
+    noRack: string;
+    loadingRacks: string;
+    drawHelp: string;
+    mappedRacks: string;
+    noMappedRacks: string;
+    removeMapping: string;
+    save: string;
+    saving: string;
+    loadError: string;
+    saveSuccess: string;
+    saveError: string;
+    imageRequired: string;
+    imageDecodeError: string;
+    rackRequired: string;
+    mappingTooSmall: string;
+    locationsLink: string;
+    readOnlyTitle: string;
+    readOnlyDescription: string;
+    noMapConfigured: string;
   };
   warehouseForm: {
     createTitle: string;
@@ -3590,12 +3623,46 @@ export const translations: Record<Locale, TranslationKeys> = {
       manager: "Manager",
       contact: "Contact",
       locations: "Locations",
+      floorMap: "Floor Map",
       deleteTitle: "Delete Warehouse",
       deleteDescription: "Are you sure you want to delete this warehouse?",
       deleteDescriptionWithName:
         'Are you sure you want to delete "{name}"? This action cannot be undone.',
       deleteSuccess: "Warehouse deleted successfully",
       deleteError: "Failed to delete warehouse",
+    },
+    warehouseFloorMap: {
+      title: "Warehouse Floor Map",
+      subtitle: "Upload a floor plan and mark each rack used during mobile picking.",
+      mapName: "Map name",
+      mapNamePlaceholder: "Ground floor",
+      image: "Floor-plan image",
+      uploadImage: "Upload image",
+      replaceImage: "Replace image",
+      imageHelp: "Use a PNG, JPEG, or WebP image up to 10 MB.",
+      rack: "Rack to map",
+      selectRack: "Select a rack",
+      searchRack: "Search racks...",
+      noRack: "No active racks found.",
+      loadingRacks: "Loading racks...",
+      drawHelp: "Select a rack, then drag across its complete footprint on the map.",
+      mappedRacks: "Mapped racks",
+      noMappedRacks: "No racks have been marked yet.",
+      removeMapping: "Remove",
+      save: "Save floor map",
+      saving: "Saving...",
+      loadError: "Failed to load the warehouse floor map.",
+      saveSuccess: "Warehouse floor map saved.",
+      saveError: "Failed to save the warehouse floor map.",
+      imageRequired: "Upload a floor-plan image first.",
+      imageDecodeError:
+        "The selected image could not be decoded. Choose a valid PNG, JPEG, or WebP file.",
+      rackRequired: "Select a rack before drawing.",
+      mappingTooSmall: "Drag over the complete rack. Click-sized markers cannot be saved.",
+      locationsLink: "Manage racks",
+      readOnlyTitle: "Read-only floor map",
+      readOnlyDescription: "You can view this map, but you do not have permission to change it.",
+      noMapConfigured: "No floor map has been configured for this warehouse.",
     },
     warehouseForm: {
       createTitle: "Create New Warehouse",
@@ -9514,11 +9581,44 @@ export const translations: Record<Locale, TranslationKeys> = {
       manager: "负责人",
       contact: "联系方式",
       locations: "库位",
+      floorMap: "仓库平面图",
       deleteTitle: "删除仓库",
       deleteDescription: "确定要删除此仓库吗？",
       deleteDescriptionWithName: "确定要删除“{name}”吗？此操作无法撤销。",
       deleteSuccess: "仓库删除成功",
       deleteError: "删除仓库失败",
+    },
+    warehouseFloorMap: {
+      title: "仓库平面图",
+      subtitle: "上传平面图，并标记移动拣货中使用的每个货架。",
+      mapName: "地图名称",
+      mapNamePlaceholder: "一楼",
+      image: "平面图图片",
+      uploadImage: "上传图片",
+      replaceImage: "替换图片",
+      imageHelp: "请使用不超过 10 MB 的 PNG、JPEG 或 WebP 图片。",
+      rack: "要标记的货架",
+      selectRack: "选择货架",
+      searchRack: "搜索货架...",
+      noRack: "未找到启用的货架。",
+      loadingRacks: "正在加载货架...",
+      drawHelp: "选择货架，然后在地图上拖动覆盖其完整范围。",
+      mappedRacks: "已标记货架",
+      noMappedRacks: "尚未标记任何货架。",
+      removeMapping: "移除",
+      save: "保存平面图",
+      saving: "保存中...",
+      loadError: "加载仓库平面图失败。",
+      saveSuccess: "仓库平面图已保存。",
+      saveError: "保存仓库平面图失败。",
+      imageRequired: "请先上传平面图图片。",
+      imageDecodeError: "无法解码所选图片。请选择有效的 PNG、JPEG 或 WebP 文件。",
+      rackRequired: "绘制前请选择货架。",
+      mappingTooSmall: "请拖动覆盖完整货架。无法保存点击大小的标记。",
+      locationsLink: "管理货架",
+      readOnlyTitle: "只读仓库平面图",
+      readOnlyDescription: "您可以查看此平面图，但没有权限进行更改。",
+      noMapConfigured: "此仓库尚未配置平面图。",
     },
     warehouseForm: {
       createTitle: "创建新仓库",

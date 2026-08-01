@@ -109,6 +109,7 @@ export function useLookupWarehouseLocations(
     limit?: number;
     includeInactive?: boolean;
     storableOnly?: boolean;
+    locationType?: string;
   }
 ) {
   return useQuery({
@@ -120,6 +121,7 @@ export function useLookupWarehouseLocations(
       params?.limit ?? 50,
       params?.includeInactive ?? false,
       params?.storableOnly ?? false,
+      params?.locationType ?? null,
     ],
     enabled: !!warehouseId,
     queryFn: () =>
@@ -131,6 +133,7 @@ export function useLookupWarehouseLocations(
             limit: params?.limit ?? 50,
             includeInactive: params?.includeInactive ? "true" : "false",
             storableOnly: params?.storableOnly ? "true" : "false",
+            locationType: params?.locationType,
           },
         }
       ),

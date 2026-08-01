@@ -10,6 +10,7 @@ import {
   useSubmitGrnReceiving,
   useUpdateGrnReceiving,
 } from "@/hooks/queries";
+import { useScreenFocusState } from "@/hooks/useScreenFocusState";
 import { useAuthStore } from "@/stores/authStore";
 import type { GrnLine, UpdateGrnLinePayload } from "@/contracts/receiving";
 import { colors } from "@/theme/colors";
@@ -41,6 +42,7 @@ const getInitialDraft = (item: GrnLine): GrnLineDraft => ({
 
 export default function LoadListReceivingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const isFocused = useScreenFocusState();
   const session = useAuthStore((state) => state.session);
   const canViewReceiving = canAccessLoadListReceiving(session);
   const canViewGrn = hasResourcePermission(session, "goods_receipt_notes", "view");
@@ -51,7 +53,7 @@ export default function LoadListReceivingDetailScreen() {
   const [actionMessage, setActionMessage] = useState("");
   const [actionError, setActionError] = useState("");
   const detail = useLoadListReceiving(id, {
-    enabled: canViewReceiving,
+    enabled: canViewReceiving && isFocused,
     includeGrn: canViewGrn,
   });
   const refetchDetail = detail.refetch;

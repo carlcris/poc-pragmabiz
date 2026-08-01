@@ -11,6 +11,7 @@ import {
   ScannerModal,
   Screen,
 } from "@/components/ui";
+import { PickLocationMapModal } from "@/components/picking/PickLocationMapModal";
 import { ApiError } from "@/api/client";
 import {
   claimPickListItem,
@@ -26,6 +27,7 @@ import {
   useRecordPickProgress,
   useSetPickListStatus,
 } from "@/hooks/queries";
+import { useScreenFocusState } from "@/hooks/useScreenFocusState";
 import { useSunmiScanner } from "@/hooks/useSunmiScanner";
 import { useAuthStore } from "@/stores/authStore";
 import {
@@ -166,15 +168,17 @@ const isClaimRequiredError = (error: unknown) =>
 
 export default function PickingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const isFocused = useScreenFocusState();
   const session = useAuthStore((state) => state.session);
   const canViewPicking = canAccessPicking(session);
-  const pickList = usePickList(id, canViewPicking);
-  usePickListRealtime(id, canViewPicking);
+  const pickList = usePickList(id, canViewPicking && isFocused);
+  usePickListRealtime(id, canViewPicking && isFocused);
   const setStatus = useSetPickListStatus(id);
   const recordPickProgress = useRecordPickProgress(id);
   const completePickList = useCompletePickList(id);
   const [barcode, setBarcode] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [mapPickListItemId, setMapPickListItemId] = useState<string | null>(null);
   const [verifiedItemId, setVerifiedItemId] = useState<string | null>(null);
   const [currentPickSource, setCurrentPickSource] = useState<PickSource | null>(null);
   const [pickedQtyText, setPickedQtyText] = useState("");
@@ -419,6 +423,14 @@ export default function PickingDetailScreen() {
           : /^\d{10}$/.test(rawScanned)
             ? rawScanned
             : null;
+      const hasSourceMetadata = Boolean(
+        parsedQr?.batchLocationSku || parsedQr?.locationId || parsedQr?.batchCode
+      );
+
+      if (hasSourceMetadata && !scannedBatchLocationSku) {
+        setVerifyError("Scanned source QR is incomplete or invalid.");
+        return;
+      }
 
       if (scannedBatchLocationSku) {
         const resolved = await resolvePickSource(pickList.data.id, {
@@ -428,45 +440,31 @@ export default function PickingDetailScreen() {
           batchCode: parsedQr?.batchCode,
         });
 
-        if (resolved?.line) {
-          const resolvedMatch =
-            pickList.data.items.find((item) => item.id === resolved.line?.pickListItemId) || null;
-          const resolvedMatchPicked = resolvedMatch?.pickedQty || 0;
-          const match =
-            resolvedMatch &&
-            resolvedMatchPicked < resolvedMatch.requiredQty &&
-            !isClaimedByOther(resolvedMatch.pickListItemId)
-              ? resolvedMatch
-              : pickList.data.items.find((item) => {
-                  return (
-                    item.itemId === resolved.source.itemId &&
-                    item.pickedQty < item.requiredQty &&
-                    !isClaimedByOther(item.pickListItemId)
-                  );
-                }) || null;
-          if (match) {
-            const remainingQty = Math.max(0, match.requiredQty - match.pickedQty);
-            if (remainingQty <= 0) {
-              setVerifyError("Item is already picked in this pick list.");
-              return;
-            }
-
-            const isMismatch =
-              (match.sourceSku !== null && match.sourceSku !== resolved.batchLocationSku) ||
-              (match.sourceLocationId !== null &&
-                match.sourceLocationId !== resolved.source.locationId) ||
-              (match.batchNumber !== null && match.batchNumber !== resolved.source.batchCode);
-            await selectClaimedItem(match, {
-              batchLocationSku: resolved.batchLocationSku,
-              locationId: resolved.source.locationId,
-              locationName: resolved.source.locationName || resolved.source.locationCode,
-              batchCode: resolved.source.batchCode,
-              batchReceivedAt: resolved.source.batchReceivedAt,
-              isMismatch,
-            });
-            return;
-          }
+        if (!resolved?.line) {
+          setVerifyError("Scanned source is not valid for this pick list.");
+          return;
         }
+
+        const match =
+          pickList.data.items.find((item) => item.id === resolved.line?.pickListItemId) || null;
+        if (!match || match.pickedQty >= match.requiredQty) {
+          setVerifyError("Item is already picked in this pick list.");
+          return;
+        }
+        if (isClaimedByOther(match.pickListItemId)) {
+          setVerifyError("This item is reserved by another picker.");
+          return;
+        }
+
+        await selectClaimedItem(match, {
+          batchLocationSku: resolved.batchLocationSku,
+          locationId: resolved.source.locationId,
+          locationName: resolved.source.locationName || resolved.source.locationCode,
+          batchCode: resolved.source.batchCode,
+          batchReceivedAt: resolved.source.batchReceivedAt,
+          isMismatch: resolved.isMismatch,
+        });
+        return;
       }
 
       const match = pickList.data.items.find((item) => {
@@ -501,12 +499,13 @@ export default function PickingDetailScreen() {
   useSunmiScanner({
     enabled:
       canViewPicking &&
+      isFocused &&
       pickingActive &&
       !scannerOpen &&
       !isVerifying &&
       !pendingConfirmation &&
       !verifiedItemId,
-    onScan: verifyBarcode
+    onScan: verifyBarcode,
   });
 
   if (!canViewPicking) {
@@ -570,7 +569,14 @@ export default function PickingDetailScreen() {
   };
 
   return (
-    <Screen title={pickList.data?.code || "Pick List"} subtitle="Pick and verify items">
+    <Screen
+      title={pickList.data?.code || "Pick List"}
+      subtitle="Pick and verify items"
+      onRefresh={async () => {
+        await pickList.refetch();
+      }}
+      refreshing={pickList.isRefetching}
+    >
       {pickList.isLoading ? <LoadingState /> : null}
       {pickList.error ? <ErrorState message="Unable to load the pick list." /> : null}
       {pickList.data ? (
@@ -678,6 +684,7 @@ export default function PickingDetailScreen() {
                 setOperationId(null);
               }}
               onConfirm={confirmPick}
+              onViewLocation={() => setMapPickListItemId(verifiedItem.pickListItemId)}
             />
           ) : (
             <Card style={styles.scanCard}>
@@ -749,6 +756,7 @@ export default function PickingDetailScreen() {
               items={remaining}
               claims={activeClaims}
               currentUserId={session?.user.id || ""}
+              onViewLocation={setMapPickListItemId}
             />
           ) : null}
           {completed.length > 0 ? (
@@ -757,6 +765,7 @@ export default function PickingDetailScreen() {
               items={completed}
               claims={activeClaims}
               currentUserId={session?.user.id || ""}
+              onViewLocation={setMapPickListItemId}
             />
           ) : null}
         </>
@@ -767,6 +776,12 @@ export default function PickingDetailScreen() {
         onScan={(value) => {
           void verifyBarcode(value);
         }}
+      />
+      <PickLocationMapModal
+        visible={mapPickListItemId !== null}
+        pickListId={id}
+        pickListItemId={mapPickListItemId}
+        onClose={() => setMapPickListItemId(null)}
       />
     </Screen>
   );
@@ -783,6 +798,7 @@ const VerifiedPanel = ({
   onPickedQtyChange,
   onCancel,
   onConfirm,
+  onViewLocation,
 }: {
   item: PickListItem;
   source: PickSource;
@@ -794,6 +810,7 @@ const VerifiedPanel = ({
   onPickedQtyChange: (value: string) => void;
   onCancel: () => void;
   onConfirm: () => void;
+  onViewLocation: () => void;
 }) => (
   <Card style={styles.verifiedCard}>
     <View style={styles.verifiedHeader}>
@@ -808,7 +825,13 @@ const VerifiedPanel = ({
       </Pressable>
     </View>
     <View style={styles.pickLocation}>
-      <Text style={styles.locationTitle}>Pick Location</Text>
+      <View style={styles.pickLocationHeader}>
+        <Text style={styles.locationTitle}>Pick Location</Text>
+        <Pressable style={styles.mapLink} onPress={onViewLocation}>
+          <Ionicons name="map-outline" size={16} color={colors.primary} />
+          <Text style={styles.mapLinkText}>View Map</Text>
+        </Pressable>
+      </View>
       <Text style={styles.locationText}>Location: {source.locationName || "Main"}</Text>
       <Text style={styles.locationText}>Batch: {source.batchCode || "OPENING-BALANCE"}</Text>
       <Text style={styles.locationText}>
@@ -865,11 +888,13 @@ const ItemSection = ({
   items,
   claims,
   currentUserId,
+  onViewLocation,
 }: {
   title: string;
   items: PickListItem[];
   claims: PickListItemClaim[];
   currentUserId: string;
+  onViewLocation: (pickListItemId: string) => void;
 }) => (
   <Card style={styles.itemSection}>
     <View style={styles.itemSectionHeader}>
@@ -910,13 +935,25 @@ const ItemSection = ({
               </Text>
               {claim ? <Text style={styles.itemClaimedBy}>{claim.claimedByName}</Text> : null}
             </View>
-            {claim ? (
-              <Ionicons name="lock-closed-outline" size={18} color={colors.amberDark} />
-            ) : done ? (
-              <Ionicons name="checkmark-circle-outline" size={20} color={colors.green} />
-            ) : (
-              <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-            )}
+            <View style={styles.itemActions}>
+              {item.sourceLocationId ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`View ${item.name} location on map`}
+                  style={styles.itemMapButton}
+                  onPress={() => onViewLocation(item.pickListItemId)}
+                >
+                  <Ionicons name="map-outline" size={18} color={colors.primary} />
+                </Pressable>
+              ) : null}
+              {claim ? (
+                <Ionicons name="lock-closed-outline" size={18} color={colors.amberDark} />
+              ) : done ? (
+                <Ionicons name="checkmark-circle-outline" size={20} color={colors.green} />
+              ) : (
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+              )}
+            </View>
           </View>
         );
       })
@@ -1094,8 +1131,28 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 6,
   },
+  pickLocationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
   locationTitle: { color: colors.primary, fontSize: 12, fontWeight: "600" },
   locationText: { color: colors.primaryDark, fontSize: 11, lineHeight: 16 },
+  mapLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 7,
+    backgroundColor: colors.surface,
+  },
+  mapLinkText: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: "700",
+  },
   sourceMismatchWarning: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -1161,6 +1218,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.amberSoft,
   },
   itemClaimedBy: { color: colors.amberDark, fontSize: 10, marginTop: 2, lineHeight: 13 },
+  itemActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  itemMapButton: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 9,
+    backgroundColor: colors.primarySoft,
+  },
   itemName: { color: colors.text, fontSize: 13, fontWeight: "600", lineHeight: 18 },
   itemMeta: { color: colors.textSecondary, fontSize: 11, marginTop: 2, lineHeight: 14 },
   itemMetaDetail: { color: colors.muted, fontSize: 10, marginTop: 1, lineHeight: 13 },

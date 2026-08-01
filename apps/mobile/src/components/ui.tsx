@@ -19,7 +19,6 @@ import {
   ViewStyle,
   Vibration
 } from "react-native";
-import { useQueryClient } from "@tanstack/react-query";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "@/theme/colors";
 import { useBusinessUnits, useSetBusinessUnit } from "@/hooks/queries";
@@ -45,23 +44,18 @@ export const Screen = ({
   onRefresh?: () => Promise<void> | void;
   refreshing?: boolean;
 }) => {
-  const queryClient = useQueryClient();
   const [internalRefreshing, setInternalRefreshing] = useState(false);
   const isRefreshing = refreshing ?? internalRefreshing;
 
   const handleRefresh = useCallback(async () => {
-    if (isRefreshing) return;
+    if (isRefreshing || !onRefresh) return;
     setInternalRefreshing(true);
     try {
-      if (onRefresh) {
-        await onRefresh();
-      } else {
-        await queryClient.invalidateQueries();
-      }
+      await onRefresh();
     } finally {
       setInternalRefreshing(false);
     }
-  }, [isRefreshing, onRefresh, queryClient]);
+  }, [isRefreshing, onRefresh]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
@@ -104,14 +98,14 @@ export const Screen = ({
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        refreshControl={
+        refreshControl={onRefresh ? (
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
             tintColor={colors.primary}
             colors={[colors.primary]}
           />
-        }
+        ) : undefined}
       >
         <BusinessDateBar />
         {children}

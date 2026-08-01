@@ -36,6 +36,41 @@ export type PickSourceResolution = {
   isMismatch: boolean;
 };
 
+export type PickLocationMap = {
+  warehouse: {
+    id: string;
+    name: string;
+  };
+  location: {
+    id: string;
+    code: string;
+    name: string | null;
+  };
+  map: {
+    id: string;
+    name: string;
+    imageUrl: string;
+    imageWidth: number;
+    imageHeight: number;
+    version: number;
+  };
+  racks: {
+    warehouseLocationId: string;
+    code: string;
+    name: string | null;
+    xBasisPoints: number;
+    yBasisPoints: number;
+    widthBasisPoints: number;
+    heightBasisPoints: number;
+  }[];
+  highlight: {
+    xBasisPoints: number;
+    yBasisPoints: number;
+    widthBasisPoints: number;
+    heightBasisPoints: number;
+  };
+};
+
 const ASSIGNEE_COLORS = ["#6366F1", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6", "#06B6D4"];
 
 const pickListPriorityLabel = (status: string) => {
@@ -340,6 +375,60 @@ export const getPickList = async (id: string) => {
   return normalizePickDetail(asRecord(response).data || response);
 };
 
+export const getPickLocationMap = async (
+  pickListId: string,
+  pickListItemId: string
+): Promise<PickLocationMap> => {
+  const response = await apiRequest<ListResponse | unknown>(
+    `/api/pick-lists/${pickListId}/items/${pickListItemId}/location-map`
+  );
+  const data = asRecord(asRecord(response).data || response);
+  const warehouse = asRecord(data.warehouse);
+  const location = asRecord(data.location);
+  const map = asRecord(data.map);
+  const racks = asArray(data.racks).map((value) => {
+    const rack = asRecord(value);
+
+    return {
+      warehouseLocationId: str(rack.warehouseLocationId),
+      code: str(rack.code),
+      name: maybeStr(rack.name) || null,
+      xBasisPoints: num(rack.xBasisPoints),
+      yBasisPoints: num(rack.yBasisPoints),
+      widthBasisPoints: num(rack.widthBasisPoints),
+      heightBasisPoints: num(rack.heightBasisPoints),
+    };
+  });
+  const highlight = asRecord(data.highlight);
+
+  return {
+    warehouse: {
+      id: str(warehouse.id),
+      name: str(warehouse.name),
+    },
+    location: {
+      id: str(location.id),
+      code: str(location.code),
+      name: maybeStr(location.name),
+    },
+    map: {
+      id: str(map.id),
+      name: str(map.name),
+      imageUrl: str(map.imageUrl || map.image_url),
+      imageWidth: num(map.imageWidth || map.image_width),
+      imageHeight: num(map.imageHeight || map.image_height),
+      version: num(map.version),
+    },
+    racks,
+    highlight: {
+      xBasisPoints: num(highlight.xBasisPoints || highlight.x_basis_points),
+      yBasisPoints: num(highlight.yBasisPoints || highlight.y_basis_points),
+      widthBasisPoints: num(highlight.widthBasisPoints || highlight.width_basis_points),
+      heightBasisPoints: num(highlight.heightBasisPoints || highlight.height_basis_points),
+    },
+  };
+};
+
 export const resolvePickSource = async (
   id: string,
   query: {
@@ -356,12 +445,18 @@ export const resolvePickSource = async (
   const data = asRecord(payload.data);
   if (!data || Object.keys(data).length === 0) {
     const error = maybeStr(payload.error);
+    const code = maybeStr(payload.code);
     const validationMisses = new Set([
-      "Batch location SKU not found",
-      "Item not found",
-      "Item already fully picked in this pick list",
+      "BATCH_LOCATION_SKU_NOT_FOUND",
+      "SOURCE_OUTSIDE_PICKING_WAREHOUSE",
+      "INCOMPLETE_PICK_SOURCE",
+      "PICK_SOURCE_ITEM_MISMATCH",
+      "PICK_SOURCE_LOCATION_MISMATCH",
+      "PICK_SOURCE_BATCH_MISMATCH",
+      "ITEM_NOT_IN_PICK_LIST",
+      "PICK_LIST_ITEM_ALREADY_COMPLETE",
     ]);
-    if (error && !validationMisses.has(error)) {
+    if (error && !validationMisses.has(code || "")) {
       throw new Error(error);
     }
     return null;

@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View, ScrollView } from "react-native";
 import { Card, ErrorState, LoadingState, Screen, SearchInput } from "@/components/ui";
 import type { PickListSummary } from "@/contracts/picking";
 import { usePickLists, useSetPickListStatus } from "@/hooks/queries";
+import { useScreenFocusState } from "@/hooks/useScreenFocusState";
 import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
 import { borderRadius, spacing } from "@/theme/spacing";
@@ -28,13 +29,14 @@ const PRIORITY_COLORS = {
 };
 
 export default function PickingScreen() {
+  const isFocused = useScreenFocusState();
   const session = useAuthStore((state) => state.session);
   const canViewPicking = canAccessPicking(session);
   const [status, setStatus] = useState("pending");
   const [search, setSearch] = useState("");
 
-  const pickListsQuery = usePickLists(status, search, canViewPicking);
-  const kpiQuery = usePickLists("all", "", canViewPicking);
+  const pickListsQuery = usePickLists(status, search, canViewPicking && isFocused);
+  const kpiQuery = usePickLists("all", "", canViewPicking && isFocused);
   const pickLists = pickListsQuery.data || [];
   const allPickLists = kpiQuery.data || [];
 
@@ -42,6 +44,15 @@ export default function PickingScreen() {
     pending: allPickLists.filter((pl) => pl.status === "pending").length,
     inProgress: allPickLists.filter((pl) => pl.status === "in_progress" || pl.status === "paused").length,
     done: allPickLists.filter((pl) => pl.status === "done").length
+  };
+
+  const handleRefresh = async () => {
+    if (status === "all" && !search.trim()) {
+      await kpiQuery.refetch();
+      return;
+    }
+
+    await Promise.all([pickListsQuery.refetch(), kpiQuery.refetch()]);
   };
 
   if (!canViewPicking) {
@@ -53,7 +64,12 @@ export default function PickingScreen() {
   }
 
   return (
-    <Screen title="Picking" subtitle="Process orders and pack items">
+    <Screen
+      title="Picking"
+      subtitle="Process orders and pack items"
+      onRefresh={handleRefresh}
+      refreshing={pickListsQuery.isRefetching || kpiQuery.isRefetching}
+    >
       {/* KPI Summary Strip */}
       <View style={styles.kpiStrip}>
         <View style={styles.kpiItem}>

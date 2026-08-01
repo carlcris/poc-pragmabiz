@@ -35,6 +35,11 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     const limit = parseLimit(searchParams.get("limit"));
     const includeInactive = searchParams.get("includeInactive") === "true";
     const storableOnly = searchParams.get("storableOnly") === "true";
+    const locationType = searchParams.get("locationType")?.trim() || null;
+    const allowedLocationTypes = new Set(["zone", "aisle", "rack", "shelf", "bin", "crate"]);
+    if (locationType && !allowedLocationTypes.has(locationType)) {
+      return NextResponse.json({ error: "Invalid location type" }, { status: 400 });
+    }
 
     const { data: warehouse, error: warehouseError } = await adminSupabase
       .from("warehouses")
@@ -66,6 +71,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
 
     if (!includeInactive) query = query.eq("is_active", true);
     if (storableOnly) query = query.eq("is_storable", true);
+    if (locationType) query = query.eq("location_type", locationType);
     if (search) query = query.or(`code.ilike.%${search}%,name.ilike.%${search}%`);
 
     const { data, error } = await query;

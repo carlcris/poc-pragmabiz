@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Card, ErrorState, LoadingState, Screen, SearchInput, StatusBadge } from "@/components/ui";
 import { queryKeys, useDeliveryNotes, useLoadLists } from "@/hooks/queries";
+import { useScreenFocusState } from "@/hooks/useScreenFocusState";
 import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
 import { borderRadius, shadows, spacing } from "@/theme/spacing";
@@ -43,6 +44,7 @@ export default function ReceivingScreen() {
   const hasFocusedOnce = useRef(false);
   const refreshOnFocusRef = useRef<() => void>(() => undefined);
   const queryClient = useQueryClient();
+  const isFocused = useScreenFocusState();
   const session = useAuthStore((state) => state.session);
   const currentBusinessUnit = session?.currentBusinessUnit;
   const isSwitchingBusinessUnit = useAuthStore((state) => state.isSwitchingBusinessUnit);
@@ -55,9 +57,15 @@ export default function ReceivingScreen() {
   const canViewLoadListReceiving = canAccessLoadListReceiving(session);
   const canViewDeliveryNoteReceiving = canAccessDeliveryNoteReceiving(session);
   const canViewReceiving = canAccessReceiving(session);
-  const canLoadLoadLists = Boolean(currentBusinessUnit?.id && canViewLoadListReceiving);
+  const canLoadLoadLists = Boolean(
+    isFocused && currentBusinessUnit?.id && canViewLoadListReceiving
+  );
   const loadLists = useLoadLists(status, search, canLoadLoadLists);
-  const deliveryNotes = useDeliveryNotes(deliveryNoteStatus, search, canViewDeliveryNoteReceiving);
+  const deliveryNotes = useDeliveryNotes(
+    deliveryNoteStatus,
+    search,
+    isFocused && canViewDeliveryNoteReceiving
+  );
   const isLoadListTab = tab === "load-lists";
   const isLoadListsInitialLoading = canLoadLoadLists && !loadLists.data && loadLists.isFetching;
   const isLoadListsLoading = isSwitchingBusinessUnit || isLoadListsInitialLoading;
@@ -91,14 +99,18 @@ export default function ReceivingScreen() {
 
   refreshOnFocusRef.current = () => {
     if (tab === "load-lists") {
-      const queryKey = queryKeys.loadLists(status, search);
+      const queryKey = queryKeys.loadLists(currentBusinessUnit?.id || "", status, search);
       if (canLoadLoadLists && queryClient.getQueryState(queryKey)?.isInvalidated) {
         void loadLists.refetch();
       }
       return;
     }
 
-    const queryKey = queryKeys.deliveryNotes(deliveryNoteStatus, search);
+    const queryKey = queryKeys.deliveryNotes(
+      currentBusinessUnit?.id || "",
+      deliveryNoteStatus,
+      search
+    );
     if (canViewDeliveryNoteReceiving && queryClient.getQueryState(queryKey)?.isInvalidated) {
       void deliveryNotes.refetch();
     }

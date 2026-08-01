@@ -599,11 +599,47 @@ multiple warehouse-specific delivery notes from one action.
 
 **Things to test**:
 
+- Pull to refresh on the dashboard, picking list, and pick-list detail screens. Confirm only the
+  visible screen's dashboard/list/detail requests run, with no unrelated business-unit, receiving,
+  or hidden-screen requests. Switch business units and confirm operational data reloads in the new
+  scope while the accessible business-unit list remains available without another request. During
+  the switch, confirm no dashboard, receiving, picking, item-info, or floor-map data from the
+  previous unit remains visible, and confirm a delayed response from the previous unit cannot
+  repopulate the current screen. Navigate to a previously hidden screen and confirm it loads only
+  after receiving focus and uses the newly selected unit.
 - Two pickers, one line: confirm the second picker sees the line as "claimed by someone else" and cannot pick it themselves.
 - Let a claim sit idle past its expiry and confirm it becomes available to claim again.
 - Try to Complete Picking first while the current picker still holds an active claim, then while another picker holds one — both attempts should be refused with a clear error, not silently completed.
 - Cancel a pick list mid-way with a blank reason and confirm cancellation succeeds, no reason is stored, and the Delivery Note's status and picked-quantity totals both roll back correctly.
 - Mobile: test the scan-to-verify flow specifically — the camera-captured value should be processed silently without appearing in the manual-entry field. A correct scan should sail straight through, while a mismatched scan should show the confirmation/warning card before allowing the pick.
+- Configure a warehouse Floor Map by dragging across the suggested rack's complete footprint.
+  Confirm a user with `manage_locations:view` but without `manage_locations:edit` can view an
+  existing map but cannot upload, draw, remove mappings, or save. Confirm inactive warehouses do
+  not expose the Floor Map action and a direct floor-map URL returns the not-found state before any
+  image upload occurs.
+  Confirm a click without a meaningful drag is rejected, the editor previews the full rectangle,
+  and **View Map** on the mobile pick line highlights the complete rack with a blinking red overlay
+  rather than showing a point marker. Confirm every mapped rack shows its rack name inside the
+  rectangle, labels run along each rack's long axis without overflowing, and the blink stops when
+  the viewer closes.
+  Verify the buttons and two-finger pinch both zoom smoothly between 100% and 500%, one-finger
+  horizontal/vertical navigation still works, and the image and highlight remain aligned. Rotate
+  through all four 90-degree orientations and confirm the quarter-turn canvas is not clipped and
+  opening a different map resets zoom to 100% and orientation to 90 degrees clockwise.
+- Close and reopen the same rack map within five minutes, then open another rack on the same map.
+  Confirm the cached map appears without a blocking metadata reload and the shared image does not
+  flash blank while the API continues enforcing the same picker and business-unit scope.
+- Open one rack map, close it before the request completes, and immediately open another. Confirm a
+  late response from the first request never replaces the second rack's map or highlight.
+- Replace an existing floor-map image with a malformed file carrying an allowed image MIME type.
+  Confirm the decode error is translated, the old dimensions are cleared, and Save remains disabled
+  until a valid replacement image is selected and decoded.
+- Scan a valid batch-location QR from a different warehouse for the same item. The mobile app must
+  reject it and must not silently substitute the suggested source from the QR's embedded item ID.
+- Remove the rack mapping (or use a warehouse with no map) and confirm **View Map** shows an
+  actionable not-configured/not-mapped message without exposing another warehouse's map. A missing
+  warehouse map must use the dedicated non-retry state rather than suggesting that retrying will
+  create the configuration.
 
 ---
 

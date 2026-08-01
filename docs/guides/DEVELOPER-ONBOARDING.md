@@ -60,6 +60,10 @@ supabase start
 - **Studio URL**: http://localhost:54323
 - **Inbucket URL**: http://localhost:54324 (email testing)
 
+The checked-in Supabase configuration enables the image-transformation service used by optimized
+mobile warehouse floor maps. Hosted environments must provide Supabase image transformations as
+part of their deployment plan before enabling this feature.
+
 **Credentials**:
 - **Database Password**: `postgres`
 - **JWT Secret**: (shown in output)

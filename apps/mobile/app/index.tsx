@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Card, ErrorState, LoadingState, Screen } from "@/components/ui";
 import type { MobileUser } from "@/contracts/auth";
 import { queryKeys, useDashboard } from "@/hooks/queries";
+import { useScreenFocusState } from "@/hooks/useScreenFocusState";
 import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
 import { spacing, borderRadius } from "@/theme/spacing";
@@ -29,8 +30,10 @@ export default function DashboardScreen() {
   const hasFocusedOnce = useRef(false);
   const refreshOnFocusRef = useRef<() => void>(() => undefined);
   const queryClient = useQueryClient();
-  const dashboard = useDashboard();
+  const isFocused = useScreenFocusState();
+  const dashboard = useDashboard(isFocused);
   const session = useAuthStore((state) => state.session);
+  const businessUnitId = session?.currentBusinessUnit?.id || "";
   const user = session?.user ?? null;
   const displayName = getDisplayName(user);
   const showReceiving = canAccessReceiving(session);
@@ -51,7 +54,10 @@ export default function DashboardScreen() {
   };
 
   refreshOnFocusRef.current = () => {
-    if (queryClient.getQueryState(queryKeys.dashboard)?.isInvalidated) {
+    if (
+      businessUnitId &&
+      queryClient.getQueryState(queryKeys.dashboard(businessUnitId))?.isInvalidated
+    ) {
       void dashboard.refetch();
     }
   };
@@ -68,7 +74,14 @@ export default function DashboardScreen() {
   );
 
   return (
-    <Screen title={`Hi ${displayName}`} subtitle={`${getGreeting()}!`}>
+    <Screen
+      title={`Hi ${displayName}`}
+      subtitle={`${getGreeting()}!`}
+      onRefresh={async () => {
+        await dashboard.refetch();
+      }}
+      refreshing={dashboard.isRefetching}
+    >
       {dashboard.isLoading ? <LoadingState /> : null}
       {dashboard.error ? <ErrorState message="Unable to load the warehouse dashboard." /> : null}
       {dashboard.data ? (

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Plus, Search, Pencil, MapPin, Filter, Trash2, MoreVertical } from "lucide-react";
+import { Plus, Search, Pencil, Map, MapPin, Filter, Trash2, MoreVertical } from "lucide-react";
 import { useWarehouses, useDeleteWarehouse } from "@/hooks/useWarehouses";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -284,6 +284,16 @@ export default function WarehousesPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              {warehouse.isActive ? (
+                                <ViewGuard resource={RESOURCES.MANAGE_LOCATIONS}>
+                                  <DropdownMenuItem asChild>
+                                    <Link href={`/inventory/warehouses/${warehouse.id}/floor-map`}>
+                                      <Map className="h-4 w-4" />
+                                      <span>{t("floorMap")}</span>
+                                    </Link>
+                                  </DropdownMenuItem>
+                                </ViewGuard>
+                              ) : null}
                               <DropdownMenuItem
                                 onClick={() => handleDeleteWarehouse(warehouse)}
                                 disabled={deleteWarehouse.isPending}

@@ -12,6 +12,7 @@ import {
 import { ActionButton, Card, ErrorState, ScannerModal, Screen } from "@/components/ui";
 import type { ScannedItemInfo } from "@/contracts/itemInfo";
 import { useScannedItemInfo } from "@/hooks/queries";
+import { useScreenFocusState } from "@/hooks/useScreenFocusState";
 import { useSunmiScanner } from "@/hooks/useSunmiScanner";
 import { colors } from "@/theme/colors";
 import { spacing, borderRadius } from "@/theme/spacing";
@@ -28,10 +29,11 @@ const formatType = (value: string) =>
     .join(" ");
 
 export default function ItemInfoScreen() {
+  const isFocused = useScreenFocusState();
   const [scannerOpen, setScannerOpen] = useState(false);
   const [input, setInput] = useState("");
   const [submittedPayload, setSubmittedPayload] = useState("");
-  const itemInfo = useScannedItemInfo(submittedPayload);
+  const itemInfo = useScannedItemInfo(submittedPayload, isFocused);
 
   const submitPayload = (value = input) => {
     const trimmed = value.trim();
@@ -45,7 +47,7 @@ export default function ItemInfoScreen() {
   };
 
   useSunmiScanner({
-    enabled: !scannerOpen,
+    enabled: isFocused && !scannerOpen,
     onScan: (value) => {
       setInput("");
       submitPayload(value);

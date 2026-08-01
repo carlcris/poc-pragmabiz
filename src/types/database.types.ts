@@ -10309,6 +10309,161 @@ export type Database = {
           },
         ]
       }
+      warehouse_floor_map_racks: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string
+          floor_map_id: string
+          height_basis_points: number
+          id: string
+          updated_at: string
+          updated_by: string
+          warehouse_location_id: string
+          width_basis_points: number
+          x_basis_points: number
+          y_basis_points: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by: string
+          floor_map_id: string
+          height_basis_points: number
+          id?: string
+          updated_at?: string
+          updated_by: string
+          warehouse_location_id: string
+          width_basis_points: number
+          x_basis_points: number
+          y_basis_points: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          floor_map_id?: string
+          height_basis_points?: number
+          id?: string
+          updated_at?: string
+          updated_by?: string
+          warehouse_location_id?: string
+          width_basis_points?: number
+          x_basis_points?: number
+          y_basis_points?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_floor_map_racks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_floor_map_racks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_floor_map_racks_floor_map_id_fkey"
+            columns: ["floor_map_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_floor_maps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_floor_map_racks_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_floor_map_racks_warehouse_location_id_fkey"
+            columns: ["warehouse_location_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warehouse_floor_maps: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string
+          id: string
+          image_height: number
+          image_path: string
+          image_width: number
+          name: string
+          updated_at: string
+          updated_by: string
+          version: number
+          warehouse_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          image_height: number
+          image_path: string
+          image_width: number
+          name: string
+          updated_at?: string
+          updated_by: string
+          version?: number
+          warehouse_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          image_height?: number
+          image_path?: string
+          image_width?: number
+          name?: string
+          updated_at?: string
+          updated_by?: string
+          version?: number
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_floor_maps_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_floor_maps_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_floor_maps_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warehouse_floor_maps_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: true
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       warehouse_locations: {
         Row: {
           code: string
@@ -11952,6 +12107,19 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      save_warehouse_floor_map: {
+        Args: {
+          p_actor_user_id: string
+          p_company_id: string
+          p_image_height: number
+          p_image_path: string
+          p_image_width: number
+          p_name: string
+          p_racks: Json
+          p_warehouse_id: string
+        }
+        Returns: string
       }
       search_stock_request_fulfillment_batches: {
         Args: {

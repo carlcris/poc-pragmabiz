@@ -99,6 +99,19 @@ A **Warehouse** represents a physical storage location where inventory is held.
 **Warehouse Locations**:
 Each warehouse can have multiple storage locations (aisles, shelves, bins) for granular stock tracking.
 
+Users with `manage_locations:view` access can open an active warehouse's **Floor Map** in read-only
+mode. Uploading or replacing the private PNG/JPEG/WebP floor-plan image, changing rack mappings, and
+saving require `manage_locations:edit`. Inactive warehouses cannot open or change floor maps. An
+editor drags a rectangle across the complete footprint of each active rack; the editor shows the
+rectangle while drawing and rejects click-sized marker mappings. Overlay
+coordinates are stored as normalized basis points, so the same full-rack highlights remain aligned
+across desktop and mobile screen sizes. The mobile picking viewer labels all mapped racks by rack
+name along their long axis and scales each label to its rectangle. Replacement-image dimensions are
+cleared until the browser successfully decodes the new file; malformed images cannot be saved with
+dimensions from the prior map. Saving the map and replacing all rack mappings is one transactional
+database operation; replacing the image removes the previous storage object only after the database
+save succeeds.
+
 The item **Locations** tab groups rack rows by warehouse. Each warehouse section shows its aggregate
 on-hand quantity, warehouse-level maximum stock, and maximum-stock action, while preferred-rack
 selection and batch expansion remain available on individual rack rows. Supplier shipment transit

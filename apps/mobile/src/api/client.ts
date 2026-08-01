@@ -11,11 +11,13 @@ type ApiOptions = {
 
 export class ApiError extends Error {
   status: number;
+  code?: string;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -29,15 +31,18 @@ const buildUrl = (path: string, query?: ApiOptions["query"]) => {
   return url.toString();
 };
 
-const readErrorMessage = async (response: Response) => {
+const readErrorPayload = async (response: Response) => {
   const text = await response.text();
-  if (!text) return "Request failed";
+  if (!text) return { message: "Request failed" };
   try {
     const payload = JSON.parse(text) as Record<string, unknown>;
     const message = payload.message || payload.error;
-    return typeof message === "string" && message ? message : "Request failed";
+    return {
+      message: typeof message === "string" && message ? message : "Request failed",
+      code: typeof payload.code === "string" && payload.code ? payload.code : undefined,
+    };
   } catch {
-    return text.length > 160 ? "Request failed" : text;
+    return { message: text.length > 160 ? "Request failed" : text };
   }
 };
 
@@ -76,7 +81,8 @@ export const apiRequest = async <T>(path: string, options: ApiOptions = {}): Pro
     }
 
     if (!response.ok) {
-      throw new ApiError(await readErrorMessage(response), response.status);
+      const error = await readErrorPayload(response);
+      throw new ApiError(error.message, response.status, error.code);
     }
 
     if (response.status === 204) return undefined as T;

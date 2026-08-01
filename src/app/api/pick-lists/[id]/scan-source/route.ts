@@ -12,9 +12,10 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-const scanValidationError = (error: string) =>
+const scanValidationError = (error: string, code: string) =>
   NextResponse.json({
     error,
+    code,
     data: null,
   });
 
@@ -100,11 +101,11 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
     }
 
     if (!sourceRow) {
-      return scanValidationError("Batch location SKU not found");
+      return scanValidationError("Batch location SKU not found", "BATCH_LOCATION_SKU_NOT_FOUND");
     }
 
     if (sourceRow.warehouse_id !== deliveryNote.fulfilling_warehouse_id) {
-      return scanValidationError("Item not found");
+      return scanValidationError("Item not found", "SOURCE_OUTSIDE_PICKING_WAREHOUSE");
     }
 
     const itemBatch = Array.isArray(sourceRow.item_batch)
@@ -115,19 +116,29 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
       : sourceRow.warehouse_location;
 
     if (!itemBatch?.batch_code || !itemBatch?.received_at || !sourceRow.location_id) {
-      return scanValidationError("Batch location SKU has incomplete source data");
+      return scanValidationError(
+        "Batch location SKU has incomplete source data",
+        "INCOMPLETE_PICK_SOURCE"
+      );
     }
 
     if (scannedItemId && scannedItemId !== sourceRow.item_id) {
-      return scanValidationError("Scanned QR item does not match the batch location SKU item");
+      return scanValidationError(
+        "Scanned QR item does not match the batch location SKU item",
+        "PICK_SOURCE_ITEM_MISMATCH"
+      );
     }
     if (scannedLocationId && scannedLocationId !== sourceRow.location_id) {
       return scanValidationError(
-        "Scanned QR location does not match the batch location SKU location"
+        "Scanned QR location does not match the batch location SKU location",
+        "PICK_SOURCE_LOCATION_MISMATCH"
       );
     }
     if (scannedBatchCode && scannedBatchCode !== (itemBatch.batch_code as string)) {
-      return scanValidationError("Scanned QR batch does not match the batch location SKU batch");
+      return scanValidationError(
+        "Scanned QR batch does not match the batch location SKU batch",
+        "PICK_SOURCE_BATCH_MISMATCH"
+      );
     }
 
     const { data: pickItems, error: pickItemsError } = await auth.supabase
@@ -164,7 +175,7 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Failed to match scanned source" }, { status: 500 });
     }
     if (!pickItems || pickItems.length === 0) {
-      return scanValidationError("Item not found");
+      return scanValidationError("Item not found", "ITEM_NOT_IN_PICK_LIST");
     }
 
     const matchable = (pickItems || []).map((row) => {
@@ -207,7 +218,10 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
 
     const eligible = matchable.filter((row) => row.remainingQty > 0);
     if (eligible.length === 0) {
-      return scanValidationError("Item already fully picked in this pick list");
+      return scanValidationError(
+        "Item already fully picked in this pick list",
+        "PICK_LIST_ITEM_ALREADY_COMPLETE"
+      );
     }
 
     const suggestedEligible = eligible.filter((row) => row.isSuggestedMatch);

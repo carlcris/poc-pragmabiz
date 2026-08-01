@@ -105,9 +105,9 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
-# Image transformation API is available to Supabase Pro plan.
-# [storage.image_transformation]
-# enabled = true
+# Mobile warehouse maps use signed image transformations to limit decode memory.
+[storage.image_transformation]
+enabled = true
 
 # Uncomment to configure local storage buckets
 # [storage.buckets.images]

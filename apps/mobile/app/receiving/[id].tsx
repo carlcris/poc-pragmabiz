@@ -23,6 +23,7 @@ import {
   useSubmitReceiving,
   useVoidDeliveryNoteReceivingScan,
 } from "@/hooks/queries";
+import { useScreenFocusState } from "@/hooks/useScreenFocusState";
 import { useSunmiScanner } from "@/hooks/useSunmiScanner";
 import { useAuthStore } from "@/stores/authStore";
 import type { ReceivingLine, RecordDeliveryNoteReceivingScanPayload } from "@/contracts/receiving";
@@ -180,6 +181,7 @@ const resolveLineFromScan = (
 
 export default function ReceivingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const isFocused = useScreenFocusState();
   const session = useAuthStore((state) => state.session);
   const canViewDeliveryNoteReceiving = canAccessDeliveryNoteReceiving(session);
   const canManageReceiving = canManageDeliveryNoteReceiving(session);
@@ -196,10 +198,10 @@ export default function ReceivingDetailScreen() {
   const hardwareScanBlockedRef = useRef(false);
   const scanMutationInFlightRef = useRef(false);
   const pendingScanConfirmationRef = useRef<ScanConfirmation | null>(null);
-  const deliveryNote = useDeliveryNote(id, canViewDeliveryNoteReceiving);
+  const deliveryNote = useDeliveryNote(id, canViewDeliveryNoteReceiving && isFocused);
   const refetchDeliveryNote = deliveryNote.refetch;
   const receivingWarehouses = useReceivingWarehouses(
-    canManageReceiving && !deliveryNote.data?.receivingStartedAt
+    isFocused && canManageReceiving && !deliveryNote.data?.receivingStartedAt
   );
   const startReceiving = useStartReceiving(id);
   const recordScan = useRecordDeliveryNoteReceivingScan(id);
@@ -471,6 +473,7 @@ export default function ReceivingDetailScreen() {
   useSunmiScanner({
     enabled:
       canManageReceiving &&
+      isFocused &&
       isReceiving &&
       isReceivingStarted &&
       !scannerOpen &&

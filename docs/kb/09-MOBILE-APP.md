@@ -94,12 +94,33 @@ apps/mobile/
 
 **Mobile Features**:
 
+- Pull-to-refresh reloads only the visible screen's operational data. Business-unit choices are
+  cached per authenticated user and company. Operational query caches are namespaced by business
+  unit. Switching units cancels the previous unit's requests, removes its cached data, and reloads
+  the visible screen under the new unit without reloading the unchanged business-unit list. Hidden
+  screens wait until focused before loading the new scope.
 - Item-by-item picking with progress tracking
-- Location navigation with warehouse map
+- Each pick-list line with an assigned rack exposes **View Map**. The full-screen viewer loads only
+  that pick list's fulfilling warehouse and mapped racks, labels every rack by name within its
+  normalized rectangle, highlights the suggested rack with a blinking red overlay, and supports
+  button or pinch-to-zoom from 100–500%, two-axis scrolling, and 90-degree rotation. Labels follow
+  each rack's long axis and scale to remain inside its mapped area. The API signs a transformed map
+  image with a 2048-pixel maximum edge, and the mobile client caches same-item map responses for
+  five minutes while reusing image URLs for the same map version. The viewer keeps its loading state
+  until the image itself is ready. The image and rack highlight open at 90 degrees clockwise by
+  default, rotate and scale together, and use swapped canvas dimensions so quarter-turns use the
+  available portrait space without clipping. The highlight animation stops when the viewer closes
+  or the location is cleared. Incomplete click-sized mappings are rejected and must be redrawn by a
+  warehouse administrator. When the source warehouse has no configured map, the viewer shows a
+  dedicated non-retry map-not-configured state instead of treating it as a transient load failure
 - Barcode verification (item + location)
 - Batch-location SKU verification is limited to the delivery note's fulfilling warehouse
-- Exact assigned batch matches take priority; a same-item batch override selects the first unfinished line and requires a visible mismatch acknowledgement
-- Item ID, item code, and barcode fallback skip completed lines and select the first unfinished match
+- A recognized batch-location QR must resolve to an eligible line in the fulfilling warehouse.
+  Resolution failures stop verification and never fall through to an embedded item ID or a default
+  source
+- The API's authoritative mismatch result controls the warning. Same-warehouse batch/rack overrides
+  require visible acknowledgement, while direct item ID, item code, and unit barcode scans remain a
+  separate fallback for non-source labels
 - Picking requires Stock Requests access. When `stock_requests.operation.view_only_assigned_pick_lists.view` is enabled, list, detail, claim, and progress operations are restricted to pick lists assigned to the current user; when disabled, the user can access all pick lists in the selected business unit
 - Selecting a line creates a two-minute server-enforced claim that is renewed while the picker is entering quantity; other assigned pickers receive claim and progress changes through Supabase Realtime and cannot confirm the claimed line
 - Claims are released on cancel, navigation, or successful confirmation; a local nearest-expiry timer and foreground refresh remove expired disconnected-picker claims even when no Realtime event occurs
