@@ -28,7 +28,7 @@ const toNumber = (value: number | string | null | undefined) => {
 // GET /api/pick-lists/[id]/scan-source?batchLocationSku=1234567890[&itemId=...&locationId=...&batchCode=...]
 async function GETHandler(request: NextRequest, context: RouteContext) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
+    const unauthorized = await requirePermission(RESOURCES.PICK_LISTS, "edit");
     if (unauthorized) return unauthorized;
 
     const auth = await getPickListAuthContext();

@@ -22,7 +22,7 @@ const safeError = (message: string, status: number) =>
   NextResponse.json({ error: message }, { status });
 
 const getContext = async (request: NextRequest, context: RouteContext) => {
-  const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
+  const unauthorized = await requirePermission(RESOURCES.PICK_LISTS, "edit");
   if (unauthorized) return unauthorized;
 
   const auth = await getPickListAuthContext();

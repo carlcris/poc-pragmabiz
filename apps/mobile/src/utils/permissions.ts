@@ -30,18 +30,18 @@ export const canAccessLoadListReceiving = (session: AuthSession | null | undefin
   hasResourcePermission(session, "goods_receipt_notes", "view");
 
 export const canAccessDeliveryNoteReceiving = (session: AuthSession | null | undefined) =>
-  hasResourcePermission(session, "stock_requests", "view") &&
-  hasCapability(session, "stock_requests.operation.receive_delivery_notes.edit", "edit");
+  hasResourcePermission(session, "delivery_notes", "view") &&
+  hasCapability(session, "delivery_notes.operation.receive_delivery_notes.edit", "edit");
 
 export const canManageDeliveryNoteReceiving = (session: AuthSession | null | undefined) =>
-  hasResourcePermission(session, "stock_requests", "edit") &&
-  hasCapability(session, "stock_requests.operation.receive_delivery_notes.edit", "edit");
+  hasResourcePermission(session, "delivery_notes", "edit") &&
+  hasCapability(session, "delivery_notes.operation.receive_delivery_notes.edit", "edit");
 
 export const canAccessReceiving = (session: AuthSession | null | undefined) =>
   canAccessLoadListReceiving(session) || canAccessDeliveryNoteReceiving(session);
 
 export const canAccessPicking = (session: AuthSession | null | undefined) =>
-  hasResourcePermission(session, "stock_requests", "view");
+  hasResourcePermission(session, "pick_lists", "view");
 
 export const canStartGrnReceiving = (session: AuthSession | null | undefined) =>
   hasCapability(session, "goods_receipt_notes.operation.start_receiving.edit", "edit");

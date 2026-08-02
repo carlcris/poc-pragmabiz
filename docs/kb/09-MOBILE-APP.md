@@ -121,7 +121,7 @@ apps/mobile/
 - The API's authoritative mismatch result controls the warning. Same-warehouse batch/rack overrides
   require visible acknowledgement, while direct item ID, item code, and unit barcode scans remain a
   separate fallback for non-source labels
-- Picking requires Stock Requests access. When `stock_requests.operation.view_only_assigned_pick_lists.view` is enabled, list, detail, claim, and progress operations are restricted to pick lists assigned to the current user; when disabled, the user can access all pick lists in the selected business unit
+- Picking requires Pick Lists access. When `pick_lists.operation.view_only_assigned_pick_lists.view` is enabled, list, detail, claim, and progress operations are restricted to pick lists assigned to the current user; when disabled, the user can access all pick lists in the selected business unit
 - Selecting a line creates a two-minute server-enforced claim that is renewed while the picker is entering quantity; other assigned pickers receive claim and progress changes through Supabase Realtime and cannot confirm the claimed line
 - Claims are released on cancel, navigation, or successful confirmation; a local nearest-expiry timer and foreground refresh remove expired disconnected-picker claims even when no Realtime event occurs
 - Pause and Complete are unavailable while any line has an active claim, and the database rejects completion if a claim appears concurrently
@@ -467,17 +467,17 @@ Submit native mobile GRN receiving for confirmation. The request may include an 
 
 Fetch delivery notes available to the current business unit for native mobile receiving.
 
-**Permissions**: `view` on Stock Requests and granular capability `stock_requests.operation.receive_delivery_notes.edit`
+**Permissions**: `view` on Delivery Notes and granular capability `delivery_notes.operation.receive_delivery_notes.edit`
 
 #### GET /api/delivery-notes/[id]?receivingOnly=true
 
 Get a delivery note for native mobile receiving.
 
-**Permissions**: `view` on Stock Requests and granular capability `stock_requests.operation.receive_delivery_notes.edit`
+**Permissions**: `view` on Delivery Notes and granular capability `delivery_notes.operation.receive_delivery_notes.edit`
 
 #### Delivery-note receiving mutations
 
-The following operations require `edit` on Stock Requests and granular capability `stock_requests.operation.receive_delivery_notes.edit`:
+The following operations require `edit` on Delivery Notes and granular capability `delivery_notes.operation.receive_delivery_notes.edit`:
 
 - `POST /api/delivery-notes/[id]/start-receiving`
 - `POST /api/delivery-notes/[id]/receiving-scans`
@@ -506,8 +506,8 @@ The native mobile app stores the permission and capability maps returned by logi
 switching. Bottom navigation keeps Receiving and Picking visible in fixed positions but disables
 destinations the current role cannot access. Dashboard quick actions, list queries, detail queries,
 and receiving mutations are gated from the stored session so roles without the matching parent and
-granular permissions do not call the protected APIs. Picking requires Stock Requests `view`; the
-`stock_requests.operation.view_only_assigned_pick_lists.view` toggle optionally narrows server-side
+granular permissions do not call the protected APIs. Picking requires Pick Lists `view`; the
+`pick_lists.operation.view_only_assigned_pick_lists.view` toggle optionally narrows server-side
 list, detail, and mutation access to current-user assignments. With the toggle disabled, results
 remain restricted to the selected business unit. Picking rights alone do not grant delivery-note
 receiving access.

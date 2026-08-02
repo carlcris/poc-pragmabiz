@@ -12,7 +12,7 @@ type RouteContext = {
 // GET /api/delivery-notes/[id]/allocatable-items
 async function GETHandler(_request: NextRequest, context: RouteContext) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
+    const unauthorized = await requirePermission(RESOURCES.DELIVERY_NOTES, "view");
     if (unauthorized) return unauthorized;
 
     const auth = await getAuthContext();

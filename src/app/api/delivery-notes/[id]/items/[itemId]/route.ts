@@ -21,7 +21,7 @@ type AdjustDeliveryNoteItemBody = {
 // PATCH /api/delivery-notes/[id]/items/[itemId]
 async function PATCHHandler(request: NextRequest, context: RouteContext) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
+    const unauthorized = await requirePermission(RESOURCES.DELIVERY_NOTES, "edit");
     if (unauthorized) return unauthorized;
 
     const auth = await getAuthContext();

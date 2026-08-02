@@ -11,7 +11,7 @@ type RouteContext = {
 // POST /api/delivery-notes/[id]/confirm
 async function POSTHandler(_request: NextRequest, context: RouteContext) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
+    const unauthorized = await requirePermission(RESOURCES.DELIVERY_NOTES, "edit");
     if (unauthorized) return unauthorized;
 
     const auth = await getAuthContext();

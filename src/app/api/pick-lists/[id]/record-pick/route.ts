@@ -50,7 +50,7 @@ const BUSINESS_ERROR_MESSAGES: Record<string, string> = {
 };
 
 async function POSTHandler(request: NextRequest, context: RouteContext) {
-  const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
+  const unauthorized = await requirePermission(RESOURCES.PICK_LISTS, "edit");
   if (unauthorized) return unauthorized;
 
   const auth = await getPickListAuthContext();

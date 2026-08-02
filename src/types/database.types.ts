@@ -12079,6 +12079,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      remove_role_permissions: {
+        Args: {
+          p_actor_user_id: string
+          p_business_unit_id?: string
+          p_company_id: string
+          p_permission_ids: string[]
+          p_role_id: string
+        }
+        Returns: undefined
+      }
       remove_user_role_from_business_unit: {
         Args: {
           p_actor_user_id: string
@@ -12116,6 +12126,16 @@ export type Database = {
           p_grn_id: string
           p_patch: Json
           p_user_id: string
+        }
+        Returns: undefined
+      }
+      save_role_permissions: {
+        Args: {
+          p_actor_user_id: string
+          p_business_unit_id?: string
+          p_company_id: string
+          p_permissions: Json
+          p_role_id: string
         }
         Returns: undefined
       }

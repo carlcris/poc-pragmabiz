@@ -6,7 +6,7 @@ import { RESOURCES } from "@/constants/resources";
 // POST /api/delivery-notes/[id]/dispatch-ready
 async function POSTHandler() {
   try {
-    const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
+    const unauthorized = await requirePermission(RESOURCES.DELIVERY_NOTES, "edit");
     if (unauthorized) return unauthorized;
     return NextResponse.json(
       {

@@ -27,15 +27,15 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
         companyId: auth.companyId,
         businessUnitId: auth.currentBusinessUnitId,
       },
-      RESOURCES.STOCK_REQUESTS,
+      RESOURCES.PICK_LISTS,
       "edit"
     );
     if (!hasPermission) {
       return NextResponse.json(
         {
           error: "Forbidden",
-          details: `You do not have permission to edit ${RESOURCES.STOCK_REQUESTS}`,
-          resource: RESOURCES.STOCK_REQUESTS,
+          details: `You do not have permission to edit ${RESOURCES.PICK_LISTS}`,
+          resource: RESOURCES.PICK_LISTS,
           action: "edit",
         },
         { status: 403 }

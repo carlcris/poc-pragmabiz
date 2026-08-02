@@ -21,7 +21,14 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import {
+  GRANULAR_CAPABILITIES,
+  GRANULAR_CAPABILITY_PARENT_ACTION_OVERRIDES,
+  ROLE_PERMISSION_MUTATION_ERROR_CODES,
+  type GranularCapability,
+} from "@/constants/granular-permissions";
+import { RESOURCES } from "@/constants/resources";
+import { getApiErrorCode } from "@/lib/api";
 
 type Role = {
   id: string;
@@ -114,6 +121,18 @@ const getGranularActionFlag = (permission: Permission): PermissionActionFlag | n
     : null;
 };
 
+const getRequiredParentActionFlag = (permission: Permission): PermissionActionFlag | null => {
+  const capabilityKey = permission.capability_key || permission.resource;
+  const parentAction =
+    GRANULAR_CAPABILITY_PARENT_ACTION_OVERRIDES[capabilityKey as GranularCapability] ||
+    permission.capability_action;
+  const parentActionFlag = `can_${parentAction || ""}`;
+
+  return ACTION_FLAGS.includes(parentActionFlag as PermissionActionFlag)
+    ? (parentActionFlag as PermissionActionFlag)
+    : null;
+};
+
 const permissionMatchesSearch = (
   permission: Permission,
   query: string,
@@ -153,8 +172,7 @@ const groupPermissions = (
 
     const section: PermissionSectionDraft = {
       key: normalizedKey,
-      title:
-        normalizedKey === "additional" ? "Additional Capabilities" : getModuleTitle(normalizedKey),
+      title: permissionCopyByResource[normalizedKey]?.title || getModuleTitle(normalizedKey),
       childGroups: new Map<string, Permission[]>(),
     };
     sections.set(normalizedKey, section);
@@ -219,6 +237,22 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
   const assignPermissions = useAssignPermissions();
   const permissionCopyByResource = useMemo<PermissionCopyByResource>(
     () => ({
+      additional: {
+        title: t("additionalCapabilities"),
+        description: t("moduleAccessDescription"),
+      },
+      [RESOURCES.DELIVERY_NOTES]: {
+        title: t("modules.deliveryNotes"),
+        description: t("moduleAccessDescription"),
+      },
+      [RESOURCES.PICK_LISTS]: {
+        title: t("modules.pickLists"),
+        description: t("moduleAccessDescription"),
+      },
+      [GRANULAR_CAPABILITIES.DELIVERY_NOTE_RECEIVING]: {
+        title: t("capabilities.receiveDeliveryNotes"),
+        description: t("capabilities.receiveDeliveryNotesDescription"),
+      },
       [GRANULAR_CAPABILITIES.GRN_RECEIVING_START]: {
         title: t("capabilities.startGrnReceiving"),
         description: t("capabilities.startGrnReceivingDescription"),
@@ -330,10 +364,20 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
         can_delete: false,
       };
 
-      const updated = {
+      const updated: PermissionSettings = {
         ...current,
         [flag]: checked,
       };
+
+      if (checked && flag !== "can_view") {
+        updated.can_view = true;
+      }
+
+      if (!checked && flag === "can_view") {
+        updated.can_create = false;
+        updated.can_edit = false;
+        updated.can_delete = false;
+      }
 
       if (updated.can_view || updated.can_create || updated.can_edit || updated.can_delete) {
         newSettings.set(section.modulePermission!.id, updated);
@@ -341,10 +385,12 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
         newSettings.delete(section.modulePermission!.id);
       }
 
-      if (flag === "can_view" && !checked) {
+      if (!checked) {
         section.childGroups.forEach((group) => {
           group.permissions.forEach((permission) => {
-            newSettings.delete(permission.id);
+            if (flag === "can_view" || getRequiredParentActionFlag(permission) === flag) {
+              newSettings.delete(permission.id);
+            }
           });
         });
       }
@@ -356,7 +402,8 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
 
   const toggleGranularPermission = (section: PermissionSection, permission: Permission) => {
     const actionFlag = getGranularActionFlag(permission);
-    if (!actionFlag || !permission[actionFlag]) return;
+    const requiredParentActionFlag = getRequiredParentActionFlag(permission);
+    if (!actionFlag || !requiredParentActionFlag || !permission[actionFlag]) return;
 
     setPermissionSettings((prev) => {
       const newSettings = new Map(prev);
@@ -372,7 +419,7 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
           can_delete: permission.can_delete,
         });
 
-        if (section.modulePermission?.can_view) {
+        if (section.modulePermission) {
           const parentSettings = newSettings.get(section.modulePermission.id) ?? {
             permission_id: section.modulePermission.id,
             can_view: false,
@@ -381,10 +428,19 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
             can_delete: false,
           };
 
-          newSettings.set(section.modulePermission.id, {
+          const updatedParentSettings = {
             ...parentSettings,
             can_view: true,
-          });
+          };
+
+          if (
+            requiredParentActionFlag !== "can_view" &&
+            section.modulePermission[requiredParentActionFlag]
+          ) {
+            updatedParentSettings[requiredParentActionFlag] = true;
+          }
+
+          newSettings.set(section.modulePermission.id, updatedParentSettings);
         }
       }
 
@@ -405,8 +461,15 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
       toast.success(t("permissionsUpdatedSuccess"));
       setHasChanges(false);
       onOpenChange(false);
-    } catch {
-      toast.error(t("permissionsUpdatedError"));
+    } catch (error) {
+      const errorCode = getApiErrorCode(error, [
+        ROLE_PERMISSION_MUTATION_ERROR_CODES.VIEW_REQUIRED,
+      ]);
+      toast.error(
+        errorCode === ROLE_PERMISSION_MUTATION_ERROR_CODES.VIEW_REQUIRED
+          ? t("viewPermissionRequiredError")
+          : t("permissionsUpdatedError")
+      );
     }
   };
 
@@ -482,17 +545,18 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                       <div className="flex-1">
                         <h3 className="text-base font-semibold">{section.title}</h3>
                         <p className="mt-0.5 text-sm text-muted-foreground">
-                          Module access and related granular controls
+                          {t("moduleAccessDescription")}
                         </p>
                       </div>
 
                       <div className="flex items-center gap-4">
                         <Badge variant="outline" className="shrink-0">
-                          {section.childGroups.reduce(
-                            (total, group) => total + group.permissions.length,
-                            section.modulePermission ? 1 : 0
-                          )}{" "}
-                          permissions
+                          {t("permissionCount", {
+                            count: section.childGroups.reduce(
+                              (total, group) => total + group.permissions.length,
+                              section.modulePermission ? 1 : 0
+                            ),
+                          })}
                         </Badge>
 
                         {section.modulePermission && (
@@ -516,7 +580,11 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                                     "flex cursor-pointer items-center gap-1.5 text-sm",
                                     !supported && "cursor-not-allowed opacity-40"
                                   )}
-                                  title={!supported ? `${label} not available` : undefined}
+                                  title={
+                                    !supported
+                                      ? t("actionUnavailable", { action: label })
+                                      : undefined
+                                  }
                                 >
                                   <Checkbox
                                     checked={settings?.[flag] ?? false}

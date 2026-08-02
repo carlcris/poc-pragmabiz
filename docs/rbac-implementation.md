@@ -76,7 +76,7 @@ This section mirrors the existing feature set and UI layout, while correcting th
   - `GET /api/rbac/roles/[id]` (view) — returns role with CRUD flags per permission.
   - `PUT /api/rbac/roles/[id]` (edit) — updates role name/description.
   - `DELETE /api/rbac/roles/[id]` (delete) — soft deletes if no assignments.
-  - `POST /api/rbac/roles/[id]/permissions` (edit) — replaces all role permissions with CRUD flags.
+  - `POST /api/rbac/roles/[id]/permissions` (edit) — saves the complete role-permission configuration with CRUD flags.
   - `DELETE /api/rbac/roles/[id]/permissions` (edit) — removes specific permissions.
 - **Permissions**:
   - `GET /api/rbac/permissions` (view) — list permissions with pagination.

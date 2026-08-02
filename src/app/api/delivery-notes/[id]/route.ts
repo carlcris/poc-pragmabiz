@@ -15,7 +15,7 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
     const receivingOnly = request.nextUrl.searchParams.get("receivingOnly") === "true";
     const unauthorized = receivingOnly
       ? await requireDeliveryNoteReceivingAccess("view")
-      : await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
+      : await requirePermission(RESOURCES.DELIVERY_NOTES, "view");
     if (unauthorized) return unauthorized;
 
     const auth = await getAuthContext();

@@ -33,6 +33,8 @@ const PAGE_RESOURCE_MAP: Record<string, PageRequiredResource> = {
   "/inventory/warehouses": "warehouses",
   "/inventory/stock": "stock_transactions",
   "/inventory/adjustments": "stock_adjustments",
+  "/inventory/delivery-notes": "delivery_notes",
+  "/inventory/pick-lists": "pick_lists",
   "/manufacturing/transformations": "stock_transformations",
   "/manufacturing/orders": "stock_transformations",
   "/manufacturing/floor": "stock_transformations",

@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission, getAuthenticatedUser } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { ROLE_PERMISSION_MUTATION_ERROR_CODES } from "@/constants/granular-permissions";
 import { invalidatePermissionCache } from "@/services/permissions/permissionResolver";
+import { z } from "zod";
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
@@ -25,8 +27,12 @@ type PermissionRow = {
 };
 type RolePermissionRow = {
   id?: string;
-  role_id: string;
+  role_id?: string;
   permission_id: string;
+  can_view?: boolean;
+  can_create?: boolean;
+  can_edit?: boolean;
+  can_delete?: boolean;
   permissions?: PermissionRow | PermissionRow[] | null;
 };
 
@@ -34,10 +40,10 @@ type RolePermissionWithPermission = RolePermissionRow;
 
 type RolePermissionInput = {
   permission_id: string;
-  can_view?: boolean;
-  can_create?: boolean;
-  can_edit?: boolean;
-  can_delete?: boolean;
+  can_view: boolean;
+  can_create: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
 };
 
 type UserRoleNameJoinRow = {
@@ -49,6 +55,134 @@ const normalizeRoleName = (value: string | null | undefined) =>
 
 const isSuperAdminRoleName = (value: string | null | undefined) =>
   ["super admin", "superadmin"].includes(normalizeRoleName(value).replace(/\s/g, ""));
+
+const rolePermissionInputSchema = z
+  .object({
+    permission_id: z.string().uuid(),
+    can_view: z.boolean(),
+    can_create: z.boolean(),
+    can_edit: z.boolean(),
+    can_delete: z.boolean(),
+  })
+  .strict();
+
+const replaceRolePermissionsSchema = z
+  .object({
+    permissions: z.array(rolePermissionInputSchema).max(500),
+  })
+  .strict();
+
+const permissionIdsSchema = z.array(z.string().uuid()).min(1).max(500);
+
+const ROLE_WITH_PERMISSIONS_SELECT = `
+  id,
+  company_id,
+  name,
+  description,
+  is_system_role,
+  created_at,
+  updated_at,
+  role_permissions(
+    id,
+    permission_id,
+    can_view,
+    can_create,
+    can_edit,
+    can_delete,
+    permissions(
+      id,
+      resource,
+      description
+    )
+  )
+`;
+
+const toRoleWithPermissions = (updatedRole: unknown) => {
+  const role = updatedRole as RoleRow & {
+    role_permissions?: RolePermissionWithPermission[] | null;
+  };
+
+  return {
+    ...role,
+    permissions:
+      role.role_permissions?.map((rolePermission) => {
+        const permission = Array.isArray(rolePermission.permissions)
+          ? rolePermission.permissions[0]
+          : rolePermission.permissions;
+
+        return {
+          permission_id: rolePermission.permission_id,
+          resource: permission?.resource,
+          description: permission?.description,
+          can_view: rolePermission.can_view,
+          can_create: rolePermission.can_create,
+          can_edit: rolePermission.can_edit,
+          can_delete: rolePermission.can_delete,
+        };
+      }) || [],
+  };
+};
+
+const rolePermissionMutationErrorResponse = (message: string) => {
+  const isViewDependencyFailure = [
+    "ROLE_PERMISSION_PARENT_VIEW_REQUIRED",
+    "ROLE_PERMISSION_VIEW_REQUIRED",
+  ].some((code) => message.includes(code));
+
+  if (isViewDependencyFailure) {
+    return NextResponse.json(
+      {
+        error: "Invalid permission assignment",
+        code: ROLE_PERMISSION_MUTATION_ERROR_CODES.VIEW_REQUIRED,
+      },
+      { status: 400 }
+    );
+  }
+
+  const isInvalidPermissionSet = [
+    "ROLE_PERMISSION_DUPLICATE_PERMISSION",
+    "ROLE_PERMISSION_INVALID_PAYLOAD",
+    "ROLE_PERMISSION_INVALID_PERMISSION",
+  ].some((code) => message.includes(code));
+
+  if (isInvalidPermissionSet) {
+    return NextResponse.json(
+      {
+        error: "Invalid permission assignment",
+        code: ROLE_PERMISSION_MUTATION_ERROR_CODES.INVALID_ASSIGNMENT,
+      },
+      { status: 400 }
+    );
+  }
+
+  if (message.includes("ROLE_PERMISSION_ROLE_NOT_FOUND")) {
+    return NextResponse.json(
+      {
+        error: "Role not found",
+        code: ROLE_PERMISSION_MUTATION_ERROR_CODES.ROLE_NOT_FOUND,
+      },
+      { status: 404 }
+    );
+  }
+
+  if (
+    message.includes("ROLE_PERMISSION_FORBIDDEN") ||
+    message.includes("ROLE_PERMISSION_SYSTEM_ROLE_FORBIDDEN")
+  ) {
+    return NextResponse.json(
+      { error: "Forbidden", code: ROLE_PERMISSION_MUTATION_ERROR_CODES.FORBIDDEN },
+      { status: 403 }
+    );
+  }
+
+  return NextResponse.json(
+    {
+      error: "Failed to update permissions",
+      code: ROLE_PERMISSION_MUTATION_ERROR_CODES.UPDATE_FAILED,
+    },
+    { status: 500 }
+  );
+};
 
 async function hasSuperAdminRole(
   supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"],
@@ -100,16 +234,17 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
     const { id: roleId } = await context.params;
     const { supabase } = await createServerClientWithBU();
 
-    // Parse request body
-    const body = (await request.json()) as { permissions?: RolePermissionInput[] };
-    const { permissions } = body;
-
-    if (!permissions || !Array.isArray(permissions)) {
+    const parsed = replaceRolePermissionsSchema.safeParse(await request.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Invalid request", details: "permissions must be an array" },
+        {
+          error: "Invalid permission assignment",
+          code: ROLE_PERMISSION_MUTATION_ERROR_CODES.INVALID_ASSIGNMENT,
+        },
         { status: 400 }
       );
     }
+    const permissions: RolePermissionInput[] = parsed.data.permissions;
 
     // Check if role exists and belongs to company
     const { data: role, error: roleError } = await supabase
@@ -137,90 +272,37 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
       );
     }
 
-    // Verify all permissions exist
-    const permissionIds = permissions.map((p) => p.permission_id);
-    const { data: existingPermissions, error: permError } = await supabase
-      .from("permissions")
-      .select("id")
-      .in("id", permissionIds)
-      .is("deleted_at", null);
+    const { error: saveError } = await supabase.rpc("save_role_permissions", {
+      p_actor_user_id: user.id,
+      p_business_unit_id: user.businessUnitId ?? undefined,
+      p_company_id: user.companyId,
+      p_permissions: permissions,
+      p_role_id: roleId,
+    });
 
-    if (permError || !existingPermissions || existingPermissions.length !== permissionIds.length) {
-      return NextResponse.json(
-        { error: "Invalid permissions", details: "One or more permission IDs are invalid" },
-        { status: 400 }
-      );
-    }
-
-    // Delete existing role-permission mappings
-    const { error: deleteError } = await supabase
-      .from("role_permissions")
-      .delete()
-      .eq("role_id", roleId);
-
-    if (deleteError) {
-      return NextResponse.json(
-        { error: "Failed to update permissions", details: deleteError.message },
-        { status: 500 }
-      );
-    }
-
-    // Insert new role-permission mappings with granular CRUD control
-    if (permissions.length > 0) {
-      const rolePermissions = permissions.map((perm) => ({
-        role_id: roleId,
-        permission_id: perm.permission_id,
-        can_view: perm.can_view ?? false,
-        can_create: perm.can_create ?? false,
-        can_edit: perm.can_edit ?? false,
-        can_delete: perm.can_delete ?? false,
-        created_by: user.id,
-      }));
-
-      const { error: insertError } = await supabase
-        .from("role_permissions")
-        .insert(rolePermissions);
-
-      if (insertError) {
-        return NextResponse.json(
-          { error: "Failed to assign permissions", details: insertError.message },
-          { status: 500 }
-        );
-      }
+    if (saveError) {
+      console.error("Failed to save role permissions:", saveError);
+      return rolePermissionMutationErrorResponse(saveError.message);
     }
 
     // Invalidate permission cache for all users with this role
     invalidatePermissionCache();
 
     // Fetch updated role with permissions
-    const { data: updatedRole } = await supabase
+    const { data: updatedRole, error: updatedRoleError } = await supabase
       .from("roles")
-      .select(
-        `
-        *,
-        role_permissions(
-          id,
-          permission_id,
-          permissions(*)
-        )
-      `
-      )
+      .select(ROLE_WITH_PERMISSIONS_SELECT)
       .eq("id", roleId)
       .single();
 
-    const roleWithPermissions = {
-      ...(updatedRole as RoleRow & { role_permissions?: RolePermissionWithPermission[] | null }),
-      permissions:
-        (
-          updatedRole as RoleRow & { role_permissions?: RolePermissionWithPermission[] | null }
-        )?.role_permissions
-          ?.flatMap((rp) => (Array.isArray(rp.permissions) ? rp.permissions : [rp.permissions]))
-          .filter(Boolean) || [],
-    };
+    if (updatedRoleError || !updatedRole) {
+      console.error("Failed to load the updated role permissions:", updatedRoleError);
+      return NextResponse.json({ error: "Failed to load updated permissions" }, { status: 500 });
+    }
 
     return NextResponse.json({
       message: "Permissions updated successfully",
-      data: roleWithPermissions,
+      data: toRoleWithPermissions(updatedRole),
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -242,13 +324,17 @@ async function DELETEHandler(request: NextRequest, context: RouteContext) {
     const { id: roleId } = await context.params;
     const { supabase } = await createServerClientWithBU();
 
-    // Parse request body
-    const body = (await request.json()) as { permissionIds?: string[] };
-    const { permissionIds } = body;
-
-    if (!permissionIds || !Array.isArray(permissionIds)) {
+    const permissionIds = request.nextUrl.searchParams
+      .get("permissionIds")
+      ?.split(",")
+      .filter(Boolean);
+    const parsedPermissionIds = permissionIdsSchema.safeParse(permissionIds);
+    if (!parsedPermissionIds.success) {
       return NextResponse.json(
-        { error: "Invalid request", details: "permissionIds must be an array" },
+        {
+          error: "Invalid permission assignment",
+          code: ROLE_PERMISSION_MUTATION_ERROR_CODES.INVALID_ASSIGNMENT,
+        },
         { status: 400 }
       );
     }
@@ -279,52 +365,37 @@ async function DELETEHandler(request: NextRequest, context: RouteContext) {
       );
     }
 
-    // Delete specified role-permission mappings
-    const { error: deleteError } = await supabase
-      .from("role_permissions")
-      .delete()
-      .eq("role_id", roleId)
-      .in("permission_id", permissionIds);
+    const { error: removeError } = await supabase.rpc("remove_role_permissions", {
+      p_actor_user_id: user.id,
+      p_business_unit_id: user.businessUnitId ?? undefined,
+      p_company_id: user.companyId,
+      p_permission_ids: parsedPermissionIds.data,
+      p_role_id: roleId,
+    });
 
-    if (deleteError) {
-      return NextResponse.json(
-        { error: "Failed to remove permissions", details: deleteError.message },
-        { status: 500 }
-      );
+    if (removeError) {
+      console.error("Failed to remove role permissions:", removeError);
+      return rolePermissionMutationErrorResponse(removeError.message);
     }
 
     // Invalidate permission cache for all users with this role
     invalidatePermissionCache();
 
     // Fetch updated role with permissions
-    const { data: updatedRole } = await supabase
+    const { data: updatedRole, error: updatedRoleError } = await supabase
       .from("roles")
-      .select(
-        `
-        *,
-        role_permissions(
-          id,
-          permission_id,
-          permissions(*)
-        )
-      `
-      )
+      .select(ROLE_WITH_PERMISSIONS_SELECT)
       .eq("id", roleId)
       .single();
 
-    const roleWithPermissions = {
-      ...(updatedRole as RoleRow & { role_permissions?: RolePermissionWithPermission[] | null }),
-      permissions:
-        (
-          updatedRole as RoleRow & { role_permissions?: RolePermissionWithPermission[] | null }
-        )?.role_permissions
-          ?.map((rp) => rp.permissions)
-          .filter(Boolean) || [],
-    };
+    if (updatedRoleError || !updatedRole) {
+      console.error("Failed to load the updated role permissions:", updatedRoleError);
+      return NextResponse.json({ error: "Failed to load updated permissions" }, { status: 500 });
+    }
 
     return NextResponse.json({
       message: "Permissions removed successfully",
-      data: roleWithPermissions,
+      data: toRoleWithPermissions(updatedRole),
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

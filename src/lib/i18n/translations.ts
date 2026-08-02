@@ -880,7 +880,18 @@ export type TranslationKeys = {
     saveChanges: string;
     permissionsUpdatedSuccess: string;
     permissionsUpdatedError: string;
+    viewPermissionRequiredError: string;
+    additionalCapabilities: string;
+    moduleAccessDescription: string;
+    permissionCount: string;
+    actionUnavailable: string;
+    modules: {
+      deliveryNotes: string;
+      pickLists: string;
+    };
     capabilities: {
+      receiveDeliveryNotes: string;
+      receiveDeliveryNotesDescription: string;
       startGrnReceiving: string;
       startGrnReceivingDescription: string;
       confirmGrnReceiving: string;
@@ -4157,7 +4168,20 @@ export const translations: Record<Locale, TranslationKeys> = {
       saveChanges: "Save Changes",
       permissionsUpdatedSuccess: "Permissions updated successfully",
       permissionsUpdatedError: "Failed to update permissions",
+      viewPermissionRequiredError:
+        "Enable View before assigning other actions or granular permissions.",
+      additionalCapabilities: "Additional Capabilities",
+      moduleAccessDescription: "Module access and related granular controls",
+      permissionCount: "{count, plural, one {# permission} other {# permissions}}",
+      actionUnavailable: "{action} not available",
+      modules: {
+        deliveryNotes: "Delivery Notes",
+        pickLists: "Pick Lists",
+      },
       capabilities: {
+        receiveDeliveryNotes: "Receive Delivery Notes",
+        receiveDeliveryNotesDescription:
+          "Allows starting, recording, reviewing, and submitting delivery note receiving.",
         startGrnReceiving: "Start GRN Receiving",
         startGrnReceivingDescription:
           "Allows transitioning a draft GRN and its linked arrived load list into receiving.",
@@ -10119,7 +10143,18 @@ export const translations: Record<Locale, TranslationKeys> = {
       saveChanges: "保存更改",
       permissionsUpdatedSuccess: "权限更新成功",
       permissionsUpdatedError: "权限更新失败",
+      viewPermissionRequiredError: "必须先启用查看权限，才能分配其他操作或细分权限。",
+      additionalCapabilities: "其他细分权限",
+      moduleAccessDescription: "模块访问权限及相关细分控制",
+      permissionCount: "{count} 项权限",
+      actionUnavailable: "{action}不可用",
+      modules: {
+        deliveryNotes: "送货单",
+        pickLists: "拣货单",
+      },
       capabilities: {
+        receiveDeliveryNotes: "接收送货单",
+        receiveDeliveryNotesDescription: "允许开始、记录、审核和提交送货单收货。",
         startGrnReceiving: "开始收货单收货",
         startGrnReceivingDescription: "允许将草稿收货单及其关联的已到货装载单转为收货中状态。",
         confirmGrnReceiving: "确认收货单收货",

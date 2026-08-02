@@ -10,7 +10,7 @@ export const DELIVERY_NOTE_RECEIVING_CAPABILITY = GRANULAR_CAPABILITIES.DELIVERY
 export async function requireDeliveryNoteReceivingAccess(
   parentAction: Extract<PermissionAction, "view" | "edit">
 ): Promise<NextResponse | null> {
-  const parentDenied = await requirePermission(RESOURCES.STOCK_REQUESTS, parentAction);
+  const parentDenied = await requirePermission(RESOURCES.DELIVERY_NOTES, parentAction);
   if (parentDenied) return parentDenied;
 
   const user = await getAuthenticatedUser();

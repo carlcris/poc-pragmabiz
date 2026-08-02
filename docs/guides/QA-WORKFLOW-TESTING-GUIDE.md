@@ -361,11 +361,16 @@ workflows.
 - Role names must be unique.
 - **Built-in system roles cannot be edited or deleted** — the app blocks this both by disabling the buttons and by refusing the action if attempted anyway.
 - **A role cannot be deleted while any user still has it assigned** — you'll get a clear error telling you to remove it from all users first. This one is properly protected, unlike several of the master-data types above.
+- Every Create, Edit, Delete, or granular permission depends on View access to its parent module. Selecting another module action automatically selects View. Clearing View clears the module's other actions and granular permissions. The server rejects an invalid combination if the screen is bypassed.
+- Permission saving is atomic: if any selected permission is invalid or saving fails partway through, the role keeps its complete previous permission set.
 
 **Things to test**:
 
 - Confirm there's genuinely no way to self-register or create a user from inside the app — this should be treated as expected behavior, not a bug to report.
 - Build a custom role with a narrow set of permissions, assign it to a test user, and confirm that user only sees the menu items and can only perform the actions that role actually grants — including trying the restricted actions directly, not just checking that buttons are hidden.
+- Select Create, Edit, or Delete while View is clear and confirm View is selected automatically. Then clear View and confirm every other module action and granular child is cleared.
+- Enable a granular capability and confirm parent View is selected automatically. For capabilities documented as requiring parent Edit, confirm Edit is selected too; least-privilege GRN receiving and load-list operations should retain parent View without broad Edit.
+- Force a permission-save failure and confirm the dialog remains open, gives corrective guidance, and leaves the role's previous permission set unchanged.
 - Confirm assigning a role also grants access to that role's business unit. Removing the final role in that business unit must revoke access, while removing one of several roles must not.
 - Try to delete a system role — should be blocked.
 - Try to delete a custom role that's still assigned to at least one user — should be blocked with a clear message.
@@ -557,7 +562,7 @@ multiple warehouse-specific delivery notes from one action.
 7. **Void** — available any time before Dispatched. This is a hard stop; it will refuse if anything has already been dispatched.
 8. **Add Items** — even after a delivery is Dispatched, more line items can still be added to it (useful for topping up a delivery in flight). Worth testing as a deliberate edge case.
 
-**Who can do it**: edit access to Stock Requests covers Confirm/Queue/Dispatch/Void; receiving actions require a separate receiving permission scoped to whichever warehouse/branch is actually receiving the goods.
+**Who can do it**: edit access to Delivery Notes covers Confirm/Queue/Dispatch/Void; receiving actions also require the granular Receive Delivery Notes permission in the receiving business unit.
 
 **Things to test**:
 
@@ -606,7 +611,7 @@ multiple warehouse-specific delivery notes from one action.
 6. **Complete Picking** → status Done. This is blocked if any line still has an active, unexpired claim, including a claim held by the picker attempting completion — the app will show an error rather than silently completing.
 7. **Cancel Pick List** → status Cancelled. A cancellation reason is optional; leaving it blank stores no reason. Cancelling rolls back any picked-quantity progress on the linked Delivery Note, and if the delivery hadn't been dispatched yet, reverts its status too.
 
-**Who can do it**: edit access to Stock Requests; on top of that, some users are restricted to only see/act on pick lists specifically assigned to them (check whether the test user has this restriction before assuming they should see every open pick list).
+**Who can do it**: edit access to Pick Lists; on top of that, some users are restricted to only see/act on pick lists specifically assigned to them (check whether the test user has this restriction before assuming they should see every open pick list).
 
 **Things to test**:
 

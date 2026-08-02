@@ -51,7 +51,7 @@ const internalError = (message: string, error: unknown) => {
 // PATCH /api/pick-lists/[id]/status
 async function PATCHHandler(request: NextRequest, context: RouteContext) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
+    const unauthorized = await requirePermission(RESOURCES.PICK_LISTS, "edit");
     if (unauthorized) return unauthorized;
 
     const auth = await getPickListAuthContext();

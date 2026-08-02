@@ -27,6 +27,8 @@ export const RESOURCES = {
   TRANSFER_BETWEEN_LOCATIONS: "transfer_between_locations",
   STOCK_ADJUSTMENTS: "stock_adjustments",
   STOCK_REQUESTS: "stock_requests",
+  DELIVERY_NOTES: "delivery_notes",
+  PICK_LISTS: "pick_lists",
   STOCK_TRANSACTIONS: "stock_transactions",
   STOCK_TRANSFORMATIONS: "stock_transformations",
   MANUFACTURING: "manufacturing",
@@ -183,6 +185,18 @@ export const RESOURCE_METADATA: ResourceMetadata[] = [
     key: RESOURCES.STOCK_REQUESTS,
     name: "Stock Transfers",
     description: "Request and fulfill stock items",
+    category: "Inventory",
+  },
+  {
+    key: RESOURCES.DELIVERY_NOTES,
+    name: "Delivery Notes",
+    description: "Manage stock delivery notes and receiving",
+    category: "Inventory",
+  },
+  {
+    key: RESOURCES.PICK_LISTS,
+    name: "Pick Lists",
+    description: "Manage warehouse picking work",
     category: "Inventory",
   },
   {

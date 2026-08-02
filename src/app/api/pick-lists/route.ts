@@ -73,7 +73,7 @@ const toCreatePickListError = (error: unknown) => {
 // GET /api/pick-lists
 async function GETHandler(request: NextRequest) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
+    const unauthorized = await requirePermission(RESOURCES.PICK_LISTS, "view");
     if (unauthorized) return unauthorized;
 
     const auth = await getPickListAuthContext();
@@ -261,7 +261,7 @@ async function GETHandler(request: NextRequest) {
 // POST /api/pick-lists
 async function POSTHandler(request: NextRequest) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
+    const unauthorized = await requirePermission(RESOURCES.PICK_LISTS, "edit");
     if (unauthorized) return unauthorized;
 
     const auth = await getPickListAuthContext();

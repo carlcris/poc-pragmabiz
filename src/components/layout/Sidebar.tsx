@@ -95,13 +95,13 @@ const menuItems = [
       {
         title: "Delivery Notes",
         href: "/inventory/delivery-notes",
-        resource: RESOURCES.STOCK_REQUESTS as Resource,
+        resource: RESOURCES.DELIVERY_NOTES as Resource,
         icon: Truck,
       },
       {
         title: "Pick Lists",
         href: "/inventory/pick-lists",
-        resource: RESOURCES.STOCK_REQUESTS as Resource,
+        resource: RESOURCES.PICK_LISTS as Resource,
         icon: List,
       },
       {

@@ -16,7 +16,7 @@ type RouteContext = {
 // GET /api/pick-lists/[id]
 async function GETHandler(_request: NextRequest, context: RouteContext) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
+    const unauthorized = await requirePermission(RESOURCES.PICK_LISTS, "view");
     if (unauthorized) return unauthorized;
 
     const auth = await getPickListAuthContext();

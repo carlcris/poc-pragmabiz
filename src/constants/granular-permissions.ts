@@ -1,5 +1,16 @@
 export type GranularPermissionAction = "view" | "create" | "edit" | "delete";
 
+export const ROLE_PERMISSION_MUTATION_ERROR_CODES = {
+  FORBIDDEN: "ROLE_PERMISSION_FORBIDDEN",
+  INVALID_ASSIGNMENT: "ROLE_PERMISSION_INVALID_ASSIGNMENT",
+  ROLE_NOT_FOUND: "ROLE_PERMISSION_ROLE_NOT_FOUND",
+  UPDATE_FAILED: "ROLE_PERMISSION_UPDATE_FAILED",
+  VIEW_REQUIRED: "ROLE_PERMISSION_VIEW_REQUIRED",
+} as const;
+
+export type RolePermissionMutationErrorCode =
+  (typeof ROLE_PERMISSION_MUTATION_ERROR_CODES)[keyof typeof ROLE_PERMISSION_MUTATION_ERROR_CODES];
+
 export const GRANULAR_CAPABILITIES = {
   DASHBOARD_TOTAL_SALES: "dashboard.widget.total_sales.view",
   DASHBOARD_TOP_AGENT_SALES: "dashboard.widget.top_agent_sales.view",
@@ -58,8 +69,8 @@ export const GRANULAR_CAPABILITIES = {
   LOAD_LISTS_MARK_IN_TRANSIT: "load_lists.operation.mark_in_transit.edit",
   LOAD_LISTS_MARK_ARRIVED: "load_lists.operation.mark_arrived.edit",
 
-  DELIVERY_NOTE_RECEIVING: "stock_requests.operation.receive_delivery_notes.edit",
-  PICK_LIST_VIEW_ONLY_ASSIGNED: "stock_requests.operation.view_only_assigned_pick_lists.view",
+  DELIVERY_NOTE_RECEIVING: "delivery_notes.operation.receive_delivery_notes.edit",
+  PICK_LIST_VIEW_ONLY_ASSIGNED: "pick_lists.operation.view_only_assigned_pick_lists.view",
   GRN_RECEIVING_START: "goods_receipt_notes.operation.start_receiving.edit",
   GRN_RECEIVING_SAVE: "goods_receipt_notes.operation.save_receiving.edit",
   GRN_RECEIVING_SUBMIT: "goods_receipt_notes.operation.submit_receiving.edit",
@@ -67,6 +78,18 @@ export const GRANULAR_CAPABILITIES = {
 } as const;
 
 export type GranularCapability = (typeof GRANULAR_CAPABILITIES)[keyof typeof GRANULAR_CAPABILITIES];
+
+export const GRANULAR_CAPABILITY_PARENT_ACTION_OVERRIDES: Partial<
+  Record<GranularCapability, GranularPermissionAction>
+> = {
+  [GRANULAR_CAPABILITIES.LOAD_LISTS_LINK_STOCK_REQUISITIONS]: "view",
+  [GRANULAR_CAPABILITIES.LOAD_LISTS_MARK_IN_TRANSIT]: "view",
+  [GRANULAR_CAPABILITIES.LOAD_LISTS_MARK_ARRIVED]: "view",
+  [GRANULAR_CAPABILITIES.GRN_RECEIVING_START]: "view",
+  [GRANULAR_CAPABILITIES.GRN_RECEIVING_SAVE]: "view",
+  [GRANULAR_CAPABILITIES.GRN_RECEIVING_SUBMIT]: "view",
+  [GRANULAR_CAPABILITIES.GRN_RECEIVING_CONFIRM]: "view",
+};
 
 export const PHASE_1_GRANULAR_CAPABILITY_KEYS = Object.values(GRANULAR_CAPABILITIES);
 

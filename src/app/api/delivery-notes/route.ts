@@ -138,7 +138,7 @@ async function GETHandler(request: NextRequest) {
     const receivingOnly = request.nextUrl.searchParams.get("receivingOnly") === "true";
     const unauthorized = receivingOnly
       ? await requireDeliveryNoteReceivingAccess("view")
-      : await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
+      : await requirePermission(RESOURCES.DELIVERY_NOTES, "view");
     if (unauthorized) return unauthorized;
 
     const auth = await getAuthContext();
@@ -209,7 +209,7 @@ async function GETHandler(request: NextRequest) {
 // POST /api/delivery-notes
 async function POSTHandler(request: NextRequest) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
+    const unauthorized = await requirePermission(RESOURCES.DELIVERY_NOTES, "edit");
     if (unauthorized) return unauthorized;
 
     const auth = await getAuthContext();

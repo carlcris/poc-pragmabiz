@@ -756,6 +756,12 @@ INSERT INTO permissions (resource, description, can_view, can_create, can_edit, 
 VALUES ('stock_requests', 'Manage stock requests', true, true, true, true)
 ON CONFLICT (resource) DO NOTHING;
 
+INSERT INTO permissions (resource, description, can_view, can_create, can_edit, can_delete)
+VALUES
+  ('delivery_notes', 'Manage delivery notes and delivery-note receiving', true, true, true, true),
+  ('pick_lists', 'Manage pick lists and warehouse picking', true, true, true, true)
+ON CONFLICT (resource) DO NOTHING;
+
 -- ============================================================================
 -- SEED DATA: Stockman Role and Permissions
 -- ============================================================================
@@ -804,8 +810,10 @@ WITH stockman_permissions(resource, can_view, can_create, can_edit, can_delete) 
     ('dashboard.queue.pick_list.view', true, false, false, false),
     ('dashboard.queue.stock_requests.view', true, false, false, false),
     ('items', true, false, false, false),
-    ('stock_requests.operation.view_only_assigned_pick_lists.view', true, false, false, false),
-    ('stock_requests.operation.receive_delivery_notes.edit', false, false, true, false),
+    ('pick_lists.operation.view_only_assigned_pick_lists.view', true, false, false, false),
+    ('delivery_notes.operation.receive_delivery_notes.edit', false, false, true, false),
+    ('delivery_notes', true, true, true, false),
+    ('pick_lists', true, true, true, false),
     ('load_lists', true, false, false, false),
     ('goods_receipt_notes', true, false, false, false),
     ('goods_receipt_notes.operation.start_receiving.edit', false, false, true, false),
@@ -873,6 +881,14 @@ SET
   description = EXCLUDED.description,
   updated_at = NOW();
 
+DELETE FROM role_permissions rp
+USING roles r, permissions p
+WHERE rp.role_id = r.id
+  AND rp.permission_id = p.id
+  AND r.name = 'Picker'
+  AND r.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+  AND p.resource IN ('stock_requests', 'delivery_notes');
+
 WITH picker_permissions(resource, can_view, can_create, can_edit, can_delete) AS (
   VALUES
     ('dashboard', true, false, false, false),
@@ -881,8 +897,8 @@ WITH picker_permissions(resource, can_view, can_create, can_edit, can_delete) AS
     ('items', true, false, false, false),
     ('warehouses', true, false, false, false),
     ('view_location_stock', true, false, false, false),
-    ('stock_requests.operation.view_only_assigned_pick_lists.view', true, false, false, false),
-    ('stock_requests', true, false, true, false),
+    ('pick_lists.operation.view_only_assigned_pick_lists.view', true, false, false, false),
+    ('pick_lists', true, false, true, false),
     ('stock_transactions', true, false, false, false)
 )
 INSERT INTO role_permissions (
@@ -947,7 +963,64 @@ FROM roles r,
      permissions p
 WHERE rp.role_id = r.id
   AND rp.permission_id = p.id
-  AND p.resource = 'stock_requests.operation.view_only_assigned_pick_lists.view';
+  AND p.resource = 'pick_lists.operation.view_only_assigned_pick_lists.view';
+
+-- Keep seeded granular grants consistent with their required parent actions.
+INSERT INTO role_permissions AS existing_parent (
+  role_id,
+  permission_id,
+  can_view,
+  can_create,
+  can_edit,
+  can_delete
+)
+SELECT
+  child_grant.role_id,
+  parent_permission.id,
+  true,
+  false,
+  true,
+  false
+FROM role_permissions child_grant
+JOIN permissions child_permission
+  ON child_permission.id = child_grant.permission_id
+ AND child_permission.resource = 'delivery_notes.operation.receive_delivery_notes.edit'
+JOIN permissions parent_permission
+  ON parent_permission.resource = 'delivery_notes'
+WHERE child_grant.can_edit IS TRUE
+ON CONFLICT (role_id, permission_id) DO UPDATE
+SET can_view = existing_parent.can_view OR EXCLUDED.can_view,
+    can_create = existing_parent.can_create OR EXCLUDED.can_create,
+    can_edit = existing_parent.can_edit OR EXCLUDED.can_edit,
+    can_delete = existing_parent.can_delete OR EXCLUDED.can_delete;
+
+INSERT INTO role_permissions AS existing_parent (
+  role_id,
+  permission_id,
+  can_view,
+  can_create,
+  can_edit,
+  can_delete
+)
+SELECT
+  child_grant.role_id,
+  parent_permission.id,
+  true,
+  false,
+  false,
+  false
+FROM role_permissions child_grant
+JOIN permissions child_permission
+  ON child_permission.id = child_grant.permission_id
+ AND child_permission.resource = 'pick_lists.operation.view_only_assigned_pick_lists.view'
+JOIN permissions parent_permission
+  ON parent_permission.resource = 'pick_lists'
+WHERE child_grant.can_view IS TRUE
+ON CONFLICT (role_id, permission_id) DO UPDATE
+SET can_view = existing_parent.can_view OR EXCLUDED.can_view,
+    can_create = existing_parent.can_create OR EXCLUDED.can_create,
+    can_edit = existing_parent.can_edit OR EXCLUDED.can_edit,
+    can_delete = existing_parent.can_delete OR EXCLUDED.can_delete;
 
 -- ============================================================================
 -- SEED DATA: User Role Assignments

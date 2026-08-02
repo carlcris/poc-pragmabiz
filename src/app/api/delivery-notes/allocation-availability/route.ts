@@ -20,7 +20,7 @@ type AvailabilityRow = {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 async function POSTHandler(request: NextRequest) {
-  const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
+  const unauthorized = await requirePermission(RESOURCES.DELIVERY_NOTES, "edit");
   if (unauthorized) return unauthorized;
 
   const auth = await getAuthContext();
