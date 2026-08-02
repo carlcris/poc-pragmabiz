@@ -5,8 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { Skeleton } from "@/components/ui/skeleton";
-import { WarehouseFloorMapEditor } from "@/components/warehouses/WarehouseFloorMapEditor";
+import {
+  WarehouseFloorMapEditor,
+  WarehouseFloorMapEditorSkeleton,
+} from "@/components/warehouses/WarehouseFloorMapEditor";
 import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { RESOURCES } from "@/constants/resources";
 import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
@@ -47,7 +49,7 @@ export default function WarehouseFloorMapPage() {
     return (
       <div className="space-y-6">
         <PageHeader title={t("title")} subtitle={t("subtitle")} />
-        <Skeleton className="h-96 w-full" />
+        <WarehouseFloorMapEditorSkeleton />
       </div>
     );
   }
@@ -57,7 +59,7 @@ export default function WarehouseFloorMapPage() {
       <div className="space-y-6">
         <PageHeader title={t("title")} subtitle={t("subtitle")} />
         {isCapabilityLoading ? (
-          <Skeleton className="h-96 w-full" />
+          <WarehouseFloorMapEditorSkeleton />
         ) : (
           <WarehouseFloorMapEditor
             businessUnitId={currentBusinessUnitId}

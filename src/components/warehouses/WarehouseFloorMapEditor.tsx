@@ -39,6 +39,57 @@ type RackOption = {
 
 const FLOOR_MAP_PERMISSION_ERROR_CODES = ["FLOOR_MAP_PERMISSION_DENIED"] as const;
 
+export const WarehouseFloorMapEditorSkeleton = ({ canEdit = true }: { canEdit?: boolean }) => (
+  <div className={canEdit ? "grid gap-6 xl:grid-cols-3" : "space-y-4"}>
+    <Card className={canEdit ? "xl:col-span-2" : undefined}>
+      <CardHeader>
+        <Skeleton className="h-6 w-40" />
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {canEdit ? (
+          <>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <Skeleton className="h-10 w-36" />
+            </div>
+            <Skeleton className="h-4 w-72 max-w-full" />
+          </>
+        ) : null}
+        <Skeleton className="aspect-video w-full" />
+      </CardContent>
+    </Card>
+
+    {canEdit ? (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-28" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-24" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </CardContent>
+        </Card>
+        <Skeleton className="h-10 w-full" />
+      </div>
+    ) : null}
+  </div>
+);
+
 const toPoint = (event: React.PointerEvent<HTMLDivElement>): DrawPoint => {
   const bounds = event.currentTarget.getBoundingClientRect();
   return {
@@ -83,6 +134,8 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
   const [imageWidth, setImageWidth] = useState(0);
   const [imageHeight, setImageHeight] = useState(0);
   const [imageDecodeFailed, setImageDecodeFailed] = useState(false);
+  const [isRenderedImageReady, setIsRenderedImageReady] = useState(false);
+  const [renderedImageFailed, setRenderedImageFailed] = useState(false);
   const [selectedRackId, setSelectedRackId] = useState("");
   const [selectedRackOption, setSelectedRackOption] = useState<RackOption | null>(null);
   const [rackSearch, setRackSearch] = useState("");
@@ -126,9 +179,24 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
 
   useEffect(() => {
     const floorMap = mapQuery.data?.data;
-    if (!floorMap || file) return;
+    if (file || !mapQuery.isSuccess) return;
+    if (!floorMap) {
+      setName("");
+      setPreviewUrl("");
+      setImageWidth(0);
+      setImageHeight(0);
+      setImageDecodeFailed(false);
+      setIsRenderedImageReady(false);
+      setRenderedImageFailed(false);
+      setRacks([]);
+      setDraftRack(null);
+      return;
+    }
     setName(floorMap.name);
     setPreviewUrl(floorMap.imageUrl);
+    setImageDecodeFailed(false);
+    setIsRenderedImageReady(false);
+    setRenderedImageFailed(false);
     setImageWidth(floorMap.imageWidth);
     setImageHeight(floorMap.imageHeight);
     setRacks(
@@ -140,7 +208,7 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
         heightBasisPoints: rack.heightBasisPoints,
       }))
     );
-  }, [file, mapQuery.data?.data]);
+  }, [file, mapQuery.data?.data, mapQuery.isSuccess]);
 
   useEffect(
     () => () => {
@@ -163,6 +231,8 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
     setImageWidth(0);
     setImageHeight(0);
     setImageDecodeFailed(false);
+    setIsRenderedImageReady(false);
+    setRenderedImageFailed(false);
     setRacks([]);
     setDraftRack(null);
 
@@ -261,8 +331,12 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
     }
   };
 
-  if (mapQuery.isLoading) {
-    return <Skeleton className="h-96 w-full" />;
+  const isMapStateHydrating = Boolean(
+    mapQuery.data?.data && !file && previewUrl !== mapQuery.data.data.imageUrl
+  );
+
+  if (mapQuery.isLoading || isMapStateHydrating) {
+    return <WarehouseFloorMapEditorSkeleton canEdit={canEdit} />;
   }
 
   if (mapQuery.error) {
@@ -325,49 +399,70 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
           {previewUrl ? (
             <div
               className={`relative overflow-hidden rounded-md border bg-muted/20 ${
-                canEdit ? "cursor-crosshair touch-none" : ""
+                canEdit && isRenderedImageReady ? "cursor-crosshair touch-none" : ""
               }`}
-              onPointerDown={canEdit ? handleDrawStart : undefined}
-              onPointerMove={canEdit ? handleDrawMove : undefined}
-              onPointerUp={canEdit ? handleDrawEnd : undefined}
-              onPointerCancel={canEdit ? handleDrawCancel : undefined}
+              onPointerDown={canEdit && isRenderedImageReady ? handleDrawStart : undefined}
+              onPointerMove={canEdit && isRenderedImageReady ? handleDrawMove : undefined}
+              onPointerUp={canEdit && isRenderedImageReady ? handleDrawEnd : undefined}
+              onPointerCancel={canEdit && isRenderedImageReady ? handleDrawCancel : undefined}
             >
               <Image
+                key={previewUrl}
                 src={previewUrl}
                 alt={name || t("title")}
                 width={imageWidth || 1200}
                 height={imageHeight || 800}
-                className="h-auto w-full select-none"
+                className={`h-auto w-full select-none transition-opacity ${
+                  isRenderedImageReady ? "opacity-100" : "opacity-0"
+                }`}
                 draggable={false}
                 unoptimized
+                onLoad={() => {
+                  setRenderedImageFailed(false);
+                  setIsRenderedImageReady(true);
+                }}
+                onError={() => {
+                  setIsRenderedImageReady(false);
+                  setRenderedImageFailed(true);
+                }}
               />
-              {[
-                ...racks.filter(
-                  (rack) => rack.warehouseLocationId !== draftRack?.warehouseLocationId
-                ),
-                ...(draftRack ? [draftRack] : []),
-              ].map((rack) => {
-                const location = locationById.get(rack.warehouseLocationId);
-                const isDraft = rack === draftRack;
-                return (
-                  <div
-                    key={`${isDraft ? "draft" : "saved"}-${rack.warehouseLocationId}`}
-                    className={`pointer-events-none absolute flex items-center justify-center border-2 border-primary bg-primary/25 text-xs font-semibold text-primary-foreground shadow-sm ${
-                      isDraft ? "border-dashed" : ""
-                    }`}
-                    style={{
-                      left: `${rack.xBasisPoints / 100}%`,
-                      top: `${rack.yBasisPoints / 100}%`,
-                      width: `${rack.widthBasisPoints / 100}%`,
-                      height: `${rack.heightBasisPoints / 100}%`,
-                    }}
-                  >
-                    <span className="rounded bg-primary px-1 text-primary-foreground">
-                      {location?.code || ""}
-                    </span>
-                  </div>
-                );
-              })}
+              {!isRenderedImageReady && !renderedImageFailed ? (
+                <Skeleton className="absolute inset-0 h-full w-full rounded-none" />
+              ) : null}
+              {renderedImageFailed ? (
+                <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-destructive">
+                  {file ? t("imageDecodeError") : t("loadError")}
+                </div>
+              ) : null}
+              {isRenderedImageReady
+                ? [
+                    ...racks.filter(
+                      (rack) => rack.warehouseLocationId !== draftRack?.warehouseLocationId
+                    ),
+                    ...(draftRack ? [draftRack] : []),
+                  ].map((rack) => {
+                    const location = locationById.get(rack.warehouseLocationId);
+                    const isDraft = rack === draftRack;
+                    return (
+                      <div
+                        key={`${isDraft ? "draft" : "saved"}-${rack.warehouseLocationId}`}
+                        className={`pointer-events-none absolute flex items-center justify-center border-2 border-primary bg-primary/25 text-xs font-semibold text-primary-foreground shadow-sm ${
+                          isDraft ? "border-dashed" : ""
+                        }`}
+                        style={{
+                          left: `${rack.xBasisPoints / 100}%`,
+                          top: `${rack.yBasisPoints / 100}%`,
+                          width: `${rack.widthBasisPoints / 100}%`,
+                          height: `${rack.heightBasisPoints / 100}%`,
+                        }}
+                      >
+                        <span className="rounded bg-primary px-1 text-primary-foreground">
+                          {location?.code || ""}
+                        </span>
+                      </div>
+                    );
+                  })
+                : null}
             </div>
           ) : canEdit ? (
             <button
@@ -475,7 +570,13 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
           <Button
             className="w-full"
             disabled={
-              saveMap.isPending || !previewUrl || !imageWidth || !imageHeight || imageDecodeFailed
+              saveMap.isPending ||
+              !previewUrl ||
+              !imageWidth ||
+              !imageHeight ||
+              imageDecodeFailed ||
+              !isRenderedImageReady ||
+              renderedImageFailed
             }
             onClick={handleSave}
           >
