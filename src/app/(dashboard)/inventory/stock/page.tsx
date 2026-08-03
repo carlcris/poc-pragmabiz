@@ -35,6 +35,7 @@ import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import type { TransactionType } from "@/types/stock-transaction";
+import { formatLocalDateTimeParts } from "@/lib/format-local-date-time";
 
 const StockTransactionDetailDialog = dynamic(
   () =>
@@ -113,16 +114,6 @@ export default function StockTransactionsPage() {
         <Badge variant={config.variant}>{config.label}</Badge>
       </div>
     );
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString(locale, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
   };
 
   const formatQuantity = (value: number) =>
@@ -275,6 +266,10 @@ export default function StockTransactionsPage() {
                 <TableBody>
                   {transactions.map((transaction) => {
                     const warehouseCell = formatWarehouseCell(transaction);
+                    const transactionDateTime = formatLocalDateTimeParts(
+                      transaction.createdAt,
+                      locale
+                    );
 
                     return (
                       <TableRow
@@ -285,8 +280,13 @@ export default function StockTransactionsPage() {
                           setDetailDialogOpen(true);
                         }}
                       >
-                        <TableCell className="font-medium">
-                          {formatDate(transaction.transactionDate)}
+                        <TableCell>
+                          <div className="font-semibold">{transactionDateTime.date}</div>
+                          {transactionDateTime.time ? (
+                            <div className="text-xs text-muted-foreground">
+                              {transactionDateTime.time}
+                            </div>
+                          ) : null}
                         </TableCell>
                         <TableCell>
                           {getTransactionTypeBadge(transaction.transactionType)}
@@ -309,16 +309,16 @@ export default function StockTransactionsPage() {
                             ) : null}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-medium">
-                          <span
+                        <TableCell className="text-right">
+                          <div
                             className={
                               transaction.transactionType === "in"
-                                ? "text-green-600"
+                                ? "font-semibold text-green-600"
                                 : transaction.transactionType === "out"
-                                  ? "text-red-600"
+                                  ? "font-semibold text-red-600"
                                   : transaction.quantity < 0
-                                    ? "text-red-600"
-                                    : "text-green-600"
+                                    ? "font-semibold text-red-600"
+                                    : "font-semibold text-green-600"
                             }
                           >
                             {transaction.transactionType === "in"
@@ -326,8 +326,9 @@ export default function StockTransactionsPage() {
                               : transaction.transactionType === "out"
                                 ? "-"
                                 : ""}
-                            {formatQuantity(Math.abs(transaction.quantity))} {transaction.uom}
-                          </span>
+                            {formatQuantity(Math.abs(transaction.quantity))}
+                          </div>
+                          <div className="text-xs text-muted-foreground">{transaction.uom}</div>
                         </TableCell>
                         <TableCell>
                           <div className="max-w-[260px] text-sm">

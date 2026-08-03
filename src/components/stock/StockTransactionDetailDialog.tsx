@@ -27,6 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { TransactionType } from "@/types/stock-transaction";
+import { formatLocalDateTime } from "@/lib/format-local-date-time";
 
 interface StockTransactionDetailDialogProps {
   open: boolean;
@@ -147,16 +148,6 @@ export function StockTransactionDetailDialog({
       year: "numeric",
       month: "long",
       day: "numeric",
-    });
-  };
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString(locale, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
     });
   };
 
@@ -382,7 +373,9 @@ export function StockTransactionDetailDialog({
                       <Calendar className="h-3 w-3" />
                       {t("createdAt")}:
                     </span>
-                    <span className="font-medium">{formatDateTime(transaction.createdAt)}</span>
+                    <span className="font-medium">
+                      {formatLocalDateTime(transaction.createdAt, locale)}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
