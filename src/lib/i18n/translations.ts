@@ -235,7 +235,7 @@ export type TranslationKeys = {
     assignAtPutaway: string;
     unit: string;
     qtyPerUnit: string;
-    pendingQty: string;
+    totalQty: string;
     status: string;
     statusPending: string;
     statusPartial: string;
@@ -3430,7 +3430,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       assignAtPutaway: "Choose during putaway",
       unit: "Unit",
       qtyPerUnit: "Qty/Unit",
-      pendingQty: "Base Qty",
+      totalQty: "Total Qty",
       status: "Status",
       statusPending: "Pending",
       statusPartial: "Partial",
@@ -9420,7 +9420,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       assignAtPutaway: "上架时选择",
       unit: "单位",
       qtyPerUnit: "每单位数量",
-      pendingQty: "基础数量",
+      totalQty: "总数量",
       status: "状态",
       statusPending: "待处理",
       statusPartial: "部分完成",

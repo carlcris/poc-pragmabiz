@@ -352,9 +352,8 @@ export default function PutawayStationPage() {
                 <TableHead>{t("item")}</TableHead>
                 <TableHead>{t("warehouse")}</TableHead>
                 <TableHead className="text-right">{t("quantity")}</TableHead>
-                <TableHead>{t("unit")}</TableHead>
                 <TableHead className="text-right">{t("qtyPerUnit")}</TableHead>
-                <TableHead className="text-right">{t("pendingQty")}</TableHead>
+                <TableHead className="text-right">{t("totalQty")}</TableHead>
                 <TableHead>{t("status")}</TableHead>
                 <TableHead className="text-right">{t("action")}</TableHead>
               </TableRow>
@@ -362,13 +361,13 @@ export default function PutawayStationPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                     {t("loading")}
                   </TableCell>
                 </TableRow>
               ) : tasks.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
+                  <TableCell colSpan={8} className="h-32 text-center text-muted-foreground">
                     {t("empty")}
                   </TableCell>
                 </TableRow>
@@ -394,12 +393,7 @@ export default function PutawayStationPage() {
                       </TableCell>
                       <TableCell>
                         {task.warehouseId ? (
-                          <>
-                            <div>{task.warehouseName || "-"}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {task.warehouseCode || "-"}
-                            </div>
-                          </>
+                          <span className="font-medium">{task.warehouseCode || "-"}</span>
                         ) : (
                           <span className="text-sm text-muted-foreground">
                             {t("assignAtPutaway")}
@@ -408,9 +402,11 @@ export default function PutawayStationPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="font-medium">{formatQty(sourceQuantity)}</span>
-                      </TableCell>
-                      <TableCell>
-                        <span>{task.sourceUnitName}</span>
+                        {task.sourceUnitName ? (
+                          <span className="ml-1 text-sm uppercase text-muted-foreground">
+                            {task.sourceUnitName}
+                          </span>
+                        ) : null}
                       </TableCell>
                       <TableCell className="text-right">
                         <span>{formatQty(sourceQtyPerUnit)}</span>
@@ -418,7 +414,9 @@ export default function PutawayStationPage() {
                       <TableCell className="text-right">
                         <span className="font-medium">{formatQty(displayQuantity)}</span>
                         {task.uomCode ? (
-                          <span className="ml-1 text-sm text-muted-foreground">{task.uomCode}</span>
+                          <span className="ml-1 text-sm uppercase text-muted-foreground">
+                            {task.uomCode}
+                          </span>
                         ) : null}
                       </TableCell>
                       <TableCell>
@@ -507,7 +505,7 @@ export default function PutawayStationPage() {
                     {selectedTask.sourceReference || selectedTask.sourceType}
                   </div>
                   <div className="mt-2 text-sm">
-                    {t("pendingQty")}:{" "}
+                    {t("totalQty")}:{" "}
                     <span className="font-medium">{formatQty(selectedTask.postedQuantity)}</span>
                     {selectedTask.uomCode ? (
                       <span className="ml-1 text-muted-foreground">{selectedTask.uomCode}</span>
@@ -558,7 +556,7 @@ export default function PutawayStationPage() {
                     {selectedTask.sourceReference || selectedTask.sourceType}
                   </div>
                   <div className="mt-2 text-sm">
-                    {t("pendingQty")}:{" "}
+                    {t("totalQty")}:{" "}
                     <span className="font-medium">{formatQty(selectedTask.pendingQuantity)}</span>
                     {selectedTask.uomCode ? (
                       <span className="ml-1 text-muted-foreground">{selectedTask.uomCode}</span>
