@@ -112,7 +112,7 @@ warehouse locations and does not grant floor-map editing. Inactive warehouses ca
 floor maps. Switching business units while a floor-map detail page is open returns the user to the
 warehouse list without requesting the previous unit's warehouse under the new scope. An editor
 drags a rectangle across the complete footprint of each active rack; the editor shows the rectangle
-while drawing and rejects click-sized marker mappings. Overlay
+while drawing, labels the rack by name along its long axis, and rejects click-sized marker mappings. Overlay
 coordinates are stored as normalized basis points, so the same full-rack highlights remain aligned
 across desktop and mobile screen sizes. The mobile picking viewer labels all mapped racks by rack
 name along their long axis and scales each label to its rectangle. Replacement-image dimensions are

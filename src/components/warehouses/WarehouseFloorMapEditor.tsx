@@ -443,10 +443,18 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
                   ].map((rack) => {
                     const location = locationById.get(rack.warehouseLocationId);
                     const isDraft = rack === draftRack;
+                    const isVerticalRack =
+                      rack.widthBasisPoints > 0 && rack.heightBasisPoints > rack.widthBasisPoints;
+                    const labelWidthPercent = isVerticalRack
+                      ? (rack.heightBasisPoints / rack.widthBasisPoints) * 100
+                      : 100;
+                    const labelHeightPercent = isVerticalRack
+                      ? (rack.widthBasisPoints / rack.heightBasisPoints) * 100
+                      : 100;
                     return (
                       <div
                         key={`${isDraft ? "draft" : "saved"}-${rack.warehouseLocationId}`}
-                        className={`pointer-events-none absolute flex items-center justify-center border-2 border-primary bg-primary/25 text-xs font-semibold text-primary-foreground shadow-sm ${
+                        className={`pointer-events-none absolute overflow-hidden border-2 border-primary bg-primary/25 text-xs font-semibold text-primary-foreground shadow-sm ${
                           isDraft ? "border-dashed" : ""
                         }`}
                         style={{
@@ -456,9 +464,20 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
                           height: `${rack.heightBasisPoints / 100}%`,
                         }}
                       >
-                        <span className="rounded bg-primary px-1 text-primary-foreground">
-                          {location?.code || ""}
-                        </span>
+                        <div
+                          className="absolute left-1/2 top-1/2 flex items-center justify-center"
+                          style={{
+                            width: `${labelWidthPercent}%`,
+                            height: `${labelHeightPercent}%`,
+                            transform: `translate(-50%, -50%)${
+                              isVerticalRack ? " rotate(-90deg)" : ""
+                            }`,
+                          }}
+                        >
+                          <span className="max-w-full truncate text-primary">
+                            {location?.name || location?.code || ""}
+                          </span>
+                        </div>
                       </div>
                     );
                   })
