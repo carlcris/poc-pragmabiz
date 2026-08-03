@@ -140,6 +140,7 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
   const [selectedRackOption, setSelectedRackOption] = useState<RackOption | null>(null);
   const [rackSearch, setRackSearch] = useState("");
   const [racks, setRacks] = useState<WarehouseFloorMapRackInput[]>([]);
+  const [mappedRackMetadata, setMappedRackMetadata] = useState<Record<string, RackOption>>({});
   const [draftRack, setDraftRack] = useState<WarehouseFloorMapRackInput | null>(null);
   const debouncedRackSearch = useDebouncedValue(rackSearch.trim(), 300);
   const rackLookup = useLookupWarehouseLocations(canEdit ? warehouseId : null, {
@@ -170,11 +171,12 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
       new Map(
         [
           ...mappedRackOptions,
+          ...Object.values(mappedRackMetadata),
           ...rackOptions,
           ...(selectedRackOption ? [selectedRackOption] : []),
         ].map((location) => [location.id, location])
       ),
-    [mappedRackOptions, rackOptions, selectedRackOption]
+    [mappedRackMetadata, mappedRackOptions, rackOptions, selectedRackOption]
   );
 
   useEffect(() => {
@@ -189,6 +191,7 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
       setIsRenderedImageReady(false);
       setRenderedImageFailed(false);
       setRacks([]);
+      setMappedRackMetadata({});
       setDraftRack(null);
       return;
     }
@@ -207,6 +210,18 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
         widthBasisPoints: rack.widthBasisPoints,
         heightBasisPoints: rack.heightBasisPoints,
       }))
+    );
+    setMappedRackMetadata(
+      Object.fromEntries(
+        floorMap.racks.map((rack) => [
+          rack.warehouseLocationId,
+          {
+            id: rack.warehouseLocationId,
+            code: rack.locationCode,
+            name: rack.locationName,
+          },
+        ])
+      )
     );
   }, [file, mapQuery.data?.data, mapQuery.isSuccess]);
 
@@ -287,6 +302,16 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
       ...current.filter((rack) => rack.warehouseLocationId !== selectedRackId),
       mapping,
     ]);
+    const selectedLocation =
+      selectedRackOption ||
+      rackOptions.find((rack) => rack.id === selectedRackId) ||
+      mappedRackOptions.find((rack) => rack.id === selectedRackId);
+    if (selectedLocation) {
+      setMappedRackMetadata((current) => ({
+        ...current,
+        [selectedRackId]: selectedLocation,
+      }));
+    }
   };
 
   const handleDrawCancel = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -568,14 +593,19 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
                         size="icon"
                         variant="ghost"
                         aria-label={t("removeMapping")}
-                        onClick={() =>
+                        onClick={() => {
                           setRacks((current) =>
                             current.filter(
                               (candidate) =>
                                 candidate.warehouseLocationId !== rack.warehouseLocationId
                             )
-                          )
-                        }
+                          );
+                          setMappedRackMetadata((current) => {
+                            const next = { ...current };
+                            delete next[rack.warehouseLocationId];
+                            return next;
+                          });
+                        }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

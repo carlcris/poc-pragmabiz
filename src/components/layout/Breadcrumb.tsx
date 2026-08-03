@@ -20,6 +20,7 @@ export function Breadcrumb() {
   const tReports = useTranslations("reportsPage");
   const tAdminSettingsIndex = useTranslations("adminSettings.index");
   const tAdminSettingsPages = useTranslations("adminSettings.pages");
+  const tWarehouses = useTranslations("warehousesPage");
   const pathname = usePathname();
   const pathSegments = pathname.split("/").filter(Boolean);
 
@@ -46,6 +47,8 @@ export function Breadcrumb() {
     transformationOrderIdSchema.safeParse(lastSegment).success;
   const isWarehouseLocations =
     lastSegment === "locations" && pathSegments[pathSegments.length - 3] === "warehouses";
+  const isWarehouseFloorMap =
+    lastSegment === "floor-map" && pathSegments[pathSegments.length - 3] === "warehouses";
   const isTransformationTemplateDesigner =
     pathname === "/manufacturing/transformations/templates/design";
   const isAdminSettingsPage =
@@ -86,6 +89,7 @@ export function Breadcrumb() {
     !isSupplierDetail &&
     !isCustomerDetail &&
     !isWarehouseLocations &&
+    !isWarehouseFloorMap &&
     !!parentSegment &&
     (isAdminSettingsPage ? parentSegment in adminSettingsLabelMap : t.has(parentSegment));
   const isReportChildPage = parentSegment === "reports" && pathSegments.length >= 2;
@@ -261,7 +265,7 @@ export function Breadcrumb() {
     );
   }
 
-  if (isWarehouseLocations) {
+  if (isWarehouseLocations || isWarehouseFloorMap) {
     return (
       <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
         <Link
@@ -275,10 +279,12 @@ export function Breadcrumb() {
           href="/inventory/warehouses"
           className="flex items-center font-medium transition-colors hover:text-foreground"
         >
-          {t("Warehouse")}
+          {t("Warehouses")}
         </Link>
         <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
-        <span className="font-medium text-foreground">{t("Location")}</span>
+        <span className="font-medium text-foreground">
+          {isWarehouseFloorMap ? tWarehouses("floorMap") : t("Location")}
+        </span>
       </nav>
     );
   }

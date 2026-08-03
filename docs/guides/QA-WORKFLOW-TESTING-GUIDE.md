@@ -642,7 +642,9 @@ multiple warehouse-specific delivery notes from one action.
   and **View Map** on the mobile pick line highlights the complete rack with a blinking red overlay
   rather than showing a point marker. Confirm both the editor and mobile viewer show each mapped
   rack's name inside the rectangle, run labels along the rack's long axis without overflowing, and
-  stop the blinking highlight when the viewer closes.
+  stop the blinking highlight when the viewer closes. Before saving, map several racks, search for
+  and select another rack, and confirm the earlier unsaved rack labels and Mapped racks entries remain
+  visible.
   Verify the buttons and two-finger pinch both zoom smoothly between 100% and 500%, one-finger
   horizontal/vertical navigation still works, and the image and highlight remain aligned. Rotate
   through all four 90-degree orientations and confirm the quarter-turn canvas is not clipped and
