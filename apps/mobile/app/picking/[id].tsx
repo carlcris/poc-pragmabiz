@@ -171,14 +171,14 @@ export default function PickingDetailScreen() {
   const isFocused = useScreenFocusState();
   const session = useAuthStore((state) => state.session);
   const canViewPicking = canAccessPicking(session);
+  const [mapPickListItemId, setMapPickListItemId] = useState<string | null>(null);
   const pickList = usePickList(id, canViewPicking && isFocused);
-  usePickListRealtime(id, canViewPicking && isFocused);
+  usePickListRealtime(id, canViewPicking && isFocused && mapPickListItemId === null);
   const setStatus = useSetPickListStatus(id);
   const recordPickProgress = useRecordPickProgress(id);
   const completePickList = useCompletePickList(id);
   const [barcode, setBarcode] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [mapPickListItemId, setMapPickListItemId] = useState<string | null>(null);
   const [verifiedItemId, setVerifiedItemId] = useState<string | null>(null);
   const [currentPickSource, setCurrentPickSource] = useState<PickSource | null>(null);
   const [pickedQtyText, setPickedQtyText] = useState("");
@@ -245,6 +245,11 @@ export default function PickingDetailScreen() {
     setOperationId(null);
     setBarcode("");
   }, []);
+
+  const closeLocationMap = () => {
+    setMapPickListItemId(null);
+    void pickList.refetch();
+  };
 
   const executePendingConfirmation = useCallback(
     async (pending: PendingPickConfirmation, renewBeforeSubmit: boolean) => {
@@ -781,7 +786,7 @@ export default function PickingDetailScreen() {
         visible={mapPickListItemId !== null}
         pickListId={id}
         pickListItemId={mapPickListItemId}
-        onClose={() => setMapPickListItemId(null)}
+        onClose={closeLocationMap}
       />
     </Screen>
   );
