@@ -2259,11 +2259,9 @@ export type TranslationKeys = {
     loadList: string;
     item: string;
     supplier: string;
-    sourceBusinessUnit: string;
-    shipmentReference: string;
+    shipment: string;
     estimatedArrival: string;
     shipmentQuantity: string;
-    baseQuantity: string;
     notAvailable: string;
     emptyTitle: string;
     emptyDescription: string;
@@ -2271,6 +2269,7 @@ export type TranslationKeys = {
     noSearchResultsDescription: string;
     loadErrorTitle: string;
     loadErrorMessage: string;
+    loadingError: string;
     retry: string;
   };
   itemLedger: {
@@ -5583,11 +5582,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       loadList: "Load List",
       item: "Item",
       supplier: "Supplier",
-      sourceBusinessUnit: "Source Business Unit",
-      shipmentReference: "Shipment Reference",
+      shipment: "Shipment",
       estimatedArrival: "Estimated Arrival",
       shipmentQuantity: "Shipment Quantity",
-      baseQuantity: "Base Quantity",
       notAvailable: "--",
       emptyTitle: "No stock is currently in transit",
       emptyDescription:
@@ -5596,6 +5593,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       noSearchResultsDescription: "Try a different load list, item, or supplier search.",
       loadErrorTitle: "Unable to load stock in transit",
       loadErrorMessage: "The shipment pipeline could not be loaded. Please try again.",
+      loadingError: "Unable to load stock in transit",
       retry: "Retry",
     },
     itemLedger: {
@@ -11530,11 +11528,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       loadList: "装载单",
       item: "商品",
       supplier: "供应商",
-      sourceBusinessUnit: "来源业务单元",
-      shipmentReference: "运输参考",
+      shipment: "运输",
       estimatedArrival: "预计到达",
       shipmentQuantity: "运输数量",
-      baseQuantity: "基本单位数量",
       notAvailable: "--",
       emptyTitle: "当前没有在途库存",
       emptyDescription: "供应商货物标记为运输中后，将显示在此处。",
@@ -11542,6 +11538,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       noSearchResultsDescription: "请尝试其他装载单、商品或供应商搜索条件。",
       loadErrorTitle: "无法加载在途库存",
       loadErrorMessage: "无法加载运输流程，请重试。",
+      loadingError: "无法加载在途库存",
       retry: "重试",
     },
     itemLedger: {

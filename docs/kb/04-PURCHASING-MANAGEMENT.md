@@ -533,9 +533,9 @@ The Link Stock Requisitions dialog requires `load_lists.view` plus `load_lists.o
 Mark In Transit requires `load_lists.view` plus `load_lists.operation.mark_in_transit.edit`. The transition locks the confirmed load list and changes the supplier shipment status atomically. It does not assign a warehouse or write warehouse-level in-transit stock because the physical receiving location is not known yet.
 
 The inventory **Stock In Transit** page reads active in-transit load-list lines for the selected
-destination business unit. It is searched and paginated on the server, shows the source business
-unit, supplier, item, shipment quantity and base-unit quantity, and uses the load list's estimated
-arrival and shipment references. Transit quantities and ETA are not copied into `item_warehouse`.
+destination business unit. It is searched and paginated on the server and shows the load list,
+supplier name, item, shipment details, estimated arrival, and shipment quantity. Transit quantities
+and ETA are not copied into `item_warehouse`.
 
 Mark Arrived requires `load_lists.view` plus `load_lists.operation.mark_arrived.edit`; Stockman receives this capability by default. The transition locks the in-transit load list, records its arrival date, and creates the target-business-unit GRN and all GRN lines in one transaction. A failure at any point leaves the load list in transit without a partial GRN.
 

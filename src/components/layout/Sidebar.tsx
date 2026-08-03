@@ -19,6 +19,7 @@ import {
   Settings,
   ClipboardList,
   Truck,
+  TruckElectric,
   List,
   Repeat,
   AlertCircle,
@@ -60,7 +61,7 @@ const menuItems = [
         title: "Stock In Transit",
         href: "/inventory/stock-in-transit",
         resource: RESOURCES.ITEMS as Resource,
-        icon: Truck,
+        icon: TruckElectric,
       },
       {
         title: "Warehouses",
