@@ -284,10 +284,10 @@ export const ItemUnitOptionsCard = ({
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono">
+                      <TableCell className="tabular-nums">
                         {unitOption.qtyPerUnit} {baseUomCode}
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{unitOption.barcode}</TableCell>
+                      <TableCell className="tabular-nums text-xs">{unitOption.barcode}</TableCell>
                       <TableCell>
                         <span
                           className={

@@ -1064,7 +1064,7 @@ export function QuotationLineItemDialog({
                                   {moldingCutPlan.sticks.slice(0, 8).map((stick, index) => (
                                     <div
                                       key={`${stick.usedLength}-${index}`}
-                                      className="font-mono text-muted-foreground"
+                                      className="tabular-nums text-muted-foreground"
                                     >
                                       Stick {index + 1}: {stick.cuts.join(" + ")} ={" "}
                                       {stick.usedLength.toFixed(2)}

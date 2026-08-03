@@ -747,14 +747,14 @@ export default function TabletPickingDetailPage() {
                       {currentItem.suggestedPickBatchCode ? (
                         <div>
                           Batch:{" "}
-                          <span className="font-mono">{currentItem.suggestedPickBatchCode}</span>
+                          <span className="tabular-nums">{currentItem.suggestedPickBatchCode}</span>
                         </div>
                       ) : null}
                     </div>
                     {currentItem.scannedBatchLocationSku ? (
                       <div className="mt-1 text-xs text-blue-800">
                         Location SKU:{" "}
-                        <span className="font-mono">{currentItem.scannedBatchLocationSku}</span>
+                        <span className="tabular-nums">{currentItem.scannedBatchLocationSku}</span>
                       </div>
                     ) : null}
                   </div>
@@ -772,7 +772,7 @@ export default function TabletPickingDetailPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Barcode</span>
-                      <span className="font-mono font-medium">
+                      <span className="tabular-nums font-medium">
                         {currentItem.barcode || currentItem.matchedScanCode}
                       </span>
                     </div>

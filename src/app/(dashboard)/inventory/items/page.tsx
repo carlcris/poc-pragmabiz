@@ -740,7 +740,7 @@ function ItemsPageContent() {
                           />
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono font-medium">{item.code}</TableCell>
+                      <TableCell className="tabular-nums font-medium">{item.code}</TableCell>
                       <TableCell className="w-72 max-w-72 whitespace-normal break-words text-primary">
                         <div className="font-medium leading-snug hover:underline" title={item.name}>
                           {item.name}

@@ -333,7 +333,7 @@ export default function StockLevelsPage() {
                             {item.itemName}
                           </h3>
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="rounded bg-white px-1.5 py-0.5 font-mono text-[10px] text-gray-600">
+                            <span className="rounded bg-white px-1.5 py-0.5 tabular-nums text-[10px] text-gray-600">
                               {item.itemCode}
                             </span>
                             {item.categoryName && (

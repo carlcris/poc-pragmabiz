@@ -1223,7 +1223,7 @@ export default function DeliveryNotesPage() {
                               onCheckedChange={(checked) => toggleLine(line, checked === true)}
                             />
                           </TableCell>
-                          <TableCell className="font-mono text-xs">{line.requestCode}</TableCell>
+                          <TableCell className="tabular-nums text-xs">{line.requestCode}</TableCell>
                           <TableCell className="w-48 max-w-48 whitespace-normal text-sm">
                             <div className="break-words font-medium leading-snug">
                               {line.itemName}

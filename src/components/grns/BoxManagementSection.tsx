@@ -225,7 +225,7 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
                         {itemBoxes.map((box) => (
                           <TableRow key={box.id}>
                             <TableCell className="font-medium">#{box.boxNumber}</TableCell>
-                            <TableCell className="font-mono text-xs">{box.barcode}</TableCell>
+                            <TableCell className="tabular-nums text-xs">{box.barcode}</TableCell>
                             <TableCell className="text-right">{box.qtyPerBox}</TableCell>
                           </TableRow>
                         ))}

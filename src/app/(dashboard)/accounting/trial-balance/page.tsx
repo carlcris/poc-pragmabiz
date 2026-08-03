@@ -190,17 +190,17 @@ export default function TrialBalancePage() {
                   <>
                     {trialBalance.accounts.map((account) => (
                       <TableRow key={account.accountNumber}>
-                        <TableCell className="font-mono">{account.accountNumber}</TableCell>
+                        <TableCell className="tabular-nums">{account.accountNumber}</TableCell>
                         <TableCell>{account.accountName}</TableCell>
                         <TableCell>
                           <Badge className={getAccountTypeBadgeColor(account.accountType)}>
                             {account.accountType.toUpperCase()}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="text-right tabular-nums">
                           {account.debit > 0 ? formatCurrency(account.debit) : t("notAvailable")}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="text-right tabular-nums">
                           {account.credit > 0 ? formatCurrency(account.credit) : t("notAvailable")}
                         </TableCell>
                       </TableRow>
@@ -208,10 +208,10 @@ export default function TrialBalancePage() {
                     {/* Totals Row */}
                     <TableRow className="bg-muted/50 font-bold">
                       <TableCell colSpan={3}>{t("total")}</TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right tabular-nums">
                         {formatCurrency(trialBalance.totalDebits)}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right tabular-nums">
                         {formatCurrency(trialBalance.totalCredits)}
                       </TableCell>
                     </TableRow>

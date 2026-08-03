@@ -313,7 +313,7 @@ export default function POSTransactionsPage() {
                     className="cursor-pointer"
                     onClick={() => setSelectedTransactionId(transaction.id)}
                   >
-                    <TableCell className="font-mono font-medium">
+                    <TableCell className="tabular-nums font-medium">
                       {transaction.transactionNumber}
                     </TableCell>
                     <TableCell>{formatDateTime(transaction.transactionDate)}</TableCell>

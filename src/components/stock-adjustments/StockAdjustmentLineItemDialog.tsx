@@ -540,7 +540,7 @@ export function StockAdjustmentLineItemDialog({
                             <Check
                               className={`h-4 w-4 ${selected ? "opacity-100" : "opacity-0"}`}
                             />
-                            <span className="font-mono text-xs text-gray-500">{entry.code}</span>
+                            <span className="tabular-nums text-xs text-gray-500">{entry.code}</span>
                             <span>•</span>
                             <span>{entry.name}</span>
                           </div>

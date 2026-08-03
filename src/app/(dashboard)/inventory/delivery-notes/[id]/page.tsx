@@ -945,7 +945,7 @@ export default function DeliveryNoteDetailPage() {
 
                       return (
                         <TableRow key={item.id}>
-                          <TableCell className="font-mono text-xs text-muted-foreground">
+                          <TableCell className="tabular-nums text-xs text-muted-foreground">
                             {requestLabel(item)}
                           </TableCell>
                           <TableCell>
@@ -1240,7 +1240,7 @@ export default function DeliveryNoteDetailPage() {
                             {exceptionUomLabel(exception)}
                           </span>
                         </TableCell>
-                        <TableCell className="font-mono text-xs">{exception.box_id}</TableCell>
+                        <TableCell className="tabular-nums text-xs">{exception.box_id}</TableCell>
                         <TableCell className="text-right font-medium">
                           {formatQty(toNumber(exception.accepted_qty))}
                         </TableCell>
@@ -1752,7 +1752,7 @@ export default function DeliveryNoteDetailPage() {
                   )}
                   {filteredAllocatableItems.map((item) => (
                     <TableRow key={item.srItemId}>
-                      <TableCell className="font-mono text-xs">{item.requestCode}</TableCell>
+                      <TableCell className="tabular-nums text-xs">{item.requestCode}</TableCell>
                       <TableCell>
                         <div className="font-medium">
                           {item.itemName || item.itemCode || t("unknownItem")}

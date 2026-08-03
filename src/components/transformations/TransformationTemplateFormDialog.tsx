@@ -580,7 +580,7 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
                         <TableBody>
                           {inputs.map((input, index) => (
                             <TableRow key={index}>
-                              <TableCell className="font-mono text-xs">{input.itemCode}</TableCell>
+                              <TableCell className="tabular-nums text-xs">{input.itemCode}</TableCell>
                               <TableCell className="font-medium">{input.itemName}</TableCell>
                               <TableCell className="text-right font-semibold">
                                 {input.quantity}
@@ -671,7 +671,7 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
                         <TableBody>
                           {outputs.map((output, index) => (
                             <TableRow key={index}>
-                              <TableCell className="font-mono text-xs">{output.itemCode}</TableCell>
+                              <TableCell className="tabular-nums text-xs">{output.itemCode}</TableCell>
                               <TableCell className="font-medium">{output.itemName}</TableCell>
                               <TableCell className="text-right font-semibold">
                                 {output.quantity}

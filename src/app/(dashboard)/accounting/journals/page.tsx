@@ -263,7 +263,7 @@ export default function JournalsPage() {
             ) : (
               journals.map((journal) => (
                 <TableRow key={journal.id}>
-                  <TableCell className="font-mono font-medium">{journal.journalCode}</TableCell>
+                  <TableCell className="tabular-nums font-medium">{journal.journalCode}</TableCell>
                   <TableCell>
                     {new Date(journal.postingDate).toLocaleDateString(locale, {
                       year: "numeric",
@@ -272,14 +272,14 @@ export default function JournalsPage() {
                     })}
                   </TableCell>
                   <TableCell>{getSourceModuleBadge(journal.sourceModule)}</TableCell>
-                  <TableCell className="font-mono text-sm">
+                  <TableCell className="tabular-nums text-sm">
                     {journal.referenceCode || "-"}
                   </TableCell>
                   <TableCell className="max-w-xs truncate">{journal.description || "-"}</TableCell>
-                  <TableCell className="text-right font-mono">
+                  <TableCell className="text-right tabular-nums">
                     {formatCurrency(Number(journal.totalDebit))}
                   </TableCell>
-                  <TableCell className="text-right font-mono">
+                  <TableCell className="text-right tabular-nums">
                     {formatCurrency(Number(journal.totalCredit))}
                   </TableCell>
                   <TableCell>{getStatusBadge(journal.status)}</TableCell>

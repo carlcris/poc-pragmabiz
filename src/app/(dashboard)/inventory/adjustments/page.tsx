@@ -742,7 +742,7 @@ export default function StockAdjustmentsPage() {
                                 {item.batchCode || item.batchLocationSku || t("noLocation")}
                               </div>
                               {item.batchLocationSku && (
-                                <div className="font-mono text-xs text-muted-foreground">
+                                <div className="tabular-nums text-xs text-muted-foreground">
                                   {item.batchLocationSku}
                                 </div>
                               )}

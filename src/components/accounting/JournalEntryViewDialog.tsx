@@ -119,7 +119,7 @@ export function JournalEntryViewDialog({
             </div>
             <div>
               <div className="text-sm text-muted-foreground">{t("referenceCode")}</div>
-              <div className="font-mono font-semibold">
+              <div className="tabular-nums font-semibold">
                 {journal.referenceCode || tCommon("no")}
               </div>
             </div>
@@ -147,18 +147,18 @@ export function JournalEntryViewDialog({
                 <TableBody>
                   {journal.lines.map((line) => (
                     <TableRow key={line.id}>
-                      <TableCell className="text-center font-mono">{line.lineNumber}</TableCell>
+                      <TableCell className="text-center tabular-nums">{line.lineNumber}</TableCell>
                       <TableCell>
                         <div className="font-medium">{line.account?.accountName}</div>
-                        <div className="font-mono text-sm text-muted-foreground">
+                        <div className="tabular-nums text-sm text-muted-foreground">
                           {line.account?.accountNumber}
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">{line.description || tCommon("no")}</TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right tabular-nums">
                         {line.debit > 0 ? formatCurrency(line.debit) : "-"}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right tabular-nums">
                         {line.credit > 0 ? formatCurrency(line.credit) : "-"}
                       </TableCell>
                     </TableRow>
@@ -167,10 +167,10 @@ export function JournalEntryViewDialog({
                     <TableCell colSpan={3} className="text-right">
                       {t("totals")}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right tabular-nums">
                       {formatCurrency(journal.totalDebit)}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right tabular-nums">
                       {formatCurrency(journal.totalCredit)}
                     </TableCell>
                   </TableRow>

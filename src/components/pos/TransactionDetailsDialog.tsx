@@ -70,7 +70,7 @@ export function TransactionDetailsDialog({
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="text-muted-foreground">{t("transactionNumber")}</span>
-                  <div className="font-mono font-medium">{transaction.transactionNumber}</div>
+                  <div className="tabular-nums font-medium">{transaction.transactionNumber}</div>
                 </div>
                 <div>
                   <span className="text-muted-foreground">{t("dateTime")}</span>

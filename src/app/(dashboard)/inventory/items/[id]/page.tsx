@@ -546,7 +546,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       <p className="text-xs font-medium text-muted-foreground">
                         {t("itemCodeLabel")}
                       </p>
-                      <p className="font-mono font-medium">{item.code}</p>
+                      <p className="tabular-nums font-medium">{item.code}</p>
                     </div>
                   </div>
 
@@ -570,7 +570,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       <p className="text-xs font-medium text-muted-foreground">
                         {t("supplierCodeLabel")}
                       </p>
-                      <p className="font-mono font-medium">{item.supplierCode || "-"}</p>
+                      <p className="tabular-nums font-medium">{item.supplierCode || "-"}</p>
                     </div>
                   </div>
 
@@ -676,7 +676,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       <p className="text-center text-sm text-muted-foreground">
                         {t("primaryBarcodeDescription")}
                       </p>
-                      <p className="rounded bg-muted px-3 py-2 text-center font-mono text-sm font-medium">
+                      <p className="rounded bg-muted px-3 py-2 text-center tabular-nums text-sm font-medium">
                         {item.primaryBarcode}
                       </p>
                     </div>

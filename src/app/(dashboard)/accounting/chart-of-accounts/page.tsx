@@ -213,7 +213,7 @@ export default function ChartOfAccountsPage() {
             ) : (
               accounts.map((account) => (
                 <TableRow key={account.id}>
-                  <TableCell className="font-mono">{account.accountNumber}</TableCell>
+                  <TableCell className="tabular-nums">{account.accountNumber}</TableCell>
                   <TableCell className="font-medium">
                     <div style={{ paddingLeft: `${(account.level - 1) * 20}px` }}>
                       {account.accountName}

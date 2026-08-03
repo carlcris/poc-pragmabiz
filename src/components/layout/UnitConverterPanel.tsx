@@ -322,7 +322,7 @@ export function UnitConverterPanel({ open, onClose }: UnitConverterPanelProps) {
                 <SelectTrigger id="unit-converter-mode" className="h-9">
                   <SelectValue>
                     <span className="flex items-center gap-2 text-sm truncate">
-                      <span className="font-mono text-xs font-semibold text-primary shrink-0">
+                      <span className="tabular-nums text-xs font-semibold text-primary shrink-0">
                         {currentModeOption?.icon}
                       </span>
                       <span className="truncate">{currentModeOption?.label}</span>
@@ -333,7 +333,7 @@ export function UnitConverterPanel({ open, onClose }: UnitConverterPanelProps) {
                   {conversionModeOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       <span className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-semibold text-primary shrink-0">
+                        <span className="tabular-nums text-xs font-semibold text-primary shrink-0">
                           {option.icon}
                         </span>
                         <span className="truncate">{option.label}</span>

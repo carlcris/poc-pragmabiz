@@ -241,7 +241,7 @@ export default function GeneralLedgerPage() {
                     {t("openingBalance")}
                   </TableCell>
                   <TableCell
-                    className={`text-right font-mono font-semibold ${getBalanceColor(ledger.openingBalance)}`}
+                    className={`text-right tabular-nums font-semibold ${getBalanceColor(ledger.openingBalance)}`}
                   >
                     {formatCurrency(ledger.openingBalance)}
                   </TableCell>
@@ -264,24 +264,24 @@ export default function GeneralLedgerPage() {
                           day: "numeric",
                         })}
                       </TableCell>
-                      <TableCell className="font-mono">{entry.journalCode}</TableCell>
+                      <TableCell className="tabular-nums">{entry.journalCode}</TableCell>
                       <TableCell className="max-w-xs truncate">
                         {entry.description || t("notAvailable")}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{entry.sourceModule}</Badge>
                       </TableCell>
-                      <TableCell className="font-mono text-sm">
+                      <TableCell className="tabular-nums text-sm">
                         {entry.referenceCode || t("notAvailable")}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right tabular-nums">
                         {entry.debit > 0 ? formatCurrency(entry.debit) : "-"}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right tabular-nums">
                         {entry.credit > 0 ? formatCurrency(entry.credit) : "-"}
                       </TableCell>
                       <TableCell
-                        className={`text-right font-mono font-semibold ${getBalanceColor(entry.balance)}`}
+                        className={`text-right tabular-nums font-semibold ${getBalanceColor(entry.balance)}`}
                       >
                         {formatCurrency(entry.balance)}
                       </TableCell>
@@ -292,14 +292,14 @@ export default function GeneralLedgerPage() {
                 {/* Closing Balance Row */}
                 <TableRow className="bg-muted/50 font-bold">
                   <TableCell colSpan={5}>{t("closingBalance")}</TableCell>
-                  <TableCell className="text-right font-mono">
+                  <TableCell className="text-right tabular-nums">
                     {formatCurrency(ledger.totalDebits)}
                   </TableCell>
-                  <TableCell className="text-right font-mono">
+                  <TableCell className="text-right tabular-nums">
                     {formatCurrency(ledger.totalCredits)}
                   </TableCell>
                   <TableCell
-                    className={`text-right font-mono font-semibold ${getBalanceColor(ledger.closingBalance)}`}
+                    className={`text-right tabular-nums font-semibold ${getBalanceColor(ledger.closingBalance)}`}
                   >
                     {formatCurrency(ledger.closingBalance)}
                   </TableCell>

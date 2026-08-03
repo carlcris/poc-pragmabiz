@@ -504,7 +504,7 @@ export function StockAdjustmentFormDialog({
                                     <div className="font-medium">
                                       {item.batchCode || item.batchLocationSku}
                                     </div>
-                                    <div className="font-mono text-xs text-muted-foreground">
+                                    <div className="tabular-nums text-xs text-muted-foreground">
                                       {item.batchLocationSku}
                                     </div>
                                     {(item.batchLocationCode || item.batchLocationName) && (

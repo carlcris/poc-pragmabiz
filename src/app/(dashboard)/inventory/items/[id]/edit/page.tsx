@@ -851,7 +851,7 @@ function EditItemContent({ params }: EditItemPageProps) {
                   <p className="text-center text-sm text-muted-foreground">
                     {t("primaryBarcodeDescription")}
                   </p>
-                  <p className="rounded bg-muted px-3 py-2 text-center font-mono text-sm font-medium">
+                  <p className="rounded bg-muted px-3 py-2 text-center tabular-nums text-sm font-medium">
                     {primaryBarcode}
                   </p>
                 </div>

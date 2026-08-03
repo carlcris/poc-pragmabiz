@@ -199,7 +199,7 @@ export const CustomerSpecialPricesTab = ({
                         <p className="font-medium">{price.itemName}</p>
                         <p className="text-xs text-muted-foreground">{price.itemCode}</p>
                       </TableCell>
-                      <TableCell className="font-mono font-medium uppercase">
+                      <TableCell className="tabular-nums font-medium uppercase">
                         {price.priceTier}
                       </TableCell>
                       <TableCell className="text-right font-medium">{formatPrice(price)}</TableCell>

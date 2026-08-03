@@ -168,7 +168,7 @@ export const PricesTab = ({ itemId, readOnly = false }: PricesTabProps) => {
                     const isCurrent = isCurrentPrice(price);
                     return (
                       <TableRow key={price.id}>
-                        <TableCell className="font-mono font-medium">
+                        <TableCell className="tabular-nums font-medium">
                           <div className="flex items-center gap-2">
                             {isCurrent && (
                               <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -177,7 +177,7 @@ export const PricesTab = ({ itemId, readOnly = false }: PricesTabProps) => {
                           </div>
                         </TableCell>
                         <TableCell>{price.priceTierName}</TableCell>
-                        <TableCell className="text-right font-mono font-semibold">
+                        <TableCell className="text-right tabular-nums font-semibold">
                           ₱{price.price.toFixed(4)}
                         </TableCell>
                         <TableCell className="text-sm">{formatDate(price.effectiveFrom)}</TableCell>

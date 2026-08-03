@@ -619,7 +619,7 @@ export function SeasonItemPolicyDialog({
                                     disabled={isPending}
                                   />
                                 ) : (
-                                  <span className="text-sm font-mono">
+                                  <span className="text-sm tabular-nums">
                                     {formatQuantity(policy.reorderUnitLevel)}
                                   </span>
                                 )}
@@ -638,7 +638,7 @@ export function SeasonItemPolicyDialog({
                                     disabled={isPending}
                                   />
                                 ) : (
-                                  <span className="text-sm font-mono">
+                                  <span className="text-sm tabular-nums">
                                     {formatQuantity(policy.reorderUnitQuantity)}
                                   </span>
                                 )}
@@ -674,7 +674,7 @@ export function SeasonItemPolicyDialog({
                                 )}
                               </TableCell>
                               <TableCell>
-                                <span className="text-sm font-mono">
+                                <span className="text-sm tabular-nums">
                                   {formatQuantity(
                                     isEditing && selectedEditUnitOption
                                       ? selectedEditUnitOption.qtyPerUnit
@@ -683,7 +683,7 @@ export function SeasonItemPolicyDialog({
                                 </span>
                               </TableCell>
                               <TableCell>
-                                <span className="text-sm font-mono">
+                                <span className="text-sm tabular-nums">
                                   {formatQuantity(editTotalQuantity)}
                                   {policy.baseUnitLabel ? ` ${policy.baseUnitLabel}` : ""}
                                 </span>
