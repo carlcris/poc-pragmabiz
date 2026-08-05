@@ -32,7 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ChevronDown, ChevronRight, Loader2, Printer } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, MapPinned, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { useItem } from "@/hooks/useItems";
 import { ITEM_LOCATIONS_QUERY_KEY } from "@/hooks/queryKeys";
@@ -40,6 +40,7 @@ import { useCanView } from "@/hooks/usePermissions";
 import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { RESOURCES } from "@/constants/resources";
+import { ItemLocationMapDialog } from "@/components/items/locations/ItemLocationMapDialog";
 import type { BarcodeData } from "@/lib/barcode";
 import type { ItemLocation, ItemLocationBatch } from "@/types/inventory-location";
 import type { WarehouseLocation } from "@/types/inventory-location";
@@ -88,6 +89,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   const locale = useLocale();
   const queryClient = useQueryClient();
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [locationMapDialogOpen, setLocationMapDialogOpen] = useState(false);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
   const [fromLocationId, setFromLocationId] = useState<string>("");
   const [toLocationId, setToLocationId] = useState<string>("");
@@ -103,6 +105,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   const [batchLabelCount, setBatchLabelCount] = useState("1");
   const [batchPrintUnitId, setBatchPrintUnitId] = useState("");
   const canViewItems = useCanView(RESOURCES.ITEMS);
+  const canViewWarehouses = useCanView(RESOURCES.WAREHOUSES);
   const { data: granularCapabilities = {} } = useGranularCapabilities([
     GRANULAR_CAPABILITIES.ITEM_BATCH_QR_PRINT,
   ]);
@@ -180,6 +183,16 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
         code: warehouse.code,
         name: warehouse.name,
       })),
+    [warehouseGroups]
+  );
+  const stockedWarehouseGroups = useMemo(
+    () =>
+      warehouseGroups
+        .map((warehouse) => ({
+          ...warehouse,
+          locations: warehouse.locations.filter((location) => location.qtyOnHand > 0),
+        }))
+        .filter((warehouse) => warehouse.locations.length > 0),
     [warehouseGroups]
   );
 
@@ -390,9 +403,21 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
             <CardTitle>{t("title")}</CardTitle>
             <CardDescription>{t("description")}</CardDescription>
           </div>
-          <Button onClick={() => setMoveDialogOpen(true)} disabled={locations.length === 0}>
-            {t("moveStock")}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {canViewWarehouses ? (
+              <Button
+                variant="outline"
+                onClick={() => setLocationMapDialogOpen(true)}
+                disabled={stockedWarehouseGroups.length === 0 || !item}
+              >
+                <MapPinned className="mr-2 h-4 w-4" />
+                {t("locationMap")}
+              </Button>
+            ) : null}
+            <Button onClick={() => setMoveDialogOpen(true)} disabled={locations.length === 0}>
+              {t("moveStock")}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -558,9 +583,9 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                                                 {batch.batchCode}
                                               </TableCell>
                                               <TableCell className="py-2 text-xs">
-                                                {new Date(
-                                                  batch.receivedAt
-                                                ).toLocaleDateString(locale)}
+                                                {new Date(batch.receivedAt).toLocaleDateString(
+                                                  locale
+                                                )}
                                               </TableCell>
                                               <TableCell className="py-2 text-right text-xs">
                                                 {formatQty(batch.qtyOnHand, locale)}
@@ -619,6 +644,13 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
           </div>
         )}
       </CardContent>
+      <ItemLocationMapDialog
+        open={locationMapDialogOpen}
+        onOpenChange={setLocationMapDialogOpen}
+        warehouses={stockedWarehouseGroups}
+        itemCode={item?.code ?? ""}
+        itemName={item?.name ?? ""}
+      />
       <Dialog
         open={batchToPrint !== null}
         onOpenChange={(open) => {

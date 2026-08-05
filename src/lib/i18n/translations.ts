@@ -2510,6 +2510,20 @@ export type TranslationKeys = {
     title: string;
     description: string;
     moveStock: string;
+    locationMap: string;
+    locationMapTitle: string;
+    locationMapDescription: string;
+    locationMapItem: string;
+    locationMapWarehouse: string;
+    locationMapLoading: string;
+    locationMapLoadError: string;
+    locationMapLoadErrorDescription: string;
+    locationMapRetry: string;
+    locationMapNotConfigured: string;
+    locationMapNotConfiguredDescription: string;
+    locationMapNoMappedLocations: string;
+    locationMapItemRack: string;
+    locationMapImageError: string;
     loadError: string;
     empty: string;
     warehouse: string;
@@ -5842,6 +5856,23 @@ export const translations: Record<Locale, TranslationKeys> = {
       description:
         "Stock by warehouse location. Each warehouse has one preferred rack for this item.",
       moveStock: "Move Stock",
+      locationMap: "Location Map",
+      locationMapTitle: "Item Location Map",
+      locationMapDescription:
+        "Select a warehouse to see every mapped rack currently holding this item.",
+      locationMapItem: "Item",
+      locationMapWarehouse: "Warehouse",
+      locationMapLoading: "Loading location map",
+      locationMapLoadError: "Unable to load the location map",
+      locationMapLoadErrorDescription:
+        "Check your access or connection, then try loading the map again.",
+      locationMapRetry: "Try Again",
+      locationMapNotConfigured: "No floor map configured",
+      locationMapNotConfiguredDescription:
+        "Configure a floor map for this warehouse before viewing item locations.",
+      locationMapNoMappedLocations: "Stocked racks not mapped on this floor plan: {locations}.",
+      locationMapItemRack: "Rack holding this item",
+      locationMapImageError: "The floor-plan image could not be displayed.",
       loadError: "Failed to load item locations.",
       empty: "No location stock found.",
       warehouse: "Warehouse",
@@ -11779,6 +11810,20 @@ export const translations: Record<Locale, TranslationKeys> = {
       title: "库位",
       description: "按仓库库位显示库存。每个仓库均为此商品设置一个首选货架。",
       moveStock: "移动库存",
+      locationMap: "库位地图",
+      locationMapTitle: "商品库位地图",
+      locationMapDescription: "选择仓库以查看当前存放此商品的所有已映射货架。",
+      locationMapItem: "商品",
+      locationMapWarehouse: "仓库",
+      locationMapLoading: "正在加载库位地图",
+      locationMapLoadError: "无法加载库位地图",
+      locationMapLoadErrorDescription: "请检查您的访问权限或网络连接，然后重试。",
+      locationMapRetry: "重试",
+      locationMapNotConfigured: "尚未配置楼层地图",
+      locationMapNotConfiguredDescription: "请先为此仓库配置楼层地图，再查看商品库位。",
+      locationMapNoMappedLocations: "以下有库存的货架尚未映射到此楼层平面图：{locations}。",
+      locationMapItemRack: "存放此商品的货架",
+      locationMapImageError: "无法显示楼层平面图。",
       loadError: "加载商品库位失败。",
       empty: "未找到库位库存。",
       warehouse: "仓库",

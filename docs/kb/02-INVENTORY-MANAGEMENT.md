@@ -125,6 +125,10 @@ The item **Locations** tab groups rack rows by warehouse. Each warehouse section
 on-hand quantity, warehouse-level maximum stock, and maximum-stock action, while preferred-rack
 selection and batch expansion remain available on individual rack rows. Supplier shipment transit
 and estimated-arrival information is intentionally not attached to a warehouse before putaway.
+Users with Warehouse view access can open **Location Map** beside **Move Stock**, filter the viewer
+by warehouses holding the item, and see every mapped rack with positive on-hand stock highlighted
+on that warehouse's floor plan. The viewer reports missing floor maps and item racks that have not
+yet been mapped without blocking the rest of the item detail workflow.
 
 Users with Items view access and the `items.operation.print_batch_qr.view` capability can expand a warehouse location on an item's **Locations** tab and print 1–100 4 × 4-inch (101.6 × 101.6 mm) QR labels for each batch. The user selects an active item unit option, and every label's quantity is that option's `qtyPerUnit`; current batch on-hand is informational and is never divided or changed by printing. Each label and QR payload uses the same item, batch-location SKU, batch, warehouse, and location contract as completed putaway labels.
 
