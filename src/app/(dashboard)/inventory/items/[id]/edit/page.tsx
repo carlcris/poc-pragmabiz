@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { AlertCircle, QrCode } from "lucide-react";
+import { AlertCircle, Barcode } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
@@ -844,8 +844,11 @@ function EditItemContent({ params }: EditItemPageProps) {
               {primaryBarcode ? (
                 <div className="space-y-3">
                   <div className="rounded-lg border bg-white p-4">
-                    <div className="flex h-[200px] items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50 px-4">
-                      <ItemBarcodeImage value={primaryBarcode} alt={`Barcode ${primaryBarcode}`} />
+                    <div className="flex h-36 items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50 px-4">
+                      <ItemBarcodeImage
+                        value={primaryBarcode}
+                        alt={t("barcodeImageAlt", { barcode: primaryBarcode })}
+                      />
                     </div>
                   </div>
                   <p className="text-center text-sm text-muted-foreground">
@@ -856,8 +859,8 @@ function EditItemContent({ params }: EditItemPageProps) {
                   </p>
                 </div>
               ) : (
-                <div className="flex h-[215px] w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/30">
-                  <QrCode className="h-8 w-8 text-muted-foreground" />
+                <div className="flex h-44 w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/30">
+                  <Barcode className="h-8 w-8 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">{t("noBarcode")}</p>
                 </div>
               )}

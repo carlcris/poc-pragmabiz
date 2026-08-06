@@ -2412,6 +2412,7 @@ export type TranslationKeys = {
     baseUomLabel: string;
     noImage: string;
     barcodeLabel: string;
+    barcodeImageAlt: string;
     primaryBarcodeDescription: string;
     barcodeGeneratedDescription: string;
     noBarcode: string;
@@ -5753,6 +5754,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       baseUomLabel: "Base UOM",
       noImage: "No image",
       barcodeLabel: "Barcode",
+      barcodeImageAlt: "Barcode {barcode}",
       primaryBarcodeDescription: "Base unit barcode generated for this item.",
       barcodeGeneratedDescription:
         "The base-unit barcode is generated automatically and cannot be edited here.",
@@ -11712,6 +11714,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       baseUomLabel: "基础计量单位",
       noImage: "暂无图片",
       barcodeLabel: "条码",
+      barcodeImageAlt: "条码 {barcode}",
       primaryBarcodeDescription: "此商品的基础单位条码。",
       barcodeGeneratedDescription: "基础单位条码会自动生成，不能在这里编辑。",
       noBarcode: "暂无条码",

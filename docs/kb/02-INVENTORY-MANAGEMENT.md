@@ -66,6 +66,10 @@ The **Item** is the central entity representing a product or material in the sys
 **Unit Options**:
 Each item can have multiple unit options (e.g., box, piece, dozen) with conversion factors to the base unit.
 
+**Barcode presentation**:
+The item details and edit screens render the generated base-unit barcode as a linear Code 128
+symbol. Batch-location and warehouse workflow labels continue to use their existing QR payloads.
+
 **Exports**:
 The Item Master export supports CSV, XLSX, and PDF formats. Each export uses the current search,
 category, status, warehouse, and business-unit scope filters. Export requests are bounded to 5,000

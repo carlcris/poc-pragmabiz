@@ -12,7 +12,7 @@ import {
   FileText,
   Tag,
   ImageIcon,
-  QrCode,
+  Barcode,
   Lock,
   Warehouse,
   Ruler,
@@ -658,7 +658,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                    <QrCode className="h-4 w-4" />
+                    <Barcode className="h-4 w-4" />
                     {t("barcodeLabel")}
                   </CardTitle>
                 </CardHeader>
@@ -666,10 +666,10 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                   {item.primaryBarcode ? (
                     <div className="space-y-3">
                       <div className="rounded-lg border bg-white p-4">
-                        <div className="flex h-[200px] items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50 px-4">
+                        <div className="flex h-36 items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50 px-4">
                           <ItemBarcodeImage
                             value={item.primaryBarcode}
-                            alt={`Barcode ${item.primaryBarcode}`}
+                            alt={t("barcodeImageAlt", { barcode: item.primaryBarcode })}
                           />
                         </div>
                       </div>
@@ -681,12 +681,9 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       </p>
                     </div>
                   ) : (
-                    <div
-                      className="flex items-center justify-center rounded-lg border border-dashed bg-muted/30"
-                      style={{ height: "240px" }}
-                    >
+                    <div className="flex h-44 items-center justify-center rounded-lg border border-dashed bg-muted/30">
                       <div className="text-center text-muted-foreground">
-                        <QrCode className="mx-auto mb-2 h-8 w-8" />
+                        <Barcode className="mx-auto mb-2 h-8 w-8" />
                         <p className="text-sm">{t("noBarcode")}</p>
                       </div>
                     </div>

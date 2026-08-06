@@ -1,86 +1,56 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import QRCode from "qrcode";
-import Image from "next/image";
-import { Loader2, QrCode } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import JsBarcode from "jsbarcode";
+import { Barcode } from "lucide-react";
 
 type ItemBarcodeImageProps = {
   value?: string;
   alt: string;
-  size?: number;
 };
 
-export const ItemBarcodeImage = ({ value, alt, size = 200 }: ItemBarcodeImageProps) => {
-  const [dataUrl, setDataUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+export const ItemBarcodeImage = ({ value, alt }: ItemBarcodeImageProps) => {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
+    if (!value || !svgRef.current) return;
 
-    const generate = async () => {
-      if (!value) {
-        setDataUrl(null);
-        return;
-      }
+    try {
+      JsBarcode(svgRef.current, value, {
+        format: "CODE128",
+        width: 2,
+        height: 96,
+        displayValue: false,
+        margin: 0,
+        background: "#FFFFFF",
+        lineColor: "#111111",
+      });
+      setHasError(false);
+    } catch {
+      svgRef.current.replaceChildren();
+      setHasError(true);
+    }
+  }, [value]);
 
-      try {
-        setIsLoading(true);
-        const nextDataUrl = await QRCode.toDataURL(value, {
-          errorCorrectionLevel: "M",
-          margin: 1,
-          width: size,
-          color: {
-            dark: "#111111",
-            light: "#FFFFFF",
-          },
-        });
-
-        if (!cancelled) {
-          setDataUrl(nextDataUrl);
-        }
-      } catch {
-        if (!cancelled) {
-          setDataUrl(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    generate();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [size, value]);
-
-  if (isLoading) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!dataUrl) {
+  if (!value) {
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
-        <QrCode className="h-8 w-8" />
+        <Barcode className="h-8 w-8" />
       </div>
     );
   }
 
   return (
-    <Image
-      src={dataUrl}
-      alt={alt}
-      width={size}
-      height={size}
-      className="mx-auto object-contain"
-      unoptimized
-    />
+    <div role="img" aria-label={alt} className="flex h-full w-full items-center justify-center">
+      <svg
+        key={value}
+        ref={svgRef}
+        aria-hidden="true"
+        focusable="false"
+        className={hasError ? "hidden" : "h-auto max-h-24 w-auto max-w-full"}
+      />
+      {hasError ? <Barcode className="h-8 w-8 text-muted-foreground" /> : null}
+    </div>
   );
 };
