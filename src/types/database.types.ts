@@ -11659,6 +11659,22 @@ export type Database = {
           unit_name: string
         }[]
       }
+      get_stock_ledger_summary: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_end_date?: string
+          p_item_id: string
+          p_start_date?: string
+          p_transaction_type?: string
+          p_warehouse_id: string
+        }
+        Returns: {
+          closing_balance: number
+          total_in: number
+          total_out: number
+        }[]
+      }
       get_transformation_template_copy_source: {
         Args: { p_template_id: string }
         Returns: Json

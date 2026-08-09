@@ -2342,6 +2342,8 @@ export type TranslationKeys = {
   itemLedger: {
     title: string;
     description: string;
+    filters: string;
+    item: string;
     warehouse: string;
     startDate: string;
     endDate: string;
@@ -2366,14 +2368,17 @@ export type TranslationKeys = {
     dateAndTime: string;
     voucher: string;
     type: string;
-    inQuantity: string;
-    outQuantity: string;
+    transactionQuantity: string;
+    stockEffect: string;
+    internalTransfer: string;
     balance: string;
     rate: string;
     value: string;
     loadError: string;
     emptyTitle: string;
     emptyDescription: string;
+    selectFiltersTitle: string;
+    selectFiltersDescription: string;
   };
   inventoryItemPage: {
     rawMaterial: string;
@@ -5751,6 +5756,8 @@ export const translations: Record<Locale, TranslationKeys> = {
     itemLedger: {
       title: "Stock Ledger",
       description: "Item movement history with a running balance for one warehouse.",
+      filters: "Filters",
+      item: "Item",
       warehouse: "Warehouse",
       startDate: "Start Date",
       endDate: "End Date",
@@ -5776,14 +5783,17 @@ export const translations: Record<Locale, TranslationKeys> = {
       dateAndTime: "Date & Time",
       voucher: "Voucher",
       type: "Type",
-      inQuantity: "IN Qty",
-      outQuantity: "OUT Qty",
+      transactionQuantity: "Transaction Qty",
+      stockEffect: "Stock Effect",
+      internalTransfer: "Internal transfer",
       balance: "Balance",
       rate: "Rate",
       value: "Value",
       loadError: "Unable to load the stock ledger. Please try again.",
       emptyTitle: "No transactions found.",
       emptyDescription: "No stock movements match the selected filters.",
+      selectFiltersTitle: "Select an item and warehouse to view the ledger.",
+      selectFiltersDescription: "Choose the filters above to view detailed stock movement history.",
     },
     inventoryItemPage: {
       rawMaterial: "Raw Material",
@@ -11832,6 +11842,8 @@ export const translations: Record<Locale, TranslationKeys> = {
     itemLedger: {
       title: "库存台账",
       description: "查看单个仓库的商品库存变动和连续余额。",
+      filters: "筛选条件",
+      item: "商品",
       warehouse: "仓库",
       startDate: "开始日期",
       endDate: "结束日期",
@@ -11856,14 +11868,17 @@ export const translations: Record<Locale, TranslationKeys> = {
       dateAndTime: "日期和时间",
       voucher: "凭证",
       type: "类型",
-      inQuantity: "入库数量",
-      outQuantity: "出库数量",
+      transactionQuantity: "交易数量",
+      stockEffect: "库存影响",
+      internalTransfer: "内部调拨",
       balance: "余额",
       rate: "单价",
       value: "价值",
       loadError: "无法加载库存台账。请重试。",
       emptyTitle: "未找到库存交易。",
       emptyDescription: "没有符合当前筛选条件的库存变动。",
+      selectFiltersTitle: "请选择商品和仓库以查看库存台账。",
+      selectFiltersDescription: "使用上方筛选条件查看详细的库存变动记录。",
     },
     inventoryItemPage: {
       rawMaterial: "原材料",
@@ -13013,8 +13028,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       failedLoadCapacityData: "加载容量数据失败",
       noCapacityDataAvailable: "没有可用容量数据",
       warehouseAtCapacityAlert: "仓库容量已达到 {value}%。请考虑扩容或优化存储。",
-      unconfiguredRackCapacityAlert:
-        "{count} 个可存储库位尚未配置最大容量，因此未计入利用率。",
+      unconfiguredRackCapacityAlert: "{count} 个可存储库位尚未配置最大容量，因此未计入利用率。",
       overCapacityRackAlert: "{count} 个库位已超过其配置的最大容量。",
       utilization: "利用率",
       total: "总数",

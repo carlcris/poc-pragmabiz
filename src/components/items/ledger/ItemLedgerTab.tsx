@@ -60,17 +60,10 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
   const ledgerEntries = data?.data || [];
   const pagination = data?.pagination;
   const openingBalance = data?.openingBalance || 0;
+  const totalIn = data?.summary.totalIn || 0;
+  const totalOut = data?.summary.totalOut || 0;
 
-  const totalIn = ledgerEntries
-    .filter((entry) => entry.actualQty > 0)
-    .reduce((sum, entry) => sum + entry.actualQty, 0);
-
-  const totalOut = ledgerEntries
-    .filter((entry) => entry.actualQty < 0)
-    .reduce((sum, entry) => sum + Math.abs(entry.actualQty), 0);
-
-  const closingBalance =
-    ledgerEntries.length > 0 ? ledgerEntries[0].qtyAfterTransaction : openingBalance;
+  const closingBalance = data?.summary.closingBalance ?? openingBalance;
 
   const resetToFirstPage = () => setPage(1);
 
@@ -251,8 +244,8 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
                 <TableHead>{t("date")}</TableHead>
                 <TableHead>{t("voucher")}</TableHead>
                 <TableHead>{t("type")}</TableHead>
-                <TableHead className="text-right">{t("inQuantity")}</TableHead>
-                <TableHead className="text-right">{t("outQuantity")}</TableHead>
+                <TableHead className="text-right">{t("transactionQuantity")}</TableHead>
+                <TableHead className="text-right">{t("stockEffect")}</TableHead>
                 <TableHead className="text-right">{t("balance")}</TableHead>
                 <TableHead className="text-right">{t("rate")}</TableHead>
                 <TableHead className="text-right">{t("value")}</TableHead>
@@ -315,8 +308,8 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
                   <TableHead>{t("dateAndTime")}</TableHead>
                   <TableHead>{t("voucher")}</TableHead>
                   <TableHead>{t("type")}</TableHead>
-                  <TableHead className="text-right">{t("inQuantity")}</TableHead>
-                  <TableHead className="text-right">{t("outQuantity")}</TableHead>
+                  <TableHead className="text-right">{t("transactionQuantity")}</TableHead>
+                  <TableHead className="text-right">{t("stockEffect")}</TableHead>
                   <TableHead className="text-right">{t("balance")}</TableHead>
                   <TableHead className="text-right">{t("rate")}</TableHead>
                   <TableHead className="text-right">{t("value")}</TableHead>
@@ -340,20 +333,25 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
                       </div>
                     </TableCell>
                     <TableCell>{getTransactionTypeBadge(entry.transactionType)}</TableCell>
-                    <TableCell className="text-right font-medium">
-                      {entry.actualQty > 0 ? (
-                        <span className="text-green-600">+{formatQuantity(entry.actualQty)}</span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
+                    <TableCell className="text-right tabular-nums">
+                      <span className="font-medium">
+                        {formatQuantity(entry.transactionQuantity)}
+                      </span>
+                      {entry.uom ? (
+                        <span className="ml-1 text-xs text-muted-foreground">{entry.uom}</span>
+                      ) : null}
                     </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {entry.actualQty < 0 ? (
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {entry.inventoryEffect === "in" ? (
+                        <span className="text-green-600">
+                          +{formatQuantity(entry.inventoryDelta)} {t("stockInShort")}
+                        </span>
+                      ) : entry.inventoryEffect === "out" ? (
                         <span className="text-red-600">
-                          {formatQuantity(Math.abs(entry.actualQty))}
+                          −{formatQuantity(Math.abs(entry.inventoryDelta))} {t("stockOutShort")}
                         </span>
                       ) : (
-                        <span className="text-muted-foreground">-</span>
+                        <span className="text-muted-foreground">{t("internalTransfer")}</span>
                       )}
                     </TableCell>
                     <TableCell className="text-right font-bold">

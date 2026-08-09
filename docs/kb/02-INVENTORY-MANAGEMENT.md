@@ -183,6 +183,12 @@ Putaway tasks store their own source-unit name and quantity-per-unit conversion 
 
 Every stock movement is recorded as a **Stock Transaction** for full audit trail and stock ledger reporting.
 
+Stock Ledger rows separate the quantity handled by a transaction from its effect on warehouse
+inventory. The transaction quantity remains visible for receipts, issues, and internal movements.
+Stock effect is derived from the recorded `qty_after - qty_before` balance delta: positive deltas are
+inbound, negative deltas are outbound, and zero-delta putaway movements are internal transfers. Only
+inbound and outbound effects contribute to the filtered Total In and Total Out summaries.
+
 **Transaction Types**:
 
 - `purchase_receipt` - Goods received from suppliers

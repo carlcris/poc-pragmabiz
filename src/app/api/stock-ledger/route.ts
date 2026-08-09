@@ -11,6 +11,7 @@ type StockLedgerItemRow = {
   posting_date: string;
   posting_time: string;
   quantity: number | string | null;
+  qty_before: number | string | null;
   qty_after: number | string | null;
   valuation_rate: number | string | null;
   stock_value_after: number | string | null;
@@ -66,11 +67,12 @@ const parsePositiveInt = (value: string | null, fallback: number) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
-const getActualQty = (transactionType: string | null | undefined, quantity: number) => {
-  if (transactionType === "out" || transactionType === "transfer") {
-    return -Math.abs(quantity);
-  }
-  return quantity;
+type InventoryEffect = "in" | "out" | "internal";
+
+const resolveInventoryEffect = (inventoryDelta: number): InventoryEffect => {
+  if (inventoryDelta > 0) return "in";
+  if (inventoryDelta < 0) return "out";
+  return "internal";
 };
 
 async function GETHandler(request: NextRequest) {
@@ -81,6 +83,11 @@ async function GETHandler(request: NextRequest) {
     const context = await requireRequestContext();
     if ("status" in context) return context;
     const { supabase, companyId, currentBusinessUnitId } = context;
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context is required" }, { status: 400 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
 
     const itemId = searchParams.get("itemId");
@@ -108,6 +115,7 @@ async function GETHandler(request: NextRequest) {
         posting_date,
         posting_time,
         quantity,
+        qty_before,
         qty_after,
         valuation_rate,
         stock_value_after,
@@ -136,12 +144,9 @@ async function GETHandler(request: NextRequest) {
       .eq("company_id", companyId)
       .eq("item_id", itemId)
       .eq("transaction.warehouse_id", warehouseId)
+      .eq("transaction.business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .is("transaction.deleted_at", null);
-
-    if (currentBusinessUnitId) {
-      query = query.eq("transaction.business_unit_id", currentBusinessUnitId);
-    }
 
     if (startDate) {
       query = query.gte("posting_date", startDate);
@@ -155,20 +160,38 @@ async function GETHandler(request: NextRequest) {
       query = query.eq("transaction.transaction_type", voucherType);
     }
 
-    const { data, error, count } = await query
-      .order("posting_date", { ascending: false })
-      .order("posting_time", { ascending: false })
-      .order("id", { ascending: false })
-      .range(offset, offset + limit - 1);
+    const [ledgerResult, summaryResult] = await Promise.all([
+      query
+        .order("posting_date", { ascending: false })
+        .order("posting_time", { ascending: false })
+        .order("id", { ascending: false })
+        .range(offset, offset + limit - 1),
+      supabase.rpc("get_stock_ledger_summary", {
+        p_company_id: companyId,
+        p_business_unit_id: currentBusinessUnitId,
+        p_item_id: itemId,
+        p_warehouse_id: warehouseId,
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_transaction_type: voucherType && voucherType !== "all" ? voucherType : null,
+      }),
+    ]);
+
+    const { data, error, count } = ledgerResult;
 
     if (error) {
       console.error("Error fetching stock ledger:", error);
       return NextResponse.json({ error: "Failed to fetch stock ledger" }, { status: 500 });
     }
 
+    if (summaryResult.error) {
+      console.error("Error fetching stock ledger summary:", summaryResult.error);
+      return NextResponse.json({ error: "Failed to fetch stock ledger" }, { status: 500 });
+    }
+
     let openingBalance = 0;
     if (startDate) {
-      let openingQuery = supabase
+      const openingQuery = supabase
         .from("stock_transaction_items")
         .select(
           `
@@ -179,13 +202,10 @@ async function GETHandler(request: NextRequest) {
         .eq("company_id", companyId)
         .eq("item_id", itemId)
         .eq("transaction.warehouse_id", warehouseId)
+        .eq("transaction.business_unit_id", currentBusinessUnitId)
         .lt("posting_date", startDate)
         .is("deleted_at", null)
         .is("transaction.deleted_at", null);
-
-      if (currentBusinessUnitId) {
-        openingQuery = openingQuery.eq("transaction.business_unit_id", currentBusinessUnitId);
-      }
 
       const { data: openingRows, error: openingError } = await openingQuery
         .order("posting_date", { ascending: false })
@@ -213,8 +233,8 @@ async function GETHandler(request: NextRequest) {
           return null;
         }
 
-        const quantity = toNumber(row.quantity);
-        const actualQty = getActualQty(transaction.transaction_type, quantity);
+        const transactionQuantity = Math.abs(toNumber(row.quantity));
+        const inventoryDelta = toNumber(row.qty_after) - toNumber(row.qty_before);
         const stockValue = toNumber(row.stock_value_after ?? row.total_cost);
 
         return {
@@ -229,7 +249,9 @@ async function GETHandler(request: NextRequest) {
           warehouseId: warehouse?.id || transaction.warehouse_id || "",
           warehouseCode: warehouse?.warehouse_code || "",
           warehouseName: warehouse?.warehouse_name || "",
-          actualQty,
+          transactionQuantity,
+          inventoryDelta,
+          inventoryEffect: resolveInventoryEffect(inventoryDelta),
           qtyAfterTransaction: toNumber(row.qty_after),
           incomingRate: toNumber(row.unit_cost),
           valuationRate: toNumber(row.valuation_rate ?? row.unit_cost),
@@ -255,6 +277,12 @@ async function GETHandler(request: NextRequest) {
         totalPages: Math.ceil((count || 0) / limit),
       },
       openingBalance,
+      summary: {
+        totalIn: toNumber(summaryResult.data?.[0]?.total_in),
+        totalOut: toNumber(summaryResult.data?.[0]?.total_out),
+        closingBalance:
+          (count || 0) > 0 ? toNumber(summaryResult.data?.[0]?.closing_balance) : openingBalance,
+      },
     });
   } catch (error) {
     console.error("Unexpected stock ledger error:", error);

@@ -1149,6 +1149,10 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 **Things to test**:
 
 - After completing any stock-moving action elsewhere (a Goods Receipt, a Transformation, an Adjustment, a Putaway posting), confirm the corresponding entry shows up here with the correct item, warehouse, quantity, and direction.
+- Complete a transformation output and post its putaway task. Confirm both rows retain their handled
+  quantities, the transformation output has a positive stock effect, and the zero-delta putaway is
+  shown as an internal transfer without increasing Total In or Total Out.
+- Confirm Total In and Total Out remain unchanged when paging through the same filtered ledger.
 - Filter by item, warehouse, and voucher/transaction type and confirm the results narrow correctly.
 
 ---

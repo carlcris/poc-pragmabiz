@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Package, Warehouse, FileText, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Package, FileText, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { useStockLedger } from "@/hooks/useStockLedger";
-import { useItems } from "@/hooks/useItems";
-import { useWarehouses } from "@/hooks/useWarehouses";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
+import { ItemSelect, type ItemSelectOption } from "@/components/common/ItemSelect";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,22 +31,27 @@ import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { MetricCard } from "@/components/shared/MetricCard";
 
 export default function StockLedgerPage() {
+  const t = useTranslations("itemLedger");
+  const locale = useLocale();
   const [selectedItemId, setSelectedItemId] = useState<string>("");
+  const [selectedItem, setSelectedItem] = useState<ItemSelectOption | null>(null);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [voucherTypeFilter, setVoucherTypeFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+  const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
+  const hasBusinessUnitHydrated = useBusinessUnitStore((state) => state.hasHydrated);
 
   const { formatCurrency } = useCurrency();
 
-  // Fetch items and warehouses for dropdowns
-  const { data: itemsData } = useItems({ limit: 50 });
-  const { data: warehousesData } = useWarehouses({ limit: 100 });
-
-  const items = itemsData?.data || [];
-  const warehouses = warehousesData?.data || [];
+  useEffect(() => {
+    setSelectedItemId("");
+    setSelectedItem(null);
+    setSelectedWarehouseId("");
+    setPage(1);
+  }, [currentBusinessUnit?.id]);
 
   // Fetch stock ledger data
   const { data, isLoading, error } = useStockLedger({
@@ -60,20 +67,10 @@ export default function StockLedgerPage() {
   const ledgerEntries = data?.data || [];
   const pagination = data?.pagination;
   const openingBalance = data?.openingBalance || 0;
+  const totalIn = data?.summary.totalIn || 0;
+  const totalOut = data?.summary.totalOut || 0;
 
-  // Calculate summary statistics
-  const totalIn = ledgerEntries
-    .filter((entry) => entry.actualQty > 0)
-    .reduce((sum, entry) => sum + entry.actualQty, 0);
-
-  const totalOut = ledgerEntries
-    .filter((entry) => entry.actualQty < 0)
-    .reduce((sum, entry) => sum + Math.abs(entry.actualQty), 0);
-
-  const closingBalance =
-    ledgerEntries.length > 0 ? ledgerEntries[0].qtyAfterTransaction : openingBalance;
-
-  const selectedItem = items.find((item) => item.id === selectedItemId);
+  const closingBalance = data?.summary.closingBalance ?? openingBalance;
 
   const handleItemChange = (value: string) => {
     setSelectedItemId(value);
@@ -100,100 +97,91 @@ export default function StockLedgerPage() {
     setPage(1);
   };
 
+  const formatQuantity = (value: number) =>
+    value.toLocaleString(locale, {
+      maximumFractionDigits: 4,
+    });
+
   const getTransactionTypeBadge = (type: string) => {
     if (type === "in") {
       return (
         <Badge variant="default" className="bg-green-600">
-          IN
+          {t("stockInShort")}
         </Badge>
       );
     } else if (type === "out") {
       return (
         <Badge variant="default" className="bg-red-600">
-          OUT
+          {t("stockOutShort")}
         </Badge>
       );
     } else if (type === "transfer") {
-      return <Badge variant="outline">TRANSFER</Badge>;
+      return <Badge variant="outline">{t("transfer")}</Badge>;
     }
-    return <Badge variant="secondary">{type.toUpperCase()}</Badge>;
+    return <Badge variant="secondary">{t("adjustment")}</Badge>;
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Stock Ledger</h1>
-          <p className="text-muted-foreground">
-            View detailed item movement history with running balance
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("description")}</p>
         </div>
       </div>
 
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Filters</CardTitle>
+          <CardTitle>{t("filters")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Item *</label>
-              <Select value={selectedItemId} onValueChange={handleItemChange}>
-                <SelectTrigger>
-                  <Package className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder="Select item" />
-                </SelectTrigger>
-                <SelectContent>
-                  {items.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {item.code} - {item.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium">{t("item")} *</label>
+              <ItemSelect
+                value={selectedItemId}
+                selectedOption={selectedItem}
+                onValueChange={handleItemChange}
+                onItemSelect={setSelectedItem}
+                enabled={hasBusinessUnitHydrated && !!currentBusinessUnit?.id}
+                disabled={!hasBusinessUnitHydrated || !currentBusinessUnit?.id}
+              />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Warehouse *</label>
-              <Select value={selectedWarehouseId} onValueChange={handleWarehouseChange}>
-                <SelectTrigger>
-                  <Warehouse className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder="Select warehouse" />
-                </SelectTrigger>
-                <SelectContent>
-                  {warehouses.map((warehouse) => (
-                    <SelectItem key={warehouse.id} value={warehouse.id}>
-                      {warehouse.code} - {warehouse.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium">{t("warehouse")} *</label>
+              <WarehouseSelect
+                value={selectedWarehouseId}
+                onValueChange={handleWarehouseChange}
+                scope="current_business_unit"
+                disabled={!hasBusinessUnitHydrated || !currentBusinessUnit?.id}
+              />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Start Date</label>
+              <label className="text-sm font-medium">{t("startDate")}</label>
               <Input type="date" value={startDate} onChange={handleStartDateChange} />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">End Date</label>
+              <label className="text-sm font-medium">{t("endDate")}</label>
               <Input type="date" value={endDate} onChange={handleEndDateChange} />
             </div>
           </div>
 
           <div className="mt-4">
             <Select value={voucherTypeFilter} onValueChange={handleVoucherTypeChange}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-48">
                 <FileText className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Voucher type" />
+                <SelectValue placeholder={t("movementType")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Movements</SelectItem>
-                <SelectItem value="in">Stock In</SelectItem>
-                <SelectItem value="out">Stock Out</SelectItem>
-                <SelectItem value="transfer">Transfer</SelectItem>
-                <SelectItem value="adjustment">Adjustment</SelectItem>
+                <SelectItem value="all">{t("allMovements")}</SelectItem>
+                <SelectItem value="in">{t("stockIn")}</SelectItem>
+                <SelectItem value="out">{t("stockOut")}</SelectItem>
+                <SelectItem value="transfer">{t("transfer")}</SelectItem>
+                <SelectItem value="adjustment">{t("adjustment")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -204,39 +192,49 @@ export default function StockLedgerPage() {
       {selectedItemId && selectedWarehouseId && (
         <div className="grid gap-4 md:grid-cols-4">
           <MetricCard
-            title="Opening Balance"
+            title={t("openingBalance")}
             icon={Package}
             iconClassName="h-4 w-4 text-blue-600"
-            value={data ? openingBalance.toFixed(2) : undefined}
+            value={data ? formatQuantity(openingBalance) : undefined}
             caption={selectedItem?.uom}
             isLoading={isLoading}
           />
           <MetricCard
-            title="Total IN"
+            title={t("totalIn")}
             icon={TrendingUp}
             iconClassName="h-4 w-4 text-green-600"
-            value={data ? (totalIn > 0 ? `+${totalIn.toFixed(2)}` : totalIn.toFixed(2)) : undefined}
-            caption="Stock received"
+            value={
+              data
+                ? totalIn > 0
+                  ? `+${formatQuantity(totalIn)}`
+                  : formatQuantity(totalIn)
+                : undefined
+            }
+            caption={t("stockReceived")}
             valueClassName="text-2xl font-bold text-green-600"
             isLoading={isLoading}
           />
           <MetricCard
-            title="Total OUT"
+            title={t("totalOut")}
             icon={TrendingDown}
             iconClassName="h-4 w-4 text-red-600"
             value={
-              data ? (totalOut > 0 ? `-${totalOut.toFixed(2)}` : totalOut.toFixed(2)) : undefined
+              data
+                ? totalOut > 0
+                  ? `−${formatQuantity(totalOut)}`
+                  : formatQuantity(totalOut)
+                : undefined
             }
-            caption="Stock issued"
+            caption={t("stockIssued")}
             valueClassName="text-2xl font-bold text-red-600"
             isLoading={isLoading}
           />
           <MetricCard
-            title="Closing Balance"
+            title={t("closingBalance")}
             icon={ArrowRight}
             iconClassName="h-4 w-4 text-purple-600"
-            value={data ? closingBalance.toFixed(2) : undefined}
-            caption="Current stock"
+            value={data ? formatQuantity(closingBalance) : undefined}
+            caption={t("currentStock")}
             isLoading={isLoading}
           />
         </div>
@@ -248,10 +246,8 @@ export default function StockLedgerPage() {
           <CardContent className="py-12">
             <div className="text-center text-muted-foreground">
               <Package className="mx-auto mb-4 h-12 w-12 opacity-50" />
-              <p className="text-lg font-medium">Select an item and warehouse to view ledger</p>
-              <p className="mt-2 text-sm">
-                Choose filters above to see detailed stock movement history
-              </p>
+              <p className="text-lg font-medium">{t("selectFiltersTitle")}</p>
+              <p className="mt-2 text-sm">{t("selectFiltersDescription")}</p>
             </div>
           </CardContent>
         </Card>
@@ -260,14 +256,14 @@ export default function StockLedgerPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Voucher</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">IN Qty</TableHead>
-                <TableHead className="text-right">OUT Qty</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-                <TableHead className="text-right">Rate</TableHead>
-                <TableHead className="text-right">Value</TableHead>
+                <TableHead>{t("date")}</TableHead>
+                <TableHead>{t("voucher")}</TableHead>
+                <TableHead>{t("type")}</TableHead>
+                <TableHead className="text-right">{t("transactionQuantity")}</TableHead>
+                <TableHead className="text-right">{t("stockEffect")}</TableHead>
+                <TableHead className="text-right">{t("balance")}</TableHead>
+                <TableHead className="text-right">{t("rate")}</TableHead>
+                <TableHead className="text-right">{t("value")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -305,9 +301,7 @@ export default function StockLedgerPage() {
       ) : error ? (
         <Card>
           <CardContent className="py-12">
-            <div className="text-center text-destructive">
-              Error loading stock ledger. Please try again.
-            </div>
+            <div className="text-center text-destructive">{t("loadError")}</div>
           </CardContent>
         </Card>
       ) : ledgerEntries.length === 0 ? (
@@ -315,8 +309,8 @@ export default function StockLedgerPage() {
           <CardContent className="py-12">
             <div className="text-center text-muted-foreground">
               <FileText className="mx-auto mb-4 h-12 w-12 opacity-50" />
-              <p className="text-lg font-medium">No transactions found</p>
-              <p className="mt-2 text-sm">No stock movements for the selected filters</p>
+              <p className="text-lg font-medium">{t("emptyTitle")}</p>
+              <p className="mt-2 text-sm">{t("emptyDescription")}</p>
             </div>
           </CardContent>
         </Card>
@@ -326,14 +320,14 @@ export default function StockLedgerPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date & Time</TableHead>
-                  <TableHead>Voucher</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">IN Qty</TableHead>
-                  <TableHead className="text-right">OUT Qty</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                  <TableHead className="text-right">Rate</TableHead>
-                  <TableHead className="text-right">Value</TableHead>
+                  <TableHead>{t("dateAndTime")}</TableHead>
+                  <TableHead>{t("voucher")}</TableHead>
+                  <TableHead>{t("type")}</TableHead>
+                  <TableHead className="text-right">{t("transactionQuantity")}</TableHead>
+                  <TableHead className="text-right">{t("stockEffect")}</TableHead>
+                  <TableHead className="text-right">{t("balance")}</TableHead>
+                  <TableHead className="text-right">{t("rate")}</TableHead>
+                  <TableHead className="text-right">{t("value")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -355,22 +349,29 @@ export default function StockLedgerPage() {
                       </div>
                     </TableCell>
                     <TableCell>{getTransactionTypeBadge(entry.transactionType)}</TableCell>
-                    <TableCell className="text-right font-medium">
-                      {entry.actualQty > 0 ? (
-                        <span className="text-green-600">+{entry.actualQty.toFixed(2)}</span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
+                    <TableCell className="text-right tabular-nums">
+                      <span className="font-medium">
+                        {formatQuantity(entry.transactionQuantity)}
+                      </span>
+                      {entry.uom ? (
+                        <span className="ml-1 text-xs text-muted-foreground">{entry.uom}</span>
+                      ) : null}
                     </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {entry.actualQty < 0 ? (
-                        <span className="text-red-600">{Math.abs(entry.actualQty).toFixed(2)}</span>
+                    <TableCell className="text-right font-medium tabular-nums">
+                      {entry.inventoryEffect === "in" ? (
+                        <span className="text-green-600">
+                          +{formatQuantity(entry.inventoryDelta)} {t("stockInShort")}
+                        </span>
+                      ) : entry.inventoryEffect === "out" ? (
+                        <span className="text-red-600">
+                          −{formatQuantity(Math.abs(entry.inventoryDelta))} {t("stockOutShort")}
+                        </span>
                       ) : (
-                        <span className="text-muted-foreground">-</span>
+                        <span className="text-muted-foreground">{t("internalTransfer")}</span>
                       )}
                     </TableCell>
                     <TableCell className="text-right font-bold">
-                      {entry.qtyAfterTransaction.toFixed(2)}
+                      {formatQuantity(entry.qtyAfterTransaction)}
                     </TableCell>
                     <TableCell className="text-right">
                       {formatCurrency(entry.valuationRate)}

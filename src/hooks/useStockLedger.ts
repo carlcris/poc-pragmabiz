@@ -13,7 +13,9 @@ export interface StockLedgerEntry {
   warehouseId: string;
   warehouseCode: string;
   warehouseName: string;
-  actualQty: number;
+  transactionQuantity: number;
+  inventoryDelta: number;
+  inventoryEffect: "in" | "out" | "internal";
   qtyAfterTransaction: number;
   incomingRate: number;
   valuationRate: number;
@@ -47,6 +49,11 @@ export interface StockLedgerResponse {
     totalPages: number;
   };
   openingBalance: number;
+  summary: {
+    totalIn: number;
+    totalOut: number;
+    closingBalance: number;
+  };
 }
 
 export function useStockLedger(filters: StockLedgerFilters) {
