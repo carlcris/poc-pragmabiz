@@ -603,30 +603,42 @@ async function GETHandler(request: NextRequest) {
     // 8. Warehouse Capacity
     // ========================================================================
     if (shouldFetch("warehouseCapacity") && dashboardCapabilities.canViewWarehouseCapacity) {
-      let query = supabase
-        .from("warehouse_locations")
-        .select("id, is_occupied", { count: "exact" });
-
-      if (warehouseId) {
-        query = query.eq("warehouse_id", warehouseId);
+      if (!businessUnitId) {
+        throw new Error("Warehouse capacity requires a business unit context");
       }
 
-      const { data, error, count } = await query;
+      const { data, error } = await supabase.rpc("get_warehouse_capacity", {
+        p_business_unit_id: businessUnitId,
+        p_warehouse_id: warehouseId ?? undefined,
+      });
 
-      if (!error && data) {
-        const totalLocations = count || 0;
-        const occupiedLocations = data.filter((loc) => loc.is_occupied).length;
-        const availableSpace = totalLocations - occupiedLocations;
-        const utilizationPercent =
-          totalLocations > 0 ? (occupiedLocations / totalLocations) * 100 : 0;
-
-        dashboardData.warehouseCapacity = {
-          totalLocations,
-          occupiedLocations,
-          utilizationPercent: Math.round(utilizationPercent * 100) / 100,
-          availableSpace,
-        };
+      if (error) {
+        console.error("Warehouse capacity query failed", {
+          businessUnitId,
+          warehouseId,
+          error,
+        });
+        throw new Error("Warehouse capacity query failed");
       }
+
+      const capacity = data?.[0];
+      if (!capacity) {
+        throw new Error("Warehouse capacity query returned no result");
+      }
+
+      dashboardData.warehouseCapacity = {
+        totalLocations: capacity.total_locations,
+        configuredLocations: capacity.configured_locations,
+        unconfiguredLocations: capacity.unconfigured_locations,
+        emptyLocations: capacity.empty_locations,
+        partiallyOccupiedLocations: capacity.partially_occupied_locations,
+        fullLocations: capacity.full_locations,
+        overCapacityLocations: capacity.over_capacity_locations,
+        totalCapacity: capacity.total_capacity,
+        usedCapacity: capacity.used_capacity,
+        availableCapacity: capacity.available_capacity,
+        utilizationPercent: capacity.utilization_percent,
+      };
     }
 
     // ========================================================================

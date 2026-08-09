@@ -28,7 +28,11 @@ import {
 import { usePostPutawayTask, usePutawayTasks } from "@/hooks/usePutawayTasks";
 import { putawayTasksApi } from "@/lib/api/putaway-tasks";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
-import { useLookupWarehouseLocations, type LookupWarehouseOption } from "@/hooks/useLookups";
+import {
+  WarehouseLocationSelect,
+  type WarehouseLocationOption,
+} from "@/components/warehouses/WarehouseLocationSelect";
+import type { LookupWarehouseOption } from "@/hooks/useLookups";
 import type { BarcodeData } from "@/lib/barcode";
 import { cn } from "@/lib/utils";
 import type {
@@ -108,6 +112,7 @@ export default function PutawayStationPage() {
   const [warehouseId, setWarehouseId] = useState("");
   const [selectedWarehouse, setSelectedWarehouse] = useState<LookupWarehouseOption | null>(null);
   const [locationId, setLocationId] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState<WarehouseLocationOption | null>(null);
   const [quantity, setQuantity] = useState("");
   const [batchCode, setBatchCode] = useState("");
   const [shouldPrintLabels, setShouldPrintLabels] = useState(true);
@@ -122,15 +127,8 @@ export default function PutawayStationPage() {
     limit: 50,
   });
   const postPutaway = usePostPutawayTask();
-  const { data: locationsData, isLoading: isLoadingLocations } = useLookupWarehouseLocations(
-    warehouseId || null,
-    { limit: 50, storableOnly: true }
-  );
 
   const tasks = data?.data ?? [];
-  const storableLocations = (locationsData?.data ?? []).filter(
-    (location) => location.isActive && location.isStorable
-  );
   const pagination = data?.pagination;
   const putawayStatusLabel: Record<PutawayTaskStatus, string> = {
     pending: t("statusPending"),
@@ -162,6 +160,7 @@ export default function PutawayStationPage() {
         : null
     );
     setLocationId(task.warehouseId ? (task.suggestedLocationId ?? "") : "");
+    setSelectedLocation(null);
     setQuantity(String(selectedItemQuantity));
     setBatchCode(task.sourceBatchCode ?? "");
     setShouldPrintLabels(true);
@@ -213,8 +212,6 @@ export default function PutawayStationPage() {
     const parsedItemQuantity = Number(quantity);
     const parsedBaseQuantity = parsedItemQuantity * selectedTask.sourceQtyPerUnit;
     const parsedLabelCount = Number.parseInt(labelCount, 10);
-    const selectedLocation = storableLocations.find((location) => location.id === locationId);
-
     if (
       !locationId ||
       !warehouseId ||
@@ -223,7 +220,6 @@ export default function PutawayStationPage() {
       parsedItemQuantity <= 0 ||
       !Number.isFinite(parsedBaseQuantity) ||
       parsedBaseQuantity > selectedTask.pendingQuantity ||
-      !selectedLocation ||
       (shouldPrintLabels && (!Number.isFinite(parsedLabelCount) || parsedLabelCount <= 0))
     ) {
       return;
@@ -262,7 +258,7 @@ export default function PutawayStationPage() {
           deliveryDate: postResult.postedDate,
           warehouseCode: selectedWarehouse?.code || selectedTask.warehouseCode || undefined,
           locationId: postResult.locationId,
-          locationCode: selectedLocation.code,
+          locationCode: selectedLocation?.code,
         }));
 
         await printBarcodeLabels(labels);
@@ -571,6 +567,7 @@ export default function PutawayStationPage() {
                     onValueChange={(nextWarehouseId) => {
                       setWarehouseId(nextWarehouseId);
                       setLocationId("");
+                      setSelectedLocation(null);
                     }}
                     onOptionChange={setSelectedWarehouse}
                     selectedOption={selectedWarehouse}
@@ -581,23 +578,14 @@ export default function PutawayStationPage() {
 
                 <div className="space-y-2">
                   <Label>{t("location")}</Label>
-                  <Select value={locationId} onValueChange={setLocationId}>
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={
-                          isLoadingLocations ? t("loadingLocations") : t("selectLocation")
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {storableLocations.map((location) => (
-                        <SelectItem key={location.id} value={location.id}>
-                          {location.code}
-                          {location.name ? ` - ${location.name}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <WarehouseLocationSelect
+                    warehouseId={warehouseId}
+                    value={locationId}
+                    onValueChange={setLocationId}
+                    selectedOption={selectedLocation}
+                    onOptionChange={setSelectedLocation}
+                    storableOnly
+                  />
                 </div>
 
                 <div className="space-y-2">

@@ -2,15 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Plus, Pencil, Trash2, Calculator, Printer } from "lucide-react";
 import { toast } from "sonner";
 import type { StockAdjustment } from "@/types/stock-adjustment";
-import type { WarehouseLocation } from "@/types/inventory-location";
-import { apiClient } from "@/lib/api";
 import type { BarcodeData } from "@/lib/barcode";
 import { StockAdjustmentBatchPrintDialog } from "@/components/stock-adjustments/StockAdjustmentBatchPrintDialog";
 import {
@@ -52,6 +49,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
+import { WarehouseLocationSelect } from "@/components/warehouses/WarehouseLocationSelect";
 import type { LookupWarehouseOption } from "@/hooks/useLookups";
 
 const createAdjustmentFormSchema = (
@@ -191,17 +189,6 @@ export function StockAdjustmentFormDialog({
       form.setValue("locationId", "");
     }
   }, [selectedWarehouseId, form]);
-
-  const { data: locationsData } = useQuery<{ data: WarehouseLocation[] }>({
-    queryKey: ["warehouse-locations", selectedWarehouseId],
-    queryFn: () => apiClient.get(`/api/warehouses/${selectedWarehouseId}/locations`),
-    enabled: !!selectedWarehouseId,
-  });
-
-  const locations = useMemo(
-    () => (locationsData?.data || []).filter((location) => location.isActive),
-    [locationsData]
-  );
 
   const handleAddItem = () => {
     setEditingItem(null);
@@ -377,30 +364,25 @@ export function StockAdjustmentFormDialog({
                     render={({ field }) => (
                       <FormItem className="col-span-2">
                         <FormLabel>{t("locationLabel")}</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          disabled={!selectedWarehouseId}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue
-                                placeholder={
-                                  selectedWarehouseId
-                                    ? t("selectLocation")
-                                    : t("warehouseUnavailable")
-                                }
-                              />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {locations.map((location) => (
-                              <SelectItem key={location.id} value={location.id}>
-                                {location.code} {location.name ? `- ${location.name}` : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <WarehouseLocationSelect
+                            warehouseId={selectedWarehouseId}
+                            value={field.value ?? ""}
+                            onValueChange={field.onChange}
+                            selectedOption={
+                              selectedAdjustment?.locationId &&
+                              selectedAdjustment.locationId === field.value
+                                ? {
+                                    id: selectedAdjustment.locationId,
+                                    code: selectedAdjustment.locationCode ?? "",
+                                    name: selectedAdjustment.locationName,
+                                  }
+                                : null
+                            }
+                            allowNone
+                            storableOnly
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}

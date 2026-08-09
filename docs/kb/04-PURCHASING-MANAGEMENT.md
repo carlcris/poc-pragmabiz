@@ -30,6 +30,15 @@ GRN (Multi-Box Receiving)
 Purchase Receipt (Inventory Update)
 ```
 
+### Warehouse Capacity Widget
+
+The Purchasing Overview warehouse-capacity widget measures quantity-based utilization within the
+current business unit. Each active, storable location may define a positive `max_capacity`; its used
+capacity is the sum of non-deleted on-hand batch-location quantities. The widget totals only
+configured locations, classifies them as empty, partially occupied, full, or over capacity, and
+reports unconfigured storable locations separately. Selecting a warehouse narrows all totals to
+that warehouse. This intentionally assumes stored item quantities use a comparable capacity basis.
+
 ## Core Concepts
 
 ### 1. Supplier

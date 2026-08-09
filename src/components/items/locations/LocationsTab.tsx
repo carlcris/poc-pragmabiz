@@ -41,9 +41,9 @@ import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { RESOURCES } from "@/constants/resources";
 import { ItemLocationMapDialog } from "@/components/items/locations/ItemLocationMapDialog";
+import { WarehouseLocationSelect } from "@/components/warehouses/WarehouseLocationSelect";
 import type { BarcodeData } from "@/lib/barcode";
 import type { ItemLocation, ItemLocationBatch } from "@/types/inventory-location";
-import type { WarehouseLocation } from "@/types/inventory-location";
 
 type ItemLocationsResponse = {
   data: ItemLocation[];
@@ -199,17 +199,6 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   const fromLocations = useMemo(
     () => locations.filter((loc) => loc.warehouseId === selectedWarehouseId),
     [locations, selectedWarehouseId]
-  );
-
-  const { data: warehouseLocations } = useQuery<{ data: WarehouseLocation[] }>({
-    queryKey: ["warehouse-locations", selectedWarehouseId],
-    queryFn: () => apiClient.get(`/api/warehouses/${selectedWarehouseId}/locations`),
-    enabled: !!selectedWarehouseId,
-  });
-
-  const toLocations = useMemo(
-    () => (warehouseLocations?.data || []).filter((loc) => loc.isActive),
-    [warehouseLocations]
   );
 
   const setDefaultLocation = useMutation({
@@ -753,7 +742,14 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium">{t("warehouseLabel")}</label>
-              <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
+              <Select
+                value={selectedWarehouseId}
+                onValueChange={(warehouseId) => {
+                  setSelectedWarehouseId(warehouseId);
+                  setFromLocationId("");
+                  setToLocationId("");
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder={t("selectWarehouse")} />
                 </SelectTrigger>
@@ -788,22 +784,12 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
             </div>
             <div>
               <label className="text-sm font-medium">{t("toLocationLabel")}</label>
-              <Select
+              <WarehouseLocationSelect
+                warehouseId={selectedWarehouseId}
                 value={toLocationId}
                 onValueChange={setToLocationId}
-                disabled={!selectedWarehouseId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t("selectDestinationLocation")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {toLocations.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.id}>
-                      {loc.code} - {loc.name || t("unnamed")}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                storableOnly
+              />
             </div>
             <div>
               <label className="text-sm font-medium">{t("quantityLabel")}</label>

@@ -107,6 +107,9 @@ Widgets have granular capabilities:
 
 ## Report Catalog
 
+The Reports directory displays available and in-development reports only. Report definitions
+marked as coming soon remain hidden until their implementation is ready for users.
+
 ### Inventory Reports
 
 #### Stock Valuation Report
@@ -430,6 +433,33 @@ Production efficiency metrics.
 Production volumes by period.
 
 ### Warehouse Operations Reports
+
+#### Delivery Performance
+**Endpoint**: `GET /api/reports/delivery-performance`
+
+Business-unit-scoped delivery reliability for dispatched delivery notes. The report compares the
+receipt date with the earliest required date among the delivery note's linked stock requests. Date
+range boundaries, receipt dates, and overdue checks use the business unit's configured timezone;
+when none is configured, they use `Asia/Manila`.
+
+**Parameters**:
+- `startDate`, `endDate` (dispatch date range, maximum 366 days)
+- `direction`: `all`, `outbound`, `inbound`, or `internal`
+- `performanceStatus`: `all`, `on_time`, `late`, `in_transit`, or `discrepancy`
+- `search` (delivery note, route, source warehouse, driver, or plate)
+- `page`, `limit` (maximum 500 rows per request)
+
+**Metrics**:
+- Completion, on-time, late, in-transit, discrepancy, and perfect-delivery counts
+- On-time, completion, and perfect-delivery rates
+- Average dispatch-to-receipt transit hours
+- Dispatched and received quantities
+
+An unreceived delivery becomes late after its required date. A perfect delivery is received on
+time without a header or line-level receiving discrepancy. The PDF preview is localized and
+exports at most 500 filtered rows per request. The database scopes delivery notes by company,
+business unit, direction, date, and search before aggregating linked requests and line quantities,
+so narrow report requests do not aggregate unrelated delivery history.
 
 #### Picking Efficiency
 **Endpoint**: `GET /api/reports/picking-efficiency`

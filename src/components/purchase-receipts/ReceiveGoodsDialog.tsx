@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api";
 import { useReceiveGoodsFromPO } from "@/hooks/usePurchaseReceipts";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import {
@@ -45,7 +43,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { PurchaseOrder, PurchaseOrderLineItem } from "@/types/purchase-order";
-import type { WarehouseLocation } from "@/types/inventory-location";
+import { WarehouseLocationSelect } from "@/components/warehouses/WarehouseLocationSelect";
 import {
   createReceiveGoodsSchema,
   type ReceiveGoodsFormValues,
@@ -139,17 +137,6 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
   }, [purchaseOrder, open, form, today]);
 
   const selectedWarehouseId = form.watch("warehouseId");
-
-  const { data: locationsData } = useQuery<{ data: WarehouseLocation[] }>({
-    queryKey: ["warehouse-locations", selectedWarehouseId],
-    queryFn: () => apiClient.get(`/api/warehouses/${selectedWarehouseId}/locations`),
-    enabled: !!selectedWarehouseId,
-  });
-
-  const locations = useMemo(
-    () => (locationsData?.data || []).filter((location) => location.isActive),
-    [locationsData]
-  );
 
   useEffect(() => {
     if (!selectedWarehouseId) {
@@ -269,28 +256,15 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("locationLabel")}</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={!selectedWarehouseId}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={
-                              selectedWarehouseId ? t("selectLocation") : t("selectWarehouseFirst")
-                            }
-                          />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {locations.map((location) => (
-                          <SelectItem key={location.id} value={location.id}>
-                            {location.code} {location.name ? `- ${location.name}` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <WarehouseLocationSelect
+                        warehouseId={selectedWarehouseId}
+                        value={field.value ?? ""}
+                        onValueChange={field.onChange}
+                        allowNone
+                        storableOnly
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -296,7 +296,7 @@ workflows.
 
 **Required fields**: Code only.
 
-**Optional fields**: Name, a parent location (for nesting, e.g. a shelf inside a rack), Location Type (Bin, Zone, Aisle, Rack, Shelf, Crate, Staging — defaults to Bin), and three switches that all default to "on": Active, Pickable, Storable.
+**Optional fields**: Name, a parent location (for nesting, e.g. a shelf inside a rack), Location Type (Bin, Zone, Aisle, Rack, Shelf, Crate, Staging — defaults to Bin), Maximum Capacity for storable locations, and three switches that all default to "on": Active, Pickable, Storable.
 
 **Validation rules**: the location code only needs to be unique _within its own warehouse_ — the same code (e.g. "A1") can exist in two different warehouses without conflict. A duplicate within the same warehouse is rejected.
 
@@ -319,6 +319,8 @@ workflows.
 - Mark a location as not-pickable, try to pick against it in a real Pick List, and confirm it's incorrectly still usable — file this as a defect, since it's already been confirmed to reproduce.
 - Mark a location as not-storable and confirm it disappears from the Putaway destination picker; if you have any way to submit a placement directly rather than through the picker, test whether that bypass still succeeds.
 - Create two locations with the same code in two different warehouses — should be allowed. Try the same code twice in the _same_ warehouse — should be refused.
+- Configure a maximum above the current on-hand quantity and confirm the location is Partially Occupied with the expected percentage. Set it equal to and below on-hand quantity to confirm Full and Over Capacity states.
+- Leave a storable location's maximum blank and confirm it is reported as Not Configured and excluded from the dashboard utilization calculation.
 - Put stock into a location, deactivate it, and see whether the stock is still shown/handled sensibly.
 
 ---
@@ -575,6 +577,10 @@ multiple warehouse-specific delivery notes from one action.
 - Confirm the delivery-note detail shows the fulfilling business unit as the source business unit
   and the requesting business unit as the destination business unit, without displaying either
   warehouse.
+- Create a delivery note for one request line, then reopen the creation dialog and confirm that the
+  fully allocated request line is no longer offered. For a partially allocated request, confirm the
+  Allocatable value is capped by both its remaining request quantity and current usable inventory,
+  and that the Source BU banner shows the fulfilling business unit.
 - Confirm Start Receiving requires a destination warehouse from the requesting business unit and
   rejects a warehouse from any other business unit.
 - Confirm the mobile scan and submit controls remain unavailable until Start Receiving succeeds,
@@ -1149,16 +1155,14 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 
 ## 30. Reports Directory
 
-**What it's for**: a catalog of business reports, reachable from the main Reports menu. Not every report listed here is actually built — the screen itself distinguishes "implemented" reports from "coming soon" placeholders, and testers should treat that distinction as authoritative rather than assuming everything on the page works.
+**What it's for**: a catalog of business reports, reachable from the main Reports menu. The directory displays implemented reports and hides report definitions that are still marked as coming soon.
 
-**Reports that are actually implemented (safe to test as real features)**: Stock Reports, Stock Aging, Inventory Report, Fast-Moving Products, Slow-Moving Products, Item-Location-Batch report, Customer Ledger, AR Aging, Shipments Report, Picking Efficiency, Transformation Efficiency.
-
-**Reports explicitly marked "coming soon" (do not file bugs against these — they're not built yet)**: Stock Turnover, Reorder Analysis, Warehouse Utilization, Stock Variance, Batch Traceability, Profit & Loss Statement, Balance Sheet, Cash Flow, AP Aging, Sales Profitability, COGS Analysis, Supplier Scorecard, PO Variance, Supplier Spend, Price Variance, Delivery Performance, Stock Transfer report, Return-to-Supplier Analysis, Executive Summary, Period Comparison, Budget vs. Actual, Audit Trail, Document Status, User Activity, Demand Forecast, What-If Analysis.
+**Reports that are actually implemented (safe to test as real features)**: Stock Reports, Stock Aging, Inventory Report, Fast-Moving Products, Slow-Moving Products, Item-Location-Batch report, Customer Ledger, AR Aging, Shipments Report, Delivery Performance, Picking Efficiency, Transformation Efficiency.
 
 **Things to test**:
 
 - Confirm every report marked "implemented" actually opens and renders data, not just the catalog tile.
-- Confirm reports marked "coming soon" show a clear "not yet available" state rather than a broken/blank screen if clicked.
+- Confirm report definitions marked "coming soon" are absent from report cards, category tabs, search results, and directory totals.
 - Some reports are gated behind extra permissions beyond basic Reports access (e.g. certain financial figures require a pricing/valuation-visibility permission) — test with a restricted role to confirm those specific numbers are hidden rather than the whole report failing.
 
 ---

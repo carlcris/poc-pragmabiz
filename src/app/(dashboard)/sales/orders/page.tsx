@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
@@ -28,8 +28,6 @@ import {
 } from "@/hooks/useSalesOrders";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -77,7 +75,7 @@ import {
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { SalesOrder, SalesOrderStatus } from "@/types/sales-order";
-import type { WarehouseLocation } from "@/types/inventory-location";
+import { WarehouseLocationSelect } from "@/components/warehouses/WarehouseLocationSelect";
 
 const SalesOrderFormDialog = dynamic(
   () =>
@@ -114,17 +112,6 @@ export default function SalesOrdersPage() {
 
   const { data: warehousesData } = useWarehouses({ limit: 50 });
   const warehouses = warehousesData?.data || [];
-
-  const { data: locationsData } = useQuery<{ data: WarehouseLocation[] }>({
-    queryKey: ["warehouse-locations", selectedWarehouse],
-    queryFn: () => apiClient.get(`/api/warehouses/${selectedWarehouse}/locations`),
-    enabled: !!selectedWarehouse,
-  });
-
-  const locations = useMemo(
-    () => (locationsData?.data || []).filter((location) => location.isActive),
-    [locationsData]
-  );
 
   const { data, isLoading, error } = useSalesOrders({
     search,
@@ -587,26 +574,13 @@ export default function SalesOrdersPage() {
             </Select>
           </div>
           <div className="pb-2">
-            <Select
+            <WarehouseLocationSelect
+              warehouseId={selectedWarehouse}
               value={selectedLocation}
               onValueChange={setSelectedLocation}
-              disabled={!selectedWarehouse}
-            >
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    selectedWarehouse ? t("selectLocationOptional") : t("selectWarehouseFirst")
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {locations.map((location) => (
-                  <SelectItem key={location.id} value={location.id}>
-                    {location.code} {location.name ? `- ${location.name}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              allowNone
+              storableOnly
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setWarehouseDialogOpen(false)}>

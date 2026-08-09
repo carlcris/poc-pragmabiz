@@ -344,14 +344,10 @@ export const useWarehouseCapacity = (
       const response = await apiClient.get<PurchasingDashboardData>(
         `/api/dashboard/purchasing?widgets=warehouseCapacity${params?.warehouseId ? `&warehouseId=${params.warehouseId}` : ""}`
       );
-      return (
-        response.warehouseCapacity ?? {
-          totalLocations: 0,
-          occupiedLocations: 0,
-          utilizationPercent: 0,
-          availableSpace: 0,
-        }
-      );
+      if (!response.warehouseCapacity) {
+        throw new Error("Warehouse capacity response is unavailable");
+      }
+      return response.warehouseCapacity;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes - changes slowly
     gcTime: 1000 * 60 * 10,

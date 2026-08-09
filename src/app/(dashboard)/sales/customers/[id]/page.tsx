@@ -48,9 +48,7 @@ import {
 } from "@/hooks/useSalesOrders";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { quotationsApi } from "@/lib/api/quotations";
-import { apiClient } from "@/lib/api";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -109,7 +107,7 @@ import type { Customer, PaymentTerms } from "@/types/customer";
 import type { Quotation, QuotationStatus } from "@/types/quotation";
 import type { SalesOrder, SalesOrderStatus } from "@/types/sales-order";
 import type { SalesOrderFormInitialValues } from "@/components/sales-orders/SalesOrderForm";
-import type { WarehouseLocation } from "@/types/inventory-location";
+import { WarehouseLocationSelect } from "@/components/warehouses/WarehouseLocationSelect";
 import type { LucideIcon } from "lucide-react";
 
 const CustomerFormDialog = dynamic(
@@ -250,17 +248,6 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
   const salesOrderPagination = salesOrdersData?.pagination;
   const { data: warehousesData } = useWarehouses({ limit: 50 });
   const warehouses = warehousesData?.data || [];
-
-  const { data: locationsData } = useQuery<{ data: WarehouseLocation[] }>({
-    queryKey: ["warehouse-locations", selectedWarehouse],
-    queryFn: () => apiClient.get(`/api/warehouses/${selectedWarehouse}/locations`),
-    enabled: !!selectedWarehouse,
-  });
-
-  const locations = React.useMemo(
-    () => (locationsData?.data || []).filter((location) => location.isActive),
-    [locationsData]
-  );
 
   React.useEffect(() => {
     setQuotationCursor(null);
@@ -1409,28 +1396,13 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
             </Select>
           </div>
           <div className="pb-2">
-            <Select
+            <WarehouseLocationSelect
+              warehouseId={selectedWarehouse}
               value={selectedLocation}
               onValueChange={setSelectedLocation}
-              disabled={!selectedWarehouse}
-            >
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    selectedWarehouse
-                      ? tOrders("selectLocationOptional")
-                      : tOrders("selectWarehouseFirst")
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {locations.map((location) => (
-                  <SelectItem key={location.id} value={location.id}>
-                    {location.code} {location.name ? `- ${location.name}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              allowNone
+              storableOnly
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setWarehouseDialogOpen(false)}>

@@ -136,10 +136,10 @@ END $$;
 INSERT INTO warehouses (id, company_id, business_unit_id, warehouse_code, warehouse_name, warehouse_type, address_line1, city, state, country, postal_code, contact_person, phone, email, is_active, is_van)
 VALUES
     -- Main Office Warehouses
-    ('b4dd7da9-4a6f-418c-98b4-6a05520eb6c5', '1e10e2dd-655e-41e0-a508-edfd660a9bcf', 'd69c52d5-6755-4e28-87e3-24c680a5897b', 'WH-BULACAN', 'Bulacan', 'main', 'JP Laurel Ave', 'Malolos City', 'Region III', 'Philippines', '8000', 'Juan Dela Cruz', '+63-917-111-2222', 'taguig.wh@achlers.com', true, false),
-    ('a2b20002-0000-4000-8000-000000000002', '1e10e2dd-655e-41e0-a508-edfd660a9bcf', 'd69c52d5-6755-4e28-87e3-24c680a5897b', 'WHB-002', 'Warehouse B', 'main', 'JP Laurel Ave', 'Malolos City', 'Region III', 'Philippines', '8000', 'Warehouse B Team', '+63-917-111-2233', 'warehouse-b@achlers.com', true, false),
-    ('b1bc2eeb-aab4-4aa1-a225-b82c95975a53', '1e10e2dd-655e-41e0-a508-edfd660a9bcf', 'd5d09f49-c3d7-4f24-aca9-57bea45e0a54', 'WH-BAMBANG', 'Bambang', 'main', '123 Lopez St.', 'Manila', 'NCR', 'Philippines', '9000', 'Maria Santos', '+63-917-222-3333', 'pasay.wh@achlers.com', true, false),
-    ('c830f462-6973-42cd-8125-898376fbc291', '1e10e2dd-655e-41e0-a508-edfd660a9bcf', 'bbce384d-dd71-441c-a5e3-2b5e5d1543ce', 'STR-SANTOS', 'Abad Santos', 'store', '456 Juan Luna St.', 'Pasig City', 'NCR', 'Philippines', '9500', 'Miguel Flores', '+63-917-333-4444', 'pasig@achlers.com', true, false);
+    ('b4dd7da9-4a6f-418c-98b4-6a05520eb6c5', '1e10e2dd-655e-41e0-a508-edfd660a9bcf', 'd69c52d5-6755-4e28-87e3-24c680a5897b', 'WH-BU01', 'Warehouse BU01', 'main', 'JP Laurel Ave', 'Malolos City', 'Region III', 'Philippines', '8000', 'Juan Dela Cruz', '+63-917-111-2222', 'taguig.wh@achlers.com', true, false),
+    ('a2b20002-0000-4000-8000-000000000002', '1e10e2dd-655e-41e0-a508-edfd660a9bcf', 'd69c52d5-6755-4e28-87e3-24c680a5897b', 'WH-BU02', 'Warehouse BU02', 'main', 'JP Laurel Ave', 'Malolos City', 'Region III', 'Philippines', '8000', 'Warehouse B Team', '+63-917-111-2233', 'warehouse-b@achlers.com', true, false),
+    ('b1bc2eeb-aab4-4aa1-a225-b82c95975a53', '1e10e2dd-655e-41e0-a508-edfd660a9bcf', 'd5d09f49-c3d7-4f24-aca9-57bea45e0a54', 'WH-BA01', 'Warehouse BA01', 'main', '123 Lopez St.', 'Manila', 'NCR', 'Philippines', '9000', 'Maria Santos', '+63-917-222-3333', 'pasay.wh@achlers.com', true, false),
+    ('c830f462-6973-42cd-8125-898376fbc291', '1e10e2dd-655e-41e0-a508-edfd660a9bcf', 'bbce384d-dd71-441c-a5e3-2b5e5d1543ce', 'STR-AS01', 'Warehouse AS01', 'store', '456 Juan Luna St.', 'Pasig City', 'NCR', 'Philippines', '9500', 'Miguel Flores', '+63-917-333-4444', 'pasig@achlers.com', true, false);
 -- ============================================================================
 -- SEED DATA: Customers
 -- ============================================================================
@@ -5330,7 +5330,7 @@ WITH warehouse_b AS (
   SELECT id, company_id
   FROM public.warehouses
   WHERE id = 'a2b20002-0000-4000-8000-000000000002'
-    AND warehouse_code = 'WHB-002'
+    AND warehouse_code = 'WH-BU02'
     AND business_unit_id = 'd69c52d5-6755-4e28-87e3-24c680a5897b'
     AND deleted_at IS NULL
 ),

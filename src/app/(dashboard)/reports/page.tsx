@@ -36,6 +36,7 @@ type SupportedReportPreviewType =
   | "shipments"
   | "stock"
   | "item-location-batch"
+  | "delivery-performance"
   | "picking-efficiency"
   | "transformation-efficiency"
   | "customer-ledger"
@@ -353,8 +354,9 @@ export default function ReportsPage() {
             id: "delivery-performance",
             name: t("deliveryPerformanceName"),
             description: t("deliveryPerformanceDescription"),
-            status: "coming-soon",
+            status: "implemented",
             businessValue: t("deliveryPerformanceValue"),
+            previewType: "delivery-performance",
             icon: Truck,
           },
           {
@@ -491,7 +493,10 @@ export default function ReportsPage() {
   const visibleReportCategories = reportCategories
     .map((category) => ({
       ...category,
-      reports: category.reports.filter((report) => hasCapabilities(report.requiredCapabilities)),
+      reports: category.reports.filter(
+        (report) =>
+          report.status !== "coming-soon" && hasCapabilities(report.requiredCapabilities)
+      ),
     }))
     .filter((category) => category.reports.length > 0);
 
@@ -519,12 +524,6 @@ export default function ReportsPage() {
       sum + category.reports.filter((report) => report.status === "implemented").length,
     0
   );
-  const comingSoonReports = visibleReportCategories.reduce(
-    (sum, category) =>
-      sum + category.reports.filter((report) => report.status === "coming-soon").length,
-    0
-  );
-
   return (
     <div className="space-y-6">
       <div>
@@ -532,7 +531,7 @@ export default function ReportsPage() {
         <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <MetricCard
           title={t("totalReports")}
           icon={FileText}
@@ -545,13 +544,6 @@ export default function ReportsPage() {
           iconClassName="h-4 w-4 text-green-600"
           value={String(implementedReports)}
           caption={t("availableNowDescription")}
-        />
-        <MetricCard
-          title={t("comingSoon")}
-          icon={Sparkles}
-          iconClassName="h-4 w-4 text-orange-600"
-          value={String(comingSoonReports)}
-          caption={t("comingSoonDescription")}
         />
       </div>
 

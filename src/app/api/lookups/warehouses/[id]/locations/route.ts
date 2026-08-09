@@ -6,7 +6,8 @@ import { RESOURCES } from "@/constants/resources";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const MAX_LIMIT = 100;
-const DEFAULT_LIMIT = 50;
+const DEFAULT_LIMIT = 5;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const parseLimit = (raw: string | null) => {
   const parsed = Number.parseInt(raw || "", 10);
@@ -15,9 +16,37 @@ const parseLimit = (raw: string | null) => {
 };
 
 const normalizeSearch = (raw: string | null) => {
-  const value = raw?.trim().replace(/[,%]/g, " ");
+  const value = raw?.trim().replace(/[,%()]/g, " ");
   return value ? value : null;
 };
+
+const mapLocationOption = (location: {
+  id: string;
+  company_id: string;
+  warehouse_id: string;
+  code: string;
+  name: string | null;
+  parent_id: string | null;
+  location_type: string;
+  is_pickable: boolean | null;
+  is_storable: boolean | null;
+  is_active: boolean | null;
+  created_at: string;
+  updated_at: string;
+}) => ({
+  id: location.id,
+  companyId: location.company_id,
+  warehouseId: location.warehouse_id,
+  code: location.code,
+  name: location.name,
+  parentId: location.parent_id,
+  locationType: location.location_type,
+  isPickable: location.is_pickable ?? false,
+  isStorable: location.is_storable ?? false,
+  isActive: location.is_active ?? false,
+  createdAt: location.created_at,
+  updatedAt: location.updated_at,
+});
 
 async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -33,6 +62,10 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     const searchParams = request.nextUrl.searchParams;
     const search = normalizeSearch(searchParams.get("search"));
     const limit = parseLimit(searchParams.get("limit"));
+    const selectedId = searchParams.get("selectedId")?.trim() || null;
+    if (selectedId && !UUID_PATTERN.test(selectedId)) {
+      return NextResponse.json({ error: "Invalid selected location" }, { status: 400 });
+    }
     const includeInactive = searchParams.get("includeInactive") === "true";
     const storableOnly = searchParams.get("storableOnly") === "true";
     const locationType = searchParams.get("locationType")?.trim() || null;
@@ -80,21 +113,36 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Failed to fetch warehouse locations" }, { status: 500 });
     }
 
+    let selected = selectedId ? (data || []).find((location) => location.id === selectedId) : null;
+    if (selectedId && !selected) {
+      let selectedQuery = adminSupabase
+        .from("warehouse_locations")
+        .select(
+          "id, company_id, warehouse_id, code, name, parent_id, location_type, is_pickable, is_storable, is_active, created_at, updated_at"
+        )
+        .eq("id", selectedId)
+        .eq("company_id", companyId)
+        .eq("warehouse_id", warehouseId)
+        .is("deleted_at", null);
+
+      if (!includeInactive) selectedQuery = selectedQuery.eq("is_active", true);
+      if (storableOnly) selectedQuery = selectedQuery.eq("is_storable", true);
+      if (locationType) selectedQuery = selectedQuery.eq("location_type", locationType);
+
+      const { data: selectedLocation, error: selectedError } = await selectedQuery.maybeSingle();
+      if (selectedError) {
+        console.error("Failed to fetch selected warehouse location option:", selectedError);
+        return NextResponse.json(
+          { error: "Failed to fetch warehouse locations" },
+          { status: 500 }
+        );
+      }
+      selected = selectedLocation;
+    }
+
     return NextResponse.json({
-      data: (data || []).map((location) => ({
-        id: location.id,
-        companyId: location.company_id,
-        warehouseId: location.warehouse_id,
-        code: location.code,
-        name: location.name,
-        parentId: location.parent_id,
-        locationType: location.location_type,
-        isPickable: location.is_pickable,
-        isStorable: location.is_storable,
-        isActive: location.is_active,
-        createdAt: location.created_at,
-        updatedAt: location.updated_at,
-      })),
+      data: (data || []).map(mapLocationOption),
+      selected: selected ? mapLocationOption(selected) : null,
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

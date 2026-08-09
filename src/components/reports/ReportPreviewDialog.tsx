@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Download, Eye, Loader2, Printer } from "lucide-react";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
@@ -63,6 +63,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Customer, CustomerLedgerSourceType } from "@/types/customer";
+import { DeliveryPerformanceReportPreview } from "@/components/reports/DeliveryPerformanceReportPreview";
+import {
+  PDF_REPORT_ROW_LIMIT,
+  ReportPreviewFrame as PreviewFrame,
+  useReportPdfPreviewState as usePdfPreviewState,
+} from "@/components/reports/ReportPreviewFrame";
 
 type SupportedReportPreviewType =
   | "inventory"
@@ -70,6 +76,7 @@ type SupportedReportPreviewType =
   | "shipments"
   | "stock"
   | "item-location-batch"
+  | "delivery-performance"
   | "picking-efficiency"
   | "transformation-efficiency"
   | "customer-ledger"
@@ -94,46 +101,6 @@ type ReportPreviewPanelProps = {
   }) => void;
 };
 
-const PDF_REPORT_ROW_LIMIT = 500;
-
-type PreviewFrameProps = {
-  url: string | null;
-  isGenerating: boolean;
-  emptyLabel: string;
-  loadingLabel: string;
-  title: string;
-};
-
-function PreviewFrame({ url, isGenerating, emptyLabel, loadingLabel, title }: PreviewFrameProps) {
-  if (isGenerating) {
-    return (
-      <div className="flex h-full min-h-[560px] items-center justify-center rounded-lg border bg-muted/30">
-        <div className="text-center">
-          <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">{loadingLabel}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!url) {
-    return (
-      <div className="flex h-full min-h-[560px] items-center justify-center rounded-lg border border-dashed bg-muted/20 px-6 text-center">
-        <div className="max-w-sm space-y-2">
-          <Eye className="mx-auto h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">{emptyLabel}</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="h-full min-h-[560px] overflow-hidden rounded-lg border bg-white">
-      <iframe src={url} title={title} className="h-full min-h-[560px] w-full border-0" />
-    </div>
-  );
-}
-
 function printPdfPreview(url: string | null) {
   if (!url) return;
   const printWindow = window.open(url, "_blank");
@@ -153,42 +120,6 @@ function downloadPdfPreview(url: string | null, fileName: string) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-}
-
-function usePdfPreviewState(open: boolean) {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
-
-  useEffect(() => {
-    if (!open && previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
-  }, [open, previewUrl]);
-
-  useEffect(() => {
-    return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-    };
-  }, [previewUrl]);
-
-  const replacePreviewUrl = useCallback((nextUrl: string | null) => {
-    setPreviewUrl((currentUrl) => {
-      if (currentUrl) {
-        URL.revokeObjectURL(currentUrl);
-      }
-      return nextUrl;
-    });
-  }, []);
-
-  return {
-    previewUrl,
-    isGeneratingPreview,
-    setIsGeneratingPreview,
-    replacePreviewUrl,
-  };
 }
 
 function InventoryReportPreview({
@@ -2493,6 +2424,13 @@ export function ReportPreviewDialog({
           )}
           {reportType === "item-location-batch" && (
             <ItemLocationBatchReportPreview
+              open={open}
+              reportName={reportName}
+              onPreviewStateChange={setPreviewState}
+            />
+          )}
+          {reportType === "delivery-performance" && (
+            <DeliveryPerformanceReportPreview
               open={open}
               reportName={reportName}
               onPreviewStateChange={setPreviewState}

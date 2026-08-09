@@ -106,6 +106,11 @@ warehouse outside the active unit use explicit cross-business-unit lookup endpoi
 
 **Warehouse Locations**:
 Each warehouse can have multiple storage locations (aisles, shelves, bins) for granular stock tracking.
+Active, storable locations may also define a positive maximum capacity. Capacity utilization uses
+the total on-hand quantity at the location divided by that maximum and classifies the location as
+empty, partially occupied, full, or over capacity. Locations without a maximum are reported as not
+configured and excluded from aggregate utilization. This simple model assumes stored quantities
+are comparable.
 
 Users with `warehouses:view` access can open an active warehouse's **Floor Map** in read-only mode.
 Uploading or replacing the private PNG/JPEG/WebP floor-plan image, changing rack mappings, and
@@ -124,6 +129,10 @@ cleared until the browser successfully decodes the new file; malformed images ca
 dimensions from the prior map. Saving the map and replacing all rack mappings is one transactional
 database operation; replacing the image removes the previous storage object only after the database
 save succeeds.
+
+Operational warehouse-location selectors use a bounded lookup contract: they show the first five
+eligible locations and search the server by location code or name as the user types. The warehouse
+location management page remains independently paginated and does not supply selector data.
 
 The item **Locations** tab groups rack rows by warehouse. Each warehouse section shows its aggregate
 on-hand quantity, warehouse-level maximum stock, and maximum-stock action, while preferred-rack
@@ -309,10 +318,11 @@ CREATE TABLE warehouse_locations (
   warehouse_id UUID REFERENCES warehouses(id) ON DELETE CASCADE,
   code VARCHAR NOT NULL,
   name VARCHAR,
-  aisle VARCHAR,
-  row VARCHAR,
-  bin VARCHAR,
-  is_default BOOLEAN DEFAULT false,
+  location_type VARCHAR NOT NULL DEFAULT 'bin',
+  is_pickable BOOLEAN DEFAULT true,
+  is_storable BOOLEAN DEFAULT true,
+  is_active BOOLEAN DEFAULT true,
+  max_capacity NUMERIC(20, 2),
   created_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(warehouse_id, code)
 );
@@ -877,9 +887,12 @@ back to another batch. Lines without a selected batch retain business-unit-wide 
 
 The delivery-note creation table displays business-unit-wide availability in the stock-request
 line's unit, for example `100 BOX (144)`. `Qty / Unit` shows the conversion factor, while `Total Qty`
-shows the current allocated quantity converted to base units. Availability requests are sent in
-bounded groups of up to 100 stock-request lines; every group must load successfully before
-allocation controls and delivery-note creation are enabled.
+shows the current allocated quantity converted to base units. `Allocatable` is the smaller of the
+line's remaining unallocated request quantity and its current usable inventory. Fully allocated
+requests and fully allocated lines are omitted so existing delivery-note allocations cannot be
+mistaken for an inventory shortage. Availability requests are sent in bounded groups of up to 100
+stock-request lines; every group must load successfully before allocation controls and delivery-note
+creation are enabled.
 
 #### POST /api/stock-requests/[id]/approve
 

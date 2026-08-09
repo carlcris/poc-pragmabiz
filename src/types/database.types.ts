@@ -10476,6 +10476,7 @@ export type Database = {
           is_pickable: boolean | null
           is_storable: boolean | null
           location_type: string
+          max_capacity: number | null
           name: string | null
           parent_id: string | null
           updated_at: string
@@ -10494,6 +10495,7 @@ export type Database = {
           is_pickable?: boolean | null
           is_storable?: boolean | null
           location_type?: string
+          max_capacity?: number | null
           name?: string | null
           parent_id?: string | null
           updated_at?: string
@@ -10512,6 +10514,7 @@ export type Database = {
           is_pickable?: boolean | null
           is_storable?: boolean | null
           location_type?: string
+          max_capacity?: number | null
           name?: string | null
           parent_id?: string | null
           updated_at?: string
@@ -11425,6 +11428,21 @@ export type Database = {
           sr_item_id: string
         }[]
       }
+      get_delivery_performance_report: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_direction?: string
+          p_end_date: string
+          p_limit?: number
+          p_page?: number
+          p_performance_status?: string
+          p_search?: string
+          p_start_date: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       get_effective_reorder_alerts: {
         Args: {
           p_acknowledgment_status?: string
@@ -11678,6 +11696,22 @@ export type Database = {
           warehouse_id: string
         }[]
       }
+      get_warehouse_capacity: {
+        Args: { p_business_unit_id: string; p_warehouse_id?: string }
+        Returns: {
+          available_capacity: number
+          configured_locations: number
+          empty_locations: number
+          full_locations: number
+          over_capacity_locations: number
+          partially_occupied_locations: number
+          total_capacity: number
+          total_locations: number
+          unconfigured_locations: number
+          used_capacity: number
+          utilization_percent: number
+        }[]
+      }
       get_warehouse_dashboard_low_stocks: {
         Args: {
           p_business_unit_id?: string
@@ -11691,6 +11725,33 @@ export type Database = {
           qty: number
           reorder_level: number
           uom: string
+        }[]
+      }
+      get_warehouse_location_capacities: {
+        Args: {
+          p_business_unit_id: string
+          p_limit?: number
+          p_page?: number
+          p_warehouse_id: string
+        }
+        Returns: {
+          capacity_status: string
+          code: string
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_pickable: boolean
+          is_storable: boolean
+          location_type: string
+          max_capacity: number
+          name: string
+          parent_id: string
+          total_count: number
+          updated_at: string
+          used_capacity: number
+          utilization_percent: number
+          warehouse_id: string
         }[]
       }
       get_warehouses: {

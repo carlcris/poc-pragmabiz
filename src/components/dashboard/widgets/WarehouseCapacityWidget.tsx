@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { Warehouse, AlertTriangle, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -14,6 +14,7 @@ type WarehouseCapacityWidgetProps = {
 
 export function WarehouseCapacityWidget({ warehouseId }: WarehouseCapacityWidgetProps) {
   const t = useTranslations("purchasingOverviewWidgets");
+  const format = useFormatter();
   const { data, isLoading, error } = useWarehouseCapacity({ warehouseId });
 
   // Loading state
@@ -54,9 +55,6 @@ export function WarehouseCapacityWidget({ warehouseId }: WarehouseCapacityWidget
         <CardContent>
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
             <p className="text-sm text-destructive">{t("failedLoadCapacityData")}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {error instanceof Error ? error.message : t("anErrorOccurred")}
-            </p>
           </div>
         </CardContent>
       </Card>
@@ -84,6 +82,8 @@ export function WarehouseCapacityWidget({ warehouseId }: WarehouseCapacityWidget
   }
 
   const utilizationPercent = data.utilizationPercent;
+  const displayedProgress = Math.min(Math.max(utilizationPercent, 0), 100);
+  const isOverCapacity = data.overCapacityLocations > 0 || utilizationPercent > 100;
   const isHighCapacity = utilizationPercent >= 90;
   const isMediumCapacity = utilizationPercent >= 75 && utilizationPercent < 90;
 
@@ -91,11 +91,6 @@ export function WarehouseCapacityWidget({ warehouseId }: WarehouseCapacityWidget
   const statusConfig = {
     label: isHighCapacity ? t("critical") : isMediumCapacity ? t("warning") : t("good"),
     color: isHighCapacity ? "text-red-600" : isMediumCapacity ? "text-amber-600" : "text-green-600",
-    bgColor: isHighCapacity
-      ? "bg-red-100 text-red-700"
-      : isMediumCapacity
-        ? "bg-amber-100 text-amber-700"
-        : "bg-green-100 text-green-700",
     progressColor: isHighCapacity
       ? "bg-red-500"
       : isMediumCapacity
@@ -115,15 +110,30 @@ export function WarehouseCapacityWidget({ warehouseId }: WarehouseCapacityWidget
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* High Capacity Alert */}
-        {isHighCapacity && (
+        {data.unconfiguredLocations > 0 ? (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {t("unconfiguredRackCapacityAlert", { count: data.unconfiguredLocations })}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        {isOverCapacity ? (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {t("overCapacityRackAlert", { count: data.overCapacityLocations })}
+            </AlertDescription>
+          </Alert>
+        ) : isHighCapacity ? (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               {t("warehouseAtCapacityAlert", { value: utilizationPercent.toFixed(1) })}
             </AlertDescription>
           </Alert>
-        )}
+        ) : null}
 
         {/* Utilization Gauge */}
         <div className="space-y-3">
@@ -136,48 +146,61 @@ export function WarehouseCapacityWidget({ warehouseId }: WarehouseCapacityWidget
           <div className="relative h-4 w-full overflow-hidden rounded-full bg-muted">
             <div
               className={cn("h-full rounded-full transition-all", statusConfig.progressColor)}
-              style={{ width: `${utilizationPercent}%` }}
+              style={{ width: `${displayedProgress}%` }}
             />
           </div>
           <div className="flex justify-center">
-            <div
-              className={cn("rounded-full px-3 py-1 text-xs font-semibold", statusConfig.bgColor)}
-            >
+            <span className={cn("text-sm font-semibold", statusConfig.color)}>
               {statusConfig.label}
-            </div>
+            </span>
           </div>
         </div>
 
-        {/* Location Stats */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
           <div className="rounded-lg border bg-muted/50 p-2 text-center sm:p-3">
-            <div className="text-xs text-muted-foreground">{t("total")}</div>
-            <p className="mt-1 text-base font-bold sm:text-lg">{data.totalLocations}</p>
+            <div className="text-xs text-muted-foreground">{t("emptyRacks")}</div>
+            <p className="mt-1 text-base font-bold tabular-nums sm:text-lg">
+              {data.emptyLocations}
+            </p>
           </div>
           <div className="rounded-lg border bg-muted/50 p-2 text-center sm:p-3">
-            <div className="text-xs text-muted-foreground">{t("occupied")}</div>
-            <p className="mt-1 text-base font-bold sm:text-lg">{data.occupiedLocations}</p>
+            <div className="text-xs text-muted-foreground">{t("partialRacks")}</div>
+            <p className="mt-1 text-base font-bold tabular-nums text-blue-600 sm:text-lg">
+              {data.partiallyOccupiedLocations}
+            </p>
           </div>
           <div className="rounded-lg border bg-muted/50 p-2 text-center sm:p-3">
-            <div className="text-xs text-muted-foreground">{t("available")}</div>
-            <p className="mt-1 text-base font-bold text-green-600 sm:text-lg">
-              {data.availableSpace}
+            <div className="text-xs text-muted-foreground">{t("fullRacks")}</div>
+            <p className="mt-1 text-base font-bold tabular-nums text-amber-600 sm:text-lg">
+              {data.fullLocations}
+            </p>
+          </div>
+          <div className="rounded-lg border bg-muted/50 p-2 text-center sm:p-3">
+            <div className="text-xs text-muted-foreground">{t("unconfiguredRacks")}</div>
+            <p className="mt-1 text-base font-bold tabular-nums text-muted-foreground sm:text-lg">
+              {data.unconfiguredLocations}
             </p>
           </div>
         </div>
 
-        {/* Capacity Breakdown */}
         <div className="space-y-2 rounded-lg border bg-card p-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">{t("capacityUsed")}</span>
-            <span className="font-semibold">
-              {data.occupiedLocations} / {data.totalLocations}
+            <span className="font-semibold tabular-nums">
+              {format.number(data.usedCapacity, { maximumFractionDigits: 2 })} /{" "}
+              {format.number(data.totalCapacity, { maximumFractionDigits: 2 })}
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">{t("spaceRemaining")}</span>
-            <span className="font-semibold text-green-600">
-              {t("locationsRemaining", { count: data.availableSpace })}
+            <span className="text-muted-foreground">{t("remainingCapacity")}</span>
+            <span className="font-semibold tabular-nums text-green-600">
+              {format.number(data.availableCapacity, { maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">{t("configuredRacks")}</span>
+            <span className="font-semibold tabular-nums">
+              {data.configuredLocations} / {data.totalLocations}
             </span>
           </div>
         </div>

@@ -235,6 +235,14 @@ export default function DeliveryNotesPage() {
   const isInventoryAvailabilityBlocked =
     isInventoryAvailabilityRequired &&
     (isLoadingInventory || allocationAvailability.isError || !isInventoryAvailabilityComplete);
+  const eligibleDraftLines = useMemo(
+    () =>
+      draftLines.filter((line) => {
+        const availability = availabilityBySrItemId[line.srItemId];
+        return !availability || availability.remainingRequestQty > 0;
+      }),
+    [availabilityBySrItemId, draftLines]
+  );
 
   const warehouseLabelById = useMemo(() => {
     const map = new Map<string, string>();
@@ -494,7 +502,7 @@ export default function DeliveryNotesPage() {
     return stockRequests.filter(
       (request) =>
         request.fulfilling_business_unit_id === currentBusinessUnit?.id &&
-        ["approved", "partially_allocated", "allocated"].includes(request.status)
+        ["approved", "partially_allocated"].includes(request.status)
     );
   }, [currentBusinessUnit?.id, stockRequests]);
 
@@ -615,14 +623,17 @@ export default function DeliveryNotesPage() {
       return next;
     });
 
-    if (checked && line.allocatedQty <= 0) {
-      updateAllocatedQty(line.srItemId, getMaxAllowedQty(line));
+    if (checked) {
+      updateAllocatedQty(line.srItemId, line.allocatedQty || getMaxAllowedQty(line));
     }
   };
 
   const selectedLines = useMemo(
-    () => draftLines.filter((line) => selectedLineIds.has(line.srItemId) && line.allocatedQty > 0),
-    [draftLines, selectedLineIds]
+    () =>
+      eligibleDraftLines.filter(
+        (line) => selectedLineIds.has(line.srItemId) && line.allocatedQty > 0
+      ),
+    [eligibleDraftLines, selectedLineIds]
   );
 
   const invalidSelectedLine = useMemo(
@@ -1157,14 +1168,15 @@ export default function DeliveryNotesPage() {
                   <div>
                     <span className="text-xs text-muted-foreground">{t("sourceBuLabel")}</span>{" "}
                     <span className="font-medium">
-                      {requestingBusinessUnits.find((bu) => bu.id === selectedRequestingBuId)
-                        ?.label || t("noValue")}
+                      {currentBusinessUnit
+                        ? `${currentBusinessUnit.code} - ${currentBusinessUnit.name}`
+                        : t("noValue")}
                     </span>
                   </div>
                   <div className="flex gap-4 text-xs">
                     <div>
                       <span className="text-muted-foreground">{t("eligibleLabel")}</span>{" "}
-                      <span className="font-medium">{draftLines.length}</span>
+                      <span className="font-medium">{eligibleDraftLines.length}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">{t("selectedLabel")}</span>{" "}
@@ -1179,7 +1191,7 @@ export default function DeliveryNotesPage() {
               <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-center">
                 <p className="text-sm text-muted-foreground">{t("selectRequestingBuHint")}</p>
               </div>
-            ) : draftLines.length > 0 ? (
+            ) : eligibleDraftLines.length > 0 ? (
               <div className="overflow-x-auto rounded-lg border">
                 <Table className="min-w-max">
                   <TableHeader>
@@ -1196,14 +1208,14 @@ export default function DeliveryNotesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {draftLines.map((line) => {
+                    {eligibleDraftLines.map((line) => {
                       const availability = availabilityBySrItemId[line.srItemId];
                       const availableQty = getAvailableQty(line);
                       const maxAllowedQty = getMaxAllowedQty(line);
                       const hasInsufficientInventory =
                         selectedLineIds.has(line.srItemId) &&
                         availableQty !== undefined &&
-                        line.allocatedQty > maxAllowedQty;
+                        line.allocatedQty > availableQty;
 
                       return (
                         <TableRow
@@ -1219,7 +1231,7 @@ export default function DeliveryNotesPage() {
                           <TableCell>
                             <Checkbox
                               checked={selectedLineIds.has(line.srItemId)}
-                              disabled={isInventoryAvailabilityBlocked}
+                              disabled={isInventoryAvailabilityBlocked || maxAllowedQty <= 0}
                               onCheckedChange={(checked) => toggleLine(line, checked === true)}
                             />
                           </TableCell>
@@ -1253,7 +1265,7 @@ export default function DeliveryNotesPage() {
                             {(line.allocatedQty * (availability?.qtyPerUnit || 1)).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {(availability?.remainingRequestQty ?? 0).toFixed(2)}
+                            {maxAllowedQty.toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right">
                             <Input

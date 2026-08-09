@@ -202,9 +202,9 @@ export default function StockTransactionsPage() {
                   <TableHead>{t("date")}</TableHead>
                   <TableHead>{t("type")}</TableHead>
                   <TableHead>{t("item")}</TableHead>
-                  <TableHead>{t("warehouse")}</TableHead>
+                  <TableHead className="w-64">{t("warehouse")}</TableHead>
                   <TableHead className="text-right">{t("quantity")}</TableHead>
-                  <TableHead>{t("reference")}</TableHead>
+                  <TableHead className="w-40">{t("reference")}</TableHead>
                   <TableHead>{t("createdBy")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -223,14 +223,14 @@ export default function StockTransactionsPage() {
                     <TableCell>
                       <Skeleton className="h-4 w-36" />
                     </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-28" />
+                    <TableCell className="w-64">
+                      <Skeleton className="h-4 w-40" />
                     </TableCell>
                     <TableCell className="text-right">
                       <Skeleton className="ml-auto h-4 w-16" />
                     </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-32" />
+                    <TableCell className="w-40">
+                      <Skeleton className="h-4 w-28" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-24" />
@@ -257,9 +257,9 @@ export default function StockTransactionsPage() {
                     <TableHead>{t("date")}</TableHead>
                     <TableHead>{t("type")}</TableHead>
                     <TableHead>{t("item")}</TableHead>
-                    <TableHead>{t("warehouse")}</TableHead>
+                    <TableHead className="w-64">{t("warehouse")}</TableHead>
                     <TableHead className="text-right">{t("quantity")}</TableHead>
-                    <TableHead>{t("reference")}</TableHead>
+                    <TableHead className="w-40">{t("reference")}</TableHead>
                     <TableHead>{t("createdBy")}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -297,7 +297,7 @@ export default function StockTransactionsPage() {
                             <div className="text-muted-foreground">{transaction.itemName}</div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="w-64">
                           <div className="text-sm">
                             <div className="font-medium">{warehouseCell.warehouse}</div>
                             <div className="text-muted-foreground">{warehouseCell.location}</div>
@@ -330,8 +330,8 @@ export default function StockTransactionsPage() {
                           </div>
                           <div className="text-xs text-muted-foreground">{transaction.uom}</div>
                         </TableCell>
-                        <TableCell>
-                          <div className="max-w-[260px] text-sm">
+                        <TableCell className="w-40">
+                          <div className="max-w-40 text-sm">
                             <div className="font-medium">{transaction.referenceNumber || "-"}</div>
                             <div
                               className="truncate text-muted-foreground"

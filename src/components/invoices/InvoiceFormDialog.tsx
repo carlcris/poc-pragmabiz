@@ -8,8 +8,6 @@ import { useTranslations } from "next-intl";
 import { Calculator, Pencil, Plus, Trash2 } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api";
 import { useCreateInvoice, useUpdateInvoice } from "@/hooks/useInvoices";
 import { useCustomer, useCustomers } from "@/hooks/useCustomers";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -33,13 +31,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { WarehouseLocationSelect } from "@/components/warehouses/WarehouseLocationSelect";
 import {
   Table,
   TableBody,
@@ -53,7 +45,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/useCurrency";
 import { createInvoiceFormSchema } from "@/lib/validations/invoice";
 import type { Invoice } from "@/types/invoice";
-import type { WarehouseLocation } from "@/types/inventory-location";
 import { InvoiceLineItemDialog, type LineItemFormValues } from "./InvoiceLineItemDialog";
 
 interface InvoiceFormDialogProps {
@@ -133,17 +124,6 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
     warehouses.find((warehouse) => warehouse.id === selectedWarehouseId) ??
     selectedWarehouseData?.data ??
     null;
-
-  const { data: locationsData } = useQuery<{ data: WarehouseLocation[] }>({
-    queryKey: ["warehouse-locations", selectedWarehouseId],
-    queryFn: () => apiClient.get(`/api/warehouses/${selectedWarehouseId}/locations`),
-    enabled: !!selectedWarehouseId,
-  });
-
-  const locations = useMemo(
-    () => (locationsData?.data || []).filter((location) => location.isActive),
-    [locationsData]
-  );
 
   const totals = useMemo(() => {
     const subtotal = lineItems.reduce((sum, item) => {
@@ -405,33 +385,24 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t("location")}</FormLabel>
-                        <Select
-                          onValueChange={(value) =>
-                            field.onChange(value === "__none__" ? "" : value)
-                          }
-                          value={field.value || "__none__"}
-                          disabled={!selectedWarehouseId}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue
-                                placeholder={
-                                  selectedWarehouseId
-                                    ? t("selectLocation")
-                                    : t("selectWarehouseFirst")
-                                }
-                              />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="__none__">{t("none")}</SelectItem>
-                            {locations.map((location) => (
-                              <SelectItem key={location.id} value={location.id}>
-                                {location.code} {location.name ? `- ${location.name}` : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <WarehouseLocationSelect
+                            warehouseId={selectedWarehouseId}
+                            value={field.value ?? ""}
+                            onValueChange={field.onChange}
+                            selectedOption={
+                              invoice?.locationId && invoice.locationId === field.value
+                                ? {
+                                    id: invoice.locationId,
+                                    code: invoice.locationCode ?? "",
+                                    name: invoice.locationName,
+                                  }
+                                : null
+                            }
+                            allowNone
+                            storableOnly
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}

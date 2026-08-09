@@ -1,47 +1,137 @@
-import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
-import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { requirePermission } from "@/lib/auth";
+import { requireRequestContext } from "@/lib/auth/requestContext";
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 
-// PATCH /api/warehouse-locations/[id] - Update a warehouse location
-async function PATCHHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+type RouteContext = { params: Promise<{ id: string }> };
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const LOCATION_COLUMNS =
+  "id, company_id, warehouse_id, code, name, parent_id, location_type, is_pickable, is_storable, is_active, max_capacity, created_at, updated_at";
+
+const updateLocationSchema = z
+  .object({
+    code: z.string().trim().min(1).max(100).optional(),
+    name: z.string().trim().max(200).nullable().optional(),
+    parentId: z.string().uuid().nullable().optional(),
+    locationType: z.string().trim().min(1).max(50).optional(),
+    isPickable: z.boolean().optional(),
+    isStorable: z.boolean().optional(),
+    isActive: z.boolean().optional(),
+    maxCapacity: z.number().finite().positive().max(999_999_999_999_999_999).nullable().optional(),
+  })
+  .refine((value) => Object.values(value).some((entry) => entry !== undefined), {
+    message: "At least one location field is required",
+  });
+
+const mapLocation = (location: {
+  id: string;
+  company_id: string;
+  warehouse_id: string;
+  code: string;
+  name: string | null;
+  parent_id: string | null;
+  location_type: string;
+  is_pickable: boolean | null;
+  is_storable: boolean | null;
+  is_active: boolean | null;
+  max_capacity: number | null;
+  created_at: string;
+  updated_at: string;
+}) => ({
+  id: location.id,
+  companyId: location.company_id,
+  warehouseId: location.warehouse_id,
+  code: location.code,
+  name: location.name,
+  parentId: location.parent_id,
+  locationType: location.location_type,
+  isPickable: location.is_pickable ?? false,
+  isStorable: location.is_storable ?? false,
+  isActive: location.is_active ?? false,
+  maxCapacity: location.max_capacity,
+  createdAt: location.created_at,
+  updatedAt: location.updated_at,
+});
+
+async function PATCHHandler(request: NextRequest, { params }: RouteContext) {
   try {
     const unauthorized = await requirePermission(RESOURCES.MANAGE_LOCATIONS, "edit");
     if (unauthorized) return unauthorized;
 
-    const { id } = await params;
-    const { supabase } = await createServerClientWithBU();
-    const body = await request.json();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const requestContext = await requireRequestContext();
+    if ("status" in requestContext) return requestContext;
+    const { supabase, userId, companyId, currentBusinessUnitId } = requestContext;
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: "Business unit context required", code: "BUSINESS_UNIT_CONTEXT_REQUIRED" },
+        { status: 400 }
+      );
     }
 
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
+    const { id } = await params;
+    if (!UUID_REGEX.test(id)) {
+      return NextResponse.json(
+        { error: "Invalid location id", code: "INVALID_LOCATION_ID" },
+        { status: 400 }
+      );
+    }
 
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
+    const parsedBody = updateLocationSchema.safeParse(await request.json());
+    if (!parsedBody.success) {
+      return NextResponse.json(
+        { error: parsedBody.error.issues[0]?.message ?? "Invalid location details", code: "INVALID_LOCATION" },
+        { status: 400 }
+      );
+    }
+
+    const { data: existing, error: existingError } = await supabase
+      .from("warehouse_locations")
+      .select("id, is_storable, warehouse:warehouses!inner(id)")
+      .eq("id", id)
+      .eq("company_id", companyId)
+      .eq("warehouses.business_unit_id", currentBusinessUnitId)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (existingError) {
+      console.error("Failed to verify warehouse location scope", existingError);
+      return NextResponse.json(
+        { error: "Failed to update location", code: "WAREHOUSE_LOCATION_UPDATE_FAILED" },
+        { status: 500 }
+      );
+    }
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Warehouse location not found", code: "WAREHOUSE_LOCATION_NOT_FOUND" },
+        { status: 404 }
+      );
+    }
+
+    const body = parsedBody.data;
+    const willBeStorable = body.isStorable ?? existing.is_storable ?? false;
+    if (!willBeStorable && body.maxCapacity != null) {
+      return NextResponse.json(
+        {
+          error: "Capacity can only be configured for storable locations",
+          code: "CAPACITY_REQUIRES_STORABLE_LOCATION",
+        },
+        { status: 400 }
+      );
     }
 
     const updatePayload = {
-      code: body.code ?? undefined,
-      name: body.name ?? undefined,
-      parent_id: body.parentId ?? undefined,
-      location_type: body.locationType ?? undefined,
-      is_pickable: body.isPickable ?? undefined,
-      is_storable: body.isStorable ?? undefined,
-      is_active: body.isActive ?? undefined,
-      updated_by: user.id,
+      code: body.code,
+      name: body.name,
+      parent_id: body.parentId,
+      location_type: body.locationType,
+      is_pickable: body.isPickable,
+      is_storable: body.isStorable,
+      is_active: body.isActive,
+      max_capacity: willBeStorable ? body.maxCapacity : null,
+      updated_by: userId,
       updated_at: new Date().toISOString(),
     };
 
@@ -49,34 +139,27 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       .from("warehouse_locations")
       .update(updatePayload)
       .eq("id", id)
-      .eq("company_id", userData.company_id)
-      .select()
+      .eq("company_id", companyId)
+      .select(LOCATION_COLUMNS)
       .single();
 
     if (updateError || !updated) {
+      console.error("Failed to update warehouse location", updateError);
+      if (updateError?.code === "23505") {
+        return NextResponse.json(
+          { error: "Location code already exists for this warehouse", code: "LOCATION_CODE_EXISTS" },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
-        { error: updateError?.message || "Failed to update location" },
+        { error: "Failed to update location", code: "WAREHOUSE_LOCATION_UPDATE_FAILED" },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({
-      data: {
-        id: updated.id,
-        companyId: updated.company_id,
-        warehouseId: updated.warehouse_id,
-        code: updated.code,
-        name: updated.name,
-        parentId: updated.parent_id,
-        locationType: updated.location_type,
-        isPickable: updated.is_pickable,
-        isStorable: updated.is_storable,
-        isActive: updated.is_active,
-        createdAt: updated.created_at,
-        updatedAt: updated.updated_at,
-      },
-    });
-  } catch {
+    return NextResponse.json({ data: mapLocation(updated) });
+  } catch (error: unknown) {
+    console.error("Unexpected warehouse location update error", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

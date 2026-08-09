@@ -300,6 +300,14 @@ export type TranslationKeys = {
     empty: string;
     loading: string;
   };
+  warehouseLocationSelect: {
+    noLocation: string;
+    selectLocation: string;
+    selectWarehouseFirst: string;
+    searchPlaceholder: string;
+    empty: string;
+    loading: string;
+  };
   businessUnitSelect: {
     selectBusinessUnit: string;
     searchPlaceholder: string;
@@ -380,6 +388,65 @@ export type TranslationKeys = {
     deleteError: string;
     notFoundError: string;
     contextRequiredError: string;
+  };
+  warehouseLocationsPage: {
+    title: string;
+    subtitle: string;
+    addLocation: string;
+    loadErrorTitle: string;
+    loadErrorDescription: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    code: string;
+    name: string;
+    type: string;
+    pickable: string;
+    storable: string;
+    capacity: string;
+    occupancy: string;
+    status: string;
+    actions: string;
+    yes: string;
+    no: string;
+    active: string;
+    inactive: string;
+    edit: string;
+    disable: string;
+    enable: string;
+    editTitle: string;
+    addTitle: string;
+    editDescription: string;
+    addDescription: string;
+    codePlaceholder: string;
+    namePlaceholder: string;
+    locationType: string;
+    selectType: string;
+    maxCapacity: string;
+    maxCapacityPlaceholder: string;
+    maxCapacityHelp: string;
+    pickableHelp: string;
+    storableHelp: string;
+    activeHelp: string;
+    cancel: string;
+    saving: string;
+    updateLocation: string;
+    createLocation: string;
+    createdSuccess: string;
+    updatedSuccess: string;
+    createError: string;
+    updateError: string;
+    codeRequired: string;
+    capacityPositive: string;
+    invalidLocation: string;
+    codeExists: string;
+    capacityRequiresStorable: string;
+    locationNotFound: string;
+    capacityEmpty: string;
+    capacityPartial: string;
+    capacityFull: string;
+    capacityOver: string;
+    capacityNotConfigured: string;
+    capacityNotStorable: string;
   };
   warehouseFloorMap: {
     title: string;
@@ -2921,6 +2988,7 @@ export type TranslationKeys = {
   stockReportsPage: Record<string, string>;
   stockAgingReportPage: Record<string, string>;
   shipmentsReportPage: Record<string, string>;
+  deliveryPerformanceReportPage: Record<string, string>;
   productMovementReportsPage: Record<string, string>;
   salesAnalyticsPage: Record<string, string>;
   analyticsFilters: Record<string, string>;
@@ -3591,6 +3659,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       empty: "No warehouses found.",
       loading: "Loading warehouses...",
     },
+    warehouseLocationSelect: {
+      noLocation: "No location",
+      selectLocation: "Select location",
+      selectWarehouseFirst: "Select a warehouse first",
+      searchPlaceholder: "Search locations...",
+      empty: "No locations found.",
+      loading: "Loading locations...",
+    },
     businessUnitSelect: {
       selectBusinessUnit: "Select business unit",
       searchPlaceholder: "Search business units...",
@@ -3669,6 +3745,67 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleteError: "Failed to delete warehouse",
       notFoundError: "This warehouse is not available in the active business unit.",
       contextRequiredError: "Select a business unit before managing warehouses.",
+    },
+    warehouseLocationsPage: {
+      title: "Warehouse Locations",
+      subtitle: "Manage storage locations and their quantity capacity for this warehouse.",
+      addLocation: "Add Location",
+      loadErrorTitle: "Failed to load warehouse locations",
+      loadErrorDescription: "Please refresh the page and try again.",
+      emptyTitle: "No locations yet",
+      emptyDescription:
+        "Create the first warehouse location to start organizing stock movement and storage.",
+      code: "Code",
+      name: "Name",
+      type: "Type",
+      pickable: "Pickable",
+      storable: "Storable",
+      capacity: "Used / Maximum",
+      occupancy: "Occupancy",
+      status: "Status",
+      actions: "Actions",
+      yes: "Yes",
+      no: "No",
+      active: "Active",
+      inactive: "Inactive",
+      edit: "Edit",
+      disable: "Disable",
+      enable: "Enable",
+      editTitle: "Edit Location",
+      addTitle: "Add Location",
+      editDescription: "Update location details for this warehouse.",
+      addDescription: "Define a storage location within this warehouse.",
+      codePlaceholder: "A1-RACK-01",
+      namePlaceholder: "Rack A",
+      locationType: "Location Type",
+      selectType: "Select type",
+      maxCapacity: "Maximum Capacity",
+      maxCapacityPlaceholder: "Enter maximum quantity",
+      maxCapacityHelp:
+        "Maximum total on-hand quantity this location can hold. Leave blank when not configured.",
+      pickableHelp: "Allow picking stock from this location.",
+      storableHelp: "Allow storing stock in this location.",
+      activeHelp: "Inactive locations are hidden from selection.",
+      cancel: "Cancel",
+      saving: "Saving...",
+      updateLocation: "Update Location",
+      createLocation: "Create Location",
+      createdSuccess: "Location created successfully",
+      updatedSuccess: "Location updated",
+      createError: "Failed to create location",
+      updateError: "Failed to update location",
+      codeRequired: "Location code is required",
+      capacityPositive: "Maximum capacity must be greater than zero.",
+      invalidLocation: "Check the location details and enter a positive maximum capacity.",
+      codeExists: "That location code is already used in this warehouse.",
+      capacityRequiresStorable: "Enable storage before configuring a maximum capacity.",
+      locationNotFound: "This location is no longer available. Refresh the page and try again.",
+      capacityEmpty: "Empty",
+      capacityPartial: "Partially occupied",
+      capacityFull: "Full",
+      capacityOver: "Over capacity",
+      capacityNotConfigured: "Not configured",
+      capacityNotStorable: "Not storable",
     },
     warehouseFloorMap: {
       title: "Warehouse Floor Map",
@@ -6845,11 +6982,20 @@ export const translations: Record<Locale, TranslationKeys> = {
       noCapacityDataAvailable: "No capacity data available",
       warehouseAtCapacityAlert:
         "Warehouse is at {value}% capacity. Consider expanding or optimizing storage.",
+      unconfiguredRackCapacityAlert:
+        "{count} storable locations have no maximum capacity and are excluded from utilization.",
+      overCapacityRackAlert: "{count} locations are over their configured maximum capacity.",
       utilization: "Utilization",
       total: "Total",
       occupied: "Occupied",
       available: "Available",
       capacityUsed: "Capacity Used",
+      remainingCapacity: "Remaining Capacity",
+      configuredRacks: "Configured Locations",
+      emptyRacks: "Empty",
+      partialRacks: "Partially Occupied",
+      fullRacks: "Full",
+      unconfiguredRacks: "Not Configured",
       spaceRemaining: "Space Remaining",
       locationsRemaining: "{count} locations",
       recommendations: "Recommendations",
@@ -7738,7 +7884,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       shipmentsReportValue: "Real-time visibility across supplier deliveries",
       operationsName: "Operations & Logistics",
       operationsDescription: "Operational efficiency and delivery performance metrics",
-      deliveryPerformanceName: "Delivery Performance Dashboard",
+      deliveryPerformanceName: "Delivery Performance",
       deliveryPerformanceDescription: "Monitor logistics efficiency and delivery reliability",
       deliveryPerformanceValue: "20-35% improvement in delivery performance",
       pickingEfficiencyName: "Picking Efficiency Report",
@@ -7997,6 +8143,48 @@ export const translations: Record<Locale, TranslationKeys> = {
       noRows: "No shipments found for the selected filters.",
       noValue: "--",
       loadError: "Failed to load shipments report.",
+    },
+    deliveryPerformanceReportPage: {
+      title: "Delivery Performance",
+      subtitle:
+        "Monitor logistics efficiency, delivery timeliness, transit duration, and receiving reliability.",
+      startDate: "Start Date",
+      endDate: "End Date",
+      period: "Dispatch Period",
+      search: "Search",
+      searchPlaceholder: "Search delivery note, route, warehouse, driver, or plate...",
+      direction: "Direction",
+      allDirections: "All Directions",
+      outbound: "Outbound",
+      inbound: "Inbound",
+      internal: "Internal",
+      performanceStatus: "Performance",
+      allStatuses: "All Performance",
+      onTime: "On Time",
+      late: "Late",
+      inTransit: "In Transit",
+      discrepancy: "Discrepancy",
+      totalDeliveries: "Total Deliveries",
+      onTimeRate: "On-Time Rate",
+      averageTransit: "Average Transit",
+      perfectDeliveryRate: "Perfect Delivery Rate",
+      deliveryNote: "Delivery Note",
+      route: "Route",
+      dispatched: "Dispatched",
+      required: "Required",
+      received: "Received",
+      performance: "Performance",
+      transit: "Transit",
+      quantity: "Quantity",
+      variance: "Variance",
+      dispatchedQuantity: "Sent",
+      receivedQuantity: "Received",
+      hours: "hrs",
+      notAvailable: "--",
+      deliveryCount: "Showing {shown} of {total} deliveries",
+      noDeliveries: "No deliveries found for the selected filters.",
+      invalidDateRange: "Select a valid date range of up to 366 days.",
+      failedToGenerate: "Failed to generate the delivery performance report.",
     },
     productMovementReportsPage: {
       fastTitle: "Fast Moving Products",
@@ -9597,6 +9785,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       empty: "未找到仓库。",
       loading: "正在加载仓库...",
     },
+    warehouseLocationSelect: {
+      noLocation: "无库位",
+      selectLocation: "选择库位",
+      selectWarehouseFirst: "请先选择仓库",
+      searchPlaceholder: "搜索库位...",
+      empty: "未找到库位。",
+      loading: "正在加载库位...",
+    },
     businessUnitSelect: {
       selectBusinessUnit: "选择业务单元",
       searchPlaceholder: "搜索业务单元...",
@@ -9673,6 +9869,65 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleteError: "删除仓库失败",
       notFoundError: "当前业务单位中无法使用此仓库。",
       contextRequiredError: "管理仓库前，请先选择业务单位。",
+    },
+    warehouseLocationsPage: {
+      title: "仓库库位",
+      subtitle: "管理此仓库的存储库位及其数量容量。",
+      addLocation: "添加库位",
+      loadErrorTitle: "加载仓库库位失败",
+      loadErrorDescription: "请刷新页面后重试。",
+      emptyTitle: "暂无库位",
+      emptyDescription: "创建第一个仓库库位，以便开始组织库存移动和存储。",
+      code: "代码",
+      name: "名称",
+      type: "类型",
+      pickable: "可拣货",
+      storable: "可存储",
+      capacity: "已用 / 最大",
+      occupancy: "占用情况",
+      status: "状态",
+      actions: "操作",
+      yes: "是",
+      no: "否",
+      active: "启用",
+      inactive: "停用",
+      edit: "编辑",
+      disable: "停用",
+      enable: "启用",
+      editTitle: "编辑库位",
+      addTitle: "添加库位",
+      editDescription: "更新此仓库的库位详细信息。",
+      addDescription: "在此仓库内定义一个存储库位。",
+      codePlaceholder: "A1-RACK-01",
+      namePlaceholder: "货架 A",
+      locationType: "库位类型",
+      selectType: "选择类型",
+      maxCapacity: "最大容量",
+      maxCapacityPlaceholder: "输入最大数量",
+      maxCapacityHelp: "此库位可容纳的最大在手数量。未配置时请留空。",
+      pickableHelp: "允许从此库位拣取库存。",
+      storableHelp: "允许在此库位存储库存。",
+      activeHelp: "停用的库位不会显示在选择列表中。",
+      cancel: "取消",
+      saving: "保存中...",
+      updateLocation: "更新库位",
+      createLocation: "创建库位",
+      createdSuccess: "库位创建成功",
+      updatedSuccess: "库位已更新",
+      createError: "创建库位失败",
+      updateError: "更新库位失败",
+      codeRequired: "库位代码为必填项",
+      capacityPositive: "最大容量必须大于零。",
+      invalidLocation: "请检查库位详细信息并输入正数最大容量。",
+      codeExists: "此仓库已使用该库位代码。",
+      capacityRequiresStorable: "配置最大容量前，请先启用存储。",
+      locationNotFound: "此库位已不可用。请刷新页面后重试。",
+      capacityEmpty: "空置",
+      capacityPartial: "部分占用",
+      capacityFull: "已满",
+      capacityOver: "超出容量",
+      capacityNotConfigured: "未配置",
+      capacityNotStorable: "不可存储",
     },
     warehouseFloorMap: {
       title: "仓库平面图",
@@ -12758,11 +13013,20 @@ export const translations: Record<Locale, TranslationKeys> = {
       failedLoadCapacityData: "加载容量数据失败",
       noCapacityDataAvailable: "没有可用容量数据",
       warehouseAtCapacityAlert: "仓库容量已达到 {value}%。请考虑扩容或优化存储。",
+      unconfiguredRackCapacityAlert:
+        "{count} 个可存储库位尚未配置最大容量，因此未计入利用率。",
+      overCapacityRackAlert: "{count} 个库位已超过其配置的最大容量。",
       utilization: "利用率",
       total: "总数",
       occupied: "已占用",
       available: "可用",
       capacityUsed: "已用容量",
+      remainingCapacity: "剩余容量",
+      configuredRacks: "已配置库位",
+      emptyRacks: "空置",
+      partialRacks: "部分占用",
+      fullRacks: "已满",
+      unconfiguredRacks: "未配置",
       spaceRemaining: "剩余空间",
       locationsRemaining: "{count} 个库位",
       recommendations: "建议",
@@ -13615,7 +13879,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       shipmentsReportValue: "实时掌握供应商到货运输状态",
       operationsName: "运营与物流",
       operationsDescription: "运营效率与交付绩效指标",
-      deliveryPerformanceName: "交付绩效仪表板",
+      deliveryPerformanceName: "交付绩效",
       deliveryPerformanceDescription: "监控物流效率与交付可靠性",
       deliveryPerformanceValue: "交付绩效提升 20-35%",
       pickingEfficiencyName: "拣货效率报表",
@@ -13869,6 +14133,47 @@ export const translations: Record<Locale, TranslationKeys> = {
       noRows: "所选筛选条件下未找到运输数据。",
       noValue: "--",
       loadError: "加载运输报表失败。",
+    },
+    deliveryPerformanceReportPage: {
+      title: "交付绩效",
+      subtitle: "监控物流效率、交付及时性、运输时长和收货可靠性。",
+      startDate: "开始日期",
+      endDate: "结束日期",
+      period: "发运期间",
+      search: "搜索",
+      searchPlaceholder: "搜索交付单、路线、仓库、司机或车牌...",
+      direction: "方向",
+      allDirections: "所有方向",
+      outbound: "发出",
+      inbound: "接收",
+      internal: "内部",
+      performanceStatus: "绩效",
+      allStatuses: "所有绩效",
+      onTime: "准时",
+      late: "延迟",
+      inTransit: "运输中",
+      discrepancy: "差异",
+      totalDeliveries: "交付总数",
+      onTimeRate: "准时率",
+      averageTransit: "平均运输时长",
+      perfectDeliveryRate: "完美交付率",
+      deliveryNote: "交付单",
+      route: "路线",
+      dispatched: "发运时间",
+      required: "要求日期",
+      received: "收货时间",
+      performance: "绩效",
+      transit: "运输时长",
+      quantity: "数量",
+      variance: "差异",
+      dispatchedQuantity: "发出",
+      receivedQuantity: "收到",
+      hours: "小时",
+      notAvailable: "--",
+      deliveryCount: "显示 {shown} / {total} 个交付",
+      noDeliveries: "所选筛选条件下未找到交付数据。",
+      invalidDateRange: "请选择不超过 366 天的有效日期范围。",
+      failedToGenerate: "生成交付绩效报表失败。",
     },
     productMovementReportsPage: {
       fastTitle: "畅销商品",

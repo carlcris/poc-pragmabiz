@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Scan, MapPin, CheckCircle, Package, ArrowLeft, Check, ChevronsUpDown } from "lucide-react";
+import { Scan, MapPin, CheckCircle, Package, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -17,18 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useWarehouses } from "@/hooks/useWarehouses";
-import type { WarehouseLocation } from "@/types/inventory-location";
-import { cn } from "@/lib/utils";
+import {
+  WarehouseLocationSelect,
+  type WarehouseLocationOption,
+} from "@/components/warehouses/WarehouseLocationSelect";
 
 type ScannedBox = {
   id: string;
@@ -51,48 +44,14 @@ export default function PutawayPage() {
   const [barcodeInput, setBarcodeInput] = useState("");
   const [scannedBox, setScannedBox] = useState<ScannedBox | null>(null);
   const [selectedLocationId, setSelectedLocationId] = useState("");
-  const [locationSearchOpen, setLocationSearchOpen] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<WarehouseLocationOption | null>(null);
   const [warehouseId, setWarehouseId] = useState("");
-  const [locations, setLocations] = useState<WarehouseLocation[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
-  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [completedBoxes, setCompletedBoxes] = useState<ScannedBox[]>([]);
 
   const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
   const warehouses = warehousesData?.data || [];
-
-  useEffect(() => {
-    const fetchLocations = async () => {
-      if (!warehouseId) {
-        setLocations([]);
-        return;
-      }
-
-      try {
-        setIsLoadingLocations(true);
-        const response = await fetch(`/api/warehouses/${warehouseId}/locations`);
-        if (!response.ok) throw new Error(t("fetchLocationsError"));
-        const data = await response.json();
-        setLocations(data.data || []);
-      } catch (error) {
-        console.error("Error fetching locations:", error);
-        toast.error(t("fetchLocationsError"));
-        setLocations([]);
-      } finally {
-        setIsLoadingLocations(false);
-      }
-    };
-
-    fetchLocations();
-  }, [warehouseId, t]);
-
-  const availableLocations = useMemo(
-    () => locations.filter((loc) => loc.isActive && loc.isStorable),
-    [locations]
-  );
-
-  const selectedLocation = availableLocations.find((loc) => loc.id === selectedLocationId);
 
   const handleScanBarcode = async () => {
     if (!barcodeInput.trim()) {
@@ -171,7 +130,7 @@ export default function PutawayPage() {
     try {
       setIsAssigning(true);
 
-      const location = availableLocations.find((loc) => loc.id === selectedLocationId);
+      const location = selectedLocation?.id === selectedLocationId ? selectedLocation : null;
       if (!location) {
         toast.error(t("invalidLocationSelected"));
         return;
@@ -244,7 +203,14 @@ export default function PutawayPage() {
           <CardDescription>{t("selectWarehouseDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Select value={warehouseId} onValueChange={setWarehouseId}>
+          <Select
+            value={warehouseId}
+            onValueChange={(nextWarehouseId) => {
+              setWarehouseId(nextWarehouseId);
+              setSelectedLocationId("");
+              setSelectedLocation(null);
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder={t("selectWarehousePlaceholder")} />
             </SelectTrigger>
@@ -344,72 +310,15 @@ export default function PutawayPage() {
               <>
                 <div>
                   <Label htmlFor="location">{t("locationLabel")}</Label>
-                  <Popover open={locationSearchOpen} onOpenChange={setLocationSearchOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        id="location"
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={locationSearchOpen}
-                        className="w-full justify-between text-lg"
-                        disabled={isLoadingLocations || availableLocations.length === 0}
-                      >
-                        {selectedLocation ? (
-                          <span>
-                            {selectedLocation.code}
-                            {selectedLocation.name && ` - ${selectedLocation.name}`}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">
-                            {isLoadingLocations
-                              ? t("loadingLocations")
-                              : availableLocations.length === 0
-                                ? t("noLocationsAvailable")
-                                : t("searchLocation")}
-                          </span>
-                        )}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[400px] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder={t("searchByCodeOrName")} />
-                        <CommandList>
-                          <CommandEmpty>{t("noLocationFound")}</CommandEmpty>
-                          <CommandGroup>
-                            {availableLocations.map((location) => (
-                              <CommandItem
-                                key={location.id}
-                                value={`${location.code} ${location.name || ""}`}
-                                onSelect={() => {
-                                  setSelectedLocationId(location.id);
-                                  setLocationSearchOpen(false);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    selectedLocationId === location.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                <div className="flex flex-col">
-                                  <span className="font-medium">{location.code}</span>
-                                  {location.name && (
-                                    <span className="text-sm text-muted-foreground">
-                                      {location.name}
-                                    </span>
-                                  )}
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {t("locationsAvailable", { count: availableLocations.length })}
-                  </p>
+                  <WarehouseLocationSelect
+                    warehouseId={warehouseId}
+                    value={selectedLocationId}
+                    onValueChange={setSelectedLocationId}
+                    selectedOption={selectedLocation}
+                    onOptionChange={setSelectedLocation}
+                    storableOnly
+                    buttonClassName="text-lg"
+                  />
                 </div>
                 <Button
                   onClick={handleAssignLocation}

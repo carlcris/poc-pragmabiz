@@ -37,6 +37,16 @@ export type WarehouseLocation = {
   isPickable: boolean;
   isStorable: boolean;
   isActive: boolean;
+  maxCapacity?: number | null;
+  usedCapacity?: number;
+  utilizationPercent?: number;
+  capacityStatus?:
+    | "not_storable"
+    | "not_configured"
+    | "empty"
+    | "partial"
+    | "full"
+    | "over_capacity";
   createdAt: string;
   updatedAt: string;
 };

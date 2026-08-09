@@ -31,6 +31,7 @@ export type LookupStockRequestBatchOption = {
 
 type LookupResponse<T> = {
   data: T[];
+  selected?: T | null;
   pagination?: {
     page: number;
     limit: number;
@@ -107,6 +108,7 @@ export function useLookupWarehouseLocations(
   params?: {
     search?: string;
     limit?: number;
+    selectedId?: string;
     includeInactive?: boolean;
     storableOnly?: boolean;
     locationType?: string;
@@ -118,7 +120,8 @@ export function useLookupWarehouseLocations(
       "warehouse_locations",
       warehouseId ?? null,
       params?.search ?? "",
-      params?.limit ?? 50,
+      params?.limit ?? 5,
+      params?.selectedId ?? null,
       params?.includeInactive ?? false,
       params?.storableOnly ?? false,
       params?.locationType ?? null,
@@ -130,7 +133,8 @@ export function useLookupWarehouseLocations(
         {
           params: {
             search: params?.search,
-            limit: params?.limit ?? 50,
+            limit: params?.limit ?? 5,
+            selectedId: params?.selectedId,
             includeInactive: params?.includeInactive ? "true" : "false",
             storableOnly: params?.storableOnly ? "true" : "false",
             locationType: params?.locationType,

@@ -112,9 +112,16 @@ export type BoxAssignmentQueueData = {
  */
 export type WarehouseCapacityData = {
   totalLocations: number;
-  occupiedLocations: number;
+  configuredLocations: number;
+  unconfiguredLocations: number;
+  emptyLocations: number;
+  partiallyOccupiedLocations: number;
+  fullLocations: number;
+  overCapacityLocations: number;
+  totalCapacity: number;
+  usedCapacity: number;
+  availableCapacity: number;
   utilizationPercent: number;
-  availableSpace: number;
 };
 
 /**
