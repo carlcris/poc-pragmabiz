@@ -104,7 +104,11 @@ export function useSetBusinessUnitContext(options?: { silent?: boolean }) {
 
       // Only clear and refetch queries if not in silent mode
       // Silent mode is used during initial load to prevent flickering
-      if (!silent) {
+      if (silent) {
+        // The server context may have changed during initial hydration. Refresh the BU-scoped
+        // capability snapshot without clearing otherwise valid initial page data.
+        queryClient.invalidateQueries({ queryKey: ["granular-capabilities"] });
+      } else {
         // SECURITY: Clear ALL cached data FIRST to prevent data leakage from previous BU
         // This must happen before updating the store to avoid race conditions
         queryClient.clear();

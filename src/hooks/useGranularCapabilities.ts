@@ -1,30 +1,65 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
+import { useAuthStore } from "@/stores/authStore";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
+import type { PermissionAction, ResourcePermission } from "@/types/rbac";
 
 type CapabilitiesResponse = {
   data: {
-    action: string;
-    capabilities: Record<string, boolean>;
+    businessUnitId: string | null;
+    capabilities: Record<string, ResourcePermission>;
   };
 };
 
-export function useGranularCapabilities(keys: readonly string[], action = "view") {
+const isAllowed = (permission: ResourcePermission | undefined, action: PermissionAction) => {
+  if (!permission) return false;
+
+  switch (action) {
+    case "view":
+      return permission.can_view;
+    case "create":
+      return permission.can_create;
+    case "edit":
+      return permission.can_edit;
+    case "delete":
+      return permission.can_delete;
+  }
+};
+
+export function useGranularCapabilities(
+  keys: readonly string[],
+  action: PermissionAction = "view"
+) {
   const uniqueKeys = Array.from(new Set(keys)).sort();
+  const userId = useAuthStore((state) => state.user?.id ?? null);
+  const businessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id ?? null);
+  const availableBusinessUnitCount = useBusinessUnitStore(
+    (state) => state.availableBusinessUnits.length
+  );
+  const isBusinessUnitLoading = useBusinessUnitStore((state) => state.isLoading);
+  const hasBusinessUnitHydrated = useBusinessUnitStore((state) => state.hasHydrated);
+  const hasResolvedBusinessUnit = businessUnitId !== null || availableBusinessUnitCount === 0;
 
   return useQuery({
-    queryKey: ["granular-capabilities", action, uniqueKeys],
+    queryKey: ["granular-capabilities", userId, businessUnitId],
     queryFn: async () => {
-      if (uniqueKeys.length === 0) return {};
-
-      const params = new URLSearchParams({
-        action,
-        keys: uniqueKeys.join(","),
-      });
-      const response = await apiClient.get<CapabilitiesResponse>(`/api/rbac/capabilities?${params}`);
-      return response.data.capabilities;
+      const response = await apiClient.get<CapabilitiesResponse>("/api/rbac/capabilities");
+      if (response.data.businessUnitId !== businessUnitId) {
+        throw new Error("Capability scope does not match the active business unit");
+      }
+      return response.data;
     },
-    enabled: uniqueKeys.length > 0,
-    staleTime: 0,
-    gcTime: 1000 * 60 * 5,
+    select: ({ capabilities }) =>
+      Object.fromEntries(
+        uniqueKeys.map((key) => [key, isAllowed(capabilities[key], action)])
+      ) as Record<string, boolean>,
+    enabled:
+      uniqueKeys.length > 0 &&
+      userId !== null &&
+      hasBusinessUnitHydrated &&
+      !isBusinessUnitLoading &&
+      hasResolvedBusinessUnit,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 }

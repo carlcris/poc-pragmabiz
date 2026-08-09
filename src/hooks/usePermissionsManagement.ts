@@ -128,6 +128,8 @@ export function useUpdatePermission() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["permissionsList"] });
       queryClient.invalidateQueries({ queryKey: ["permissionDetail", variables.permissionId] });
+      queryClient.invalidateQueries({ queryKey: ["permissions"] });
+      queryClient.invalidateQueries({ queryKey: ["granular-capabilities"] });
     },
   });
 }
@@ -147,6 +149,8 @@ export function useDeletePermission() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["permissionsList"] });
+      queryClient.invalidateQueries({ queryKey: ["permissions"] });
+      queryClient.invalidateQueries({ queryKey: ["granular-capabilities"] });
     },
   });
 }

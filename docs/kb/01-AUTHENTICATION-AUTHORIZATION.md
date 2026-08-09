@@ -134,6 +134,8 @@ The role-permission editor preserves these least-privilege dependencies. Enablin
 
 Every module action depends on `view`. Enabling `create`, `edit`, or `delete` in the role-permission editor automatically enables `view`; disabling `view` clears the module's other actions and all granular children. Saving the complete role-permission configuration is transactional, and the server rejects assignments where another module action lacks `view` or a granular capability lacks parent-module `view`. Removing a parent permission also removes its granular children in the same transaction.
 
+The web client loads one granular-capability snapshot for the authenticated user and active business unit. All screens share that BU-scoped React Query entry and derive only their required capability/action flags locally; pages do not send capability catalogs in query parameters or perform one request per control. Business-unit switches, role assignments, and permission changes invalidate the snapshot. This client cache controls presentation only—protected APIs continue to resolve and enforce permissions server-side.
+
 **Permission Types per Resource**:
 
 - `view` - Read access

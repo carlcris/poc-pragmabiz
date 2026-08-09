@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { ReportPreviewDialog } from "@/components/reports/ReportPreviewDialog";
-import { GRANULAR_CAPABILITIES, PHASE_1_GRANULAR_CAPABILITY_KEYS } from "@/constants/granular-permissions";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -85,12 +85,19 @@ const statusConfig = {
   },
 };
 
+const REPORT_DIRECTORY_CAPABILITY_KEYS = [
+  GRANULAR_CAPABILITIES.REPORTS_FINANCIAL_CARDS,
+  GRANULAR_CAPABILITIES.REPORTS_REVENUE_CARDS,
+  GRANULAR_CAPABILITIES.REPORTS_VALUATION_CARDS,
+  GRANULAR_CAPABILITIES.PURCHASING_SUPPLIER_SPEND,
+] as const;
+
 export default function ReportsPage() {
   const t = useTranslations("reportsPage");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [previewReport, setPreviewReport] = useState<Report | null>(null);
-  const { data: capabilities = {} } = useGranularCapabilities(PHASE_1_GRANULAR_CAPABILITY_KEYS);
+  const { data: capabilities = {} } = useGranularCapabilities(REPORT_DIRECTORY_CAPABILITY_KEYS);
   const hasCapabilities = (keys: string[] | undefined) =>
     !keys || keys.length === 0 || keys.every((key) => capabilities[key]);
 

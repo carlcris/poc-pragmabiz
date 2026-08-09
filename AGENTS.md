@@ -61,7 +61,65 @@ Run commands from the repo root unless a nested instruction says otherwise.
 - UI text introduced or changed by implementation work must use the repository `next-intl` translation system.
 - Every implementation must balance simplicity and efficiency before coding. Prefer the simplest design that remains efficient at expected scale. If the chosen design knowingly sacrifices either, disclose the tradeoff and justification to the user before editing and wait for approval.
 
-#### Presets Before Arbitrary Values
+## RLS Predicate Performance Rule
+
+RLS predicates on high-cardinality tables must avoid repeated caller-invariant
+work while preserving the exact access truth set of the policy.
+
+Decision gate:
+
+- Retain a policy helper when it encapsulates access semantics that cannot be
+  represented safely by a direct relation, direct lookup would change table
+  privilege or RLS behavior, or authenticated measurements show no meaningful
+  repeated-execution cost.
+- Consider a set-oriented predicate such as
+  `tenant_id IN (SELECT membership.tenant_id ...)` when a helper argument varies
+  per protected row and the authenticated execution plan shows the helper
+  repeatedly performing the same caller-membership lookup across many rows.
+- Treat indexes and predicate shape as complementary. An indexed helper can
+  still repeat its lookup for every protected row, and a set-oriented rewrite
+  still requires indexes that support its membership and correlation columns.
+
+Required:
+
+- Separate caller-invariant inputs, such as `auth.uid()`, from values that vary
+  per protected row. Use a scalar subquery such as `(SELECT auth.uid())` when
+  the invariant expression can be initialized once by PostgreSQL.
+- When a policy helper combines a protected-row value with an invariant
+  membership or access lookup, inspect whether it executes once per row. Apply
+  the decision gate before retaining the helper or expressing the same
+  condition as an indexed, set-oriented membership relation or semi-join.
+- Keep the remaining row-dependent lookup narrow and supported by indexes for
+  its correlation, membership, active-state, and other access columns.
+- Before replacing a `SECURITY DEFINER` helper with a direct table lookup,
+  verify that the caller has the required table privileges and that the
+  referenced table's own RLS exposes exactly the rows required by the policy.
+- Compare the old and new policy truth sets for active and inactive membership,
+  tenant and facility scope, nullable values, ownership, mapped or cross-tenant
+  access branches, and every applicable `USING` and `WITH CHECK` expression.
+- Measure policy-sensitive queries under a representative authenticated app
+  role and session with RLS applied. SQL Editor, owner, service-role, or other
+  RLS-bypassing timings are not evidence of authenticated policy performance.
+
+Forbidden:
+
+- Do not treat wrapping a helper in `SELECT` as an optimization when any helper
+  argument still varies per protected row.
+- Do not remove or narrow an access branch to improve a query plan.
+- Do not introduce `SECURITY DEFINER` as a performance workaround for an RLS
+  predicate that can be expressed correctly and efficiently under invoker
+  access.
+
+Hard stop:
+
+- If a query is fast with RLS bypassed and slow as an authenticated caller,
+  inspect the applicable policy predicates and their referenced policies,
+  privileges, indexes, and execution plan before changing the RPC access mode.
+- Do not ship an RLS performance rewrite without an explicit old-versus-new
+  access comparison and authenticated-role verification.
+
+
+## Presets Before Arbitrary Values
 
 Use Tailwind and design-system scale presets before arbitrary values.
 

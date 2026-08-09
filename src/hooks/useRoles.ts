@@ -170,6 +170,7 @@ export function useAssignPermissions() {
       // IMPORTANT: Invalidate all user permissions queries
       // This ensures users see updated permissions immediately after role changes
       queryClient.invalidateQueries({ queryKey: ["permissions"] });
+      queryClient.invalidateQueries({ queryKey: ["granular-capabilities"] });
     },
   });
 }
@@ -195,6 +196,7 @@ export function useRemovePermissions() {
       // IMPORTANT: Invalidate all user permissions queries
       // This ensures users see updated permissions immediately after role changes
       queryClient.invalidateQueries({ queryKey: ["permissions"] });
+      queryClient.invalidateQueries({ queryKey: ["granular-capabilities"] });
     },
   });
 }
