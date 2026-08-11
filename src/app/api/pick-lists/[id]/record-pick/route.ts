@@ -18,17 +18,14 @@ type RecordPickBody = {
   operationId?: unknown;
   pickedQty?: unknown;
   batchLocationSku?: unknown;
-  pickedLocationId?: unknown;
-  pickedBatchCode?: unknown;
-  pickedBatchReceivedAt?: unknown;
   isMismatchWarningAcknowledged?: unknown;
   mismatchReason?: unknown;
 };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const safeError = (message: string, status: number) =>
-  NextResponse.json({ error: message }, { status });
+const safeError = (message: string, status: number, code?: string) =>
+  NextResponse.json({ error: message, ...(code ? { code } : {}) }, { status });
 
 const textOrNull = (value: unknown, maxLength: number) => {
   if (typeof value !== "string") return null;
@@ -36,17 +33,61 @@ const textOrNull = (value: unknown, maxLength: number) => {
   return normalized && normalized.length <= maxLength ? normalized : null;
 };
 
-const BUSINESS_ERROR_MESSAGES: Record<string, string> = {
-  PICK_PROGRESS_NOT_ACTIVE: "Start picking before confirming an item",
-  PICK_PROGRESS_LINE_NOT_FOUND: "Pick list item not found",
-  PICK_PROGRESS_INVALID_QUANTITY: "Picked quantity is invalid",
-  PICK_PROGRESS_OPERATION_CONFLICT: "Pick confirmation could not be retried safely",
-  PICK_PROGRESS_CLAIM_REQUIRED: "This item is no longer reserved for you",
-  PICK_PROGRESS_SOURCE_REQUIRED: "Pick source is required",
-  PICK_PROGRESS_SOURCE_NOT_FOUND: "Item not found",
-  PICK_PROGRESS_INSUFFICIENT_QUANTITY: "The selected source does not have enough stock",
+const BUSINESS_ERRORS: Record<string, { message: string; status: number }> = {
+  PICK_PROGRESS_NOT_ACTIVE: { message: "Start picking before confirming an item", status: 409 },
+  PICK_PROGRESS_LINE_NOT_FOUND: { message: "Pick list item not found", status: 404 },
+  PICK_PROGRESS_INVALID_QUANTITY: { message: "Picked quantity is invalid", status: 400 },
+  PICK_PROGRESS_OPERATION_CONFLICT: {
+    message: "Pick confirmation could not be retried safely",
+    status: 409,
+  },
+  PICK_PROGRESS_CLAIM_REQUIRED: {
+    message: "This item is no longer reserved for you",
+    status: 409,
+  },
+  PICK_PROGRESS_SOURCE_REQUIRED: {
+    message: "Enter or scan a batch-location SKU",
+    status: 400,
+  },
+  PICK_PROGRESS_SOURCE_NOT_FOUND: { message: "Batch-location SKU not found", status: 404 },
+  PICK_PROGRESS_SOURCE_UNAVAILABLE: {
+    message: "The scanned source is inactive or unavailable for picking",
+    status: 409,
+  },
+  PICK_PROGRESS_SOURCE_OUTSIDE_BUSINESS_UNIT: {
+    message: "The scanned source is outside the fulfilling business unit",
+    status: 400,
+  },
+  PICK_PROGRESS_BATCH_IDENTITY_MISMATCH: {
+    message: "The scanned source belongs to a different allocated batch",
+    status: 400,
+  },
+  PICK_PROGRESS_WAREHOUSE_POLICY_MISMATCH: {
+    message: "The scanned source is not in the assigned warehouse",
+    status: 400,
+  },
+  PICK_PROGRESS_RACK_POLICY_MISMATCH: {
+    message: "The scanned source is not in the assigned rack",
+    status: 400,
+  },
+  PICK_PROGRESS_INSUFFICIENT_QUANTITY: {
+    message: "The selected source does not have enough stock",
+    status: 409,
+  },
+  PICK_PROGRESS_RESERVATION_CONFLICT: {
+    message: "The original stock reservation changed. Refresh and scan again",
+    status: 409,
+  },
+  PICK_PROGRESS_ALTERNATIVE_SOURCE_UNAVAILABLE: {
+    message: "The alternative warehouse no longer has unreserved stock",
+    status: 409,
+  },
+  PICK_PROGRESS_SUGGESTED_SOURCE_REQUIRED: {
+    message: "This pick line has no allocated source. Recreate the pick list",
+    status: 409,
+  },
   PICK_PROGRESS_MISMATCH_ACKNOWLEDGEMENT_REQUIRED:
-    "Confirm the batch mismatch warning before saving",
+    { message: "Confirm the alternative source before saving", status: 409 },
 };
 
 async function POSTHandler(request: NextRequest, context: RouteContext) {
@@ -66,9 +107,6 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
   const operationId = typeof body.operationId === "string" ? body.operationId.trim() : "";
   const pickedQty = typeof body.pickedQty === "number" ? body.pickedQty : Number.NaN;
   const batchLocationSku = textOrNull(body.batchLocationSku, 10);
-  const pickedLocationId = textOrNull(body.pickedLocationId, 36);
-  const pickedBatchCode = textOrNull(body.pickedBatchCode, 100);
-  const pickedBatchReceivedAt = textOrNull(body.pickedBatchReceivedAt, 50);
   const mismatchReason = textOrNull(body.mismatchReason, 500);
 
   if (
@@ -77,8 +115,7 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
     !UUID_PATTERN.test(operationId) ||
     !Number.isFinite(pickedQty) ||
     pickedQty <= 0 ||
-    (pickedLocationId !== null && !UUID_PATTERN.test(pickedLocationId)) ||
-    (!batchLocationSku && (!pickedLocationId || !pickedBatchCode || !pickedBatchReceivedAt))
+    !batchLocationSku
   ) {
     return safeError("Invalid pick confirmation", 400);
   }
@@ -103,9 +140,9 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
     p_operation_id: operationId,
     p_picked_qty: pickedQty,
     p_batch_location_sku: batchLocationSku,
-    p_picked_location_id: pickedLocationId,
-    p_picked_batch_code: pickedBatchCode,
-    p_picked_batch_received_at: pickedBatchReceivedAt,
+    p_picked_location_id: null,
+    p_picked_batch_code: null,
+    p_picked_batch_received_at: null,
     p_mismatch_acknowledged: body.isMismatchWarningAcknowledged === true,
     p_mismatch_reason: mismatchReason,
   });
@@ -118,10 +155,12 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
     if (error.message.includes("PICK_PROGRESS_NOT_FOUND")) {
       return safeError("Pick list not found", 404);
     }
-    const businessError = Object.entries(BUSINESS_ERROR_MESSAGES).find(([code]) =>
+    const businessError = Object.entries(BUSINESS_ERRORS).find(([code]) =>
       error.message.includes(code)
     );
-    if (businessError) return safeError(businessError[1], 400);
+    if (businessError) {
+      return safeError(businessError[1].message, businessError[1].status, businessError[0]);
+    }
     return safeError("Unable to save pick progress", 500);
   }
 

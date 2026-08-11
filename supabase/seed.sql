@@ -5322,6 +5322,27 @@ WHERE i.id = source.item_id
 END;
 $innovatronix_import$;
 
+INSERT INTO public.settings (
+  company_id,
+  business_unit_id,
+  group_key,
+  setting_key,
+  value
+)
+SELECT
+  business_unit.company_id,
+  business_unit.id,
+  'inventory',
+  'picking_validation_policy',
+  to_jsonb('batch_only'::TEXT)
+FROM public.business_units business_unit
+WHERE business_unit.is_active IS TRUE
+ON CONFLICT (company_id, business_unit_id, group_key, setting_key)
+  WHERE business_unit_id IS NOT NULL
+DO UPDATE SET
+  value = EXCLUDED.value,
+  updated_at = CURRENT_TIMESTAMP;
+
 -- ============================================================================
 -- SEED DATA: Warehouse B Rack Locations and Distributed Opening Inventory
 -- ============================================================================

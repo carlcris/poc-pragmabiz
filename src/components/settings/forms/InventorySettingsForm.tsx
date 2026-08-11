@@ -56,6 +56,7 @@ export function InventorySettingsForm({ initialData }: InventorySettingsFormProp
       track_lot_numbers: initialData?.track_lot_numbers ?? false,
       track_serial_numbers: initialData?.track_serial_numbers ?? false,
       barcode_format: initialData?.barcode_format || "",
+      picking_validation_policy: initialData?.picking_validation_policy || "batch_only",
       stock_requisition_pdf_show_unit_price:
         initialData?.stock_requisition_pdf_show_unit_price ?? true,
       stock_requisition_pdf_show_line_total:
@@ -246,6 +247,42 @@ export function InventorySettingsForm({ initialData }: InventorySettingsFormProp
                   <FormControl>
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("pickingPolicyTitle")}</CardTitle>
+            <CardDescription>{t("pickingPolicyDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FormField
+              control={form.control}
+              name="picking_validation_policy"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("pickingPolicy")}</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t("pickingPolicyPlaceholder")} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="batch_only">{t("pickingPolicyBatchOnly")}</SelectItem>
+                      <SelectItem value="batch_and_warehouse">
+                        {t("pickingPolicyBatchAndWarehouse")}
+                      </SelectItem>
+                      <SelectItem value="batch_and_rack">
+                        {t("pickingPolicyBatchAndRack")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>{t("pickingPolicyHelp")}</FormDescription>
+                  <FormMessage />
                 </FormItem>
               )}
             />

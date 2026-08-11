@@ -15,8 +15,8 @@ import {
   Package,
 } from "lucide-react";
 import {
+  usePickList,
   usePickLists,
-  useUpdatePickListItems,
   useUpdatePickListStatus,
 } from "@/hooks/usePickLists";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -105,6 +104,9 @@ const toNumber = (value: number | string | null | undefined) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const firstRelated = <T,>(value: T | T[] | null | undefined) =>
+  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+
 const toItemLabel = (
   item: {
     items?: { item_name: string | null; item_code: string | null } | null;
@@ -145,15 +147,18 @@ export default function PickListsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [detailId, setDetailId] = useState<string>("");
-  const [itemQtyMap, setItemQtyMap] = useState<Record<string, number>>({});
   const [cancelReason, setCancelReason] = useState("");
 
   const { data, isLoading } = usePickLists({
     status: statusFilter === "all" ? undefined : statusFilter,
   });
+  const {
+    data: selected,
+    isLoading: isDetailLoading,
+    isError: isDetailError,
+  } = usePickList(detailId);
 
   const updateStatusMutation = useUpdatePickListStatus();
-  const updateItemsMutation = useUpdatePickListItems();
 
   const statusLabel = (status: string) => {
     switch (status) {
@@ -199,40 +204,22 @@ export default function PickListsPage() {
     return filtered;
   }, [allPickLists, search]);
 
-  const selected = useMemo(
+  const selectedSummary = useMemo(
     () => pickLists.find((row) => row.id === detailId) || null,
     [detailId, pickLists]
   );
+  const selectedHeader = selected || selectedSummary;
 
-  const getLinePickedQty = (itemId: string, fallback: number) =>
-    Object.prototype.hasOwnProperty.call(itemQtyMap, itemId) ? itemQtyMap[itemId] : fallback;
-
-  const submitItems = async () => {
-    if (!selected?.pick_list_items || selected.pick_list_items.length === 0) return;
-
-    await updateItemsMutation.mutateAsync({
-      id: selected.id,
-      data: {
-        items: selected.pick_list_items.map((item) => ({
-          pickListItemId: item.id,
-          pickedQty: getLinePickedQty(item.id, toNumber(item.picked_qty)),
-        })),
-      },
-    });
-  };
-
-  const transitionStatus = async (status: "in_progress" | "paused" | "done" | "cancelled") => {
+  const cancelPickList = async () => {
     if (!selected) return;
     await updateStatusMutation.mutateAsync({
       id: selected.id,
       data: {
-        status,
-        reason: status === "cancelled" ? cancelReason.trim() || undefined : undefined,
+        status: "cancelled",
+        reason: cancelReason.trim() || undefined,
       },
     });
-    if (status === "cancelled") {
-      setCancelReason("");
-    }
+    setCancelReason("");
   };
 
   return (
@@ -391,27 +378,37 @@ export default function PickListsPage() {
         onOpenChange={(open) => {
           if (!open) {
             setDetailId("");
-            setItemQtyMap({});
             setCancelReason("");
           }
         }}
       >
-        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-6xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {getStatusIcon(selected?.status || "")}
-              {selected?.pick_list_no || t("pickListDetails")}
+              {getStatusIcon(selectedHeader?.status || "")}
+              {selectedHeader?.pick_list_no || t("pickListDetails")}
             </DialogTitle>
             <DialogDescription>
-              {t("deliveryNoteLabel")} {selected?.delivery_notes?.dn_no || t("noValue")} |{" "}
+              {t("deliveryNoteLabel")}{" "}
+              {selectedHeader?.delivery_notes?.dn_no || t("noValue")} {" | "}
               {t("statusLabel")}{" "}
-              {selected
-                ? getStatusBadge(selected.status, statusLabel(selected.status))
+              {selectedHeader
+                ? getStatusBadge(selectedHeader.status, statusLabel(selectedHeader.status))
                 : t("noValue")}
             </DialogDescription>
           </DialogHeader>
 
-          {selected && (
+          {isDetailLoading ? (
+            <div className="space-y-5" aria-label={t("loadingDetails")}>
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-64 w-full" />
+            </div>
+          ) : isDetailError ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+              {t("detailsLoadError")}
+            </div>
+          ) : selected ? (
             <div className="space-y-5">
               {/* Pick List Summary */}
               <div className="grid grid-cols-2 gap-4 rounded-lg border bg-muted/30 p-4 text-sm md:grid-cols-3">
@@ -470,11 +467,12 @@ export default function PickListsPage() {
               {/* Items Table */}
               <div className="space-y-2">
                 <div className="text-sm font-medium">{t("pickListItems")}</div>
-                <div className="overflow-hidden rounded-lg border">
+                <div className="overflow-x-auto rounded-lg border">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
                         <TableHead>{t("item")}</TableHead>
+                        <TableHead>{t("pickLocation")}</TableHead>
                         <TableHead>{t("uom")}</TableHead>
                         <TableHead className="text-right">{t("allocated")}</TableHead>
                         <TableHead className="text-right">{t("picked")}</TableHead>
@@ -484,13 +482,47 @@ export default function PickListsPage() {
                     <TableBody>
                       {(selected.pick_list_items || []).map((item) => {
                         const allocated = toNumber(item.allocated_qty);
-                        const picked = getLinePickedQty(item.id, toNumber(item.picked_qty));
+                        const picked = toNumber(item.picked_qty);
                         const shortQty = Math.max(0, allocated - picked);
+                        const suggestedLocation = firstRelated(item.suggested_pick_location);
+                        const suggestedWarehouse = firstRelated(suggestedLocation?.warehouse);
+                        const hasSuggestedSource = Boolean(
+                          suggestedLocation ||
+                            item.suggested_pick_batch_code ||
+                            item.suggested_batch_location_sku
+                        );
 
                         return (
                           <TableRow key={item.id}>
                             <TableCell className="text-sm font-medium">
                               {toItemLabel(item, t("unknown"))}
+                            </TableCell>
+                            <TableCell className="min-w-64 align-top text-sm">
+                              {hasSuggestedSource ? (
+                                <div className="space-y-1">
+                                  <div className="font-medium">
+                                    <span className="text-muted-foreground">
+                                      {t("warehouse")}:{" "}
+                                    </span>
+                                    {suggestedWarehouse?.warehouse_code || t("noValue")}
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">{t("rack")}: </span>
+                                    {suggestedLocation?.code || t("noValue")}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {t("batch")}: {item.suggested_pick_batch_code || t("noValue")}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {t("locationSku")}: {" "}
+                                    <span className="tabular-nums text-foreground">
+                                      {item.suggested_batch_location_sku || t("noValue")}
+                                    </span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">{t("noValue")}</span>
+                              )}
                             </TableCell>
                             <TableCell className="text-sm">
                               {toUomLabel(item, t("noValue"))}
@@ -498,25 +530,8 @@ export default function PickListsPage() {
                             <TableCell className="text-right font-medium">
                               {allocated.toFixed(2)}
                             </TableCell>
-                            <TableCell className="text-right">
-                              <Input
-                                className="ml-auto w-28 text-right"
-                                type="number"
-                                min="0"
-                                max={allocated}
-                                step="0.01"
-                                value={picked}
-                                disabled={["cancelled", "done"].includes(selected.status)}
-                                onChange={(event) =>
-                                  setItemQtyMap((prev) => ({
-                                    ...prev,
-                                    [item.id]: Math.max(
-                                      0,
-                                      Math.min(allocated, parseFloat(event.target.value) || 0)
-                                    ),
-                                  }))
-                                }
-                              />
+                            <TableCell className="text-right font-medium tabular-nums">
+                              {picked.toFixed(2)}
                             </TableCell>
                             <TableCell className="text-right">
                               <span className={shortQty > 0 ? "font-medium text-orange-600" : ""}>
@@ -531,75 +546,20 @@ export default function PickListsPage() {
                 </div>
               </div>
 
-              {/* Save Quantities Button */}
-              {selected.status !== "cancelled" && selected.status !== "done" && (
-                <div className="flex justify-end">
-                  <Button onClick={submitItems} disabled={updateItemsMutation.isPending}>
-                    {updateItemsMutation.isPending ? t("saving") : t("savePickedQuantities")}
-                  </Button>
-                </div>
-              )}
-
-              {/* Status Actions */}
+              {/* Cancellation is the only web mutation; picking is completed on mobile. */}
               {selected.status !== "done" && selected.status !== "cancelled" && (
                 <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-                  <div className="text-sm font-medium">{t("statusActions")}</div>
-                  <div className="flex flex-wrap gap-2">
-                    {selected.status === "pending" && (
-                      <Button
-                        onClick={() => transitionStatus("in_progress")}
-                        disabled={updateStatusMutation.isPending}
-                        className="gap-2"
-                      >
-                        <Play className="h-4 w-4" />
-                        {t("startPicking")}
-                      </Button>
-                    )}
-                    {selected.status === "in_progress" && (
-                      <>
-                        <Button
-                          variant="outline"
-                          onClick={() => transitionStatus("paused")}
-                          disabled={updateStatusMutation.isPending}
-                          className="gap-2"
-                        >
-                          <Pause className="h-4 w-4" />
-                          {t("pause")}
-                        </Button>
-                        <Button
-                          onClick={() => transitionStatus("done")}
-                          disabled={updateStatusMutation.isPending}
-                          className="gap-2 bg-emerald-600 hover:bg-emerald-700"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                          {t("completePicking")}
-                        </Button>
-                      </>
-                    )}
-                    {selected.status === "paused" && (
-                      <Button
-                        onClick={() => transitionStatus("in_progress")}
-                        disabled={updateStatusMutation.isPending}
-                        className="gap-2"
-                      >
-                        <Play className="h-4 w-4" />
-                        {t("resumePicking")}
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Cancel Section */}
-                  <div className="space-y-2 border-t pt-3">
-                    <div className="text-xs text-muted-foreground">{t("cancelThisPickList")}</div>
-                    <Textarea
-                      placeholder={t("cancelReasonPlaceholder")}
-                      value={cancelReason}
-                      onChange={(event) => setCancelReason(event.target.value)}
-                      rows={2}
-                    />
+                  <div className="text-sm font-medium">{t("cancelThisPickList")}</div>
+                  <Textarea
+                    placeholder={t("cancelReasonPlaceholder")}
+                    value={cancelReason}
+                    onChange={(event) => setCancelReason(event.target.value)}
+                    rows={2}
+                  />
+                  <div className="flex justify-end">
                     <Button
                       variant="destructive"
-                      onClick={() => transitionStatus("cancelled")}
+                      onClick={cancelPickList}
                       disabled={updateStatusMutation.isPending}
                       className="gap-2"
                     >
@@ -610,13 +570,8 @@ export default function PickListsPage() {
                 </div>
               )}
             </div>
-          )}
+          ) : null}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDetailId("")}>
-              {t("close")}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -5,8 +5,6 @@ import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import type { Setting, SettingValue, SettingsGroupKey } from "@/types/settings";
 
-const BUSINESS_UNIT_TABLE_SETTING_KEYS = new Set(["display_name", "short_code"]);
-
 const VALID_GROUPS: SettingsGroupKey[] = [
   "company",
   "financial",
@@ -83,7 +81,9 @@ async function GETHandler(request: NextRequest, context: { params: Promise<{ gro
     // Fetch settings for this group
     let query = supabase
       .from("settings")
-      .select("*")
+      .select(
+        "id, company_id, business_unit_id, group_key, setting_key, value, created_at, updated_at, created_by, updated_by"
+      )
       .eq("company_id", userRow.company_id)
       .eq("group_key", group)
       .order("setting_key");
@@ -237,150 +237,39 @@ async function PUTHandler(request: NextRequest, context: { params: Promise<{ gro
       return NextResponse.json({ error: "No business unit selected" }, { status: 400 });
     }
 
-    let businessUnitResponseData: Record<string, SettingValue> = {};
+    if (!businessUnitId || JSON.stringify(body).length > 32_768) {
+      return NextResponse.json({ error: "Invalid settings payload" }, { status: 400 });
+    }
 
-    if (group === "business_unit" && businessUnitId) {
-      const { display_name, short_code, ...settingsBody } = body;
-
-      if (display_name !== undefined || short_code !== undefined) {
-        const updatePayload: {
-          name?: string;
-          code?: string;
-          updated_by: string;
-          updated_at: string;
-        } = {
-          updated_by: userId,
-          updated_at: new Date().toISOString(),
-        };
-
-        if (display_name !== undefined) {
-          updatePayload.name = String(display_name);
-        }
-
-        if (short_code !== undefined) {
-          updatePayload.code = String(short_code);
-        }
-
-        const { error: businessUnitError } = await supabase
-          .from("business_units")
-          .update(updatePayload)
-          .eq("id", businessUnitId)
-          .eq("company_id", userRow.company_id);
-
-        if (businessUnitError) {
-          console.error("Error updating business unit information:", businessUnitError);
-          return NextResponse.json(
-            { error: "Failed to update business unit information" },
-            { status: 500 }
-          );
-        }
+    const { data: updatedSettings, error: saveError } = await supabase.rpc(
+      "save_settings_group_transactionally",
+      {
+        p_company_id: userRow.company_id,
+        p_user_id: userId,
+        p_business_unit_id: businessUnitId,
+        p_group_key: group,
+        p_settings: body,
       }
+    );
 
-      businessUnitResponseData = {
-        ...(display_name !== undefined ? { display_name } : {}),
-        ...(short_code !== undefined ? { short_code } : {}),
-      };
-
-      if (Object.keys(settingsBody).length === 0) {
-        return NextResponse.json({ data: businessUnitResponseData });
+    if (saveError) {
+      console.error("Transactional settings save failed:", saveError);
+      if (saveError.message.includes("SETTINGS_UNAUTHORIZED")) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
       }
-
-      Object.keys(settingsBody).forEach((key) => {
-        body[key] = settingsBody[key];
-      });
-
-      Object.keys(body).forEach((key) => {
-        if (BUSINESS_UNIT_TABLE_SETTING_KEYS.has(key)) {
-          delete body[key];
-        }
-      });
-    }
-
-    const settingKeys = Object.keys(body);
-
-    if (settingKeys.length === 0) {
-      return NextResponse.json({ data: businessUnitResponseData });
-    }
-
-    // Build query based on group type
-    let existingQuery = supabase
-      .from("settings")
-      .select("id, setting_key")
-      .eq("company_id", userRow.company_id)
-      .eq("group_key", group)
-      .in("setting_key", settingKeys);
-
-    if (group !== "company") {
-      existingQuery = existingQuery.eq("business_unit_id", businessUnitId);
-    } else {
-      existingQuery = existingQuery.is("business_unit_id", null);
-    }
-
-    const { data: existingSettings, error: existingSettingsError } = await existingQuery;
-
-    if (existingSettingsError) {
-      console.error("Error fetching existing settings:", existingSettingsError);
+      if (
+        saveError.message.includes("SETTINGS_INVALID_INPUT") ||
+        saveError.message.includes("SETTINGS_INVALID_PICKING_POLICY")
+      ) {
+        return NextResponse.json({ error: "Invalid settings payload" }, { status: 400 });
+      }
+      if (saveError.message.includes("SETTINGS_BUSINESS_UNIT_NOT_FOUND")) {
+        return NextResponse.json({ error: "Business unit not found" }, { status: 404 });
+      }
       return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
     }
 
-    const existingByKey = new Map(
-      (existingSettings || []).map((setting) => [setting.setting_key, setting.id])
-    );
-
-    const results = await Promise.all(
-      Object.entries(body).map(([key, value]) => {
-        const existingId = existingByKey.get(key);
-
-        if (existingId) {
-          return supabase
-            .from("settings")
-            .update({
-              value,
-              updated_by: userId,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", existingId)
-            .select()
-            .single();
-        }
-
-        return supabase
-          .from("settings")
-          .insert({
-            company_id: userRow.company_id,
-            business_unit_id: businessUnitId,
-            group_key: group,
-            setting_key: key,
-            value,
-            created_by: userId,
-            updated_by: userId,
-          })
-          .select()
-          .single();
-      })
-    );
-
-    // Check for errors
-    const errors = results.filter((r) => r.error);
-    if (errors.length > 0) {
-      console.error("Error upserting settings:", errors);
-      return NextResponse.json({ error: "Failed to update some settings" }, { status: 500 });
-    }
-
-    // Return updated settings
-    const updatedSettings: Record<string, SettingValue> = {};
-    results.forEach((result) => {
-      if (result.data) {
-        updatedSettings[result.data.setting_key] = result.data.value;
-      }
-    });
-
-    return NextResponse.json({
-      data: {
-        ...updatedSettings,
-        ...businessUnitResponseData,
-      },
-    });
+    return NextResponse.json({ data: updatedSettings });
   } catch (error) {
     console.error("Error in PUT /api/settings/[group]:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

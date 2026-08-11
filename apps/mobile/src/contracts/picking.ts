@@ -27,6 +27,8 @@ export type PickListItem = {
   barcode: string | null;
   sourceSku: string | null;
   sourceLocationId: string | null;
+  sourceWarehouseCode: string | null;
+  sourceLocationCode: string | null;
   sourceBatchReceivedAt: string | null;
   uom: string;
   requiredQty: number;

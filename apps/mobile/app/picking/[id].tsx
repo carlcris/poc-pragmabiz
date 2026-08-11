@@ -39,8 +39,6 @@ import {
 import { colors } from "@/theme/colors";
 import { canAccessPicking } from "@/utils/permissions";
 
-const normalizeScanValue = (value: string) => value.trim().toLowerCase();
-
 const getStatusMeta = (status: string) => {
   switch (status) {
     case "in_progress":
@@ -55,37 +53,6 @@ const getStatusMeta = (status: string) => {
     default:
       return { label: "Not started", hint: "Tap Start Picking to begin", dotColor: "#F59E0B" };
   }
-};
-
-const extractScanCandidates = (rawScan: string) => {
-  const cleaned = rawScan.trim();
-  const values = new Set<string>();
-  if (!cleaned) return values;
-
-  values.add(cleaned);
-
-  try {
-    values.add(decodeURIComponent(cleaned));
-  } catch {}
-
-  for (const candidate of Array.from(values)) {
-    try {
-      const parsed = JSON.parse(candidate) as Record<string, unknown>;
-      const keys = ["id", "itemId", "item", "itemCode", "code", "barcode", "batchLocationSku"];
-      for (const key of keys) {
-        const value = parsed[key];
-        if (typeof value === "string" && value.trim()) {
-          values.add(value.trim());
-        }
-      }
-    } catch {}
-  }
-
-  for (const token of cleaned.split(/[\s|,;]+/g)) {
-    if (token.trim()) values.add(token.trim());
-  }
-
-  return values;
 };
 
 type ParsedBatchLocationQr = {
@@ -146,6 +113,11 @@ const defaultPickSource = (item: PickListItem): PickSource => ({
   batchReceivedAt: item.sourceBatchReceivedAt,
   isMismatch: false,
 });
+
+const getPickSourcePath = (item: PickListItem) =>
+  [item.sourceWarehouseCode, item.sourceLocationCode || item.locationName, item.batchNumber]
+    .filter((segment): segment is string => Boolean(segment?.trim()))
+    .join(" > ");
 
 const createOperationId = () => {
   if (typeof globalThis.crypto?.randomUUID === "function") {
@@ -400,16 +372,13 @@ export default function PickingDetailScreen() {
       return;
     }
 
-    const scanCandidates = extractScanCandidates(value);
-    if (scanCandidates.size === 0 || !pickList.data) {
-      setVerifyError("Please enter or scan a barcode.");
+    if (!value.trim() || !pickList.data) {
+      setVerifyError("Enter or scan a batch-location SKU.");
       return;
     }
 
     setIsVerifying(true);
     setVerifyError("");
-
-    const normalizedCandidates = new Set(Array.from(scanCandidates).map(normalizeScanValue));
 
     try {
       const selectClaimedItem = async (match: PickListItem, source: PickSource) => {
@@ -445,7 +414,7 @@ export default function PickingDetailScreen() {
           batchCode: parsedQr?.batchCode,
         });
 
-        if (!resolved?.line) {
+        if (!resolved.line) {
           setVerifyError("Scanned source is not valid for this pick list.");
           return;
         }
@@ -472,28 +441,7 @@ export default function PickingDetailScreen() {
         return;
       }
 
-      const match = pickList.data.items.find((item) => {
-        if (item.pickedQty >= item.requiredQty) return false;
-        if (isClaimedByOther(item.pickListItemId)) return false;
-
-        const directMatch = [item.itemId, item.code, item.barcode, item.sourceSku]
-          .filter(Boolean)
-          .some((candidate) => normalizedCandidates.has(normalizeScanValue(String(candidate))));
-        return directMatch;
-      });
-
-      if (match) {
-        const remainingQty = Math.max(0, match.requiredQty - match.pickedQty);
-        if (remainingQty <= 0) {
-          setVerifyError("Item is already picked in this pick list.");
-          return;
-        }
-
-        await selectClaimedItem(match, defaultPickSource(match));
-        return;
-      }
-
-      setVerifyError("Item not found");
+      setVerifyError("Enter or scan the 10-digit batch-location SKU.");
     } catch (error) {
       setVerifyError(error instanceof Error ? error.message : "Failed to verify scanned item.");
     } finally {
@@ -544,7 +492,7 @@ export default function PickingDetailScreen() {
       pickedBatchCode: source.batchCode,
       pickedBatchReceivedAt: source.batchReceivedAt,
       isMismatchWarningAcknowledged: source.isMismatch,
-      mismatchReason: null,
+      mismatchReason: source.isMismatch ? "ALTERNATIVE_BATCH_LOCATION_SKU" : null,
     };
     const pending: PendingPickConfirmation = {
       version: 1,
@@ -695,7 +643,7 @@ export default function PickingDetailScreen() {
             <Card style={styles.scanCard}>
               <View style={styles.scanHeader}>
                 <Text style={styles.sectionTitle}>Scan item</Text>
-                <Text style={styles.scanSubtitle}>Barcode or SKU</Text>
+                <Text style={styles.scanSubtitle}>Batch-location SKU</Text>
               </View>
               {!pickingActive ? (
                 <View style={styles.disabledNotice}>
@@ -715,7 +663,7 @@ export default function PickingDetailScreen() {
                   value={barcode}
                   onChangeText={setBarcode}
                   editable={pickingActive && !pendingConfirmation}
-                  placeholder="Enter barcode or SKU..."
+                  placeholder="Enter 10-digit location SKU..."
                   placeholderTextColor={colors.textSecondary}
                   style={styles.comboInput}
                   onSubmitEditing={() => {
@@ -847,7 +795,8 @@ const VerifiedPanel = ({
       <View style={styles.sourceMismatchWarning}>
         <Ionicons name="warning-outline" size={18} color={colors.amberDark} />
         <Text style={styles.sourceMismatchWarningText}>
-          Scanned batch/location does not match the suggested source. Confirm pick to override.
+          Item matches, but it is from a different batch or location than the one assigned for
+          picking. Confirm to proceed with the pick.
         </Text>
       </View>
     ) : null}
@@ -879,7 +828,7 @@ const VerifiedPanel = ({
     />
     {error ? <Text style={styles.scanErrorText}>{error}</Text> : null}
     <ActionButton
-      label="Confirm Pick"
+      label={source.isMismatch ? "Confirm Alternative Pick" : "Confirm Pick"}
       icon="checkmark-circle-outline"
       variant="success"
       disabled={!canConfirm}
@@ -913,8 +862,8 @@ const ItemSection = ({
     ) : (
       items.map((item) => {
         const pickedQty = item.pickedQty;
-        const remainingQty = Math.max(0, item.requiredQty - pickedQty);
         const done = pickedQty >= item.requiredQty;
+        const sourcePath = getPickSourcePath(item);
         const claim = claims.find(
           (candidate) =>
             candidate.pickListItemId === item.pickListItemId &&
@@ -933,7 +882,7 @@ const ItemSection = ({
             <View style={{ flex: 1 }}>
               <Text style={styles.itemName}>{item.name}</Text>
               <Text style={[styles.itemMeta, done ? styles.itemMetaDone : null]}>
-                {done ? "Picked" : "To pick"}: {done ? pickedQty : remainingQty} {item.uom}
+                {sourcePath || "—"}
               </Text>
               <Text style={[styles.itemMetaDetail, done ? styles.itemMetaDone : null]}>
                 Picked {pickedQty} / {item.requiredQty} {item.uom}

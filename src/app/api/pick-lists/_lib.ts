@@ -156,8 +156,13 @@ export const fetchPickList = async (supabase: SupabaseClient, companyId: string,
         ),
         suggested_pick_location:warehouse_locations!pick_list_items_suggested_pick_location_id_fkey(
           id,
+          warehouse_id,
           code,
-          name
+          name,
+          warehouse:warehouses!warehouse_locations_warehouse_id_fkey(
+            id,
+            warehouse_code
+          )
         ),
         items!pick_list_items_item_id_fkey(item_name, item_code),
         units_of_measure!pick_list_items_uom_id_fkey(code, symbol, name)

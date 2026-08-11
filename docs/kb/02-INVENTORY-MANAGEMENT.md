@@ -889,6 +889,34 @@ suggestions are restricted to that batch and its warehouse/racks. If that batch 
 the complete requested quantity, the transaction fails with actionable guidance; it never falls
 back to another batch. Lines without a selected batch retain business-unit-wide FIFO allocation.
 
+Inventory settings define one picking-validation policy per business unit. Every mode requires the
+scanned `batch_location_sku` to resolve to the allocated item and the same batch identity
+(`item_id + batch_code + received_at`) inside the fulfilling business unit. `batch_only` permits a
+different rack or warehouse in that business unit, `batch_and_warehouse` additionally requires the
+allocated warehouse, and `batch_and_rack` requires both the allocated warehouse and rack. An exact
+suggested SKU proceeds normally. A different SKU that satisfies every mandatory rule is presented
+as an alternative-source warning and requires explicit confirmation; a wrong item, batch, business
+unit, policy location, inactive/non-pickable rack, or unavailable source is never overrideable.
+
+The web Pick List detail dialog loads its scoped detail record separately from the bounded list and
+shows the pick location on every line: warehouse code, rack code, batch code, and location SKU.
+Picking quantities and workflow transitions are read-only on the web because picking is performed
+in the mobile app; only the reason and action for cancelling an open pick list remain available.
+
+Creating a pick list reserves every line's exact base-unit quantity at its suggested batch and rack,
+in addition to the delivery note's aggregate warehouse reservation. Picker claims only assign work
+and do not reserve inventory again. When a permitted alternative source is confirmed, the database
+atomically moves the batch/rack reservation to the scanned location and, for another warehouse,
+moves the corresponding aggregate reservation as well. Pick-list cancellation releases its exact
+source reservations and restores any moved aggregate reservation to the planned warehouse. Delivery
+Note voiding releases both levels, while dispatch consumes on-hand and reserved quantity from the
+recorded warehouse, batch, rack, and batch-location SKU.
+
+When a pick list is completed short, the unpicked quantity is released from its suggested batch and
+rack immediately. The Delivery Note's warehouse-level commitment remains available for an
+incremental pick list, while cancellation or voiding releases only the source quantity that is still
+reserved and does not decrement the completed short quantity a second time.
+
 `POST /api/delivery-notes/allocation-availability` accepts a bounded list of up to 100 stock-request item IDs and returns availability in each line's requested unit. `POST /api/delivery-notes` revalidates the same whole-unit capacity while locking the stock-request and inventory rows, then creates the header, sources, lines, and warehouse reservation in one transaction.
 
 The delivery-note creation table displays business-unit-wide availability in the stock-request

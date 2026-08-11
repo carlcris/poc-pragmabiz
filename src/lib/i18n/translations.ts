@@ -1225,6 +1225,14 @@ export type TranslationKeys = {
       autoAllocationDescription: string;
       allowNegativeStock: string;
       allowNegativeStockDescription: string;
+      pickingPolicyTitle: string;
+      pickingPolicyDescription: string;
+      pickingPolicy: string;
+      pickingPolicyPlaceholder: string;
+      pickingPolicyBatchOnly: string;
+      pickingPolicyBatchAndWarehouse: string;
+      pickingPolicyBatchAndRack: string;
+      pickingPolicyHelp: string;
       stockRequisitionDocumentTitle: string;
       stockRequisitionDocumentDescription: string;
       showSrPdfUnitPrice: string;
@@ -4615,6 +4623,16 @@ export const translations: Record<Locale, TranslationKeys> = {
         autoAllocationDescription: "Automatically allocate stock for orders",
         allowNegativeStock: "Allow Negative Stock",
         allowNegativeStockDescription: "Allow stock levels to go negative",
+        pickingPolicyTitle: "Picking Validation",
+        pickingPolicyDescription:
+          "Control how strictly mobile picking must follow the allocated warehouse and rack",
+        pickingPolicy: "Picking Policy",
+        pickingPolicyPlaceholder: "Select a picking policy",
+        pickingPolicyBatchOnly: "Batch only",
+        pickingPolicyBatchAndWarehouse: "Batch and warehouse",
+        pickingPolicyBatchAndRack: "Batch, warehouse, and rack",
+        pickingPolicyHelp:
+          "The item, batch code, and original received timestamp are always required. A valid alternative source requires confirmation.",
         stockRequisitionDocumentTitle: "Stock Requisition PDF",
         stockRequisitionDocumentDescription:
           "Configure monetary fields shown on printed and downloaded stock requisitions",
@@ -6696,21 +6714,20 @@ export const translations: Record<Locale, TranslationKeys> = {
       unknown: "Unknown",
       pickListItems: "Pick List Items",
       item: "Item",
+      pickLocation: "Pick Location",
+      warehouse: "Warehouse",
+      rack: "Rack",
+      batch: "Batch",
+      locationSku: "Location SKU",
+      loadingDetails: "Loading pick list details",
+      detailsLoadError: "Pick list details could not be loaded. Please try again.",
       uom: "UOM",
       allocated: "Allocated",
       picked: "Picked",
       short: "Short",
-      saving: "Saving...",
-      savePickedQuantities: "Save Picked Quantities",
-      statusActions: "Status Actions",
-      startPicking: "Start Picking",
-      pause: "Pause",
-      completePicking: "Complete Picking",
-      resumePicking: "Resume Picking",
       cancelThisPickList: "Cancel this pick list",
       cancelReasonPlaceholder: "Cancel reason (optional)",
       cancelPickList: "Cancel Pick List",
-      close: "Close",
     },
     reorderManagementPage: {
       title: "Reorder Management",
@@ -10719,6 +10736,15 @@ export const translations: Record<Locale, TranslationKeys> = {
         autoAllocationDescription: "自动为订单分配库存",
         allowNegativeStock: "允许负库存",
         allowNegativeStockDescription: "允许库存数量变为负数",
+        pickingPolicyTitle: "拣货验证",
+        pickingPolicyDescription: "控制移动端拣货必须遵循已分配仓库和货架的严格程度",
+        pickingPolicy: "拣货策略",
+        pickingPolicyPlaceholder: "选择拣货策略",
+        pickingPolicyBatchOnly: "仅批次",
+        pickingPolicyBatchAndWarehouse: "批次和仓库",
+        pickingPolicyBatchAndRack: "批次、仓库和货架",
+        pickingPolicyHelp:
+          "始终验证商品、批次代码和原始收货时间。使用有效的替代库存来源时需要确认。",
         stockRequisitionDocumentTitle: "库存请购 PDF",
         stockRequisitionDocumentDescription: "配置库存请购打印和下载文件中显示的金额字段",
         showSrPdfUnitPrice: "显示单价",
@@ -12744,21 +12770,20 @@ export const translations: Record<Locale, TranslationKeys> = {
       unknown: "未知",
       pickListItems: "拣货单项目",
       item: "商品",
+      pickLocation: "拣货位置",
+      warehouse: "仓库",
+      rack: "货架",
+      batch: "批次",
+      locationSku: "位置 SKU",
+      loadingDetails: "正在加载拣货单详情",
+      detailsLoadError: "无法加载拣货单详情，请重试。",
       uom: "单位",
       allocated: "已分配",
       picked: "已拣货",
       short: "短缺",
-      saving: "保存中...",
-      savePickedQuantities: "保存拣货数量",
-      statusActions: "状态操作",
-      startPicking: "开始拣货",
-      pause: "暂停",
-      completePicking: "完成拣货",
-      resumePicking: "继续拣货",
       cancelThisPickList: "取消此拣货单",
       cancelReasonPlaceholder: "取消原因（可选）",
       cancelPickList: "取消拣货单",
-      close: "关闭",
     },
     reorderManagementPage: {
       title: "补货管理",

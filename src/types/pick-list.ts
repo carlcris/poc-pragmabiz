@@ -19,13 +19,35 @@ export type PickListItem = {
   suggested_pick_location?:
     | {
         id: string;
+        warehouse_id: string;
         code: string | null;
         name: string | null;
+        warehouse?:
+          | {
+              id: string;
+              warehouse_code: string;
+            }
+          | {
+              id: string;
+              warehouse_code: string;
+            }[]
+          | null;
       }
     | {
         id: string;
+        warehouse_id: string;
         code: string | null;
         name: string | null;
+        warehouse?:
+          | {
+              id: string;
+              warehouse_code: string;
+            }
+          | {
+              id: string;
+              warehouse_code: string;
+            }[]
+          | null;
       }[]
     | null;
   allocated_qty: number;

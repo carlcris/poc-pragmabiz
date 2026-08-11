@@ -79,10 +79,10 @@ apps/mobile/
    ↓
 3. For Each Item:
    ├─ Navigate to Item Location
-   ├─ Scan Location Barcode (validates correct location)
-   ├─ Scan Item Barcode (validates correct item)
+   ├─ Scan or enter the 10-digit batch-location SKU
+   ├─ Validate item, batch identity, business unit, and configured location policy
    ├─ Enter Quantity Picked
-   ├─ Handle Short Picks (if any)
+   ├─ Confirm a permitted alternative source when required
    └─ Confirm Pick
    ↓
 4. Review Pick Summary
@@ -100,6 +100,9 @@ apps/mobile/
   the visible screen under the new unit without reloading the unchanged business-unit list. Hidden
   screens wait until focused before loading the new scope.
 - Item-by-item picking with progress tracking
+- Each mobile pick-list item shows its assigned physical location directly beneath the item name as
+  warehouse code > rack code > batch code. The location SKU is omitted, and the separate progress
+  row remains the single place showing picked quantity versus total quantity.
 - Each pick-list line with an assigned rack exposes **View Map**. The full-screen viewer loads only
   that pick list's fulfilling warehouse and mapped racks, labels every rack by name within its
   normalized rectangle, highlights the suggested rack with a blinking red overlay, and supports
@@ -113,19 +116,28 @@ apps/mobile/
   or the location is cleared. Incomplete click-sized mappings are rejected and must be redrawn by a
   warehouse administrator. When the source warehouse has no configured map, the viewer shows a
   dedicated non-retry map-not-configured state instead of treating it as a transient load failure
-- Barcode verification (item + location)
-- Batch-location SKU verification is limited to the delivery note's fulfilling warehouse
-- A recognized batch-location QR must resolve to an eligible line in the fulfilling warehouse.
-  Resolution failures stop verification and never fall through to an embedded item ID or a default
-  source
-- The API's authoritative mismatch result controls the warning. Same-warehouse batch/rack overrides
-  require visible acknowledgement, while direct item ID, item code, and unit barcode scans remain a
-  separate fallback for non-source labels
+- Picking accepts only a 10-digit batch-location SKU, supplied by scanning its QR payload or manual
+  entry. Plain item IDs, item codes, and unit barcodes cannot prove the physical batch/location and
+  are rejected instead of falling back to the suggested source
+- The SKU must resolve to the pick-list item's item and allocated batch identity, including the
+  original received timestamp, and its warehouse must belong to the fulfilling business unit
+- The business unit's Inventory picking policy determines whether the allocated warehouse and rack
+  are also mandatory: Batch only, Batch and warehouse, or Batch, warehouse, and rack
+- The API's authoritative result controls the warning. An exact suggested SKU needs no warning. A
+  different SKU is confirmable only when its item, batch identity, business-unit boundary,
+  configured warehouse/rack rule, and quantity all pass; all other mismatches are hard failures
 - Picking requires Pick Lists access. When `pick_lists.operation.view_only_assigned_pick_lists.view` is enabled, list, detail, claim, and progress operations are restricted to pick lists assigned to the current user; when disabled, the user can access all pick lists in the selected business unit
 - Selecting a line creates a two-minute server-enforced claim that is renewed while the picker is entering quantity; other assigned pickers receive claim and progress changes through Supabase Realtime and cannot confirm the claimed line
 - Claims are released on cancel, navigation, or successful confirmation; a local nearest-expiry timer and foreground refresh remove expired disconnected-picker claims even when no Realtime event occurs
 - Pause and Complete are unavailable while any line has an active claim, and the database rejects completion if a claim appears concurrently
 - Confirm Pick persists a quantity increment and scanned source transactionally with a client operation ID, so retries are idempotent while separate physical picks remain distinct
+- Pick-list creation reserves the assigned batch and rack in base units. A picker claim owns the
+  work temporarily but does not reserve the stock again. Confirming an alternative source moves the
+  source reservation to the scanned batch-location SKU and also moves the aggregate reservation
+  when the warehouse differs. Cancellation or voiding releases the applicable reservations, and
+  dispatch consumes both on-hand and reserved quantities from the recorded source
+- Completing a pick list with a short quantity releases the unpicked batch/rack reservation from
+  the suggested source, allowing a later incremental pick list to allocate that quantity again
 - Pick progress is displayed per pick-list line. When the same item is allocated across multiple batches, confirming one batch updates only its matching line; sibling batch lines retain their own independent progress
 - Before confirmation, mobile stores the pending payload, business-unit scope, and operation ID locally, renews the claim, and suppresses lease-heartbeat cleanup until the result is resolved. A manual retry, app restart, or foreground resume retries the same operation first; if the original request did not commit and the lease expired, it reacquires the line and retries without changing the operation ID
 - Delivery-note picked totals are reconciled from execution rows across all non-deleted pick lists, preserving prior progress when a later pick list is created for the same delivery-note line

@@ -18,6 +18,9 @@ export const createInventorySettingsSchema = () =>
     track_lot_numbers: z.boolean().default(false),
     track_serial_numbers: z.boolean().default(false),
     barcode_format: z.string().max(50).optional().or(z.literal("")),
+    picking_validation_policy: z
+      .enum(["batch_only", "batch_and_warehouse", "batch_and_rack"] as const)
+      .default("batch_only"),
     stock_requisition_pdf_show_unit_price: z.boolean().default(true),
     stock_requisition_pdf_show_line_total: z.boolean().default(true),
     stock_requisition_pdf_show_total_amount: z.boolean().default(true),

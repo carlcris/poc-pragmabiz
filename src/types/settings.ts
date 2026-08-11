@@ -98,6 +98,11 @@ export const FINANCIAL_SETTING_KEYS = {
 // INVENTORY SETTINGS
 // ============================================================================
 
+export type PickingValidationPolicy =
+  | "batch_only"
+  | "batch_and_warehouse"
+  | "batch_and_rack";
+
 export interface InventorySettings {
   default_uom: string;
   low_stock_threshold: number;
@@ -109,6 +114,7 @@ export interface InventorySettings {
   track_lot_numbers: boolean;
   track_serial_numbers: boolean;
   barcode_format: string;
+  picking_validation_policy: PickingValidationPolicy;
   stock_requisition_pdf_show_unit_price: boolean;
   stock_requisition_pdf_show_line_total: boolean;
   stock_requisition_pdf_show_total_amount: boolean;
@@ -125,6 +131,7 @@ export const INVENTORY_SETTING_KEYS = {
   TRACK_LOT_NUMBERS: "track_lot_numbers",
   TRACK_SERIAL_NUMBERS: "track_serial_numbers",
   BARCODE_FORMAT: "barcode_format",
+  PICKING_VALIDATION_POLICY: "picking_validation_policy",
   STOCK_REQUISITION_PDF_SHOW_UNIT_PRICE: "stock_requisition_pdf_show_unit_price",
   STOCK_REQUISITION_PDF_SHOW_LINE_TOTAL: "stock_requisition_pdf_show_line_total",
   STOCK_REQUISITION_PDF_SHOW_TOTAL_AMOUNT: "stock_requisition_pdf_show_total_amount",

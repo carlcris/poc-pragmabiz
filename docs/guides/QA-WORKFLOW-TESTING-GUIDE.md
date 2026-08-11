@@ -610,12 +610,22 @@ multiple warehouse-specific delivery notes from one action.
 **Step-by-step workflow**:
 
 1. Pick list is created already assigned to one or more pickers, status Pending.
-2. **Start Picking** → status In Progress.
-3. A picker taps/clicks a line item to **claim** it — this locks the line so a second picker can't work the same item at the same time. Claims expire automatically after a short window if left idle.
-4. Picker scans (mobile) or selects (web) the batch/location being picked from, enters the quantity, and confirms — this is done per line, not a whole-list action. If the scanned batch doesn't match what's expected, the app shows a mismatch warning that has to be explicitly acknowledged before the pick can be recorded.
-5. **Pause** → status Paused, for stepping away mid-pick. **Resume Picking** brings it back to In Progress.
-6. **Complete Picking** → status Done. This is blocked if any line still has an active, unexpired claim, including a claim held by the picker attempting completion — the app will show an error rather than silently completing.
-7. **Cancel Pick List** → status Cancelled. A cancellation reason is optional; leaving it blank stores no reason. Cancelling rolls back any picked-quantity progress on the linked Delivery Note, and if the delivery hadn't been dispatched yet, reverts its status too.
+2. Open the web detail dialog and verify every line shows its pick location: warehouse code, rack
+   code, batch code, and 10-digit location SKU. The dialog is read-only for picking progress: it
+   has no editable picked quantity or Start, Pause, Resume, Complete, or Save control. Cancellation
+   remains available for open pick lists.
+3. On mobile, **Start Picking** → status In Progress.
+   Confirm each item card shows its warehouse code > rack code > batch code path without a location
+   SKU or redundant "To Pick" label, while the separate Picked value still shows progress.
+4. A picker taps/clicks a line item to **claim** it — this locks the line so a second picker can't work the same item at the same time. Claims expire automatically after a short window if left idle.
+5. On mobile, the picker scans or manually enters the 10-digit batch-location SKU, enters the
+   quantity, and confirms. The resolved item, batch code, original received timestamp, and
+   fulfilling-business-unit boundary always have to match. The active business unit's Inventory
+   picking policy may additionally require the allocated warehouse or the allocated warehouse and
+   rack. A different SKU shows a confirmable warning only after every mandatory validation passes.
+6. **Pause** → status Paused, for stepping away mid-pick. **Resume Picking** brings it back to In Progress.
+7. **Complete Picking** → status Done. This is blocked if any line still has an active, unexpired claim, including a claim held by the picker attempting completion — the app will show an error rather than silently completing.
+8. **Cancel Pick List** → status Cancelled. A cancellation reason is optional; leaving it blank stores no reason. Cancelling rolls back any picked-quantity progress on the linked Delivery Note, and if the delivery hadn't been dispatched yet, reverts its status too.
 
 **Who can do it**: edit access to Pick Lists; on top of that, some users are restricted to only see/act on pick lists specifically assigned to them (check whether the test user has this restriction before assuming they should see every open pick list).
 
@@ -630,10 +640,23 @@ multiple warehouse-specific delivery notes from one action.
   repopulate the current screen. Navigate to a previously hidden screen and confirm it loads only
   after receiving focus and uses the newly selected unit.
 - Two pickers, one line: confirm the second picker sees the line as "claimed by someone else" and cannot pick it themselves.
+- Create a first pick list that reserves and picks part of one batch-location SKU without
+  dispatching it, then queue another delivery for the same item. Confirm the second pick list sees
+  only the unreserved balance at that SKU and allocates any remainder to the next eligible FIFO
+  source. Verify `qty_reserved` changes together at batch and rack levels, while claiming or
+  renewing the line does not increase either reservation again.
 - Let a claim sit idle past its expiry and confirm it becomes available to claim again.
 - Try to Complete Picking first while the current picker still holds an active claim, then while another picker holds one — both attempts should be refused with a clear error, not silently completed.
 - Cancel a pick list mid-way with a blank reason and confirm cancellation succeeds, no reason is stored, and the Delivery Note's status and picked-quantity totals both roll back correctly.
-- Mobile: test the scan-to-verify flow specifically — the camera-captured value should be processed silently without appearing in the manual-entry field. A correct scan should sail straight through, while a mismatched scan should show the confirmation/warning card before allowing the pick.
+- Complete a pick list with less than its allocated quantity and confirm the short quantity is
+  released from the suggested batch and rack. Create an incremental pick list for the outstanding
+  quantity and confirm it can reserve an eligible source. Then cancel or void the completed short
+  pick list and confirm the already-released short quantity is not decremented again.
+- Mobile: test the scan-to-verify flow specifically — the camera-captured value should be processed
+  silently without appearing in the manual-entry field. An exact suggested SKU should proceed
+  without a warning. A valid alternative same-batch SKU should show the confirmation card, while a
+  plain item barcode, wrong item, wrong batch code, or different received timestamp must be rejected
+  without an override.
 - Configure a warehouse Floor Map by dragging across the suggested rack's complete footprint.
   Confirm a user with `warehouses:view` can view an existing map. Test both sides of the edit gate:
   `warehouses:edit` without `warehouses.operation.manage_floor_map.edit`, and the child capability
@@ -663,8 +686,14 @@ multiple warehouse-specific delivery notes from one action.
 - Replace an existing floor-map image with a malformed file carrying an allowed image MIME type.
   Confirm the decode error is translated, the old dimensions are cleared, and Save remains disabled
   until a valid replacement image is selected and decoded.
-- Scan a valid batch-location QR from a different warehouse for the same item. The mobile app must
-  reject it and must not silently substitute the suggested source from the QR's embedded item ID.
+- Exercise all three Inventory picking policies with the same item and batch identity. `batch_only`
+  must allow an alternative warehouse inside the fulfilling business unit after confirmation;
+  `batch_and_warehouse` must reject that warehouse but allow another rack in the allocated
+  warehouse; `batch_and_rack` must reject both alternatives. Every mode must reject another
+  business unit. For the accepted cross-warehouse case, verify the warehouse, batch, and rack
+  reservation moves exactly once; cancellation releases the pick-list source reservation and
+  restores the aggregate reservation; and dispatch reduces on-hand and reserved quantities at the
+  actual scanned source.
 - Remove the rack mapping (or use a warehouse with no map) and confirm **View Map** shows an
   actionable not-configured/not-mapped message without exposing another warehouse's map. A missing
   warehouse map must use the dedicated non-retry state rather than suggesting that retrying will

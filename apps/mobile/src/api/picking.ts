@@ -15,6 +15,7 @@ export type PickSourceResolution = {
   batchLocationSku: string;
   source: {
     itemId: string;
+    warehouseId: string;
     locationId: string;
     locationCode: string | null;
     locationName: string | null;
@@ -34,6 +35,7 @@ export type PickSourceResolution = {
     } | null;
   } | null;
   isMismatch: boolean;
+  warningCode: string | null;
 };
 
 export type PickLocationMap = {
@@ -112,8 +114,13 @@ const normalizePickItem = (value: unknown, pickedQtyOverride?: number): PickList
   );
   const unit = firstRecord(record.uom || record.unit || record.units_of_measure);
   const location = firstRecord(
-    record.location || record.warehouse_location || record.warehouse_locations
+    record.location ||
+      record.warehouse_location ||
+      record.warehouse_locations ||
+      record.suggestedPickLocation ||
+      record.suggested_pick_location
   );
+  const warehouse = firstRecord(location.warehouse || location.warehouses);
   const batch = firstRecord(record.batch || record.item_batches);
   const source = firstRecord(record.source || record.source_location);
   const dnLine = firstRecord(
@@ -157,6 +164,19 @@ const normalizePickItem = (value: unknown, pickedQtyOverride?: number): PickList
         record.suggested_pick_location_id ||
         dnLine.suggested_pick_location_id ||
         source.location_id
+    ),
+    sourceWarehouseCode: maybeStr(
+      record.sourceWarehouseCode ||
+        record.source_warehouse_code ||
+        warehouse.warehouseCode ||
+        warehouse.warehouse_code
+    ),
+    sourceLocationCode: maybeStr(
+      record.sourceLocationCode ||
+        record.source_location_code ||
+        record.locationCode ||
+        record.location_code ||
+        location.code
     ),
     sourceBatchReceivedAt: maybeStr(
       record.pickedBatchReceivedAt ||
@@ -437,31 +457,12 @@ export const resolvePickSource = async (
     locationId?: string | null;
     batchCode?: string | null;
   }
-): Promise<PickSourceResolution | null> => {
+): Promise<PickSourceResolution> => {
   const response = await apiRequest<ListResponse | unknown>(`/api/pick-lists/${id}/scan-source`, {
     query,
   });
   const payload = asRecord(response);
   const data = asRecord(payload.data);
-  if (!data || Object.keys(data).length === 0) {
-    const error = maybeStr(payload.error);
-    const code = maybeStr(payload.code);
-    const validationMisses = new Set([
-      "BATCH_LOCATION_SKU_NOT_FOUND",
-      "SOURCE_OUTSIDE_PICKING_WAREHOUSE",
-      "INCOMPLETE_PICK_SOURCE",
-      "PICK_SOURCE_ITEM_MISMATCH",
-      "PICK_SOURCE_LOCATION_MISMATCH",
-      "PICK_SOURCE_BATCH_MISMATCH",
-      "ITEM_NOT_IN_PICK_LIST",
-      "PICK_LIST_ITEM_ALREADY_COMPLETE",
-    ]);
-    if (error && !validationMisses.has(code || "")) {
-      throw new Error(error);
-    }
-    return null;
-  }
-
   const source = asRecord(data.source);
   const line = asRecord(data.line);
   const item = asRecord(line.item);
@@ -470,6 +471,7 @@ export const resolvePickSource = async (
     batchLocationSku: str(data.batchLocationSku || data.batch_location_sku),
     source: {
       itemId: str(source.itemId || source.item_id),
+      warehouseId: str(source.warehouseId || source.warehouse_id),
       locationId: str(source.locationId || source.location_id),
       locationCode: maybeStr(source.locationCode || source.location_code),
       locationName: maybeStr(source.locationName || source.location_name),
@@ -493,6 +495,7 @@ export const resolvePickSource = async (
         }
       : null,
     isMismatch: Boolean(data.isMismatch || data.is_mismatch),
+    warningCode: maybeStr(data.warningCode || data.warning_code),
   };
 };
 
@@ -517,7 +520,14 @@ export const updatePickedItems = async (id: string, items: PickRowInput[]) => {
 export const recordPickProgress = async (id: string, item: RecordPickProgressInput) => {
   const response = await apiRequest<ListResponse | unknown>(`/api/pick-lists/${id}/record-pick`, {
     method: "POST",
-    body: item,
+    body: {
+      pickListItemId: item.pickListItemId,
+      operationId: item.operationId,
+      pickedQty: item.pickedQty,
+      batchLocationSku: item.batchLocationSku,
+      isMismatchWarningAcknowledged: item.isMismatchWarningAcknowledged,
+      mismatchReason: item.mismatchReason,
+    },
   });
   return normalizePickDetail(asRecord(response).data || response);
 };

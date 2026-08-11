@@ -34,12 +34,6 @@ const DN_STATUS_BY_PICK_LIST_STATUS: Partial<
   in_progress: "picking_in_progress",
 };
 
-const asNumber = (value: number | string | null | undefined) => {
-  if (value == null) return 0;
-  const parsed = typeof value === "number" ? value : parseFloat(String(value));
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
 const apiError = (message: string, status: number) =>
   NextResponse.json({ error: message }, { status });
 
@@ -126,6 +120,7 @@ async function PATCHHandler(request: NextRequest, context: RouteContext) {
           p_company_id: auth.companyId,
           p_user_id: auth.userId,
           p_pick_list_id: id,
+          p_reason: body.reason?.trim() || null,
         }
       );
 
@@ -133,6 +128,9 @@ async function PATCHHandler(request: NextRequest, context: RouteContext) {
         console.error("Unable to cancel pick list and reset progress", cancelResetError);
         return apiError("Unable to cancel pick list and reset progress", 400);
       }
+
+      const updated = await fetchPickList(auth.supabase, auth.companyId, id);
+      return NextResponse.json(updated);
     }
 
     const updatePayload: Record<string, string | null> = {
@@ -145,10 +143,6 @@ async function PATCHHandler(request: NextRequest, context: RouteContext) {
       updatePayload.started_at = nowIso;
     }
 
-    if (nextStatus === "cancelled") {
-      updatePayload.cancel_reason = body.reason?.trim() || null;
-    }
-
     const { error: updatePickListError } = await auth.supabase
       .from("pick_lists")
       .update(updatePayload)
@@ -159,42 +153,7 @@ async function PATCHHandler(request: NextRequest, context: RouteContext) {
       return internalError("Unable to update pick list status", updatePickListError);
     }
 
-    let mappedDnStatus = DN_STATUS_BY_PICK_LIST_STATUS[nextStatus];
-    if (nextStatus === "cancelled") {
-      const { data: dnLineSummary, error: dnLineSummaryError } = await auth.supabase
-        .from("delivery_note_items")
-        .select("dispatched_qty")
-        .eq("company_id", auth.companyId)
-        .eq("dn_id", header.dn_id);
-
-      if (dnLineSummaryError) {
-        return internalError(
-          "Unable to inspect delivery note dispatch history",
-          dnLineSummaryError
-        );
-      }
-
-      const hasHistoricalDispatch = (dnLineSummary || []).some(
-        (row) => asNumber(row.dispatched_qty) > 0
-      );
-      mappedDnStatus = hasHistoricalDispatch ? undefined : "confirmed";
-
-      if (!mappedDnStatus && (dnLineSummary || []).length > 0) {
-        const { error: fallbackDnStatusError } = await auth.supabase
-          .from("delivery_notes")
-          .update({
-            status: "dispatched",
-            updated_at: nowIso,
-            updated_by: auth.userId,
-          })
-          .eq("id", header.dn_id)
-          .eq("company_id", auth.companyId);
-
-        if (fallbackDnStatusError) {
-          return internalError("Unable to update delivery note status", fallbackDnStatusError);
-        }
-      }
-    }
+    const mappedDnStatus = DN_STATUS_BY_PICK_LIST_STATUS[nextStatus];
 
     if (mappedDnStatus) {
       const dnUpdatePayload: Record<string, string | null> = {

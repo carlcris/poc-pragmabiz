@@ -10923,6 +10923,7 @@ export type Database = {
         Args: {
           p_company_id: string
           p_pick_list_id: string
+          p_reason?: string
           p_user_id: string
         }
         Returns: undefined
@@ -11490,6 +11491,10 @@ export type Database = {
           warehouse_id: string
         }[]
       }
+      get_inventory_picking_policy: {
+        Args: { p_business_unit_id: string; p_company_id: string }
+        Returns: string
+      }
       get_items_enhanced_page: {
         Args: {
           p_business_unit_id?: string
@@ -11923,6 +11928,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      move_pick_list_source_reservation: {
+        Args: {
+          p_base_qty: number
+          p_company_id: string
+          p_from_batch_location_sku: string
+          p_item_id: string
+          p_to_batch_location_sku: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       notify_business_units: {
         Args: {
           p_actor_user_id: string
@@ -12142,6 +12158,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      release_pick_list_source_reservations: {
+        Args: {
+          p_company_id: string
+          p_pick_list_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       release_sales_order_item_quotation_fulfillment: {
         Args: { p_fulfilled_qty: number; p_quotation_item_id: string }
         Returns: undefined
@@ -12224,6 +12248,16 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      save_settings_group_transactionally: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_group_key: string
+          p_settings: Json
+          p_user_id: string
+        }
+        Returns: Json
       }
       save_warehouse_floor_map: {
         Args: {
