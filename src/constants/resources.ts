@@ -30,6 +30,7 @@ export const RESOURCES = {
   DELIVERY_NOTES: "delivery_notes",
   PICK_LISTS: "pick_lists",
   STOCK_TRANSACTIONS: "stock_transactions",
+  INVENTORY_RESERVATIONS: "inventory_reservations",
   STOCK_TRANSFORMATIONS: "stock_transformations",
   MANUFACTURING: "manufacturing",
   REORDER_MANAGEMENT: "reorder_management",
@@ -203,6 +204,12 @@ export const RESOURCE_METADATA: ResourceMetadata[] = [
     key: RESOURCES.STOCK_TRANSACTIONS,
     name: "Stock Transactions",
     description: "View stock transaction history",
+    category: "Inventory",
+  },
+  {
+    key: RESOURCES.INVENTORY_RESERVATIONS,
+    name: "Inventory Reservations",
+    description: "View inventory commitments and physical allocations",
     category: "Inventory",
   },
   {

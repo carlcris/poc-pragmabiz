@@ -28,3 +28,4 @@ export const STOCK_AGING_REPORT_QUERY_KEY = "stock-aging-report";
 export const STOCK_MOVEMENT_REPORT_QUERY_KEY = "stock-movement-report";
 export const PRODUCT_MOVEMENT_REPORT_QUERY_KEY = "product-movement-report";
 export const STOCK_LEDGER_QUERY_KEY = "stock-ledger";
+export const INVENTORY_RESERVATIONS_QUERY_KEY = "inventory-reservations";

@@ -71,6 +71,7 @@ import type {
 import { useCurrency } from "@/hooks/useCurrency";
 import { transformationOrdersApi } from "@/lib/api/transformation-orders";
 import { toast } from "sonner";
+import { INVENTORY_RESERVATIONS_QUERY_KEY } from "@/hooks/queryKeys";
 
 const getStatusLabel = (
   status: TransformationOrderStatus,
@@ -171,6 +172,7 @@ export default function TransformationOrdersPage() {
       }
 
       await queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY] });
+      await queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : t("failedOrderAction");
       toast.error(errorMessage);

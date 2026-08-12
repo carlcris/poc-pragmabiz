@@ -26,7 +26,6 @@ import {
   useCreateFrameJobOrder,
   useCancelOrder,
 } from "@/hooks/useSalesOrders";
-import { useWarehouses } from "@/hooks/useWarehouses";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,6 +75,7 @@ import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { SalesOrder, SalesOrderStatus } from "@/types/sales-order";
 import { WarehouseLocationSelect } from "@/components/warehouses/WarehouseLocationSelect";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 
 const SalesOrderFormDialog = dynamic(
   () =>
@@ -101,6 +101,7 @@ export default function SalesOrdersPage() {
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [orderToInvoice, setOrderToInvoice] = useState<SalesOrder | null>(null);
   const [orderToCreateJobOrder, setOrderToCreateJobOrder] = useState<SalesOrder | null>(null);
+  const [orderToConfirm, setOrderToConfirm] = useState<SalesOrder | null>(null);
   const [orderToCancel, setOrderToCancel] = useState<SalesOrder | null>(null);
 
   const { formatCurrency } = useCurrency();
@@ -109,9 +110,6 @@ export default function SalesOrdersPage() {
   const confirmOrder = useConfirmOrder();
   const createFrameJobOrder = useCreateFrameJobOrder();
   const cancelOrder = useCancelOrder();
-
-  const { data: warehousesData } = useWarehouses({ limit: 50 });
-  const warehouses = warehousesData?.data || [];
 
   const { data, isLoading, error } = useSalesOrders({
     search,
@@ -194,7 +192,8 @@ export default function SalesOrdersPage() {
   const handleConvertToInvoice = (order: SalesOrder) => {
     setOrderToInvoice(order);
     setOrderToCreateJobOrder(null);
-    setSelectedWarehouse("");
+    setOrderToConfirm(null);
+    setSelectedWarehouse(order.fulfillingWarehouseId ?? "");
     setSelectedLocation("");
     setWarehouseDialogOpen(true);
   };
@@ -202,6 +201,7 @@ export default function SalesOrdersPage() {
   const handleCreateJobOrder = (order: SalesOrder) => {
     setOrderToCreateJobOrder(order);
     setOrderToInvoice(null);
+    setOrderToConfirm(null);
     setSelectedWarehouse("");
     setSelectedLocation("");
     setWarehouseDialogOpen(true);
@@ -240,10 +240,36 @@ export default function SalesOrdersPage() {
   };
 
   const handleConfirmOrder = async (order: SalesOrder) => {
+    setOrderToConfirm(order);
+    setOrderToInvoice(null);
+    setOrderToCreateJobOrder(null);
+    setSelectedWarehouse("");
+    setSelectedLocation("");
+    setWarehouseDialogOpen(true);
+  };
+
+  const handleConfirmOrderReservation = async () => {
+    if (!orderToConfirm || !selectedWarehouse) return;
     try {
-      await confirmOrder.mutateAsync(order.id);
+      await confirmOrder.mutateAsync({
+        orderId: orderToConfirm.id,
+        warehouseId: selectedWarehouse,
+      });
+      setWarehouseDialogOpen(false);
+      setOrderToConfirm(null);
     } catch {
       // Error is handled by the mutation hook with toast
+    }
+  };
+
+  const handleWarehouseDialogOpenChange = (open: boolean) => {
+    setWarehouseDialogOpen(open);
+    if (!open) {
+      setOrderToConfirm(null);
+      setOrderToInvoice(null);
+      setOrderToCreateJobOrder(null);
+      setSelectedWarehouse("");
+      setSelectedLocation("");
     }
   };
 
@@ -429,7 +455,7 @@ export default function SalesOrdersPage() {
                           className="flex justify-end gap-2"
                           onClick={(event) => event.stopPropagation()}
                         >
-                          {(order.status === "draft" || order.status === "confirmed") && (
+                          {order.status === "draft" && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -543,66 +569,84 @@ export default function SalesOrdersPage() {
         />
       )}
 
-      <Dialog open={warehouseDialogOpen} onOpenChange={setWarehouseDialogOpen}>
+      <Dialog open={warehouseDialogOpen} onOpenChange={handleWarehouseDialogOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t("selectWarehouseTitle")}</DialogTitle>
+            <DialogTitle>
+              {orderToInvoice ? t("reservedWarehouseTitle") : t("selectWarehouseTitle")}
+            </DialogTitle>
             <DialogDescription>
-              {orderToCreateJobOrder
-                ? t("selectJobOrderWarehouseDescription")
-                : t("selectWarehouseDescription")}
+              {orderToConfirm
+                ? t("selectConfirmationWarehouseDescription")
+                : orderToCreateJobOrder
+                  ? t("selectJobOrderWarehouseDescription")
+                  : orderToInvoice
+                    ? t("reservedWarehouseDescription")
+                    : t("selectWarehouseDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Select
+            <WarehouseSelect
               value={selectedWarehouse}
               onValueChange={(value) => {
                 setSelectedWarehouse(value);
                 setSelectedLocation("");
               }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={t("selectWarehouse")} />
-              </SelectTrigger>
-              <SelectContent>
-                {warehouses.map((warehouse) => (
-                  <SelectItem key={warehouse.id} value={warehouse.id}>
-                    {warehouse.code} - {warehouse.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="pb-2">
-            <WarehouseLocationSelect
-              warehouseId={selectedWarehouse}
-              value={selectedLocation}
-              onValueChange={setSelectedLocation}
-              allowNone
-              storableOnly
+              scope="current_business_unit"
+              selectedOption={
+                orderToInvoice?.fulfillingWarehouseId
+                  ? {
+                      id: orderToInvoice.fulfillingWarehouseId,
+                      code: orderToInvoice.fulfillingWarehouseCode ?? "",
+                      name: orderToInvoice.fulfillingWarehouseName ?? "",
+                      isActive: true,
+                    }
+                  : null
+              }
+              disabled={Boolean(orderToInvoice)}
             />
           </div>
+          {!orderToConfirm ? (
+            <div className="pb-2">
+              <WarehouseLocationSelect
+                warehouseId={selectedWarehouse}
+                value={selectedLocation}
+                onValueChange={setSelectedLocation}
+                allowNone
+                storableOnly
+              />
+            </div>
+          ) : null}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setWarehouseDialogOpen(false)}>
+            <Button variant="outline" onClick={() => handleWarehouseDialogOpenChange(false)}>
               {tCommon("cancel")}
             </Button>
             <Button
               onClick={
-                orderToCreateJobOrder
-                  ? handleConfirmJobOrderCreation
-                  : handleConfirmInvoiceConversion
+                orderToConfirm
+                  ? handleConfirmOrderReservation
+                  : orderToCreateJobOrder
+                    ? handleConfirmJobOrderCreation
+                    : handleConfirmInvoiceConversion
               }
               disabled={
-                !selectedWarehouse || convertToInvoice.isPending || createFrameJobOrder.isPending
+                !selectedWarehouse ||
+                confirmOrder.isPending ||
+                convertToInvoice.isPending ||
+                createFrameJobOrder.isPending
               }
             >
-              {orderToCreateJobOrder
-                ? createFrameJobOrder.isPending
-                  ? t("creatingJobOrder")
-                  : t("createJobOrder")
-                : convertToInvoice.isPending
-                  ? t("converting")
-                  : t("createInvoice")}
+              {orderToConfirm
+                ? confirmOrder.isPending
+                  ? t("confirming")
+                  : t("confirm")
+                : orderToCreateJobOrder
+                  ? createFrameJobOrder.isPending
+                    ? t("creatingJobOrder")
+                    : t("createJobOrder")
+                  : convertToInvoice.isPending
+                    ? t("converting")
+                    : t("createInvoice")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1667,11 +1667,15 @@ export type TranslationKeys = {
     confirmCancel: string;
     selectWarehouseTitle: string;
     selectWarehouseDescription: string;
+    reservedWarehouseTitle: string;
+    reservedWarehouseDescription: string;
+    selectConfirmationWarehouseDescription: string;
     selectJobOrderWarehouseDescription: string;
     selectWarehouse: string;
     selectLocationOptional: string;
     selectWarehouseFirst: string;
     converting: string;
+    confirming: string;
     creatingJobOrder: string;
     createInvoice: string;
     draft: string;
@@ -2387,6 +2391,60 @@ export type TranslationKeys = {
     emptyDescription: string;
     selectFiltersTitle: string;
     selectFiltersDescription: string;
+  };
+  inventoryReservationsPage: {
+    title: string;
+    description: string;
+    searchLabel: string;
+    searchPlaceholder: string;
+    warehouseFilter: string;
+    allWarehouses: string;
+    sourceTypeFilter: string;
+    allSourceTypes: string;
+    sourceDeliveryNote: string;
+    sourceSalesOrder: string;
+    sourceTransformation: string;
+    sourceFrameJobOrder: string;
+    statusFilter: string;
+    allStatuses: string;
+    sortBy: string;
+    sortOrder: string;
+    descending: string;
+    ascending: string;
+    source: string;
+    item: string;
+    warehouse: string;
+    committed: string;
+    physicallyAllocated: string;
+    consumed: string;
+    released: string;
+    statusLabel: string;
+    updated: string;
+    allocationDetails: string;
+    showAllocations: string;
+    hideAllocations: string;
+    allocationOwner: string;
+    allocationOwnerPickList: string;
+    allocationOwnerTransformation: string;
+    batch: string;
+    location: string;
+    allocated: string;
+    allocationsLoadError: string;
+    retry: string;
+    noAllocations: string;
+    loadErrorTitle: string;
+    loadErrorDescription: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    refreshing: string;
+    status: {
+      active: string;
+      partial: string;
+      consumed: string;
+      released: string;
+      transferred: string;
+      closed: string;
+    };
   };
   inventoryItemPage: {
     rawMaterial: string;
@@ -3585,6 +3643,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       Location: "Location",
       Warehouses: "Warehouses",
       "Stock Transactions": "Stock Transactions",
+      Reservations: "Reservations",
       "Stock Adjustments": "Stock Adjustments",
       "Stock Transfers": "Stock Transfers",
       "Delivery Notes": "Delivery Notes",
@@ -3628,6 +3687,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       "stock-in-transit": "Stock In Transit",
       warehouses: "Warehouses",
       stock: "Stock Transactions",
+      reservations: "Reservations",
       adjustments: "Stock Adjustments",
       "stock-requests": "Stock Transfers",
       "delivery-notes": "Delivery Notes",
@@ -5076,12 +5136,18 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectWarehouseTitle: "Select Warehouse",
       selectWarehouseDescription:
         "Choose the warehouse from which stock will be deducted for this invoice.",
+      reservedWarehouseTitle: "Reserved Warehouse",
+      reservedWarehouseDescription:
+        "Inventory will be deducted from the warehouse reserved when this sales order was confirmed.",
+      selectConfirmationWarehouseDescription:
+        "Choose the warehouse that will reserve inventory for this sales order.",
       selectJobOrderWarehouseDescription:
         "Choose the warehouse from which frame materials will be reserved for this job order.",
       selectWarehouse: "Select a warehouse",
       selectLocationOptional: "Select a location (optional)",
       selectWarehouseFirst: "Select warehouse first",
       converting: "Converting...",
+      confirming: "Confirming...",
       creatingJobOrder: "Creating...",
       createInvoice: "Create Invoice",
       draft: "Draft",
@@ -5812,6 +5878,61 @@ export const translations: Record<Locale, TranslationKeys> = {
       emptyDescription: "No stock movements match the selected filters.",
       selectFiltersTitle: "Select an item and warehouse to view the ledger.",
       selectFiltersDescription: "Choose the filters above to view detailed stock movement history.",
+    },
+    inventoryReservationsPage: {
+      title: "Inventory Reservations",
+      description:
+        "Audit warehouse commitments and the physical batch and rack allocations that fulfill them.",
+      searchLabel: "Search source reference or item",
+      searchPlaceholder: "Search source reference or item...",
+      warehouseFilter: "Warehouse",
+      allWarehouses: "All warehouses",
+      sourceTypeFilter: "Source type",
+      allSourceTypes: "All source types",
+      sourceDeliveryNote: "Delivery Note",
+      sourceSalesOrder: "Sales Order",
+      sourceTransformation: "Transformation",
+      sourceFrameJobOrder: "Frame Job Order",
+      statusFilter: "Status",
+      allStatuses: "All statuses",
+      sortBy: "Sort by",
+      sortOrder: "Sort order",
+      descending: "Descending",
+      ascending: "Ascending",
+      source: "Source",
+      item: "Item",
+      warehouse: "Warehouse",
+      committed: "Committed",
+      physicallyAllocated: "Allocated",
+      consumed: "Consumed",
+      released: "Released",
+      statusLabel: "Status",
+      updated: "Updated",
+      allocationDetails: "Physical allocation details",
+      showAllocations: "Show physical allocations",
+      hideAllocations: "Hide physical allocations",
+      allocationOwner: "Allocation owner",
+      allocationOwnerPickList: "Pick List",
+      allocationOwnerTransformation: "Transformation",
+      batch: "Batch",
+      location: "Location",
+      allocated: "Allocated",
+      allocationsLoadError: "Unable to load physical allocations.",
+      retry: "Retry",
+      noAllocations: "No physical batch or rack allocations have been recorded yet.",
+      loadErrorTitle: "Unable to load inventory reservations",
+      loadErrorDescription: "The reservation ledger could not be loaded. Please try again.",
+      emptyTitle: "No inventory reservations found",
+      emptyDescription: "No warehouse commitments match the selected filters.",
+      refreshing: "Refreshing reservations...",
+      status: {
+        active: "Active",
+        partial: "Partially fulfilled",
+        consumed: "Consumed",
+        released: "Released",
+        transferred: "Transferred",
+        closed: "Closed",
+      },
     },
     inventoryItemPage: {
       rawMaterial: "Raw Material",
@@ -9725,6 +9846,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       Location: "库位",
       Warehouses: "仓库",
       "Stock Transactions": "库存交易",
+      Reservations: "库存预留",
       "Stock Adjustments": "库存调整",
       "Stock Transfers": "库存调拨",
       "Delivery Notes": "送货单",
@@ -9768,6 +9890,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       "stock-in-transit": "在途库存",
       warehouses: "仓库",
       stock: "库存交易",
+      reservations: "库存预留",
       adjustments: "库存调整",
       "stock-requests": "库存调拨",
       "delivery-notes": "送货单",
@@ -11180,11 +11303,15 @@ export const translations: Record<Locale, TranslationKeys> = {
       confirmCancel: "是，取消",
       selectWarehouseTitle: "选择仓库",
       selectWarehouseDescription: "选择该发票扣减库存所使用的仓库。",
+      reservedWarehouseTitle: "预留仓库",
+      reservedWarehouseDescription: "库存将从确认此销售订单时预留的仓库中扣减。",
+      selectConfirmationWarehouseDescription: "选择为此销售订单预留库存的仓库。",
       selectJobOrderWarehouseDescription: "选择该工单预留框料所使用的仓库。",
       selectWarehouse: "选择仓库",
       selectLocationOptional: "选择库位（可选）",
       selectWarehouseFirst: "请先选择仓库",
       converting: "转换中...",
+      confirming: "确认中...",
       creatingJobOrder: "创建中...",
       createInvoice: "创建发票",
       draft: "草稿",
@@ -11905,6 +12032,60 @@ export const translations: Record<Locale, TranslationKeys> = {
       emptyDescription: "没有符合当前筛选条件的库存变动。",
       selectFiltersTitle: "请选择商品和仓库以查看库存台账。",
       selectFiltersDescription: "使用上方筛选条件查看详细的库存变动记录。",
+    },
+    inventoryReservationsPage: {
+      title: "库存预留",
+      description: "审计仓库库存承诺及用于履行承诺的批次和货架实物分配。",
+      searchLabel: "搜索来源编号或商品",
+      searchPlaceholder: "搜索来源编号或商品...",
+      warehouseFilter: "仓库",
+      allWarehouses: "所有仓库",
+      sourceTypeFilter: "来源类型",
+      allSourceTypes: "所有来源类型",
+      sourceDeliveryNote: "送货单",
+      sourceSalesOrder: "销售订单",
+      sourceTransformation: "转换单",
+      sourceFrameJobOrder: "框架工单",
+      statusFilter: "状态",
+      allStatuses: "所有状态",
+      sortBy: "排序字段",
+      sortOrder: "排序方向",
+      descending: "降序",
+      ascending: "升序",
+      source: "来源",
+      item: "商品",
+      warehouse: "仓库",
+      committed: "承诺数量",
+      physicallyAllocated: "已分配",
+      consumed: "已消耗",
+      released: "已释放",
+      statusLabel: "状态",
+      updated: "更新时间",
+      allocationDetails: "实物分配详情",
+      showAllocations: "显示实物分配",
+      hideAllocations: "隐藏实物分配",
+      allocationOwner: "分配来源",
+      allocationOwnerPickList: "拣货单",
+      allocationOwnerTransformation: "转换单",
+      batch: "批次",
+      location: "库位",
+      allocated: "已分配",
+      allocationsLoadError: "无法加载实物分配。",
+      retry: "重试",
+      noAllocations: "尚未记录批次或货架实物分配。",
+      loadErrorTitle: "无法加载库存预留",
+      loadErrorDescription: "无法加载库存预留台账，请重试。",
+      emptyTitle: "未找到库存预留",
+      emptyDescription: "没有符合当前筛选条件的仓库库存承诺。",
+      refreshing: "正在刷新库存预留...",
+      status: {
+        active: "有效",
+        partial: "部分履行",
+        consumed: "已消耗",
+        released: "已释放",
+        transferred: "已转移",
+        closed: "已关闭",
+      },
     },
     inventoryItemPage: {
       rawMaterial: "原材料",

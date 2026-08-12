@@ -136,6 +136,10 @@ apps/mobile/
   source reservation to the scanned batch-location SKU and also moves the aggregate reservation
   when the warehouse differs. Cancellation or voiding releases the applicable reservations, and
   dispatch consumes both on-hand and reserved quantities from the recorded source
+- The Delivery Note owns the warehouse commitment, while each pick-list line owns a child physical
+  allocation for its batch-location SKU. Warehouse, batch, and rack `qty_reserved` values are cached
+  projections maintained in the same transaction as those ownership records; mobile never writes
+  reservation balances independently
 - Completing a pick list with a short quantity releases the unpicked batch/rack reservation from
   the suggested source, allowing a later incremental pick list to allocate that quantity again
 - Pick progress is displayed per pick-list line. When the same item is allocated across multiple batches, confirming one batch updates only its matching line; sibling batch lines retain their own independent progress

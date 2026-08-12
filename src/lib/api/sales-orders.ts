@@ -68,11 +68,21 @@ export const salesOrdersApi = {
     if (!response.ok) throw new Error("Failed to delete sales order");
   },
 
-  async confirmOrder(id: string): Promise<SalesOrder> {
+  async confirmOrder(id: string, warehouseId: string): Promise<SalesOrder> {
     const response = await fetch(`${API_BASE_URL}/sales-orders/${id}/confirm`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ warehouseId }),
     });
-    if (!response.ok) throw new Error("Failed to confirm sales order");
+    if (!response.ok) {
+      const error: unknown = await response.json().catch(() => null);
+      const message =
+        typeof error === "object" && error !== null && "error" in error &&
+        typeof error.error === "string"
+          ? error.error
+          : "Failed to confirm sales order";
+      throw new Error(message);
+    }
     return response.json();
   },
 

@@ -6,6 +6,7 @@ import type {
   SalesOrderFilters,
 } from "@/types/sales-order";
 import { toast } from "sonner";
+import { INVENTORY_RESERVATIONS_QUERY_KEY } from "@/hooks/queryKeys";
 
 const SALES_ORDERS_KEY = "sales-orders";
 
@@ -66,6 +67,7 @@ export function useDeleteSalesOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
       queryClient.invalidateQueries({ queryKey: ["quotations"] });
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
       toast.success("Sales order deleted successfully");
     },
     onError: (error: Error) => {
@@ -78,9 +80,11 @@ export function useConfirmOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => salesOrdersApi.confirmOrder(id),
+    mutationFn: ({ orderId, warehouseId }: { orderId: string; warehouseId: string }) =>
+      salesOrdersApi.confirmOrder(orderId, warehouseId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
       toast.success("Sales order confirmed successfully");
     },
     onError: (error: Error) => {
@@ -127,6 +131,7 @@ export function useCancelOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
       queryClient.invalidateQueries({ queryKey: ["quotations"] });
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
       toast.success("Sales order cancelled");
     },
     onError: (error: Error) => {
@@ -151,6 +156,7 @@ export function useConvertToInvoice() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
       toast.success("Sales order converted to invoice successfully");
     },
     onError: (error: Error) => {

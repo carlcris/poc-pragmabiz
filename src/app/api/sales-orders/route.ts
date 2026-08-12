@@ -15,6 +15,7 @@ type DbSalesOrder = {
   order_date: string;
   expected_delivery_date: string | null;
   status: string;
+  fulfilling_warehouse_id: string | null;
   subtotal: number | string | null;
   discount_amount: number | string | null;
   tax_amount: number | string | null;
@@ -58,6 +59,7 @@ type DbCustomer = { id: string; customer_name: string; email: string | null };
 type DbItem = { id: string; item_code: string; item_name: string };
 type DbUser = { id: string; first_name: string | null; last_name: string | null };
 type DbUoM = { id: string; code: string; name: string };
+type DbWarehouse = { id: string; warehouse_code: string; warehouse_name: string };
 type DbSalesOrderItemWithRelations = DbSalesOrderItem & {
   items?: DbItem | DbItem[] | null;
   units_of_measure?: DbUoM | DbUoM[] | null;
@@ -145,6 +147,131 @@ type CalculatedSalesOrderLineItem = SalesOrderLineItemInput & {
   quantityShipped?: number;
   quantityDelivered?: number;
 };
+
+const SALES_ORDER_SELECT = `
+  id,
+  company_id,
+  order_code,
+  customer_id,
+  order_date,
+  expected_delivery_date,
+  status,
+  fulfilling_warehouse_id,
+  subtotal,
+  discount_amount,
+  tax_amount,
+  total_amount,
+  shipping_address,
+  shipping_city,
+  shipping_state,
+  shipping_postal_code,
+  shipping_country,
+  payment_terms,
+  notes,
+  created_by,
+  created_at,
+  updated_at,
+  deleted_at,
+  customers:customer_id (
+    id,
+    customer_name,
+    email
+  ),
+  users:created_by (
+    id,
+    first_name,
+    last_name
+  ),
+  fulfilling_warehouse:warehouses!sales_orders_fulfilling_warehouse_id_fkey (
+    id,
+    warehouse_code,
+    warehouse_name
+  )
+` as const;
+
+const SALES_ORDER_ITEM_SELECT = `
+  id,
+  order_id,
+  item_id,
+  quotation_id,
+  quotation_item_id,
+  skip_inventory,
+  item_description,
+  quantity,
+  uom_id,
+  pricing_tier,
+  pricing_tier_name,
+  rate,
+  discount_percent,
+  tax_percent,
+  line_total,
+  quantity_shipped,
+  quantity_delivered,
+  sort_order,
+  created_by,
+  updated_by,
+  deleted_at,
+  items:item_id (
+    id,
+    item_code,
+    item_name
+  ),
+  units_of_measure:uom_id (
+    id,
+    code,
+    name
+  ),
+  sales_quotations:quotation_id (
+    quotation_code
+  )
+` as const;
+
+const SALES_ORDER_CONFIGURATION_SELECT = `
+  id,
+  order_item_id,
+  width,
+  height,
+  fixed_allowance,
+  molding_item_id,
+  molding_stick_length,
+  molding_sticks_required,
+  service_fee_mode,
+  service_type,
+  service_fee_amount,
+  total_service_fee,
+  invoice_display_mode,
+  items:molding_item_id (
+    id,
+    item_code,
+    item_name
+  )
+` as const;
+
+const SALES_ORDER_COMPONENT_SELECT = `
+  id,
+  order_item_id,
+  component_type,
+  source,
+  item_id,
+  description,
+  qty_per_frame,
+  total_quantity,
+  uom_id,
+  unit_rate,
+  total_amount,
+  rounding_mode,
+  sort_order,
+  items:item_id (
+    id,
+    item_code,
+    item_name
+  ),
+  units_of_measure:uom_id (
+    id,
+    code,
+    name
+  )
+` as const;
 
 type QuotationLinkRow = {
   id: string;
@@ -257,12 +384,16 @@ function transformDbSalesOrder(
   dbOrder: DbSalesOrder & {
     customers?: DbCustomer | DbCustomer[] | null;
     users?: DbUser | DbUser[] | null;
+    fulfilling_warehouse?: DbWarehouse | DbWarehouse[] | null;
   },
   items?: SalesOrderLineItem[]
 ): SalesOrder {
   const customer = Array.isArray(dbOrder.customers)
     ? (dbOrder.customers[0] ?? null)
     : dbOrder.customers;
+  const fulfillingWarehouse = Array.isArray(dbOrder.fulfilling_warehouse)
+    ? (dbOrder.fulfilling_warehouse[0] ?? null)
+    : dbOrder.fulfilling_warehouse;
 
   return {
     id: dbOrder.id,
@@ -274,6 +405,9 @@ function transformDbSalesOrder(
     orderDate: dbOrder.order_date,
     expectedDeliveryDate: dbOrder.expected_delivery_date || "",
     status: dbOrder.status as SalesOrder["status"],
+    fulfillingWarehouseId: dbOrder.fulfilling_warehouse_id,
+    fulfillingWarehouseCode: fulfillingWarehouse?.warehouse_code ?? null,
+    fulfillingWarehouseName: fulfillingWarehouse?.warehouse_name ?? null,
     lineItems: items || [],
     subtotal: Number(dbOrder.subtotal) || 0,
     totalDiscount: Number(dbOrder.discount_amount) || 0,
@@ -475,22 +609,7 @@ async function GETHandler(request: NextRequest) {
     // Build query for sales orders
     let query = supabase
       .from("sales_orders")
-      .select(
-        `
-        *,
-        customers:customer_id (
-          id,
-          customer_name,
-          email
-        ),
-        users:created_by (
-          id,
-          first_name,
-          last_name
-        )
-      `,
-        { count: "exact" }
-      )
+      .select(SALES_ORDER_SELECT, { count: "exact" })
       .is("deleted_at", null)
       .order("order_date", { ascending: false })
       .order("created_at", { ascending: false });
@@ -543,24 +662,7 @@ async function GETHandler(request: NextRequest) {
     const orderIds = orders.map((o) => o.id);
     const { data: items, error: itemsError } = await supabase
       .from("sales_order_items")
-      .select(
-        `
-        *,
-        items (
-          id,
-          item_code,
-          item_name
-        ),
-        units_of_measure (
-          id,
-          code,
-          name
-        ),
-        sales_quotations:quotation_id (
-          quotation_code
-        )
-      `
-      )
+      .select(SALES_ORDER_ITEM_SELECT)
       .in("order_id", orderIds)
       .is("deleted_at", null)
       .order("sort_order", { ascending: true });
@@ -573,16 +675,7 @@ async function GETHandler(request: NextRequest) {
       orderItemIds.length > 0
         ? await supabase
             .from("sales_order_item_configurations")
-            .select(
-              `
-              *,
-              items:molding_item_id (
-                id,
-                item_code,
-                item_name
-              )
-            `
-            )
+            .select(SALES_ORDER_CONFIGURATION_SELECT)
             .in("order_item_id", orderItemIds)
             .is("deleted_at", null)
         : { data: [] };
@@ -596,21 +689,7 @@ async function GETHandler(request: NextRequest) {
       orderItemIds.length > 0
         ? await supabase
             .from("sales_order_item_components")
-            .select(
-              `
-              *,
-              items:item_id (
-                id,
-                item_code,
-                item_name
-              ),
-              units_of_measure:uom_id (
-                id,
-                code,
-                name
-              )
-            `
-            )
+            .select(SALES_ORDER_COMPONENT_SELECT)
             .in("order_item_id", orderItemIds)
             .is("deleted_at", null)
             .order("sort_order", { ascending: true })
@@ -1014,44 +1093,13 @@ async function POSTHandler(request: NextRequest) {
     // Fetch the complete order with joins
     const { data: completeOrder } = await supabase
       .from("sales_orders")
-      .select(
-        `
-        *,
-        customers:customer_id (
-          id,
-          customer_name,
-          email
-        ),
-        users:created_by (
-          id,
-          first_name,
-          last_name
-        )
-      `
-      )
+      .select(SALES_ORDER_SELECT)
       .eq("id", order.id)
       .single();
 
     const { data: orderItems } = await supabase
       .from("sales_order_items")
-      .select(
-        `
-        *,
-        items (
-          id,
-          item_code,
-          item_name
-        ),
-        units_of_measure (
-          id,
-          code,
-          name
-        ),
-        sales_quotations:quotation_id (
-          quotation_code
-        )
-      `
-      )
+      .select(SALES_ORDER_ITEM_SELECT)
       .eq("order_id", order.id)
       .order("sort_order", { ascending: true });
 
@@ -1060,16 +1108,7 @@ async function POSTHandler(request: NextRequest) {
       createdOrderItemIds.length > 0
         ? await supabase
             .from("sales_order_item_configurations")
-            .select(
-              `
-              *,
-              items:molding_item_id (
-                id,
-                item_code,
-                item_name
-              )
-            `
-            )
+            .select(SALES_ORDER_CONFIGURATION_SELECT)
             .in("order_item_id", createdOrderItemIds)
             .is("deleted_at", null)
         : { data: [] };
@@ -1083,21 +1122,7 @@ async function POSTHandler(request: NextRequest) {
       createdOrderItemIds.length > 0
         ? await supabase
             .from("sales_order_item_components")
-            .select(
-              `
-              *,
-              items:item_id (
-                id,
-                item_code,
-                item_name
-              ),
-              units_of_measure:uom_id (
-                id,
-                code,
-                name
-              )
-            `
-            )
+            .select(SALES_ORDER_COMPONENT_SELECT)
             .in("order_item_id", createdOrderItemIds)
             .is("deleted_at", null)
             .order("sort_order", { ascending: true })

@@ -46,7 +46,6 @@ import {
   useCreateFrameJobOrder,
   useSalesOrders,
 } from "@/hooks/useSalesOrders";
-import { useWarehouses } from "@/hooks/useWarehouses";
 import { quotationsApi } from "@/lib/api/quotations";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -108,6 +107,7 @@ import type { Quotation, QuotationStatus } from "@/types/quotation";
 import type { SalesOrder, SalesOrderStatus } from "@/types/sales-order";
 import type { SalesOrderFormInitialValues } from "@/components/sales-orders/SalesOrderForm";
 import { WarehouseLocationSelect } from "@/components/warehouses/WarehouseLocationSelect";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import type { LucideIcon } from "lucide-react";
 
 const CustomerFormDialog = dynamic(
@@ -213,6 +213,7 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
   const [selectedLocation, setSelectedLocation] = useState("");
   const [orderToInvoice, setOrderToInvoice] = useState<SalesOrder | null>(null);
   const [orderToCreateJobOrder, setOrderToCreateJobOrder] = useState<SalesOrder | null>(null);
+  const [orderToConfirm, setOrderToConfirm] = useState<SalesOrder | null>(null);
   const [orderToCancel, setOrderToCancel] = useState<SalesOrder | null>(null);
   const changeStatus = useChangeQuotationStatus();
   const confirmQuotation = useConfirmQuotation();
@@ -246,9 +247,6 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
 
   const customerSalesOrders = salesOrdersData?.data || [];
   const salesOrderPagination = salesOrdersData?.pagination;
-  const { data: warehousesData } = useWarehouses({ limit: 50 });
-  const warehouses = warehousesData?.data || [];
-
   React.useEffect(() => {
     setQuotationCursor(null);
     setCustomerQuotations([]);
@@ -490,7 +488,8 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
   const handleConvertSalesOrderToInvoice = (order: SalesOrder) => {
     setOrderToInvoice(order);
     setOrderToCreateJobOrder(null);
-    setSelectedWarehouse("");
+    setOrderToConfirm(null);
+    setSelectedWarehouse(order.fulfillingWarehouseId ?? "");
     setSelectedLocation("");
     setWarehouseDialogOpen(true);
   };
@@ -498,6 +497,7 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
   const handleCreateSalesOrderJobOrder = (order: SalesOrder) => {
     setOrderToCreateJobOrder(order);
     setOrderToInvoice(null);
+    setOrderToConfirm(null);
     setSelectedWarehouse("");
     setSelectedLocation("");
     setWarehouseDialogOpen(true);
@@ -535,10 +535,36 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
   };
 
   const handleConfirmSalesOrder = async (order: SalesOrder) => {
+    setOrderToConfirm(order);
+    setOrderToInvoice(null);
+    setOrderToCreateJobOrder(null);
+    setSelectedWarehouse("");
+    setSelectedLocation("");
+    setWarehouseDialogOpen(true);
+  };
+
+  const handleConfirmSalesOrderReservation = async () => {
+    if (!orderToConfirm || !selectedWarehouse) return;
     try {
-      await confirmOrder.mutateAsync(order.id);
+      await confirmOrder.mutateAsync({
+        orderId: orderToConfirm.id,
+        warehouseId: selectedWarehouse,
+      });
+      setWarehouseDialogOpen(false);
+      setOrderToConfirm(null);
     } catch {
       // Mutation hook owns the toast.
+    }
+  };
+
+  const handleWarehouseDialogOpenChange = (open: boolean) => {
+    setWarehouseDialogOpen(open);
+    if (!open) {
+      setOrderToConfirm(null);
+      setOrderToInvoice(null);
+      setOrderToCreateJobOrder(null);
+      setSelectedWarehouse("");
+      setSelectedLocation("");
     }
   };
 
@@ -1017,7 +1043,7 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
                               onClick={(event) => event.stopPropagation()}
                             >
                               <div className="flex justify-end gap-2">
-                                {order.status === "draft" || order.status === "confirmed" ? (
+                                {order.status === "draft" ? (
                                   <EditGuard resource={RESOURCES.SALES_ORDERS}>
                                     <Button
                                       type="button"
@@ -1365,66 +1391,84 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
           initialValues={salesOrderInitialValues ?? undefined}
         />
       ) : null}
-      <Dialog open={warehouseDialogOpen} onOpenChange={setWarehouseDialogOpen}>
+      <Dialog open={warehouseDialogOpen} onOpenChange={handleWarehouseDialogOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{tOrders("selectWarehouseTitle")}</DialogTitle>
+            <DialogTitle>
+              {orderToInvoice ? tOrders("reservedWarehouseTitle") : tOrders("selectWarehouseTitle")}
+            </DialogTitle>
             <DialogDescription>
-              {orderToCreateJobOrder
-                ? tOrders("selectJobOrderWarehouseDescription")
-                : tOrders("selectWarehouseDescription")}
+              {orderToConfirm
+                ? tOrders("selectConfirmationWarehouseDescription")
+                : orderToCreateJobOrder
+                  ? tOrders("selectJobOrderWarehouseDescription")
+                  : orderToInvoice
+                    ? tOrders("reservedWarehouseDescription")
+                    : tOrders("selectWarehouseDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Select
+            <WarehouseSelect
               value={selectedWarehouse}
               onValueChange={(value) => {
                 setSelectedWarehouse(value);
                 setSelectedLocation("");
               }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={tOrders("selectWarehouse")} />
-              </SelectTrigger>
-              <SelectContent>
-                {warehouses.map((warehouse) => (
-                  <SelectItem key={warehouse.id} value={warehouse.id}>
-                    {warehouse.code} - {warehouse.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="pb-2">
-            <WarehouseLocationSelect
-              warehouseId={selectedWarehouse}
-              value={selectedLocation}
-              onValueChange={setSelectedLocation}
-              allowNone
-              storableOnly
+              scope="current_business_unit"
+              selectedOption={
+                orderToInvoice?.fulfillingWarehouseId
+                  ? {
+                      id: orderToInvoice.fulfillingWarehouseId,
+                      code: orderToInvoice.fulfillingWarehouseCode ?? "",
+                      name: orderToInvoice.fulfillingWarehouseName ?? "",
+                      isActive: true,
+                    }
+                  : null
+              }
+              disabled={Boolean(orderToInvoice)}
             />
           </div>
+          {!orderToConfirm ? (
+            <div className="pb-2">
+              <WarehouseLocationSelect
+                warehouseId={selectedWarehouse}
+                value={selectedLocation}
+                onValueChange={setSelectedLocation}
+                allowNone
+                storableOnly
+              />
+            </div>
+          ) : null}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setWarehouseDialogOpen(false)}>
+            <Button variant="outline" onClick={() => handleWarehouseDialogOpenChange(false)}>
               {tCommon("cancel")}
             </Button>
             <Button
               onClick={
-                orderToCreateJobOrder
-                  ? handleConfirmJobOrderCreation
-                  : handleConfirmInvoiceConversion
+                orderToConfirm
+                  ? handleConfirmSalesOrderReservation
+                  : orderToCreateJobOrder
+                    ? handleConfirmJobOrderCreation
+                    : handleConfirmInvoiceConversion
               }
               disabled={
-                !selectedWarehouse || convertToInvoice.isPending || createFrameJobOrder.isPending
+                !selectedWarehouse ||
+                confirmOrder.isPending ||
+                convertToInvoice.isPending ||
+                createFrameJobOrder.isPending
               }
             >
-              {orderToCreateJobOrder
-                ? createFrameJobOrder.isPending
-                  ? tOrders("creatingJobOrder")
-                  : tOrders("createJobOrder")
-                : convertToInvoice.isPending
-                  ? tOrders("converting")
-                  : tOrders("createInvoice")}
+              {orderToConfirm
+                ? confirmOrder.isPending
+                  ? tOrders("confirming")
+                  : tOrders("confirm")
+                : orderToCreateJobOrder
+                  ? createFrameJobOrder.isPending
+                    ? tOrders("creatingJobOrder")
+                    : tOrders("createJobOrder")
+                  : convertToInvoice.isPending
+                    ? tOrders("converting")
+                    : tOrders("createInvoice")}
             </Button>
           </DialogFooter>
         </DialogContent>

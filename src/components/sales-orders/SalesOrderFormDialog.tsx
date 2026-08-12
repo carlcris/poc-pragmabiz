@@ -50,8 +50,7 @@ export function SalesOrderFormDialog({
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState("");
   const isEditMode = mode === "edit";
   const isExistingOrder = !!salesOrder;
-  const canEdit =
-    isExistingOrder && (salesOrder.status === "draft" || salesOrder.status === "confirmed");
+  const canEdit = isExistingOrder && salesOrder.status === "draft";
 
   const { data: paymentSummary } = useSalesOrderPaymentSummary(
     mode === "view" ? salesOrder?.id || "" : ""

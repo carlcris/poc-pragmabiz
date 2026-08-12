@@ -1,76 +1,86 @@
+import { z } from "zod";
+import { NextRequest, NextResponse } from "next/server";
+import { RESOURCES } from "@/constants/resources";
+import { requirePermission } from "@/lib/auth";
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
-import { NextRequest, NextResponse } from "next/server";
-import { requirePermission } from "@/lib/auth";
-import { RESOURCES } from "@/constants/resources";
 
-// POST /api/sales-orders/[id]/confirm - Confirm a sales order
+const confirmSalesOrderSchema = z.object({ warehouseId: z.string().uuid() }).strict();
+
+const confirmErrors: Record<string, { error: string; status: 404 | 409 }> = {
+  SALES_ORDER_NOT_FOUND: { error: "This sales order is no longer available.", status: 404 },
+  SALES_ORDER_STATUS_CHANGED: {
+    error: "Only draft sales orders can be confirmed.",
+    status: 409,
+  },
+  SALES_ORDER_WAREHOUSE_INVALID: {
+    error: "Select an active warehouse in the current business unit.",
+    status: 409,
+  },
+  INVENTORY_RESERVATION_STOCK_UNAVAILABLE: {
+    error: "One or more items are not stocked in the selected warehouse.",
+    status: 409,
+  },
+  INVENTORY_RESERVATION_INSUFFICIENT_STOCK: {
+    error: "The selected warehouse does not have enough available stock for this order.",
+    status: 409,
+  },
+  INVENTORY_RESERVATION_UNIT_CONVERSION_MISSING: {
+    error: "An order item is missing its base-unit conversion.",
+    status: 409,
+  },
+};
+
 async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, "edit");
+  if (unauthorized) return unauthorized;
+
   try {
-    // Check permission first
-    const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, "edit");
-    if (unauthorized) return unauthorized;
+    const body: unknown = await request.json();
+    const validation = confirmSalesOrderSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json({ error: "Select a fulfillment warehouse." }, { status: 400 });
+    }
 
-    const { supabase } = await createServerClientWithBU();
     const { id } = await params;
+    const { supabase } = await createServerClientWithBU();
+    const { error } = await supabase.rpc("confirm_sales_order_with_inventory", {
+      p_sales_order_id: id,
+      p_warehouse_id: validation.data.warehouseId,
+    });
 
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (error) {
+      console.error("Failed to confirm sales order", {
+        salesOrderId: id,
+        code: error.code,
+        message: error.message,
+      });
+      const safeError = confirmErrors[error.message];
+      return NextResponse.json(
+        { error: safeError?.error ?? "The sales order could not be confirmed." },
+        { status: safeError?.status ?? 500 }
+      );
     }
 
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
-
-    // Get the sales order
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: fetchError } = await supabase
       .from("sales_orders")
-      .select("*")
+      .select(
+        "id, company_id, business_unit_id, order_code, order_date, customer_id, expected_delivery_date, price_list_id, subtotal, discount_amount, tax_amount, total_amount, status, fulfilling_warehouse_id, shipping_address, shipping_city, shipping_state, shipping_postal_code, shipping_country, payment_terms, notes, created_at, created_by, updated_at, updated_by, version, custom_fields"
+      )
       .eq("id", id)
-      .eq("company_id", userData.company_id)
       .single();
 
-    if (orderError || !order) {
-      return NextResponse.json({ error: "Sales order not found" }, { status: 404 });
+    if (fetchError || !order) {
+      return NextResponse.json(
+        { error: "The order was confirmed but could not be reloaded. Refresh the page." },
+        { status: 409 }
+      );
     }
 
-    // Validate status
-    if (order.status !== "draft") {
-      return NextResponse.json({ error: "Only draft orders can be confirmed" }, { status: 400 });
-    }
-
-    // Update status to confirmed
-    const { data: updatedOrder, error: updateError } = await supabase
-      .from("sales_orders")
-      .update({
-        status: "confirmed",
-        updated_by: user.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (updateError) {
-      return NextResponse.json({ error: "Failed to confirm sales order" }, { status: 500 });
-    }
-
-    return NextResponse.json(updatedOrder, { status: 200 });
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(order);
+  } catch (error) {
+    console.error("Unexpected sales order confirmation failure", { error });
+    return NextResponse.json({ error: "The sales order could not be confirmed." }, { status: 500 });
   }
 }
 

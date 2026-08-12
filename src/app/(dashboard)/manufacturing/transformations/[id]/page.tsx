@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, PlayCircle, CheckCircle, XCircle } from "lucide-react";
 import Link from "next/link";
@@ -30,6 +31,7 @@ import type {
   TransformationOrderOutputApi,
   TransformationOrderStatus,
 } from "@/types/transformation-order";
+import { INVENTORY_RESERVATIONS_QUERY_KEY } from "@/hooks/queryKeys";
 
 const getStatusLabel = (
   status: TransformationOrderStatus,
@@ -81,6 +83,7 @@ const transformationOrderCompleteErrorCodes = [
 ] as const satisfies readonly TransformationOrderCompleteErrorCode[];
 
 function TransformationOrderContent({ id }: { id: string }) {
+  const queryClient = useQueryClient();
   const { formatCurrency } = useCurrency();
   const t = useTranslations("transformation");
   const tCommon = useTranslations("common");
@@ -143,6 +146,7 @@ function TransformationOrderContent({ id }: { id: string }) {
         })),
       };
       await transformationOrdersApi.execute(order.id, executeData);
+      await queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
       toast.success(t("orderCompleted"));
       setExecuteDialogOpen(false);
       refetch();
@@ -181,6 +185,7 @@ function TransformationOrderContent({ id }: { id: string }) {
           toast.success(t("orderCancelled"));
           break;
       }
+      await queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
       refetch();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : t("failedOrderAction");

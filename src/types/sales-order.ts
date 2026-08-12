@@ -66,6 +66,9 @@ export type SalesOrder = {
   orderDate: string;
   expectedDeliveryDate: string;
   status: SalesOrderStatus;
+  fulfillingWarehouseId: string | null;
+  fulfillingWarehouseCode: string | null;
+  fulfillingWarehouseName: string | null;
   lineItems: SalesOrderLineItem[];
   subtotal: number;
   totalDiscount: number;

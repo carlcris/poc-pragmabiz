@@ -645,6 +645,18 @@ multiple warehouse-specific delivery notes from one action.
   only the unreserved balance at that SKU and allocates any remainder to the next eligible FIFO
   source. Verify `qty_reserved` changes together at batch and rack levels, while claiming or
   renewing the line does not increase either reservation again.
+- After Delivery Note creation, confirm one active `delivery_note` ownership record exists for each
+  line/source warehouse and no physical child allocation exists yet. After queuing the pick list,
+  confirm its batch-location child allocation exists, its active quantity does not exceed the
+  parent commitment, and the warehouse, batch, and rack projection balances match the active owned
+  quantities.
+- Open **Inventory → Reservations** with the fulfilling business unit selected. Confirm the Delivery
+  Note commitment appears, filters and sorting are applied by the server, and pagination remains
+  bounded to 10, 25, or 50 rows. Expand the commitment and confirm its pick list, batch, rack,
+  location SKU, active, consumed, and released allocation values match the workflow. Switch business
+  units and confirm the previous unit's rows disappear before the new request completes. A role
+  without Inventory Reservations view permission must see neither the menu entry nor either API's
+  data, while a view-only role must have no reservation mutation control.
 - Let a claim sit idle past its expiry and confirm it becomes available to claim again.
 - Try to Complete Picking first while the current picker still holds an active claim, then while another picker holds one — both attempts should be refused with a clear error, not silently completed.
 - Cancel a pick list mid-way with a blank reason and confirm cancellation succeeds, no reason is stored, and the Delivery Note's status and picked-quantity totals both roll back correctly.
@@ -652,6 +664,13 @@ multiple warehouse-specific delivery notes from one action.
   released from the suggested batch and rack. Create an incremental pick list for the outstanding
   quantity and confirm it can reserve an eligible source. Then cancel or void the completed short
   pick list and confirm the already-released short quantity is not decremented again.
+- Confirm an alternative warehouse pick transfers the child allocation and parent commitment only
+  once when the same mobile operation is retried. Cancelling that pick list must release the child
+  allocation and restore the commitment to the planned warehouse. Dispatch must leave no active
+  ownership for the delivered quantity, and voiding must release every remaining active commitment.
+- In a database transaction, force a reservation validation failure after an earlier ownership or
+  projection update. Confirm the transaction rolls back and both ledger ownership and cached
+  `qty_reserved`/`reserved_stock` balances remain unchanged.
 - Mobile: test the scan-to-verify flow specifically — the camera-captured value should be processed
   silently without appearing in the manual-entry field. An exact suggested SKU should proceed
   without a warning. A valid alternative same-batch SKU should show the confirmation card, while a
@@ -724,6 +743,15 @@ multiple warehouse-specific delivery notes from one action.
 **Things to test**:
 
 - Try to Prepare an order when stock is insufficient — confirm the exact shortfall is shown per item.
+- Create an order and confirm **Inventory → Reservations** shows one Transformation source row per
+  input and that warehouse reserved stock increases by the scaled base quantity. Move it to
+  Preparing and confirm its expandable allocation details show the FIFO batches and racks selected.
+- Cancel a Draft order and a Preparing order separately. Confirm the warehouse commitment returns
+  to zero in both cases, and the Preparing case also releases every batch/rack allocation.
+- Complete one order with less actual input than planned and confirm the actual quantity is consumed
+  while the unused quantity is released. Complete another with permitted extra input and confirm the
+  additional commitment/allocation is created only when stock is available; force an insufficiency
+  and confirm no partial stock, reservation, or completion records remain.
 - Add an additional output while creating a template and confirm the item search is server-side and bounded, primary layout outputs cannot be added, and the base UOM cannot be edited.
 - Copy a template with additional outputs and confirm the new template receives independent rows that can be changed before saving without affecting the source.
 - Create an order from a template with multiple outputs. Under **Planned Quantity**, enter a whole-number input quantity and confirm every output is scaled to a whole number. Then enter any one whole-number output quantity and confirm all inputs and other outputs are recalculated from the template ratios. Enter an output quantity that would require a fractional input and confirm the form explains that the value is invalid, does not round it, and blocks creation. Submit a valid ratio and confirm the created order quantities match the displayed values.
@@ -962,7 +990,9 @@ The Suggestions endpoint currently returns an empty list unconditionally, so sto
 **Step-by-step workflow**:
 
 1. **Create** → status Draft.
-2. **Confirm** → status Confirmed. Only available while Draft.
+2. **Confirm** → choose a fulfillment warehouse, then move to Confirmed. Every ordinary
+   stock-managed line is reserved in base units in that warehouse. Confirmation is all-or-nothing.
+   Confirmed inventory demand is read-only; cancel/delete and recreate the order to change it.
 3. **Invoice** (available once Confirmed or In Progress) — opens a dialog to choose a warehouse, then creates a linked Sales Invoice (section 22) as a draft, validating and reserving/deducting stock at that warehouse.
 4. **Create Job Order** — only appears for orders that actually contain items requiring production (e.g. custom framing). Opens a warehouse dialog, then creates a linked Frame Job Order (section 23). Once a job order exists, this button becomes **View Job Order** instead, linking straight to it.
 5. **Cancel Order** — blocked once the order has already been invoiced; the app is explicit that invoiced orders cannot be cancelled.
@@ -973,6 +1003,13 @@ The Suggestions endpoint currently returns an empty list unconditionally, so sto
 **Things to test**:
 
 - Try to cancel an already-invoiced order — should be refused.
+- Confirm an order with multiple stock-managed lines and verify **Inventory → Reservations** shows
+  one Sales Order source row per line and that warehouse reserved stock rises by the same base-unit
+  quantities. Repeat with one insufficient line and confirm no reservation or status change remains.
+- Cancel and delete confirmed orders in separate tests and confirm their active reservations and
+  warehouse projections are released exactly once.
+- Convert a confirmed order directly to an invoice and confirm its Sales Order commitments become
+  consumed while the invoice itself creates no duplicate reservation.
 - Confirm the "Create Job Order" button only shows for orders that actually need production, and correctly flips to "View Job Order" once one exists.
 - Invoice an order and confirm stock is correctly reserved/deducted at the chosen warehouse, and that the resulting invoice is linked back to this order.
 

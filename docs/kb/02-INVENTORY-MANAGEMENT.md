@@ -912,10 +912,45 @@ source reservations and restores any moved aggregate reservation to the planned 
 Note voiding releases both levels, while dispatch consumes on-hand and reserved quantity from the
 recorded warehouse, batch, rack, and batch-location SKU.
 
+Reservation ownership is source-neutral. Delivery Note lines, confirmed Sales Order lines,
+Transformation Order inputs, and Frame Job Order components own warehouse-level commitments in
+`inventory_reservations`. Pick-list lines and preparing Transformation Order inputs additionally own
+their exact FIFO batch/rack sources in `inventory_reservation_allocations`. An active allocation
+total cannot exceed its parent commitment. `item_warehouse.reserved_stock`,
+`item_batches.qty_reserved`, and `item_batch_locations.qty_reserved` remain cached balance
+projections for bounded availability queries, not ownership records. The owning workflow updates
+the ledger and its projections atomically so a failed operation leaves neither side partially
+changed.
+
+Users with Inventory Reservations view permission can inspect this ownership under **Inventory →
+Reservations**. The page is read-only and scoped to the selected business unit. It uses bounded,
+server-side search across source references and item codes or names, together with dedicated source
+type, status, and warehouse filters, sorting, and pagination. The warehouse selector remains separate
+so warehouse criteria do not overlap with free-text search. Each row identifies
+its source, such as a Delivery Note, Sales Order, Transformation Order, or Frame Job Order, and shows
+its committed, allocated, consumed, and released base-unit quantities. The effective active balance
+remains part of the reservation contract and status calculation but is not displayed as a separate
+column because it is derived from the other lifecycle quantities. Expanding a row loads a bounded
+list of up to 50 owning Pick List or Transformation Order allocations without a nested pager, with
+their batch, rack, location SKU, quantities, status, and update time. Roles that already had Stock
+Transactions view access receive this new view-only permission when the page is introduced; it can
+subsequently be managed independently in role permissions.
+
 When a pick list is completed short, the unpicked quantity is released from its suggested batch and
 rack immediately. The Delivery Note's warehouse-level commitment remains available for an
 incremental pick list, while cancellation or voiding releases only the source quantity that is still
 reserved and does not decrement the completed short quantity a second time.
+
+Because this is an active-development cutover, the reservation ledger starts with newly created
+owning workflows. Reset environments do not migrate or synthesize ownership for older records.
+Operational recovery should cancel, void, or delete the owner through its normal transactional
+action; reservation balance columns must not be edited directly to repair ownership.
+
+Reservation lifecycle mutations invalidate both the reservation list and expanded allocation query
+family so audit data refetches after commitments are created, transferred, consumed, or released.
+The audit query retains Sales Order and Transformation Order codes after those owners are
+soft-deleted, preserving historical search and source identification without restoring the owner to
+its operational list.
 
 `POST /api/delivery-notes/allocation-availability` accepts a bounded list of up to 100 stock-request item IDs and returns availability in each line's requested unit. `POST /api/delivery-notes` revalidates the same whole-unit capacity while locking the stock-request and inventory rows, then creates the header, sources, lines, and warehouse reservation in one transaction.
 

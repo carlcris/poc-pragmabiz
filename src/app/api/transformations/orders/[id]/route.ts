@@ -4,13 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { updateTransformationOrderSchema } from "@/lib/validations/transformation-order";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-type DbTransformationOrderUpdate = {
-  planned_quantity?: number | string | null;
-  planned_date?: string | null;
-  notes?: string | null;
-  updated_by?: string;
-  updated_at?: string;
-};
 
 // GET /api/transformations/orders/[id] - Get order by ID
 async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -116,33 +109,10 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
     const { supabase } = await createServerClientWithBU();
     const { id } = await params;
 
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
-
-    // Check if order exists and is in DRAFT status
     const { data: existingOrder } = await supabase
       .from("transformation_orders")
-      .select("id, status")
+      .select("id, status, planned_quantity, planned_date, notes")
       .eq("id", id)
-      .eq("company_id", userData.company_id)
       .is("deleted_at", null)
       .single();
 
@@ -172,31 +142,12 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
 
     const data = validationResult.data;
 
-    // Build update object
-    const updateData: DbTransformationOrderUpdate = {
-      updated_by: user.id,
-      updated_at: new Date().toISOString(),
-    };
-
-    if (data.plannedQuantity !== undefined) {
-      updateData.planned_quantity = data.plannedQuantity;
-    }
-    if (data.plannedDate !== undefined) {
-      updateData.planned_date = data.plannedDate;
-    }
-    if (data.notes !== undefined) {
-      updateData.notes = data.notes;
-    }
-
-    // Update order
-    const { data: updatedOrder, error: updateError } = await supabase
-      .from("transformation_orders")
-      .update(updateData)
-      .eq("id", id)
-      .select(
-        "id, company_id, business_unit_id, order_code, template_id, source_warehouse_id, status, planned_quantity, actual_quantity, total_input_cost, total_output_cost, cost_variance, variance_notes, order_date, planned_date, execution_date, completion_date, notes, reference_type, reference_id, created_at, created_by, updated_at, updated_by"
-      )
-      .single();
+    const { error: updateError } = await supabase.rpc("update_transformation_order_transaction", {
+      p_order_id: id,
+      p_planned_quantity: data.plannedQuantity ?? existingOrder.planned_quantity,
+      p_planned_date: data.plannedDate ?? existingOrder.planned_date,
+      p_notes: data.notes ?? existingOrder.notes,
+    });
 
     if (updateError) {
       console.error("Failed to update transformation order", {
@@ -204,7 +155,31 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
         code: updateError.code,
         message: updateError.message,
       });
-      return NextResponse.json({ error: "Failed to update transformation order" }, { status: 500 });
+      const status = updateError.message === "TRANSFORMATION_ORDER_NOT_FOUND" ? 404 : 409;
+      return NextResponse.json(
+        { error: "The transformation order could not be updated. Refresh and try again." },
+        { status }
+      );
+    }
+
+    const { data: updatedOrder, error: fetchError } = await supabase
+      .from("transformation_orders")
+      .select(
+        "id, company_id, business_unit_id, order_code, template_id, source_warehouse_id, status, planned_quantity, actual_quantity, total_input_cost, total_output_cost, cost_variance, variance_notes, order_date, planned_date, execution_date, completion_date, notes, reference_type, reference_id, created_at, created_by, updated_at, updated_by"
+      )
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !updatedOrder) {
+      console.error("Updated transformation order could not be loaded", {
+        orderId: id,
+        code: fetchError?.code,
+        message: fetchError?.message,
+      });
+      return NextResponse.json(
+        { error: "The order was updated but could not be reloaded. Refresh the page." },
+        { status: 409 }
+      );
     }
 
     return NextResponse.json({ data: updatedOrder });
@@ -225,57 +200,9 @@ async function DELETEHandler(
     const { supabase } = await createServerClientWithBU();
     const { id } = await params;
 
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
-
-    // Check if order exists and is in DRAFT status
-    const { data: order } = await supabase
-      .from("transformation_orders")
-      .select("id, status, order_code")
-      .eq("id", id)
-      .eq("company_id", userData.company_id)
-      .is("deleted_at", null)
-      .single();
-
-    if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-
-    if (order.status !== "DRAFT") {
-      return NextResponse.json(
-        {
-          error: `Cannot delete order ${order.order_code} in ${order.status} status. Only DRAFT orders can be deleted.`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Soft delete order
-    const { error: deleteError } = await supabase
-      .from("transformation_orders")
-      .update({
-        deleted_at: new Date().toISOString(),
-        updated_by: user.id,
-      })
-      .eq("id", id);
+    const { error: deleteError } = await supabase.rpc("delete_transformation_order_transaction", {
+      p_order_id: id,
+    });
 
     if (deleteError) {
       console.error("Failed to delete transformation order", {
@@ -283,7 +210,11 @@ async function DELETEHandler(
         code: deleteError.code,
         message: deleteError.message,
       });
-      return NextResponse.json({ error: "Failed to delete transformation order" }, { status: 500 });
+      const status = deleteError.message === "TRANSFORMATION_ORDER_NOT_FOUND" ? 404 : 409;
+      return NextResponse.json(
+        { error: "Only an available draft transformation order can be deleted." },
+        { status }
+      );
     }
 
     return NextResponse.json({ message: "Order deleted successfully" });

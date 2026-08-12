@@ -15,6 +15,7 @@ type DbSalesOrder = {
   order_date: string;
   expected_delivery_date: string | null;
   status: string;
+  fulfilling_warehouse_id: string | null;
   subtotal: number | string | null;
   discount_amount: number | string | null;
   tax_amount: number | string | null;
@@ -58,6 +59,7 @@ type DbCustomer = { id: string; customer_name: string; email: string | null };
 type DbItem = { id: string; item_code: string; item_name: string };
 type DbUser = { id: string; first_name: string | null; last_name: string | null };
 type DbUoM = { id: string; code: string; name: string };
+type DbWarehouse = { id: string; warehouse_code: string; warehouse_name: string };
 type DbSalesOrderUpdate = {
   customer_id?: string | null;
   order_date?: string;
@@ -156,6 +158,131 @@ type SalesOrderLineItemInput = Omit<
   SalesOrderLineItem,
   "id" | "lineTotal" | "quantityShipped" | "quantityDelivered"
 >;
+
+const SALES_ORDER_SELECT = `
+  id,
+  company_id,
+  order_code,
+  customer_id,
+  order_date,
+  expected_delivery_date,
+  status,
+  fulfilling_warehouse_id,
+  subtotal,
+  discount_amount,
+  tax_amount,
+  total_amount,
+  shipping_address,
+  shipping_city,
+  shipping_state,
+  shipping_postal_code,
+  shipping_country,
+  payment_terms,
+  notes,
+  created_by,
+  created_at,
+  updated_at,
+  deleted_at,
+  customers:customer_id (
+    id,
+    customer_name,
+    email
+  ),
+  users:created_by (
+    id,
+    first_name,
+    last_name
+  ),
+  fulfilling_warehouse:warehouses!sales_orders_fulfilling_warehouse_id_fkey (
+    id,
+    warehouse_code,
+    warehouse_name
+  )
+` as const;
+
+const SALES_ORDER_ITEM_SELECT = `
+  id,
+  order_id,
+  item_id,
+  quotation_id,
+  quotation_item_id,
+  skip_inventory,
+  item_description,
+  quantity,
+  uom_id,
+  pricing_tier,
+  pricing_tier_name,
+  rate,
+  discount_percent,
+  tax_percent,
+  line_total,
+  quantity_shipped,
+  quantity_delivered,
+  sort_order,
+  created_by,
+  updated_by,
+  deleted_at,
+  items:item_id (
+    id,
+    item_code,
+    item_name
+  ),
+  units_of_measure:uom_id (
+    id,
+    code,
+    name
+  ),
+  sales_quotations:quotation_id (
+    quotation_code
+  )
+` as const;
+
+const SALES_ORDER_CONFIGURATION_SELECT = `
+  id,
+  order_item_id,
+  width,
+  height,
+  fixed_allowance,
+  molding_item_id,
+  molding_stick_length,
+  molding_sticks_required,
+  service_fee_mode,
+  service_type,
+  service_fee_amount,
+  total_service_fee,
+  invoice_display_mode,
+  items:molding_item_id (
+    id,
+    item_code,
+    item_name
+  )
+` as const;
+
+const SALES_ORDER_COMPONENT_SELECT = `
+  id,
+  order_item_id,
+  component_type,
+  source,
+  item_id,
+  description,
+  qty_per_frame,
+  total_quantity,
+  uom_id,
+  unit_rate,
+  total_amount,
+  rounding_mode,
+  sort_order,
+  items:item_id (
+    id,
+    item_code,
+    item_name
+  ),
+  units_of_measure:uom_id (
+    id,
+    code,
+    name
+  )
+` as const;
 type CalculatedSalesOrderLineItem = SalesOrderLineItemInput & {
   discountAmount: number;
   taxAmount: number;
@@ -275,12 +402,16 @@ function transformDbSalesOrder(
   dbOrder: DbSalesOrder & {
     customers?: DbCustomer | DbCustomer[] | null;
     users?: DbUser | DbUser[] | null;
+    fulfilling_warehouse?: DbWarehouse | DbWarehouse[] | null;
   },
   items?: SalesOrderLineItem[]
 ): SalesOrder {
   const customer = Array.isArray(dbOrder.customers)
     ? (dbOrder.customers[0] ?? null)
     : dbOrder.customers;
+  const fulfillingWarehouse = Array.isArray(dbOrder.fulfilling_warehouse)
+    ? (dbOrder.fulfilling_warehouse[0] ?? null)
+    : dbOrder.fulfilling_warehouse;
   return {
     id: dbOrder.id,
     companyId: dbOrder.company_id,
@@ -291,6 +422,9 @@ function transformDbSalesOrder(
     orderDate: dbOrder.order_date,
     expectedDeliveryDate: dbOrder.expected_delivery_date || "",
     status: dbOrder.status as SalesOrder["status"],
+    fulfillingWarehouseId: dbOrder.fulfilling_warehouse_id,
+    fulfillingWarehouseCode: fulfillingWarehouse?.warehouse_code ?? null,
+    fulfillingWarehouseName: fulfillingWarehouse?.warehouse_name ?? null,
     lineItems: items || [],
     subtotal: Number(dbOrder.subtotal) || 0,
     totalDiscount: Number(dbOrder.discount_amount) || 0,
@@ -482,21 +616,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     // Fetch sales order with customer info
     const { data: order, error } = await supabase
       .from("sales_orders")
-      .select(
-        `
-        *,
-        customers:customer_id (
-          id,
-          customer_name,
-          email
-        ),
-        users:created_by (
-          id,
-          first_name,
-          last_name
-        )
-      `
-      )
+      .select(SALES_ORDER_SELECT)
       .eq("id", id)
       .is("deleted_at", null)
       .single();
@@ -508,24 +628,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     // Fetch order items
     const { data: items, error: itemsError } = await supabase
       .from("sales_order_items")
-      .select(
-        `
-        *,
-        items (
-          id,
-          item_code,
-          item_name
-        ),
-        units_of_measure (
-          id,
-          code,
-          name
-        ),
-        sales_quotations:quotation_id (
-          quotation_code
-        )
-      `
-      )
+      .select(SALES_ORDER_ITEM_SELECT)
       .eq("order_id", id)
       .is("deleted_at", null)
       .order("sort_order", { ascending: true });
@@ -538,16 +641,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       orderItemIds.length > 0
         ? await supabase
             .from("sales_order_item_configurations")
-            .select(
-              `
-              *,
-              items:molding_item_id (
-                id,
-                item_code,
-                item_name
-              )
-            `
-            )
+            .select(SALES_ORDER_CONFIGURATION_SELECT)
             .in("order_item_id", orderItemIds)
             .is("deleted_at", null)
         : { data: [] };
@@ -561,21 +655,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       orderItemIds.length > 0
         ? await supabase
             .from("sales_order_item_components")
-            .select(
-              `
-              *,
-              items:item_id (
-                id,
-                item_code,
-                item_name
-              ),
-              units_of_measure:uom_id (
-                id,
-                code,
-                name
-              )
-            `
-            )
+            .select(SALES_ORDER_COMPONENT_SELECT)
             .in("order_item_id", orderItemIds)
             .is("deleted_at", null)
             .order("sort_order", { ascending: true })
@@ -690,8 +770,8 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       }) || [];
     const result = transformDbSalesOrder(
       order as DbSalesOrder & {
-        customers?: DbCustomer | null;
-        users?: DbUser | null;
+        customers?: DbCustomer | DbCustomer[] | null;
+        users?: DbUser | DbUser[] | null;
       },
       transformedItems
     );
@@ -737,6 +817,13 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
 
     if (fetchError || !existingOrder) {
       return NextResponse.json({ error: "Sales order not found" }, { status: 404 });
+    }
+
+    if (existingOrder.status !== "draft") {
+      return NextResponse.json(
+        { error: "Only draft sales orders can be edited." },
+        { status: 409 }
+      );
     }
 
     // Calculate totals if line items are provided
@@ -787,7 +874,6 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
     if (updateData.orderDate) orderUpdate.order_date = updateData.orderDate;
     if (updateData.expectedDeliveryDate !== undefined)
       orderUpdate.expected_delivery_date = updateData.expectedDeliveryDate;
-    if (updateData.status) orderUpdate.status = updateData.status;
     if (updateData.shippingAddress !== undefined)
       orderUpdate.shipping_address = updateData.shippingAddress;
     if (updateData.shippingCity !== undefined) orderUpdate.shipping_city = updateData.shippingCity;
@@ -954,44 +1040,13 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
     // Fetch updated order with joins
     const { data: updatedOrder } = await supabase
       .from("sales_orders")
-      .select(
-        `
-        *,
-        customers:customer_id (
-          id,
-          customer_name,
-          email
-        ),
-        users:created_by (
-          id,
-          first_name,
-          last_name
-        )
-      `
-      )
+      .select(SALES_ORDER_SELECT)
       .eq("id", id)
       .single();
 
     const { data: orderItems } = await supabase
       .from("sales_order_items")
-      .select(
-        `
-        *,
-        items (
-          id,
-          item_code,
-          item_name
-        ),
-        units_of_measure (
-          id,
-          code,
-          name
-        ),
-        sales_quotations:quotation_id (
-          quotation_code
-        )
-      `
-      )
+      .select(SALES_ORDER_ITEM_SELECT)
       .eq("order_id", id)
       .order("sort_order", { ascending: true });
 
@@ -1000,16 +1055,7 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
       updatedOrderItemIds.length > 0
         ? await supabase
             .from("sales_order_item_configurations")
-            .select(
-              `
-              *,
-              items:molding_item_id (
-                id,
-                item_code,
-                item_name
-              )
-            `
-            )
+            .select(SALES_ORDER_CONFIGURATION_SELECT)
             .in("order_item_id", updatedOrderItemIds)
             .is("deleted_at", null)
         : { data: [] };
@@ -1023,21 +1069,7 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
       updatedOrderItemIds.length > 0
         ? await supabase
             .from("sales_order_item_components")
-            .select(
-              `
-              *,
-              items:item_id (
-                id,
-                item_code,
-                item_name
-              ),
-              units_of_measure:uom_id (
-                id,
-                code,
-                name
-              )
-            `
-            )
+            .select(SALES_ORDER_COMPONENT_SELECT)
             .in("order_item_id", updatedOrderItemIds)
             .is("deleted_at", null)
             .order("sort_order", { ascending: true })
@@ -1059,8 +1091,8 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
       ) || [];
     const result = transformDbSalesOrder(
       updatedOrder as DbSalesOrder & {
-        customers?: DbCustomer | null;
-        users?: DbUser | null;
+        customers?: DbCustomer | DbCustomer[] | null;
+        users?: DbUser | DbUser[] | null;
       },
       items
     );
@@ -1073,7 +1105,7 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
 
 // DELETE /api/sales-orders/[id] - Soft delete sales order
 async function DELETEHandler(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -1083,57 +1115,35 @@ async function DELETEHandler(
 
     const { supabase } = await createServerClientWithBU();
 
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { id } = await params;
 
-    // Check if sales order exists
-    const { data: existingOrder, error: fetchError } = await supabase
-      .from("sales_orders")
-      .select("id")
-      .eq("id", id)
-      .is("deleted_at", null)
-      .single();
+    const { error } = await supabase.rpc("delete_sales_order_transaction", {
+      p_sales_order_id: id,
+    });
 
-    if (fetchError || !existingOrder) {
-      return NextResponse.json({ error: "Sales order not found" }, { status: 404 });
-    }
-
-    // Soft delete (set deleted_at timestamp)
-    const { error: deleteError } = await supabase
-      .from("sales_orders")
-      .update({
-        deleted_at: new Date().toISOString(),
-        updated_by: user.id,
-      })
-      .eq("id", id);
-
-    if (deleteError) {
+    if (error) {
+      console.error("Failed to delete sales order", {
+        salesOrderId: id,
+        code: error.code,
+        message: error.message,
+      });
+      const safeErrorByCode: Record<string, { error: string; status: 404 | 409 }> = {
+        SALES_ORDER_NOT_FOUND: { error: "Sales order not found", status: 404 },
+        SALES_ORDER_DELETE_STATUS_INVALID: {
+          error: "Only draft or confirmed sales orders can be deleted.",
+          status: 409,
+        },
+      };
+      const safeError = safeErrorByCode[error.message];
       return NextResponse.json(
-        { error: deleteError.message || "Failed to delete sales order" },
-        { status: 500 }
+        { error: safeError?.error ?? "Failed to delete sales order" },
+        { status: safeError?.status ?? 500 }
       );
     }
 
-    // Also soft delete the items
-    await supabase
-      .from("sales_order_items")
-      .update({
-        deleted_at: new Date().toISOString(),
-        updated_by: user.id,
-      })
-      .eq("order_id", id);
-
     return NextResponse.json({ message: "Sales order deleted successfully" });
-  } catch {
+  } catch (error) {
+    console.error("Unexpected sales order deletion failure", { error });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

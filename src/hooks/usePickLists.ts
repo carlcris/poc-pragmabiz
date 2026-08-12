@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { pickListsApi } from "@/lib/api/pick-lists";
 import {
   DELIVERY_NOTES_QUERY_KEY,
+  INVENTORY_RESERVATIONS_QUERY_KEY,
   PICK_LISTS_QUERY_KEY,
   WAREHOUSE_DASHBOARD_QUERY_KEY,
 } from "@/hooks/queryKeys";
@@ -95,6 +96,7 @@ export function useCreatePickList() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["delivery-notes"] });
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
       toast.success("Pick list created");
     },
     onError: (error: unknown) => {
@@ -114,6 +116,7 @@ export function useUpdatePickListStatus() {
       queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
       toast.success("Pick list status updated");
     },
     onError: (error: unknown) => {
@@ -131,6 +134,7 @@ export function useUpdatePickListItems() {
     onSuccess: (updated) => {
       syncPickListCaches(queryClient, updated);
       queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
     },
   });
 }

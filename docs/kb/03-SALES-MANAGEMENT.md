@@ -68,7 +68,18 @@ A **Sales Order** is a confirmed order from a customer to supply goods.
 - Payment summary
 
 **Inventory Reservation**:
-When a sales order is confirmed, inventory is **reserved** (not removed). Stock is only removed when delivery note is dispatched.
+Confirming a Sales Order requires an active fulfillment warehouse in the current business unit.
+Every ordinary stock-managed line creates a base-unit warehouse commitment and increments the
+warehouse reserved-stock projection in the same transaction. Frame-configured lines remain owned by
+their Frame Job Order material reservations and are not reserved twice by the Sales Order. A
+confirmed order is inventory-owning and therefore read-only; cancel or delete it to release its
+remaining commitments, or invoice it to consume them while the direct stock issue removes on-hand
+inventory. Direct invoice conversion is one database transaction: invoice records retain the sales
+unit and quantity, while warehouse, batch, location, stock-transaction, and reservation balances
+are deducted in the item's base unit. Sales Invoices remain accounting documents and never create a
+second reservation. The conversion dialog shows the warehouse reserved during confirmation as a
+read-only value. Users may choose a location within that warehouse, but cannot switch the invoice
+to another warehouse because its physical deduction must consume the existing commitment.
 
 ### 3. Delivery Note
 
@@ -587,9 +598,17 @@ Confirm sales order.
 **Effect**:
 
 1. Changes status to 'confirmed'
-2. **Reserves inventory** in warehouse
-3. Creates inventory reservations
-4. Cannot be cancelled without releasing reservations
+2. Stores the selected fulfillment warehouse
+3. Creates one source-owned warehouse reservation for each stock-managed line
+4. Increments `item_warehouse.reserved_stock` atomically
+5. Rejects the full confirmation when any line has insufficient available stock
+
+Confirmed orders cannot be edited. Cancellation and deletion release all active Sales Order
+commitments transactionally. Direct conversion to an invoice consumes those commitments rather
+than adding another reservation. The conversion locks the order and stock projections, creates the
+invoice and its lines, deducts the selected location and FIFO batches in base units, updates
+warehouse on-hand, and marks the Sales Order reservation consumed in one transaction. Accounting
+posting remains a post-commit side effect.
 
 #### GET /api/sales-orders/[id]/payment-summary
 

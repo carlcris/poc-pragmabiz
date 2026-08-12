@@ -1,79 +1,56 @@
+import { NextRequest, NextResponse } from "next/server";
+import { RESOURCES } from "@/constants/resources";
+import { requirePermission } from "@/lib/auth";
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
-import { NextRequest, NextResponse } from "next/server";
-import { validateStateTransition } from "@/services/inventory/transformationValidationService";
-import { requirePermission } from "@/lib/auth";
-import { RESOURCES } from "@/constants/resources";
 
-// POST /api/transformations/orders/[id]/cancel - Cancel order (DRAFT or PREPARING → CANCELLED)
 async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, "edit");
+  if (unauthorized) return unauthorized;
+
   try {
-    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, "edit");
-    if (unauthorized) return unauthorized;
-
-    const { supabase } = await createServerClientWithBU();
     const { id } = await params;
+    const { supabase } = await createServerClientWithBU();
+    const { error } = await supabase.rpc("cancel_transformation_order_transaction", {
+      p_order_id: id,
+    });
 
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (error) {
+      console.error("Failed to cancel transformation order", {
+        orderId: id,
+        code: error.code,
+        message: error.message,
+      });
+      const status = error.message === "TRANSFORMATION_ORDER_NOT_FOUND" ? 404 : 409;
+      const message =
+        error.message === "TRANSFORMATION_ORDER_NOT_FOUND"
+          ? "This transformation order is no longer available."
+          : "Only draft or preparing transformation orders can be cancelled.";
+      return NextResponse.json({ error: message }, { status });
     }
 
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
-
-    // Validate state transition (must be in DRAFT or PREPARING status)
-    const transitionValidation = await validateStateTransition(id, "CANCELLED");
-    if (!transitionValidation.isValid) {
-      return NextResponse.json(
-        { error: transitionValidation.error || "Invalid state transition" },
-        { status: 400 }
-      );
-    }
-
-    // Update order status to CANCELLED
-    const { data: order, error: updateError } = await supabase
+    const { data: order, error: fetchError } = await supabase
       .from("transformation_orders")
-      .update({
-        status: "CANCELLED",
-        updated_by: user.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .eq("company_id", userData.company_id)
       .select(
         "id, company_id, business_unit_id, order_code, template_id, source_warehouse_id, status, planned_quantity, actual_quantity, total_input_cost, total_output_cost, cost_variance, variance_notes, order_date, planned_date, execution_date, completion_date, notes, reference_type, reference_id, created_at, created_by, updated_at, updated_by"
       )
+      .eq("id", id)
       .single();
 
-    if (updateError || !order) {
-      console.error("Failed to cancel transformation order", {
-        orderId: id,
-        code: updateError?.code,
-        message: updateError?.message,
-      });
-      return NextResponse.json({ error: "Failed to cancel order" }, { status: 500 });
+    if (fetchError || !order) {
+      return NextResponse.json(
+        { error: "The order was cancelled but could not be reloaded. Refresh the page." },
+        { status: 409 }
+      );
     }
 
-    return NextResponse.json({
-      data: order,
-      message: "Order cancelled successfully",
-    });
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ data: order, message: "Order cancelled successfully" });
+  } catch (error) {
+    console.error("Unexpected transformation cancellation failure", { error });
+    return NextResponse.json(
+      { error: "The transformation order could not be cancelled." },
+      { status: 500 }
+    );
   }
 }
 

@@ -3,6 +3,7 @@ import { deliveryNotesApi } from "@/lib/api/delivery-notes";
 import {
   DELIVERY_NOTE_ALLOCATION_AVAILABILITY_QUERY_KEY,
   DELIVERY_NOTES_QUERY_KEY,
+  INVENTORY_RESERVATIONS_QUERY_KEY,
   PICK_LISTS_QUERY_KEY,
   STOCK_REQUESTS_QUERY_KEY,
 } from "@/hooks/queryKeys";
@@ -63,6 +64,7 @@ export function useCreateDeliveryNote() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
     },
     onError: () => {
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
@@ -107,6 +109,7 @@ export function useConfirmDeliveryNote() {
     mutationFn: (id: string) => deliveryNotesApi.confirm(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
     },
   });
 }
@@ -129,6 +132,7 @@ export function useQueuePickingDeliveryNote() {
     mutationFn: (id: string) => deliveryNotesApi.queuePicking(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
     },
   });
 }
@@ -155,6 +159,7 @@ export function useDispatchDeliveryNote() {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
     },
   });
 }
@@ -177,6 +182,7 @@ export function useReceiveDeliveryNote() {
         : deliveryNotesApi.receive(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
     },
@@ -187,13 +193,8 @@ export function useStartReceivingDeliveryNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      id,
-      receivingWarehouseId,
-    }: {
-      id: string;
-      receivingWarehouseId: string;
-    }) => deliveryNotesApi.startReceiving(id, receivingWarehouseId),
+    mutationFn: ({ id, receivingWarehouseId }: { id: string; receivingWarehouseId: string }) =>
+      deliveryNotesApi.startReceiving(id, receivingWarehouseId),
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, id] });
@@ -321,6 +322,7 @@ export function useVoidDeliveryNote() {
       deliveryNotesApi.void(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
     },
   });
 }
@@ -347,6 +349,7 @@ export function useAdjustDispatchedDeliveryNoteItem() {
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
     },
   });
 }
@@ -364,6 +367,7 @@ export function useAddDeliveryNoteItems() {
       });
       queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
     },
   });
 }

@@ -30,6 +30,7 @@ import {
   Factory,
   ChefHat,
   Activity,
+  LockKeyhole,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BusinessUnitSwitcher } from "@/components/business-unit/BusinessUnitSwitcher";
@@ -80,6 +81,12 @@ const menuItems = [
         href: "/inventory/stock",
         resource: RESOURCES.STOCK_TRANSACTIONS as Resource,
         icon: ArrowRightLeft,
+      },
+      {
+        title: "Reservations",
+        href: "/inventory/reservations",
+        resource: RESOURCES.INVENTORY_RESERVATIONS as Resource,
+        icon: LockKeyhole,
       },
       {
         title: "Stock Adjustments",

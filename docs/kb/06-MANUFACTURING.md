@@ -100,6 +100,17 @@ A **Transformation Order** executes a production run based on a template.
 Draft → Preparing → Completed
 ```
 
+Creating a Transformation Order also creates a warehouse-level input commitment for every scaled
+input line and increments the source warehouse's reserved-stock projection in the same transaction.
+Moving the order to Preparing allocates the exact FIFO batch/rack sources and increments their batch
+and location reservation projections. Completion consumes those recorded allocation IDs rather
+than running a second FIFO search, converts the entered input quantity to the item's base unit for
+stock and ledger deductions, releases any unused committed quantity, and rolls back the entire
+operation if an allocated source is insufficient.
+Permitted overconsumption extends the commitment and its FIFO allocations only when the additional
+stock is available. Cancelling a Draft or Preparing order, or deleting a Draft order, releases every
+remaining commitment and allocation transactionally.
+
 Template creators can define predetermined **additional outputs** such as die cuts that are produced
 during the same run but are intentionally absent from the template's primary sheet layout. Each
 additional output stores an item and quantity per template execution; its unit is always derived
@@ -512,7 +523,8 @@ Complete transformation (atomic RPC).
 
 **Effect** (all in single transaction):
 1. **Remove input inventory**
-   - Consume available input batches FIFO
+   - Consume the exact FIFO batch/rack allocations recorded when the order entered `PREPARING`
+   - Convert the execution quantity to base units before reducing stock or recording ledger quantity
    - Record each consumed batch-location slice as its own stock-out transaction using the actual
      source location and batch number
    - Reduce item/warehouse, item batch, and batch/location stock
