@@ -8,15 +8,15 @@ import { asRpcClient, getClientErrorMessage, logQuotationError } from "../../../
 type CreateFrameJobOrderResult = {
   job_order_id: string;
   job_order_code: string;
+  billing_mode: string;
 };
 
-async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POSTHandler(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, "edit");
     if (unauthorized) return unauthorized;
 
     const { id: salesOrderId } = await params;
-    const body = (await request.json().catch(() => ({}))) as { warehouseId?: string | null };
     const { supabase } = await createServerClientWithBU();
 
     const {
@@ -28,38 +28,36 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!body.warehouseId) {
-      return NextResponse.json(
-        { error: "Warehouse is required to reserve frame materials" },
-        { status: 400 }
-      );
-    }
-
     const { data, error } = await asRpcClient(supabase).rpc(
       "create_frame_job_order_from_sales_order_transaction",
       {
         p_sales_order_id: salesOrderId,
-        p_warehouse_id: body.warehouseId,
       }
     );
 
     const rows = Array.isArray(data) ? (data as CreateFrameJobOrderResult[]) : [];
-    const result = rows[0];
 
-    if (error || !result) {
+    if (error || rows.length === 0) {
       logQuotationError("Error creating job order from sales order:", error);
       const message = getClientErrorMessage(error, "Failed to create job order");
       const status = message === "Sales order not found" ? 404 : 400;
       return NextResponse.json({ error: message }, { status });
     }
 
+    // A mixed order spawns one job order per billing mode, so every created job
+    // is returned. `frameJobOrder` stays as the first for callers written
+    // against the single-job contract.
+    const frameJobOrders = rows.map((row) => ({
+      id: row.job_order_id,
+      jobOrderCode: row.job_order_code,
+      billingMode: row.billing_mode,
+    }));
+
     return NextResponse.json({
       success: true,
       salesOrderId,
-      frameJobOrder: {
-        id: result.job_order_id,
-        jobOrderCode: result.job_order_code,
-      },
+      frameJobOrder: frameJobOrders[0],
+      frameJobOrders,
     });
   } catch (error) {
     logQuotationError("Unexpected sales order job order creation error:", error);

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
+import { toast } from "sonner";
 import dynamic from "next/dynamic";
 import {
   Plus,
@@ -88,6 +89,7 @@ const SalesOrderFormDialog = dynamic(
 export default function SalesOrdersPage() {
   const t = useTranslations("salesOrdersPage");
   const tCommon = useTranslations("common");
+  const tJobOrder = useTranslations("frameJobOrderToasts");
   const locale = useLocale();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -100,7 +102,6 @@ export default function SalesOrdersPage() {
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("");
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [orderToInvoice, setOrderToInvoice] = useState<SalesOrder | null>(null);
-  const [orderToCreateJobOrder, setOrderToCreateJobOrder] = useState<SalesOrder | null>(null);
   const [orderToConfirm, setOrderToConfirm] = useState<SalesOrder | null>(null);
   const [orderToCancel, setOrderToCancel] = useState<SalesOrder | null>(null);
 
@@ -191,7 +192,6 @@ export default function SalesOrdersPage() {
 
   const handleConvertToInvoice = (order: SalesOrder) => {
     setOrderToInvoice(order);
-    setOrderToCreateJobOrder(null);
     setOrderToConfirm(null);
     setSelectedWarehouse(order.fulfillingWarehouseId ?? "");
     setSelectedLocation("");
@@ -199,12 +199,7 @@ export default function SalesOrdersPage() {
   };
 
   const handleCreateJobOrder = (order: SalesOrder) => {
-    setOrderToCreateJobOrder(order);
-    setOrderToInvoice(null);
-    setOrderToConfirm(null);
-    setSelectedWarehouse("");
-    setSelectedLocation("");
-    setWarehouseDialogOpen(true);
+    void handleConfirmJobOrderCreation(order);
   };
 
   const handleConfirmInvoiceConversion = async () => {
@@ -224,15 +219,28 @@ export default function SalesOrdersPage() {
     }
   };
 
-  const handleConfirmJobOrderCreation = async () => {
-    if (!orderToCreateJobOrder || !selectedWarehouse) return;
-
+  const handleConfirmJobOrderCreation = async (order: SalesOrder) => {
     try {
-      const result = await createFrameJobOrder.mutateAsync({
-        orderId: orderToCreateJobOrder.id,
-        warehouseId: selectedWarehouse,
-      });
-      setWarehouseDialogOpen(false);
+      const result = await createFrameJobOrder.mutateAsync(order.id);
+
+      // A mixed order creates one job per billing mode. Name them, and land on
+      // the list rather than silently hiding the second.
+      const created = result.frameJobOrders ?? [];
+      if (created.length > 1) {
+        const codes = created
+          .map(
+            (job) =>
+              `${job.jobOrderCode} (${
+                job.billingMode === "chop_join" ? tJobOrder("chopJoin") : tJobOrder("framing")
+              })`
+          )
+          .join(", ");
+        toast.success(tJobOrder("createdMultiple", { count: created.length, codes }));
+        router.push("/sales/frame-job-orders");
+        return;
+      }
+
+      toast.success(tJobOrder("created"));
       router.push(`/sales/frame-job-orders/${result.frameJobOrder.id}`);
     } catch {
       // Error is handled by the mutation hook with toast
@@ -242,7 +250,6 @@ export default function SalesOrdersPage() {
   const handleConfirmOrder = async (order: SalesOrder) => {
     setOrderToConfirm(order);
     setOrderToInvoice(null);
-    setOrderToCreateJobOrder(null);
     setSelectedWarehouse("");
     setSelectedLocation("");
     setWarehouseDialogOpen(true);
@@ -267,7 +274,6 @@ export default function SalesOrdersPage() {
     if (!open) {
       setOrderToConfirm(null);
       setOrderToInvoice(null);
-      setOrderToCreateJobOrder(null);
       setSelectedWarehouse("");
       setSelectedLocation("");
     }
@@ -578,11 +584,9 @@ export default function SalesOrdersPage() {
             <DialogDescription>
               {orderToConfirm
                 ? t("selectConfirmationWarehouseDescription")
-                : orderToCreateJobOrder
-                  ? t("selectJobOrderWarehouseDescription")
-                  : orderToInvoice
-                    ? t("reservedWarehouseDescription")
-                    : t("selectWarehouseDescription")}
+                : orderToInvoice
+                  ? t("reservedWarehouseDescription")
+                  : t("selectWarehouseDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -623,30 +627,17 @@ export default function SalesOrdersPage() {
             </Button>
             <Button
               onClick={
-                orderToConfirm
-                  ? handleConfirmOrderReservation
-                  : orderToCreateJobOrder
-                    ? handleConfirmJobOrderCreation
-                    : handleConfirmInvoiceConversion
+                orderToConfirm ? handleConfirmOrderReservation : handleConfirmInvoiceConversion
               }
-              disabled={
-                !selectedWarehouse ||
-                confirmOrder.isPending ||
-                convertToInvoice.isPending ||
-                createFrameJobOrder.isPending
-              }
+              disabled={!selectedWarehouse || confirmOrder.isPending || convertToInvoice.isPending}
             >
               {orderToConfirm
                 ? confirmOrder.isPending
                   ? t("confirming")
                   : t("confirm")
-                : orderToCreateJobOrder
-                  ? createFrameJobOrder.isPending
-                    ? t("creatingJobOrder")
-                    : t("createJobOrder")
-                  : convertToInvoice.isPending
-                    ? t("converting")
-                    : t("createInvoice")}
+                : convertToInvoice.isPending
+                  ? t("converting")
+                  : t("createInvoice")}
             </Button>
           </DialogFooter>
         </DialogContent>

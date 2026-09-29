@@ -172,6 +172,7 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
   const locale = useLocale();
   const tPage = useTranslations("customersPage");
   const tForm = useTranslations("customerForm");
+  const tJobOrder = useTranslations("frameJobOrderToasts");
   const tCommon = useTranslations("common");
   const tQuotations = useTranslations("quotationsPage");
   const tOrders = useTranslations("salesOrdersPage");
@@ -212,7 +213,6 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
   const [selectedWarehouse, setSelectedWarehouse] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
   const [orderToInvoice, setOrderToInvoice] = useState<SalesOrder | null>(null);
-  const [orderToCreateJobOrder, setOrderToCreateJobOrder] = useState<SalesOrder | null>(null);
   const [orderToConfirm, setOrderToConfirm] = useState<SalesOrder | null>(null);
   const [orderToCancel, setOrderToCancel] = useState<SalesOrder | null>(null);
   const changeStatus = useChangeQuotationStatus();
@@ -487,7 +487,6 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
 
   const handleConvertSalesOrderToInvoice = (order: SalesOrder) => {
     setOrderToInvoice(order);
-    setOrderToCreateJobOrder(null);
     setOrderToConfirm(null);
     setSelectedWarehouse(order.fulfillingWarehouseId ?? "");
     setSelectedLocation("");
@@ -495,12 +494,7 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
   };
 
   const handleCreateSalesOrderJobOrder = (order: SalesOrder) => {
-    setOrderToCreateJobOrder(order);
-    setOrderToInvoice(null);
-    setOrderToConfirm(null);
-    setSelectedWarehouse("");
-    setSelectedLocation("");
-    setWarehouseDialogOpen(true);
+    void handleConfirmJobOrderCreation(order);
   };
 
   const handleConfirmInvoiceConversion = async () => {
@@ -519,15 +513,28 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
     }
   };
 
-  const handleConfirmJobOrderCreation = async () => {
-    if (!orderToCreateJobOrder || !selectedWarehouse) return;
-
+  const handleConfirmJobOrderCreation = async (order: SalesOrder) => {
     try {
-      const result = await createFrameJobOrder.mutateAsync({
-        orderId: orderToCreateJobOrder.id,
-        warehouseId: selectedWarehouse,
-      });
-      setWarehouseDialogOpen(false);
+      const result = await createFrameJobOrder.mutateAsync(order.id);
+
+      // A mixed order creates one job per billing mode. Name them, and land on
+      // the list rather than silently hiding the second.
+      const created = result.frameJobOrders ?? [];
+      if (created.length > 1) {
+        const codes = created
+          .map(
+            (job) =>
+              `${job.jobOrderCode} (${
+                job.billingMode === "chop_join" ? tJobOrder("chopJoin") : tJobOrder("framing")
+              })`
+          )
+          .join(", ");
+        toast.success(tJobOrder("createdMultiple", { count: created.length, codes }));
+        router.push("/sales/frame-job-orders");
+        return;
+      }
+
+      toast.success(tJobOrder("created"));
       router.push(`/sales/frame-job-orders/${result.frameJobOrder.id}`);
     } catch {
       // Mutation hook owns the toast.
@@ -537,7 +544,6 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
   const handleConfirmSalesOrder = async (order: SalesOrder) => {
     setOrderToConfirm(order);
     setOrderToInvoice(null);
-    setOrderToCreateJobOrder(null);
     setSelectedWarehouse("");
     setSelectedLocation("");
     setWarehouseDialogOpen(true);
@@ -562,7 +568,6 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
     if (!open) {
       setOrderToConfirm(null);
       setOrderToInvoice(null);
-      setOrderToCreateJobOrder(null);
       setSelectedWarehouse("");
       setSelectedLocation("");
     }
@@ -1400,11 +1405,9 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
             <DialogDescription>
               {orderToConfirm
                 ? tOrders("selectConfirmationWarehouseDescription")
-                : orderToCreateJobOrder
-                  ? tOrders("selectJobOrderWarehouseDescription")
-                  : orderToInvoice
-                    ? tOrders("reservedWarehouseDescription")
-                    : tOrders("selectWarehouseDescription")}
+                : orderToInvoice
+                  ? tOrders("reservedWarehouseDescription")
+                  : tOrders("selectWarehouseDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -1445,30 +1448,17 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
             </Button>
             <Button
               onClick={
-                orderToConfirm
-                  ? handleConfirmSalesOrderReservation
-                  : orderToCreateJobOrder
-                    ? handleConfirmJobOrderCreation
-                    : handleConfirmInvoiceConversion
+                orderToConfirm ? handleConfirmSalesOrderReservation : handleConfirmInvoiceConversion
               }
-              disabled={
-                !selectedWarehouse ||
-                confirmOrder.isPending ||
-                convertToInvoice.isPending ||
-                createFrameJobOrder.isPending
-              }
+              disabled={!selectedWarehouse || confirmOrder.isPending || convertToInvoice.isPending}
             >
               {orderToConfirm
                 ? confirmOrder.isPending
                   ? tOrders("confirming")
                   : tOrders("confirm")
-                : orderToCreateJobOrder
-                  ? createFrameJobOrder.isPending
-                    ? tOrders("creatingJobOrder")
-                    : tOrders("createJobOrder")
-                  : convertToInvoice.isPending
-                    ? tOrders("converting")
-                    : tOrders("createInvoice")}
+                : convertToInvoice.isPending
+                  ? tOrders("converting")
+                  : tOrders("createInvoice")}
             </Button>
           </DialogFooter>
         </DialogContent>

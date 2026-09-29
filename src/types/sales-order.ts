@@ -1,4 +1,10 @@
-import type { FrameQuotationComponent, FrameQuotationConfiguration } from "@/types/quotation";
+import type {
+  FrameQuotationComponent,
+  FrameQuotationConfiguration,
+  FrameQuotationMatLayer,
+  FrameQuotationSize,
+} from "@/types/quotation";
+import type { QuotationLinePricing } from "@/lib/sales-orders/sales-order-line-pricing";
 
 export type SalesOrderStatus =
   | "draft"
@@ -18,6 +24,7 @@ export type SalesOrderLineItem = {
   quotationNumber?: string;
   quotationItemId?: string | null;
   quotationRemainingQuantity?: number;
+  quotationPricing?: QuotationLinePricing;
   description: string;
   quantity: number;
   uomId: string; // Unit of measure ID
@@ -27,6 +34,7 @@ export type SalesOrderLineItem = {
   pricingTierName?: string;
   unitPrice: number;
   discount: number; // Percentage
+  discountAmount: number; // Saved currency deduction; not reconstructed from the percentage.
   taxRate: number; // Percentage
   lineTotal: number;
   skipInventory?: boolean;
@@ -36,6 +44,8 @@ export type SalesOrderLineItem = {
   quantityDelivered?: number;
   frameConfiguration?: FrameQuotationConfiguration | null;
   frameComponents?: FrameQuotationComponent[];
+  matLayers?: FrameQuotationMatLayer[];
+  frameSizes?: FrameQuotationSize[];
   manufacturing?: {
     required: boolean;
     status:
@@ -96,10 +106,7 @@ export type CreateSalesOrderRequest = {
   customerId: string;
   orderDate: string;
   expectedDeliveryDate: string;
-  lineItems: Omit<
-    SalesOrderLineItem,
-    "id" | "lineTotal" | "quantityShipped" | "quantityDelivered"
-  >[];
+  lineItems: SalesOrderLineItemRequest[];
   shippingAddress: string;
   shippingCity: string;
   shippingState: string;
@@ -109,9 +116,56 @@ export type CreateSalesOrderRequest = {
   notes: string;
 };
 
-export type UpdateSalesOrderRequest = Partial<CreateSalesOrderRequest> & {
-  status?: SalesOrderStatus;
+export type SalesOrderFrameSizeSelection = {
+  quotationConfigurationId: string;
+  quantity: number;
 };
+
+export type SalesOrderLineItemRequest = {
+  itemId: string;
+  quotationId?: string | null;
+  quotationItemId?: string | null;
+  description: string;
+  quantity: number;
+  uomId: string;
+  pricingTier?: string;
+  pricingTierName?: string;
+  unitPrice: number;
+  discount: number;
+  taxRate: number;
+  frameSizeSelections?: SalesOrderFrameSizeSelection[];
+};
+
+/** Draft editing replaces the submitted header and line collection atomically. */
+export type UpdateSalesOrderRequest = {
+  customerId: string;
+  orderDate: string;
+  expectedDeliveryDate: string;
+  lineItems: SalesOrderLineItemRequest[];
+  shippingAddress: string;
+  shippingCity: string;
+  shippingState: string;
+  shippingPostalCode: string;
+  shippingCountry: string;
+  paymentTerms: string;
+  notes: string;
+};
+
+export type SalesOrderMutationErrorCode =
+  | "SALES_ORDER_UNAUTHENTICATED"
+  | "SALES_ORDER_FORBIDDEN"
+  | "SALES_ORDER_NOT_FOUND"
+  | "SALES_ORDER_NOT_EDITABLE"
+  | "SALES_ORDER_ITEMS_REQUIRED"
+  | "SALES_ORDER_VALIDATION_FAILED"
+  | "SALES_ORDER_CUSTOMER_INVALID"
+  | "SALES_ORDER_QUOTATION_LINE_INVALID"
+  | "SALES_ORDER_QUOTATION_FRAME_INVALID"
+  | "SALES_ORDER_FRAME_SOURCE_REQUIRED"
+  | "SALES_ORDER_FRAME_SIZE_INVALID"
+  | "SALES_ORDER_FRAME_QUANTITY_EXCEEDS_REMAINING"
+  | "SALES_ORDER_FRAME_QUANTITY_MISMATCH"
+  | "SALES_ORDER_SAVE_FAILED";
 
 export type SalesOrderFilters = {
   search?: string;

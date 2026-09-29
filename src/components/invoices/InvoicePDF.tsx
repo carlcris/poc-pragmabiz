@@ -1,6 +1,7 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import type { Invoice } from "@/types/invoice";
+import { formatLineDiscount, salesDocumentRows } from "@/lib/framing/invoicePresenter";
 
 // Define styles
 const styles = StyleSheet.create({
@@ -86,6 +87,9 @@ const styles = StyleSheet.create({
     borderBottomColor: "#e0e0e0",
     padding: 8,
   },
+  sizeHeadingRow: {
+    backgroundColor: "#f8f8f8",
+  },
   tableCell: {
     fontSize: 9,
   },
@@ -139,11 +143,11 @@ const styles = StyleSheet.create({
   grandTotalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 8,
-    backgroundColor: "#f5f5f5",
-    marginTop: 5,
-    borderTopWidth: 2,
-    borderTopColor: "#000",
+    paddingVertical: 7,
+    paddingHorizontal: 5,
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: "#d0d0d0",
   },
   grandTotalLabel: {
     fontSize: 12,
@@ -177,29 +181,20 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#1976d2",
   },
-  paymentSection: {
-    marginTop: 20,
-    padding: 10,
-    backgroundColor: "#f9f9f9",
-    borderRadius: 4,
-  },
-  paymentTitle: {
-    fontSize: 11,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  paymentRow: {
+  amountDueRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 4,
+    padding: 5,
   },
-  paymentLabel: {
-    fontSize: 9,
-    color: "#666",
-  },
-  paymentValue: {
-    fontSize: 9,
+  amountDueLabel: {
+    fontSize: 12,
     fontWeight: "bold",
+    color: "#e05a1c",
+  },
+  amountDueValue: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#e05a1c",
   },
 });
 
@@ -244,6 +239,7 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({
   };
 
   const statusColors = getStatusColor(invoice.status);
+  const lineRows = invoice.lineItems.flatMap(salesDocumentRows);
 
   return (
     <Document>
@@ -316,46 +312,62 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({
         {/* Line Items Table */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableCell, styles.itemCol]}>Item</Text>
+            <Text style={[styles.tableCell, styles.itemCol]}>Description</Text>
             <Text style={[styles.tableCell, styles.qtyCol]}>Qty</Text>
             <Text style={[styles.tableCell, styles.unitCol]}>Unit</Text>
             <Text style={[styles.tableCell, styles.priceCol]}>Selling Price</Text>
-            <Text style={[styles.tableCell, styles.discountCol]}>Disc%</Text>
+            <Text style={[styles.tableCell, styles.discountCol]}>Discount</Text>
             <Text style={[styles.tableCell, styles.taxCol]}>Tax%</Text>
             <Text style={[styles.tableCell, styles.totalCol]}>Total</Text>
           </View>
 
-          {invoice.lineItems.map((item, index) => (
-            <View key={index} style={styles.tableRow}>
+          {lineRows.map((row) => (
+            <View
+              key={row.key}
+              style={[
+                styles.tableRow,
+                ...(row.kind === "sizeHeading" ? [styles.sizeHeadingRow] : []),
+              ]}
+            >
               <View style={styles.itemCol}>
-                <Text style={[styles.tableCell, { fontWeight: "bold" }]}>{item.itemName}</Text>
-                <Text style={[styles.tableCell, { fontSize: 8, color: "#666" }]}>
-                  {item.itemCode}
+                <Text
+                  style={[
+                    styles.tableCell,
+                    ...(row.kind === "sizeHeading" ? [{ fontWeight: "bold" }] : []),
+                  ]}
+                >
+                  {row.description}
                 </Text>
-                {item.description && (
+                {row.detail && (
                   <Text style={[styles.tableCell, { fontSize: 8, color: "#666", marginTop: 2 }]}>
-                    {item.description}
+                    {row.detail}
                   </Text>
                 )}
               </View>
-              <Text style={[styles.tableCell, styles.qtyCol]}>{item.quantity}</Text>
-              <Text style={[styles.tableCell, styles.unitCol]}>
-                {item.uomCode || item.uomId || "-"}
-              </Text>
+              <Text style={[styles.tableCell, styles.qtyCol]}>{row.quantity}</Text>
+              <Text style={[styles.tableCell, styles.unitCol]}>{row.unit || "-"}</Text>
               <Text style={[styles.tableCell, styles.priceCol]}>
-                {formatCurrency(item.unitPrice)}
+                {row.kind === "sizeHeading" ? "" : formatCurrency(row.unitPrice)}
               </Text>
-              <Text style={[styles.tableCell, styles.discountCol]}>{item.discount}%</Text>
-              <Text style={[styles.tableCell, styles.taxCol]}>{item.taxRate}%</Text>
+              <Text style={[styles.tableCell, styles.discountCol]}>
+                {row.kind === "sizeHeading"
+                  ? ""
+                  : formatLineDiscount(row.discountAmount, row.discountRate, formatCurrency)}
+              </Text>
+              <Text style={[styles.tableCell, styles.taxCol]}>
+                {row.kind !== "sizeHeading" && row.taxRate ? `${row.taxRate}%` : ""}
+              </Text>
               <Text style={[styles.tableCell, styles.totalCol]}>
-                {formatCurrency(item.lineTotal)}
+                {row.kind === "sizeHeading" ? "" : formatCurrency(row.amount)}
               </Text>
             </View>
           ))}
         </View>
 
-        {/* Totals */}
-        <View style={styles.totalsSection}>
+        {/* One summary carrying the totals and what is still owed. `wrap={false}`
+            keeps the block whole: split across a page break it stranded the
+            grand total from the figures that produce it. */}
+        <View style={styles.totalsSection} wrap={false}>
           <View style={styles.totalsTable}>
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Subtotal:</Text>
@@ -375,45 +387,24 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({
               <Text style={styles.grandTotalLabel}>Total Amount:</Text>
               <Text style={styles.grandTotalValue}>{formatCurrency(invoice.totalAmount)}</Text>
             </View>
-          </View>
-        </View>
-
-        {/* Payment Status */}
-        <View style={styles.paymentSection}>
-          <Text style={styles.paymentTitle}>Payment Status</Text>
-          <View style={styles.paymentRow}>
-            <Text style={styles.paymentLabel}>Total Amount:</Text>
-            <Text style={styles.paymentValue}>{formatCurrency(invoice.totalAmount)}</Text>
-          </View>
-          <View style={styles.paymentRow}>
-            <Text style={styles.paymentLabel}>Amount Paid:</Text>
-            <Text style={[styles.paymentValue, { color: "#2e7d32" }]}>
-              {formatCurrency(invoice.amountPaid)}
-            </Text>
-          </View>
-          <View style={styles.paymentRow}>
-            <Text style={styles.paymentLabel}>Balance Due:</Text>
-            <Text style={[styles.paymentValue, { color: "#f57c00" }]}>
-              {formatCurrency(invoice.amountDue)}
-            </Text>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Amount Paid:</Text>
+              <Text style={[styles.totalValue, { color: "#2e7d32" }]}>
+                {formatCurrency(invoice.amountPaid)}
+              </Text>
+            </View>
+            <View style={styles.amountDueRow}>
+              <Text style={styles.amountDueLabel}>Amount Due:</Text>
+              <Text style={styles.amountDueValue}>{formatCurrency(invoice.amountDue)}</Text>
+            </View>
           </View>
         </View>
 
         {/* Footer Notes */}
-        {(invoice.paymentTerms || invoice.notes) && (
-          <View style={styles.footer}>
-            {invoice.paymentTerms && (
-              <View style={{ marginBottom: 10 }}>
-                <Text style={[styles.sectionTitle, { fontSize: 10 }]}>Payment Terms:</Text>
-                <Text style={styles.notes}>{invoice.paymentTerms}</Text>
-              </View>
-            )}
-            {invoice.notes && (
-              <View>
-                <Text style={[styles.sectionTitle, { fontSize: 10 }]}>Notes:</Text>
-                <Text style={styles.notes}>{invoice.notes}</Text>
-              </View>
-            )}
+        {invoice.notes && (
+          <View style={styles.footer} wrap={false}>
+            <Text style={[styles.sectionTitle, { fontSize: 10 }]}>Notes:</Text>
+            <Text style={styles.notes}>{invoice.notes}</Text>
           </View>
         )}
       </Page>

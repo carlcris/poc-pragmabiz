@@ -19,6 +19,7 @@ export type TranslationKeys = {
     delete: string;
     edit: string;
     create: string;
+    new: string;
     search: string;
     filter: string;
     export: string;
@@ -218,6 +219,95 @@ export type TranslationKeys = {
     primaryOutput: string;
     additionalOutput: string;
   };
+  framingDialog: {
+    stockHint: string;
+    noRateForMode: string;
+    configureSection: string;
+    singleMat: string;
+    doubleMat: string;
+    tripleMat: string;
+    noMatting: string;
+    noBoardChosen: string;
+    noneChosen: string;
+    noGlazing: string;
+    border: string;
+    sheetsLabel: string;
+    addTitle: string;
+    editTitle: string;
+    chopJoinLede: string;
+    framingLede: string;
+    chopJoinMode: string;
+    framingMode: string;
+    frameSection: string;
+    moulding: string;
+    selectMoulding: string;
+    chooseMouldingFirst: string;
+    mouldingRateMissing: string;
+    fittingItemsMissing: string;
+    length: string;
+    width: string;
+    frameWidth: string;
+    frameRate: string;
+    quantity: string;
+    sizeModeArtwork: string;
+    sizeModeOutside: string;
+    sizeModeArtworkHint: string;
+    sizeModeOutsideHint: string;
+    mattingSection: string;
+    boardSource: string;
+    storeBoard: string;
+    customerBoard: string;
+    addMatLayer: string;
+    topMat: string;
+    secondMat: string;
+    thirdMat: string;
+    removeLayer: string;
+    selectMatBoard: string;
+    borderL: string;
+    borderW: string;
+    revealL: string;
+    revealW: string;
+    ratePerSqIn: string;
+    ratePerInch: string;
+    discountRate: string;
+    topMatHint: string;
+    additionalInstructions: string;
+    lowerMatHint: string;
+    linkAxes: string;
+    unlinkAxes: string;
+    linkedHint: string;
+    unlinkedHint: string;
+    matBorder: string;
+    zoomPreview: string;
+    zoomPreviewHint: string;
+    borderSingleHint: string;
+    borderSharedHint: string;
+    revealsFixed: string;
+    borderTooNarrow: string;
+    glazingSection: string;
+    selectGlazing: string;
+    sheets: string;
+    cutToMatOuter: string;
+    backingSection: string;
+    selectBacking: string;
+    flexipoints: string;
+    multipoints: string;
+    lSupport: string;
+    small: string;
+    big: string;
+    fractionFor: string;
+    matOuter: string;
+    frameOutside: string;
+    footage: string;
+    lineTotal: string;
+    billedLinesCount: string;
+    billedAsOneLine: string;
+    finishedFrameLine: string;
+    cancel: string;
+    saveChanges: string;
+    addToQuotation: string;
+    saveToQuotation: string;
+  };
   putawayStationPage: {
     title: string;
     description: string;
@@ -362,10 +452,79 @@ export type TranslationKeys = {
   manufacturingFloorPage: {
     title: string;
     subtitle: string;
+    materialShortageBlocksStart: string;
+    materialShortage: string;
+    residualMaterialsNotice: string;
+    updateSuccess: string;
+    updateFailed: string;
+    viewJobOrder: string;
+    jobOrder: string;
+    jobOrderPreviewDescription: string;
+    jobOrderLoadError: string;
+    retryJobOrder: string;
   };
   frameJobOrdersPage: {
     title: string;
     subtitle: string;
+    printJo: string;
+  };
+  frameJobOrderDetailsPage: {
+    backToJobOrders: string;
+    productionSent: string;
+    productionFailed: string;
+    requisitionLoadFailed: string;
+    retryRequisition: string;
+    materialRequest: {
+      title: string;
+      description: string;
+      warehouse: string;
+      requested: string;
+      approved: string;
+      issued: string;
+      material: string;
+      requestQuantity: string;
+      issuedQuantity: string;
+      statusDraft: string;
+      statusApproved: string;
+      statusIssued: string;
+      emptyDescription: string;
+      noStockManagedMaterials: string;
+      create: string;
+      creating: string;
+      approve: string;
+      approving: string;
+      issue: string;
+      issuing: string;
+      cancel: string;
+      dialogTitle: string;
+      dialogDescription: string;
+    };
+    success: {
+      create: string;
+      approve: string;
+      issue: string;
+      cancel: string;
+    };
+    errors: {
+      invalid: string;
+      unauthorized: string;
+      contextInvalid: string;
+      permissionDenied: string;
+      warehouseRequired: string;
+      warehouseInvalid: string;
+      jobNotFound: string;
+      jobClosed: string;
+      activeExists: string;
+      noOutstandingMaterials: string;
+      materialUnavailable: string;
+      tooLarge: string;
+      notFound: string;
+      statusChanged: string;
+      stockUnavailable: string;
+      insufficientStock: string;
+      reservationMissing: string;
+      failed: string;
+    };
   };
   warehousesPage: {
     title: string;
@@ -1670,7 +1829,6 @@ export type TranslationKeys = {
     reservedWarehouseTitle: string;
     reservedWarehouseDescription: string;
     selectConfirmationWarehouseDescription: string;
-    selectJobOrderWarehouseDescription: string;
     selectWarehouse: string;
     selectLocationOptional: string;
     selectWarehouseFirst: string;
@@ -1691,6 +1849,21 @@ export type TranslationKeys = {
     orderDateRequired: string;
     expectedDeliveryDateRequired: string;
     addLineItemRequired: string;
+    createdSuccess: string;
+    updatedSuccess: string;
+    saveFailed: string;
+    saveValidationFailed: string;
+    saveForbidden: string;
+    saveNotFound: string;
+    saveNotEditable: string;
+    saveCustomerInvalid: string;
+    saveQuotationLineInvalid: string;
+    saveQuotationFrameInvalid: string;
+    saveFrameSourceRequired: string;
+    saveFrameSizeInvalid: string;
+    saveFrameQuantityExceedsRemaining: string;
+    saveFrameQuantityMismatch: string;
+    back: string;
     editTitle: string;
     createTitle: string;
     editDescription: string;
@@ -1708,6 +1881,16 @@ export type TranslationKeys = {
     lineItemsTitle: string;
     lineItemsDescription: string;
     addItem: string;
+    addFromQuotation: string;
+    addInventoryItem: string;
+    fromQuotation: string;
+    quotationPickerTitle: string;
+    quotationPickerDescription: string;
+    quotationPickerSearch: string;
+    quotationPickerEmpty: string;
+    previous: string;
+    pageNumber: string;
+    next: string;
     noItems: string;
     noItemsDescription: string;
     inventoryWarning: string;
@@ -1737,6 +1920,49 @@ export type TranslationKeys = {
     updateOrder: string;
     createOrder: string;
   };
+  salesOrderLineItemDialog: {
+    quotationPricingUnavailable: string;
+    itemRequired: string;
+    uomRequired: string;
+    quantityRequired: string;
+    unitPriceRequired: string;
+    sizeQuantityExceedsRemaining: string;
+    quantityExceedsRemaining: string;
+    quotationTitle: string;
+    quotationDescription: string;
+    editTitle: string;
+    createTitle: string;
+    editDescription: string;
+    createDescription: string;
+    searchItem: string;
+    itemSearchPlaceholder: string;
+    noItemFound: string;
+    description: string;
+    orderQuantity: string;
+    quantity: string;
+    unit: string;
+    inventoryWarning: string;
+    pricingTier: string;
+    selectPricingTier: string;
+    unitPrice: string;
+    lineTotal: string;
+    discountRate: string;
+    taxRate: string;
+    updateItem: string;
+    addItem: string;
+    fromQuotation: string;
+    sizeColumn: string;
+    quotedRemainingColumn: string;
+    orderQuantityColumn: string;
+    amountColumn: string;
+    quotedOverRemaining: string;
+    framesOrdered: string;
+    subtotal: string;
+    discountFigure: string;
+    taxFigure: string;
+    remainingOnQuotation: string;
+    componentCount: string;
+  };
   salesOrderViewDialog: {
     title: string;
     description: string;
@@ -1749,6 +1975,9 @@ export type TranslationKeys = {
     expectedDelivery: string;
     deliveryAddress: string;
     lineItems: string;
+    itemDescription: string;
+    production: string;
+    notRequired: string;
     quantity: string;
     fulfilled: string;
     unit: string;
@@ -1810,9 +2039,17 @@ export type TranslationKeys = {
     convertBulletCopyItems: string;
     convertBulletStatus: string;
     convertBulletLink: string;
-    convertCannotUndo: string;
+    convertDraftHint: string;
     converting: string;
     convertAction: string;
+    convertSuccess: string;
+    convertNotFound: string;
+    convertNotAccepted: string;
+    convertAlreadyOrdered: string;
+    convertWrongBusinessUnit: string;
+    convertChanged: string;
+    convertForbidden: string;
+    convertFailed: string;
     draft: string;
     sent: string;
     accepted: string;
@@ -1822,6 +2059,9 @@ export type TranslationKeys = {
     ordered: string;
   };
   quotationForm: {
+    frameServiceItemMissing: string;
+    chopJoinLine: string;
+    framingLine: string;
     customerRequired: string;
     quotationDateRequired: string;
     validUntilRequired: string;
@@ -1830,6 +2070,12 @@ export type TranslationKeys = {
     createTitle: string;
     editDescription: string;
     createDescription: string;
+    loadError: string;
+    notEditable: string;
+    updated: string;
+    updatedAndReturnedToDraft: string;
+    created: string;
+    saveError: string;
     generalTab: string;
     lineItemsTab: string;
     termsTab: string;
@@ -1837,8 +2083,25 @@ export type TranslationKeys = {
     selectCustomer: string;
     quotationDate: string;
     validUntil: string;
+    dateReceived: string;
+    dueDate: string;
+    paymentTerms: string;
+    paymentTerm: {
+      cash: string;
+      due_on_receipt: string;
+      net_30: string;
+      net_60: string;
+      net_90: string;
+      cod: string;
+    };
     lineItemsTitle: string;
     lineItemsDescription: string;
+    lineTypeRawMaterial: string;
+    lineTypeRawMaterialHint: string;
+    lineTypeChopJoin: string;
+    lineTypeChopJoinHint: string;
+    lineTypeFraming: string;
+    lineTypeFramingHint: string;
     addItem: string;
     noItems: string;
     noItemsDescription: string;
@@ -1859,6 +2122,9 @@ export type TranslationKeys = {
     createQuotation: string;
   };
   quotationLineItemDialog: {
+    basicInformation: string;
+    pricingAndTotals: string;
+    orderSummary: string;
     itemRequired: string;
     quantityRequired: string;
     unitPriceRequired: string;
@@ -1886,9 +2152,157 @@ export type TranslationKeys = {
     updateItem: string;
     addItem: string;
   };
+  frameJobOrderToasts: {
+    created: string;
+    createdMultiple: string;
+    framing: string;
+    chopJoin: string;
+  };
+  frameComponentsDialog: {
+    sectionTitle: {
+      matting: string;
+      glazing: string;
+      backing: string;
+    };
+    backingType: {
+      mdf: string;
+      plywood: string;
+      sintra: string;
+      foam: string;
+    };
+    board: string;
+    fittingHardware: string;
+    glazingType: {
+      clear: string;
+      double: string;
+      acrylic: string;
+      non_glare: string;
+      octagon: string;
+    };
+    sheetsFixed: string;
+    thickness: string;
+    title: string;
+    subtitle: string;
+    backingAndFitting: string;
+    applyToFrame: string;
+    topOpening: string;
+    mattingAmount: string;
+    glazingAmount: string;
+    backingAndFittingAmount: string;
+    allBoardsClear: string;
+  };
+  quotationAcceptance: {
+    title: string;
+    lede: string;
+    thisQuotation: string;
+    acceptedBy: string;
+    acceptedByPlaceholder: string;
+    channel: string;
+    channelPlaceholder: string;
+    channels: {
+      messenger: string;
+      viber: string;
+      sms: string;
+      email: string;
+      phone: string;
+      in_person: string;
+      other: string;
+    };
+    waiver: string;
+    waiverHint: string;
+    addFiles: string;
+    uploading: string;
+    removeFile: string;
+    tooLarge: string;
+    uploadFailed: string;
+    cancel: string;
+    confirm: string;
+    confirming: string;
+  };
+  frameSizesDialog: {
+    sizes: string;
+    addSize: string;
+    noSizes: string;
+    ghostDimensions: string;
+    configureSize: string;
+    removeSize: string;
+    lineTotal: string;
+    discountAmount: string;
+    beforeDiscount: string;
+    sizeCount: string;
+    previewPending: string;
+  };
+  frameAttachments: {
+    title: string;
+    lede: string;
+    empty: string;
+    addFiles: string;
+    uploading: string;
+    accepted: string;
+    remove: string;
+    download: string;
+    previewFile: string;
+    close: string;
+    cancel: string;
+    apply: string;
+    tooLarge: string;
+    uploadFailed: string;
+    previewUnavailable: string;
+    cannotEmbed: string;
+    position: string;
+    rowLabel: string;
+    rowEmpty: string;
+    rowCount: string;
+    configure: string;
+  };
+  framingDocuments: {
+    artworkSize: string;
+    matSize: string;
+    generatedDocument: string;
+    live: string;
+    requisition: string;
+    cutList: string;
+    instructions: string;
+    itemsReceived: string;
+    itemsReceivedHeading: string;
+    wholeJob: string;
+    itemsReceivedHint: string;
+    attachments: string;
+    requisitionTitle: string;
+    shopLine: string;
+    customer: string;
+    address: string;
+    noAddress: string;
+    autoGenerated: string;
+    print: string;
+    printing: string;
+    downloadPdf: string;
+    preparing: string;
+    popupBlocked: string;
+    documentActionFailed: string;
+    transactionNo: string;
+    actualQty: string;
+    qty: string;
+    unit: string;
+    articleDescription: string;
+    totalCuts: string;
+    totalSales: string;
+    preparedBy: string;
+    receivedBy: string;
+    cutListTitle: string;
+    material: string;
+    spec: string;
+    perCut: string;
+    total: string;
+    allClear: string;
+  };
   quotationViewDialog: {
     title: string;
     description: string;
+    previewTitle: string;
+    previewDescription: string;
+    previewUnavailable: string;
+    previewFrameTitle: string;
     customerInformation: string;
     name: string;
     email: string;
@@ -1897,12 +2311,18 @@ export type TranslationKeys = {
     quotationDate: string;
     validUntil: string;
     paymentTerms: string;
+    acceptedBy: string;
     billingAddress: string;
     lineItems: string;
+    item: string;
+    qty: string;
+    descriptionColumn: string;
     quantity: string;
     fulfilled: string;
     unit: string;
     unitPrice: string;
+    discountRate: string;
+    amount: string;
     discount: string;
     tax: string;
     total: string;
@@ -1910,7 +2330,9 @@ export type TranslationKeys = {
     totalAmount: string;
     termsConditions: string;
     notes: string;
-    printQuotation: string;
+    printPreview: string;
+    edit: string;
+    close: string;
     draft: string;
     sent: string;
     accepted: string;
@@ -1918,6 +2340,10 @@ export type TranslationKeys = {
     rejected: string;
     expired: string;
     ordered: string;
+    lineDetails: string;
+    showLineDetails: string;
+    hideLineDetails: string;
+    noLineItems: string;
   };
   invoicesPage: {
     title: string;
@@ -2076,6 +2502,10 @@ export type TranslationKeys = {
     defaultPaymentTerms: string;
     billingAddress: string;
     lineItems: string;
+    itemDescription: string;
+    lineDetailsLoading: string;
+    lineDetailsLoadError: string;
+    retry: string;
     quantity: string;
     unit: string;
     unitPrice: string;
@@ -3344,6 +3774,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       delete: "Delete",
       edit: "Edit",
       create: "Create",
+      new: "New",
       search: "Search",
       filter: "Filter",
       export: "Export",
@@ -3566,6 +3997,100 @@ export const translations: Record<Locale, TranslationKeys> = {
       primaryOutput: "Primary",
       additionalOutput: "Additional",
     },
+    framingDialog: {
+      stockHint: "stock +10%",
+      noRateForMode: "No price",
+      configureSection: "Configure {section}",
+      singleMat: "Single mat",
+      doubleMat: "Double mat",
+      tripleMat: "Triple mat",
+      noMatting: "No matting",
+      noBoardChosen: "No board chosen",
+      noneChosen: "None chosen",
+      noGlazing: "No glazing",
+      border: "border",
+      sheetsLabel: "sheet",
+      addTitle: "Configure frame",
+      editTitle: "Edit frame",
+      chopJoinLede:
+        "The customer is billed per part — every material becomes its own invoice line.",
+      framingLede: "The customer is billed one price for the finished frame. Parts stay internal.",
+      chopJoinMode: "Chop & join",
+      framingMode: "Framing",
+      frameSection: "Frame & artwork",
+      moulding: "Moulding",
+      selectMoulding: "Select a moulding",
+      chooseMouldingFirst:
+        "Choose a moulding first — dimensions and components unlock once it is selected.",
+      mouldingRateMissing:
+        "This moulding has no {mode} price. Set one on the item before quoting it this way.",
+      fittingItemsMissing:
+        "Selected fitting items are unavailable. Wait for the catalogue to load; if this persists, check the fitting items in Item Master or deselect them.",
+      length: "Length",
+      width: "Width",
+      frameWidth: "Frame width",
+      frameRate: "Frame rate",
+      quantity: "Qty",
+      sizeModeArtwork: "Artwork size",
+      sizeModeOutside: "Outside size",
+      sizeModeArtworkHint: "Frame outside = mat outer + 2 × frame width.",
+      sizeModeOutsideHint: "Artwork = outside size − 2 × frame width, less the mat border.",
+      mattingSection: "Matting",
+      boardSource: "Who supplies the board",
+      storeBoard: "Store",
+      customerBoard: "Customer",
+      addMatLayer: "Add mat layer",
+      topMat: "Top mat",
+      secondMat: "2nd mat",
+      thirdMat: "3rd mat",
+      removeLayer: "Remove mat layer {position}",
+      selectMatBoard: "Select a mat board",
+      borderL: "Border L",
+      borderW: "Border W",
+      revealL: "Reveal L",
+      revealW: "Reveal W",
+      ratePerSqIn: "Rate / sq in",
+      ratePerInch: "Rate / inch (L + W)",
+      discountRate: "Disc %",
+      topMatHint: "Border runs from the mat edge to the opening.",
+      additionalInstructions: "Additional instructions",
+      lowerMatHint: "Reveal is the band visible beneath the mat above.",
+      linkAxes: "Link L and W so they stay equal",
+      unlinkAxes: "Unlink to enter L and W separately",
+      linkedHint: "L and W are linked. Unlink to set an uneven border.",
+      unlinkedHint: "L and W are set separately.",
+      matBorder: "Mat border",
+      zoomPreview: "Enlarge preview",
+      zoomPreviewHint: "Drawn to scale — a quarter-inch reveal is a quarter inch here.",
+      borderSingleHint: "Measured from the mat edge to the opening.",
+      borderSharedHint:
+        "{count} mat(s) below the top each reveal {reveal}″ from within this border, leaving {topFace}″ of top mat showing. The frame size does not change.",
+      revealsFixed: "reveals {reveal}″",
+      borderTooNarrow: "Widen the border to add another mat — each one takes a quarter inch of it.",
+      glazingSection: "Glazing",
+      selectGlazing: "Select glazing",
+      sheets: "Sheets",
+      cutToMatOuter: "Cut to mat outer",
+      backingSection: "Backing & fitting",
+      selectBacking: "Select a backing board",
+      flexipoints: "Flexipoints",
+      multipoints: "Multipoints",
+      lSupport: "L-support",
+      small: "Small",
+      big: "Big",
+      fractionFor: "Fraction for {item}",
+      matOuter: "Mat cut",
+      frameOutside: "Frame outside",
+      footage: "Footage",
+      lineTotal: "Line total",
+      billedLinesCount: "Customer sees {count} billed lines",
+      billedAsOneLine: "Customer sees one billed line",
+      finishedFrameLine: "Finished frame — {count} parts rolled up",
+      cancel: "Cancel",
+      saveChanges: "Save changes",
+      addToQuotation: "Add to quotation",
+      saveToQuotation: "Save to quotation",
+    },
     putawayStationPage: {
       title: "Putaway Station",
       description: "Post pending stock into final warehouse locations.",
@@ -3659,6 +4184,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Point of Sale": "Point of Sale",
       "POS Transactions": "POS Transactions",
       Customers: "Customers",
+      Quotation: "Quotation",
       Quotations: "Quotations",
       "Job Orders": "Job Orders",
       "Sales Orders": "Sales Orders",
@@ -3795,6 +4321,17 @@ export const translations: Record<Locale, TranslationKeys> = {
     manufacturingFloorPage: {
       title: "Production",
       subtitle: "Manage production job orders",
+      materialShortageBlocksStart: "Material shortage · cannot start",
+      materialShortage: "Material shortage detected",
+      residualMaterialsNotice:
+        "Warehouse materials are incomplete. This job may proceed using residual materials.",
+      updateSuccess: "Order updated",
+      updateFailed: "Failed to update production order",
+      viewJobOrder: "View JO",
+      jobOrder: "Job Order",
+      jobOrderPreviewDescription: "Job requisition details for production reference.",
+      jobOrderLoadError: "Unable to load the job order details.",
+      retryJobOrder: "Retry",
     },
     warehousesPage: {
       title: "Warehouse Management",
@@ -5141,8 +5678,6 @@ export const translations: Record<Locale, TranslationKeys> = {
         "Inventory will be deducted from the warehouse reserved when this sales order was confirmed.",
       selectConfirmationWarehouseDescription:
         "Choose the warehouse that will reserve inventory for this sales order.",
-      selectJobOrderWarehouseDescription:
-        "Choose the warehouse from which frame materials will be reserved for this job order.",
       selectWarehouse: "Select a warehouse",
       selectLocationOptional: "Select a location (optional)",
       selectWarehouseFirst: "Select warehouse first",
@@ -5161,12 +5696,93 @@ export const translations: Record<Locale, TranslationKeys> = {
     frameJobOrdersPage: {
       title: "Job Orders",
       subtitle: "Track and manage production job requests",
+      printJo: "Print JO",
+    },
+    frameJobOrderDetailsPage: {
+      backToJobOrders: "Back to job orders",
+      productionSent: "{code} sent to production",
+      productionFailed: "Failed to push job order to production",
+      requisitionLoadFailed: "Could not load the job requisition. Please try again.",
+      retryRequisition: "Retry",
+      materialRequest: {
+        title: "Production Materials",
+        description:
+          "Request materials first, reserve them on approval, and deduct stock only when issued to production.",
+        warehouse: "Issuing warehouse",
+        requested: "Requested",
+        approved: "Approved",
+        issued: "Issued",
+        material: "Material",
+        requestQuantity: "Requested quantity",
+        issuedQuantity: "Issued quantity",
+        statusDraft: "Draft",
+        statusApproved: "Reserved",
+        statusIssued: "Issued",
+        emptyDescription: "Choose the warehouse that will issue this job's materials.",
+        noStockManagedMaterials: "This job has no outstanding stock-managed materials.",
+        create: "Create Material Request",
+        creating: "Creating...",
+        approve: "Approve and Reserve",
+        approving: "Reserving...",
+        issue: "Issue to Production",
+        issuing: "Issuing...",
+        cancel: "Cancel Request",
+        dialogTitle: "Create Production Material Request",
+        dialogDescription:
+          "Selecting a warehouse records the request only. Stock is checked and reserved when the request is approved.",
+      },
+      success: {
+        create: "Production material request created.",
+        approve: "Materials reserved for production.",
+        issue: "Materials issued and inventory deducted.",
+        cancel: "Production material request cancelled.",
+      },
+      errors: {
+        invalid: "Choose a valid material request action.",
+        unauthorized: "Sign in again to manage production material requests.",
+        contextInvalid: "Select a valid business unit and try again.",
+        permissionDenied: "You do not have permission to manage production material requests.",
+        warehouseRequired: "Select the warehouse that will issue the production materials.",
+        warehouseInvalid: "Select an active warehouse in the job order business unit.",
+        jobNotFound: "This job order is no longer available.",
+        jobClosed: "Materials cannot be requested for a completed or cancelled job order.",
+        activeExists: "This job order already has an active production material request.",
+        noOutstandingMaterials: "All stock-managed materials have already been issued.",
+        materialUnavailable:
+          "A required material is inactive, deleted, or unavailable to this company. Reactivate it or correct the job materials before creating a request.",
+        tooLarge: "This job order has too many material lines for one request.",
+        notFound: "Create a production material request before continuing.",
+        statusChanged: "The material request changed. Refresh the job order and try again.",
+        stockUnavailable: "One or more materials are not stocked in the selected warehouse.",
+        insufficientStock: "The selected warehouse does not have enough available stock.",
+        reservationMissing: "The reservation is incomplete. Cancel and recreate the request.",
+        failed: "The production material request could not be updated.",
+      },
     },
     salesOrderForm: {
       customerRequired: "Customer is required",
       orderDateRequired: "Order date is required",
       expectedDeliveryDateRequired: "Expected delivery date is required",
       addLineItemRequired: "Please add at least one line item",
+      createdSuccess: "Sales order created successfully.",
+      updatedSuccess: "Sales order updated successfully.",
+      saveFailed: "Could not save the sales order. Try again.",
+      saveValidationFailed:
+        "Review the order dates and item details, including quantities and frame-size selections, then try again.",
+      saveForbidden: "You do not have permission to save this sales order.",
+      saveNotFound: "This sales order could not be found.",
+      saveNotEditable: "Only draft sales orders can be edited.",
+      saveCustomerInvalid: "Select a valid customer and try again.",
+      saveQuotationLineInvalid:
+        "A selected quotation line is no longer available. Remove it or select it again.",
+      saveQuotationFrameInvalid:
+        "A selected frame size no longer belongs to this quotation line. Select the line again.",
+      saveFrameSourceRequired: "Frame configurations can only be added from an accepted quotation.",
+      saveFrameSizeInvalid: "Review the frame sizes and try again.",
+      saveFrameQuantityExceedsRemaining:
+        "A frame-size quantity exceeds the quantity remaining on the quotation.",
+      saveFrameQuantityMismatch: "The frame-size quantities must equal the line quantity.",
+      back: "Back",
       editTitle: "Edit Sales Order",
       createTitle: "Create New Sales Order",
       editDescription: "Update sales order details and line items.",
@@ -5184,6 +5800,17 @@ export const translations: Record<Locale, TranslationKeys> = {
       lineItemsTitle: "Line Items",
       lineItemsDescription: "Manage products or services in this order",
       addItem: "Add Item",
+      addFromQuotation: "Add from Quotation",
+      addInventoryItem: "Add Inventory Item",
+      fromQuotation: "From quotation {quotationNumber}",
+      quotationPickerTitle: "Add from customer quotations",
+      quotationPickerDescription:
+        "Select an accepted or partially ordered quotation line for this customer.",
+      quotationPickerSearch: "Search quotation number, item code, or item name...",
+      quotationPickerEmpty: "No available quotation lines found.",
+      previous: "Previous",
+      pageNumber: "Page {page}",
+      next: "Next",
       noItems: "No items added yet.",
       noItemsDescription: 'Click "Add Item" to get started.',
       inventoryWarning:
@@ -5214,6 +5841,53 @@ export const translations: Record<Locale, TranslationKeys> = {
       updateOrder: "Update Order",
       createOrder: "Create Order",
     },
+    salesOrderLineItemDialog: {
+      quotationPricingUnavailable:
+        "The source quotation pricing is unavailable. Reload the order and try again.",
+      itemRequired: "Select an item.",
+      uomRequired: "Select a unit of measure.",
+      quantityRequired: "Quantity must be greater than zero.",
+      unitPriceRequired: "Unit price cannot be negative.",
+      sizeQuantityExceedsRemaining:
+        "One or more size quantities exceed what remains on the quotation.",
+      quantityExceedsRemaining: "Quantity exceeds what remains on the quotation.",
+      quotationTitle: "Set order quantity",
+      quotationDescription:
+        "Quotation details are read-only. Enter only the quantity to order now.",
+      editTitle: "Edit line item",
+      createTitle: "Add inventory item",
+      editDescription: "Update this inventory line item.",
+      createDescription: "Select an inventory item and enter its order details.",
+      searchItem: "Search item...",
+      itemSearchPlaceholder: "Search by code or name...",
+      noItemFound: "No item found.",
+      description: "Description",
+      orderQuantity: "Order quantity",
+      quantity: "Quantity",
+      unit: "Unit",
+      inventoryWarning:
+        "Requested {requested} {uom}; only {available} {uom} is currently available.",
+      pricingTier: "Pricing tier",
+      selectPricingTier: "Select pricing tier",
+      unitPrice: "Unit price",
+      lineTotal: "Line total",
+      discountRate: "Discount %",
+      taxRate: "Tax %",
+      updateItem: "Update item",
+      addItem: "Add item",
+      fromQuotation: "From quotation",
+      sizeColumn: "Size",
+      quotedRemainingColumn: "Quoted / remaining",
+      orderQuantityColumn: "Order qty",
+      amountColumn: "Amount",
+      quotedOverRemaining: "{quoted} / {remaining}",
+      framesOrdered: "Frames ordered",
+      subtotal: "Subtotal",
+      discountFigure: "Discount",
+      taxFigure: "Tax",
+      remainingOnQuotation: "Remaining on quotation: {remaining}",
+      componentCount: "{count, plural, one {# component} other {# components}}",
+    },
     salesOrderViewDialog: {
       title: "Sales Order Details",
       description: "Order #{number}",
@@ -5226,6 +5900,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       expectedDelivery: "Expected Delivery",
       deliveryAddress: "Delivery Address",
       lineItems: "Line Items",
+      itemDescription: "Description",
+      production: "Production",
+      notRequired: "Not required",
       quantity: "Quantity",
       fulfilled: "Fulfilled",
       unit: "Unit",
@@ -5281,15 +5958,24 @@ export const translations: Record<Locale, TranslationKeys> = {
       convertToOrder: "Convert to Order",
       converted: "Converted",
       convertTitle: "Convert Quotation to Sales Order",
-      convertDescription: "Are you sure you want to convert quotation {number} to a sales order?",
+      convertDescription: "Convert every item in quotation {number} into one draft sales order?",
       convertWillLabel: "This will:",
-      convertBulletCreateOrder: "Create a new sales order with all quotation details",
-      convertBulletCopyItems: "Copy all line items to the sales order",
+      convertBulletCreateOrder: "Create one draft sales order for the same customer",
+      convertBulletCopyItems: "Copy every line item and every quoted frame size",
       convertBulletStatus: 'Update the quotation status to "Ordered"',
-      convertBulletLink: "Link the quotation to the new sales order",
-      convertCannotUndo: "This action cannot be undone.",
+      convertBulletLink: "Preserve quoted prices, discounts, taxes, and source links",
+      convertDraftHint: "You can review the draft sales order before confirming it.",
       converting: "Converting...",
       convertAction: "Convert to Sales Order",
+      convertSuccess: "Sales order {number} created from the quotation.",
+      convertNotFound: "The quotation is no longer available.",
+      convertNotAccepted: "Only an accepted quotation can be converted.",
+      convertAlreadyOrdered:
+        "Part of this quotation is already ordered. Use Create Sales Order to choose the remaining quantities.",
+      convertWrongBusinessUnit: "Switch to the quotation's business unit and try again.",
+      convertChanged: "The quotation changed. Review it, then try again.",
+      convertForbidden: "You do not have permission to create sales orders.",
+      convertFailed: "The quotation could not be converted. Try again.",
       draft: "Draft",
       sent: "Sent",
       accepted: "Accepted",
@@ -5299,6 +5985,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       ordered: "Ordered",
     },
     quotationForm: {
+      frameServiceItemMissing:
+        "The Chop & Join / Framing reference items are missing. Seed them before quoting framing work.",
+      chopJoinLine: "Chop & join",
+      framingLine: "Framing",
       customerRequired: "Customer is required",
       quotationDateRequired: "Quotation date is required",
       validUntilRequired: "Valid until date is required",
@@ -5307,6 +5997,12 @@ export const translations: Record<Locale, TranslationKeys> = {
       createTitle: "Create New Quotation",
       editDescription: "Update quotation details and line items.",
       createDescription: "Fill in the quotation details and add line items.",
+      loadError: "Failed to load quotation.",
+      notEditable: "Only Draft or Sent quotations can be edited.",
+      updated: "Quotation updated successfully.",
+      updatedAndReturnedToDraft: "Quotation updated and returned to Draft.",
+      created: "Quotation created successfully.",
+      saveError: "Failed to save quotation.",
       generalTab: "General",
       lineItemsTab: "Line Items ({count})",
       termsTab: "Terms & Notes",
@@ -5314,15 +6010,32 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectCustomer: "Select a customer",
       quotationDate: "Quotation Date",
       validUntil: "Valid Until",
+      dateReceived: "Date Received",
+      dueDate: "Due Date",
+      paymentTerms: "Payment terms",
+      paymentTerm: {
+        cash: "Cash",
+        due_on_receipt: "Due on receipt",
+        net_30: "Net 30",
+        net_60: "Net 60",
+        net_90: "Net 90",
+        cod: "Cash on delivery",
+      },
       lineItemsTitle: "Line Items",
       lineItemsDescription: "Manage products or services in this quotation",
+      lineTypeRawMaterial: "Raw material",
+      lineTypeRawMaterialHint: "Sell stock as-is — item, quantity, price.",
+      lineTypeChopJoin: "Chop & join",
+      lineTypeChopJoinHint: "Billed per part — each material prints its own line.",
+      lineTypeFraming: "Framing",
+      lineTypeFramingHint: "Billed per finished frame — parts stay internal.",
       addItem: "Add Item",
       noItems: "No items added yet.",
       noItemsDescription: 'Click "Add Item" to get started.',
       qty: "Qty",
       unit: "Unit",
       price: "Selling Price",
-      discountPct: "Disc %",
+      discountPct: "Discount",
       taxPct: "Tax %",
       totals: "Totals",
       subtotal: "Subtotal",
@@ -5336,6 +6049,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       createQuotation: "Create Quotation",
     },
     quotationLineItemDialog: {
+      basicInformation: "Basic Information",
+      pricingAndTotals: "Pricing & Totals",
+      orderSummary: "Order Summary",
       itemRequired: "Item is required",
       quantityRequired: "Quantity must be greater than 0",
       unitPriceRequired: "Selling price cannot be negative",
@@ -5364,9 +6080,158 @@ export const translations: Record<Locale, TranslationKeys> = {
       updateItem: "Update Item",
       addItem: "Add Item",
     },
+    frameJobOrderToasts: {
+      created: "Job order created successfully",
+      createdMultiple: "{count} job orders created: {codes}",
+      framing: "Framing",
+      chopJoin: "Chop & join",
+    },
+    frameComponentsDialog: {
+      sectionTitle: {
+        matting: "Matting",
+        glazing: "Glass",
+        backing: "Backing & fitting",
+      },
+      backingType: {
+        mdf: "MDF",
+        plywood: "Plywood",
+        sintra: "Sintra board",
+        foam: "Foam board",
+      },
+      board: "Board",
+      fittingHardware: "Fitting hardware",
+      glazingType: {
+        clear: "With Glass",
+        double: "With Double Glass",
+        acrylic: "With Acrylic",
+        non_glare: "With Non Glare",
+        octagon: "With Octagon Glass",
+      },
+      sheetsFixed: "Only double glass uses more than one pane.",
+      thickness: "Thickness",
+      title: "Frame components",
+      subtitle: "Artwork {length}″ × {width}″ · {count} cuts",
+      backingAndFitting: "Backing & fitting",
+      applyToFrame: "Apply to frame",
+      topOpening: "Top opening",
+      mattingAmount: "Matting amount",
+      glazingAmount: "Glass amount",
+      backingAndFittingAmount: "Backing & fitting amount",
+      allBoardsClear: "All boards clear their sheet sizes.",
+    },
+    quotationAcceptance: {
+      title: "Record acceptance",
+      lede: "Accepting {number} commits materials and bench time, so the shop keeps a record of who agreed and how.",
+      thisQuotation: "this quotation",
+      acceptedBy: "Accepted by",
+      acceptedByPlaceholder: "Name of the person who agreed",
+      channel: "Accepted through",
+      channelPlaceholder: "Choose a channel",
+      channels: {
+        messenger: "Messenger",
+        viber: "Viber",
+        sms: "SMS",
+        email: "Email",
+        phone: "Phone call",
+        in_person: "In person",
+        other: "Other",
+      },
+      waiver: "Signed waiver",
+      waiverHint:
+        "A photo of the signed printout, a screenshot of their message, or both. JPEG, PNG, WebP or PDF, up to 10MB each.",
+      addFiles: "Attach files",
+      uploading: "Uploading…",
+      removeFile: "Remove {name}",
+      tooLarge: "{name} is larger than 10MB.",
+      uploadFailed: "Could not upload the file. Please try again.",
+      cancel: "Cancel",
+      confirm: "Confirm acceptance",
+      confirming: "Confirming…",
+    },
+    frameSizesDialog: {
+      sizes: "Sizes",
+      addSize: "Add size",
+      noSizes: "Add the first frame on this line",
+      ghostDimensions: "—″ × —″",
+      configureSize: "Configure this size",
+      removeSize: "Remove this size",
+      lineTotal: "Line total",
+      discountAmount: "Discount amount",
+      beforeDiscount: "Before discount",
+      sizeCount: "{count} size(s) on this line",
+      previewPending: "The preview and job requisition appear once you add a size.",
+    },
+    frameAttachments: {
+      title: "Attachments",
+      lede: "Reference files for this size — an artwork photo, a frame sketch. These are not billed.",
+      empty: "No files yet.",
+      addFiles: "Add files",
+      uploading: "Uploading…",
+      accepted: "JPG, PNG, WebP or PDF, up to 10 MB each.",
+      remove: "Remove this file",
+      download: "Download",
+      previewFile: "Preview {name}",
+      close: "Close",
+      cancel: "Cancel",
+      apply: "Done",
+      tooLarge: "That file is larger than 10 MB.",
+      uploadFailed: "Could not upload that file. Try again.",
+      previewUnavailable: "Preview unavailable.",
+      cannotEmbed: "This file cannot be shown here. Use Download to open it.",
+      position: "{current} of {total}",
+      rowLabel: "Attachments",
+      rowEmpty: "None",
+      rowCount: "{count} file(s)",
+      configure: "Manage attachments",
+    },
+    framingDocuments: {
+      artworkSize: "Artwork",
+      matSize: "Mat cut",
+      generatedDocument: "Generated document",
+      live: "Live",
+      requisition: "Job requisition",
+      cutList: "Cut list",
+      instructions: "Additional instructions",
+      itemsReceived: "Items received",
+      itemsReceivedHeading: "Received from customer",
+      wholeJob: "whole job",
+      itemsReceivedHint: "Free text. Check against this when handing the work back.",
+      attachments: "Attachments",
+      requisitionTitle: "Chop and Join / Job Requisition Form",
+      shopLine: "Glass, Frames & Mouldings",
+      customer: "Customer:",
+      address: "Address:",
+      noAddress: "No address on file",
+      autoGenerated: "Auto-generated",
+      print: "Print",
+      printing: "Preparing print…",
+      downloadPdf: "Download PDF",
+      preparing: "Preparing…",
+      popupBlocked: "Allow pop-ups for this site to print.",
+      documentActionFailed: "Could not prepare the document. Please try again.",
+      transactionNo: "Transaction No.",
+      actualQty: "Actual Qty",
+      qty: "Qty.",
+      unit: "Unit",
+      articleDescription: "Article / Description",
+      totalCuts: "Total cuts",
+      totalSales: "Total sales",
+      preparedBy: "Prepared by",
+      receivedBy: "Received by / Date",
+      cutListTitle: "Production cut list",
+      material: "Material",
+      spec: "Spec",
+      perCut: "Per cut",
+      total: "Total",
+      allClear: "All materials clear their sheet sizes.",
+    },
     quotationViewDialog: {
       title: "Quotation Details",
       description: "Quotation #{number}",
+      previewTitle: "Quotation Preview",
+      previewDescription: "Review {number} before printing or downloading.",
+      previewUnavailable: "The quotation preview is not available yet.",
+      previewFrameTitle: "Quotation {number}",
       customerInformation: "Customer Information",
       name: "Name",
       email: "Email",
@@ -5375,12 +6240,18 @@ export const translations: Record<Locale, TranslationKeys> = {
       quotationDate: "Quotation Date",
       validUntil: "Valid Until",
       paymentTerms: "Payment Terms",
+      acceptedBy: "Accepted by",
       billingAddress: "Billing Address",
       lineItems: "Line Items",
+      item: "Item",
+      qty: "Qty",
+      descriptionColumn: "Description",
       quantity: "Quantity",
       fulfilled: "Fulfilled",
       unit: "Unit",
       unitPrice: "Selling Price",
+      discountRate: "Disc.",
+      amount: "Amount",
       discount: "Discount",
       tax: "Tax",
       total: "Total",
@@ -5388,7 +6259,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       totalAmount: "Total Amount",
       termsConditions: "Terms & Conditions",
       notes: "Notes",
-      printQuotation: "Print Quotation",
+      printPreview: "Print preview",
+      edit: "Edit",
+      close: "Close",
       draft: "Draft",
       sent: "Sent",
       accepted: "Accepted",
@@ -5396,6 +6269,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       rejected: "Rejected",
       expired: "Expired",
       ordered: "Ordered",
+      lineDetails: "Line item details",
+      showLineDetails: "Show line item details",
+      hideLineDetails: "Hide line item details",
+      noLineItems: "No quotation line items recorded.",
     },
     invoicesPage: {
       title: "Invoices",
@@ -5558,6 +6435,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       defaultPaymentTerms: "Net 30",
       billingAddress: "Billing Address",
       lineItems: "Line Items",
+      itemDescription: "Description",
+      lineDetailsLoading: "Loading invoice line details...",
+      lineDetailsLoadError: "Unable to load the invoice line details.",
+      retry: "Retry",
       quantity: "Quantity",
       unit: "Unit",
       unitPrice: "Selling Price",
@@ -9565,6 +10446,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       delete: "删除",
       edit: "编辑",
       create: "创建",
+      new: "新建",
       search: "搜索",
       filter: "筛选",
       export: "导出",
@@ -9770,6 +10652,97 @@ export const translations: Record<Locale, TranslationKeys> = {
       primaryOutput: "主要产出",
       additionalOutput: "附加产出",
     },
+    framingDialog: {
+      stockHint: "备料 +10%",
+      noRateForMode: "无价格",
+      configureSection: "配置{section}",
+      singleMat: "单层卡纸",
+      doubleMat: "双层卡纸",
+      tripleMat: "三层卡纸",
+      noMatting: "无卡纸",
+      noBoardChosen: "未选择板材",
+      noneChosen: "未选择",
+      noGlazing: "无玻璃",
+      border: "边框",
+      sheetsLabel: "张",
+      addTitle: "配置画框",
+      editTitle: "编辑画框",
+      chopJoinLede: "按所用部件计费——每种材料单独列为一行。",
+      framingLede: "按成品画框整体计费，部件不单独显示。",
+      chopJoinMode: "切割拼装",
+      framingMode: "整框",
+      frameSection: "画框与画心",
+      moulding: "框条",
+      selectMoulding: "选择框条",
+      chooseMouldingFirst: "先选择框条，然后再输入尺寸。",
+      mouldingRateMissing: "该框条没有{mode}价格。请先在物料上设置价格。",
+      fittingItemsMissing:
+        "所选安装配件不可用。请等待目录加载；若问题持续，请在物料主档中检查配件，或取消选择。",
+      length: "长",
+      width: "宽",
+      frameWidth: "框条宽度",
+      frameRate: "画框费率",
+      quantity: "数量",
+      sizeModeArtwork: "画心尺寸",
+      sizeModeOutside: "外框尺寸",
+      sizeModeArtworkHint: "外框尺寸 = 卡纸外沿 + 2 × 框条宽度。",
+      sizeModeOutsideHint: "画心 = 外框尺寸 − 2 × 框条宽度，再减卡纸边宽。",
+      mattingSection: "卡纸",
+      boardSource: "卡纸提供方",
+      storeBoard: "本店",
+      customerBoard: "客供",
+      addMatLayer: "添加卡纸层",
+      topMat: "面层卡纸",
+      secondMat: "第二层",
+      thirdMat: "第三层",
+      removeLayer: "移除第 {position} 层卡纸",
+      selectMatBoard: "选择卡纸",
+      borderL: "边宽 长",
+      borderW: "边宽 宽",
+      revealL: "露边 长",
+      revealW: "露边 宽",
+      ratePerSqIn: "单价 / 平方英寸",
+      ratePerInch: "单价 / 英寸 (长+宽)",
+      discountRate: "折扣 %",
+      topMatHint: "边宽为卡纸外沿到开口的距离。",
+      additionalInstructions: "补充说明",
+      lowerMatHint: "露边为上层卡纸下方可见的色带。",
+      linkAxes: "锁定长宽，使其相等",
+      unlinkAxes: "解除锁定，可分别输入",
+      linkedHint: "长宽已锁定为相等。解除锁定可输入不等的边宽。",
+      unlinkedHint: "长宽可分别输入。",
+      matBorder: "卡纸边宽",
+      zoomPreview: "放大预览",
+      zoomPreviewHint: "按实际比例绘制——四分之一英寸的露边就是四分之一英寸。",
+      borderSingleHint: "自卡纸外沿量至开口。",
+      borderSharedHint:
+        "顶层以下的 {count} 层卡纸各从此边宽中露出 {reveal}″，顶层卡纸剩余 {topFace}″。画框尺寸不变。",
+      revealsFixed: "露边 {reveal}″",
+      borderTooNarrow: "加宽边宽才能再加一层卡纸——每层占用四分之一英寸。",
+      glazingSection: "面料",
+      selectGlazing: "选择面料",
+      sheets: "张数",
+      cutToMatOuter: "按卡纸外沿裁切",
+      backingSection: "背板与配件",
+      selectBacking: "选择背板",
+      flexipoints: "弹性卡钉",
+      multipoints: "多点卡钉",
+      lSupport: "L 型支架",
+      small: "小",
+      big: "大",
+      fractionFor: "{item} 分数",
+      matOuter: "卡纸裁切",
+      frameOutside: "外框尺寸",
+      footage: "用料长度",
+      lineTotal: "行合计",
+      billedLinesCount: "客户看到 {count} 个计费行",
+      billedAsOneLine: "客户看到一个计费行",
+      finishedFrameLine: "成品画框——合并 {count} 项部件",
+      cancel: "取消",
+      saveChanges: "保存修改",
+      addToQuotation: "加入报价单",
+      saveToQuotation: "保存至报价单",
+    },
     putawayStationPage: {
       title: "上架工作站",
       description: "将待上架库存过账到最终仓库库位。",
@@ -9862,6 +10835,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Point of Sale": "销售点",
       "POS Transactions": "POS 交易",
       Customers: "客户",
+      Quotation: "报价单",
       Quotations: "报价单",
       "Job Orders": "工单",
       "Sales Orders": "销售订单",
@@ -9997,6 +10971,16 @@ export const translations: Record<Locale, TranslationKeys> = {
     manufacturingFloorPage: {
       title: "生产",
       subtitle: "管理生产工单",
+      materialShortageBlocksStart: "物料短缺 · 无法开始",
+      materialShortage: "检测到物料短缺",
+      residualMaterialsNotice: "仓库物料尚未全部发出。此工单可使用余料继续生产。",
+      updateSuccess: "生产单已更新",
+      updateFailed: "无法更新生产单",
+      viewJobOrder: "查看工单",
+      jobOrder: "工单",
+      jobOrderPreviewDescription: "用于生产参考的工单申请详情。",
+      jobOrderLoadError: "无法加载工单详情。",
+      retryJobOrder: "重试",
     },
     warehousesPage: {
       title: "仓库管理",
@@ -11306,7 +12290,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       reservedWarehouseTitle: "预留仓库",
       reservedWarehouseDescription: "库存将从确认此销售订单时预留的仓库中扣减。",
       selectConfirmationWarehouseDescription: "选择为此销售订单预留库存的仓库。",
-      selectJobOrderWarehouseDescription: "选择该工单预留框料所使用的仓库。",
       selectWarehouse: "选择仓库",
       selectLocationOptional: "选择库位（可选）",
       selectWarehouseFirst: "请先选择仓库",
@@ -11325,12 +12308,87 @@ export const translations: Record<Locale, TranslationKeys> = {
     frameJobOrdersPage: {
       title: "工单",
       subtitle: "跟踪和管理生产工单请求",
+      printJo: "打印工单",
+    },
+    frameJobOrderDetailsPage: {
+      backToJobOrders: "返回工单",
+      productionSent: "{code} 已送入生产",
+      productionFailed: "无法将工单送入生产",
+      requisitionLoadFailed: "无法加载工单申请表，请重试。",
+      retryRequisition: "重试",
+      materialRequest: {
+        title: "生产物料",
+        description: "先申请物料，审批时预留库存，仅在发料到生产时扣减库存。",
+        warehouse: "发料仓库",
+        requested: "申请时间",
+        approved: "审批时间",
+        issued: "发料时间",
+        material: "物料",
+        requestQuantity: "申请数量",
+        issuedQuantity: "已发数量",
+        statusDraft: "草稿",
+        statusApproved: "已预留",
+        statusIssued: "已发料",
+        emptyDescription: "选择为该工单发放物料的仓库。",
+        noStockManagedMaterials: "该工单没有待发的库存管理物料。",
+        create: "创建物料申请",
+        creating: "创建中...",
+        approve: "审批并预留",
+        approving: "预留中...",
+        issue: "发料到生产",
+        issuing: "发料中...",
+        cancel: "取消申请",
+        dialogTitle: "创建生产物料申请",
+        dialogDescription: "选择仓库只会记录申请。审批申请时才会检查并预留库存。",
+      },
+      success: {
+        create: "生产物料申请已创建。",
+        approve: "生产物料已预留。",
+        issue: "物料已发出，库存已扣减。",
+        cancel: "生产物料申请已取消。",
+      },
+      errors: {
+        invalid: "请选择有效的物料申请操作。",
+        unauthorized: "请重新登录以管理生产物料申请。",
+        contextInvalid: "请选择有效的业务单位后重试。",
+        permissionDenied: "您没有管理生产物料申请的权限。",
+        warehouseRequired: "请选择发放生产物料的仓库。",
+        warehouseInvalid: "请选择工单业务单位中的有效仓库。",
+        jobNotFound: "该工单已不存在。",
+        jobClosed: "无法为已完成或已取消的工单申请物料。",
+        activeExists: "该工单已有有效的生产物料申请。",
+        noOutstandingMaterials: "所有库存管理物料均已发出。",
+        materialUnavailable:
+          "某项所需物料已停用、删除或不属于当前公司。请重新启用该物料或更正工单物料后再创建申请。",
+        tooLarge: "该工单的物料行过多，无法合并为一张申请。",
+        notFound: "请先创建生产物料申请。",
+        statusChanged: "物料申请状态已更改。请刷新工单后重试。",
+        stockUnavailable: "所选仓库未储存一项或多项所需物料。",
+        insufficientStock: "所选仓库的可用库存不足。",
+        reservationMissing: "物料预留不完整。请取消并重新创建申请。",
+        failed: "无法更新生产物料申请。",
+      },
     },
     salesOrderForm: {
       customerRequired: "客户为必填项",
       orderDateRequired: "订单日期为必填项",
       expectedDeliveryDateRequired: "预计交付日期为必填项",
       addLineItemRequired: "请至少添加一个行项目",
+      createdSuccess: "销售订单已成功创建。",
+      updatedSuccess: "销售订单已成功更新。",
+      saveFailed: "无法保存销售订单，请重试。",
+      saveValidationFailed: "请检查订单日期及物料详情，包括数量和框架尺寸选择，然后重试。",
+      saveForbidden: "您没有权限保存此销售订单。",
+      saveNotFound: "找不到此销售订单。",
+      saveNotEditable: "只能编辑草稿状态的销售订单。",
+      saveCustomerInvalid: "请选择有效客户后重试。",
+      saveQuotationLineInvalid: "所选报价单行已不可用。请移除后重新选择。",
+      saveQuotationFrameInvalid: "所选画框尺寸已不属于此报价单行。请重新选择该行。",
+      saveFrameSourceRequired: "画框配置只能从已接受的报价单添加。",
+      saveFrameSizeInvalid: "请检查画框尺寸后重试。",
+      saveFrameQuantityExceedsRemaining: "某个画框尺寸的数量超过报价单剩余数量。",
+      saveFrameQuantityMismatch: "各画框尺寸的数量合计必须等于行数量。",
+      back: "返回",
       editTitle: "编辑销售订单",
       createTitle: "创建新销售订单",
       editDescription: "更新销售订单详情和行项目。",
@@ -11348,6 +12406,16 @@ export const translations: Record<Locale, TranslationKeys> = {
       lineItemsTitle: "行项目",
       lineItemsDescription: "管理订单中的商品或服务",
       addItem: "添加项目",
+      addFromQuotation: "从报价单添加",
+      addInventoryItem: "添加库存项目",
+      fromQuotation: "来自报价单 {quotationNumber}",
+      quotationPickerTitle: "从客户报价单添加",
+      quotationPickerDescription: "选择此客户已接受或部分下单的报价单行。",
+      quotationPickerSearch: "搜索报价单号、项目编码或项目名称...",
+      quotationPickerEmpty: "未找到可用的报价单行。",
+      previous: "上一页",
+      pageNumber: "第 {page} 页",
+      next: "下一页",
       noItems: "尚未添加项目。",
       noItemsDescription: "点击“添加项目”开始。",
       inventoryWarning: "请求数量超过可用库存。仍可创建该订单。",
@@ -11377,6 +12445,49 @@ export const translations: Record<Locale, TranslationKeys> = {
       updateOrder: "更新订单",
       createOrder: "创建订单",
     },
+    salesOrderLineItemDialog: {
+      quotationPricingUnavailable: "无法读取原报价单价格。请重新加载订单后重试。",
+      itemRequired: "请选择项目。",
+      uomRequired: "请选择计量单位。",
+      quantityRequired: "数量必须大于零。",
+      unitPriceRequired: "单价不能为负数。",
+      sizeQuantityExceedsRemaining: "一个或多个尺寸的数量超过报价单剩余数量。",
+      quantityExceedsRemaining: "数量超过报价单剩余数量。",
+      quotationTitle: "设置订单数量",
+      quotationDescription: "报价单详情为只读，仅输入本次订购数量。",
+      editTitle: "编辑行项目",
+      createTitle: "添加库存项目",
+      editDescription: "更新此库存行项目。",
+      createDescription: "选择库存项目并输入订单详情。",
+      searchItem: "搜索项目...",
+      itemSearchPlaceholder: "按编码或名称搜索...",
+      noItemFound: "未找到项目。",
+      description: "描述",
+      orderQuantity: "订购数量",
+      quantity: "数量",
+      unit: "单位",
+      inventoryWarning: "请求 {requested} {uom}；当前仅有 {available} {uom}。",
+      pricingTier: "价格层级",
+      selectPricingTier: "选择价格层级",
+      unitPrice: "单价",
+      lineTotal: "行总计",
+      discountRate: "折扣 %",
+      taxRate: "税率 %",
+      updateItem: "更新项目",
+      addItem: "添加项目",
+      fromQuotation: "来自报价单",
+      sizeColumn: "尺寸",
+      quotedRemainingColumn: "报价 / 剩余",
+      orderQuantityColumn: "订购数量",
+      amountColumn: "金额",
+      quotedOverRemaining: "{quoted} / {remaining}",
+      framesOrdered: "订购画框数",
+      subtotal: "小计",
+      discountFigure: "折扣",
+      taxFigure: "税额",
+      remainingOnQuotation: "报价单剩余：{remaining}",
+      componentCount: "{count, plural, other {# 个组件}}",
+    },
     salesOrderViewDialog: {
       title: "销售订单详情",
       description: "订单号 #{number}",
@@ -11389,6 +12500,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       expectedDelivery: "预计交付",
       deliveryAddress: "送货地址",
       lineItems: "行项目",
+      itemDescription: "描述",
+      production: "生产",
+      notRequired: "不需要",
       quantity: "数量",
       fulfilled: "已履约",
       unit: "单位",
@@ -11444,15 +12558,23 @@ export const translations: Record<Locale, TranslationKeys> = {
       convertToOrder: "转换为订单",
       converted: "已转换",
       convertTitle: "将报价单转换为销售订单",
-      convertDescription: "确定要将报价单 {number} 转换为销售订单吗？",
+      convertDescription: "是否将报价单 {number} 的所有项目转换为一张销售订单草稿？",
       convertWillLabel: "此操作将：",
-      convertBulletCreateOrder: "使用报价单全部信息创建新的销售订单",
-      convertBulletCopyItems: "将所有行项目复制到销售订单",
+      convertBulletCreateOrder: "为同一客户创建一张销售订单草稿",
+      convertBulletCopyItems: "复制所有行项目及每个已报价的画框尺寸",
       convertBulletStatus: "将报价单状态更新为“已下单”",
-      convertBulletLink: "将报价单关联到新的销售订单",
-      convertCannotUndo: "此操作无法撤销。",
+      convertBulletLink: "保留报价价格、折扣、税额及来源关联",
+      convertDraftHint: "确认销售订单前，您仍可检查该草稿。",
       converting: "转换中...",
       convertAction: "转换为销售订单",
+      convertSuccess: "已从报价单创建销售订单 {number}。",
+      convertNotFound: "该报价单已不可用。",
+      convertNotAccepted: "只有已接受的报价单可以转换。",
+      convertAlreadyOrdered: "此报价单已有部分下单。请使用“创建销售订单”选择剩余数量。",
+      convertWrongBusinessUnit: "请切换到该报价单所属业务单位后重试。",
+      convertChanged: "报价单已发生变更。请检查后重试。",
+      convertForbidden: "您没有创建销售订单的权限。",
+      convertFailed: "无法转换报价单。请重试。",
       draft: "草稿",
       sent: "已发送",
       accepted: "已接受",
@@ -11462,6 +12584,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       ordered: "已下单",
     },
     quotationForm: {
+      frameServiceItemMissing: "缺少「裁切拼接／装裱」参考项目，请先建立后再报价。",
+      chopJoinLine: "裁切拼接",
+      framingLine: "装裱",
       customerRequired: "客户为必填项",
       quotationDateRequired: "报价日期为必填项",
       validUntilRequired: "有效期至日期为必填项",
@@ -11470,6 +12595,12 @@ export const translations: Record<Locale, TranslationKeys> = {
       createTitle: "创建新报价单",
       editDescription: "更新报价单详情和行项目。",
       createDescription: "填写报价单详情并添加行项目。",
+      loadError: "无法加载报价单。",
+      notEditable: "只能编辑草稿或已发送的报价单。",
+      updated: "报价单更新成功。",
+      updatedAndReturnedToDraft: "报价单已更新并恢复为草稿。",
+      created: "报价单创建成功。",
+      saveError: "无法保存报价单。",
       generalTab: "常规",
       lineItemsTab: "行项目（{count}）",
       termsTab: "条款和备注",
@@ -11477,15 +12608,32 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectCustomer: "选择客户",
       quotationDate: "报价日期",
       validUntil: "有效期至",
+      dateReceived: "收件日期",
+      dueDate: "交件日期",
+      paymentTerms: "付款条件",
+      paymentTerm: {
+        cash: "现金",
+        due_on_receipt: "收货即付",
+        net_30: "30天账期",
+        net_60: "60天账期",
+        net_90: "90天账期",
+        cod: "货到付款",
+      },
       lineItemsTitle: "行项目",
       lineItemsDescription: "管理此报价单中的商品或服务",
+      lineTypeRawMaterial: "原材料",
+      lineTypeRawMaterialHint: "直接销售库存——物料、数量、价格。",
+      lineTypeChopJoin: "切割拼装",
+      lineTypeChopJoinHint: "按部件计费——每种材料单独列行。",
+      lineTypeFraming: "整框",
+      lineTypeFramingHint: "按成品画框计费——部件不单独显示。",
       addItem: "添加项目",
       noItems: "尚未添加项目。",
       noItemsDescription: "点击“添加项目”开始。",
       qty: "数量",
       unit: "单位",
       price: "销售价",
-      discountPct: "折扣 %",
+      discountPct: "折扣",
       taxPct: "税率 %",
       totals: "合计",
       subtotal: "小计",
@@ -11499,6 +12647,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       createQuotation: "创建报价单",
     },
     quotationLineItemDialog: {
+      basicInformation: "基本信息",
+      pricingAndTotals: "价格与合计",
+      orderSummary: "订单汇总",
       itemRequired: "项目为必填项",
       quantityRequired: "数量必须大于 0",
       unitPriceRequired: "销售价不能为负数",
@@ -11526,9 +12677,158 @@ export const translations: Record<Locale, TranslationKeys> = {
       updateItem: "更新项目",
       addItem: "添加项目",
     },
+    frameJobOrderToasts: {
+      created: "工单创建成功",
+      createdMultiple: "已创建 {count} 张工单：{codes}",
+      framing: "装裱",
+      chopJoin: "裁切拼接",
+    },
+    frameComponentsDialog: {
+      sectionTitle: {
+        matting: "卡纸",
+        glazing: "玻璃",
+        backing: "背板与配件",
+      },
+      backingType: {
+        mdf: "中密度板",
+        plywood: "夹板",
+        sintra: "雪弗板",
+        foam: "泡沫板",
+      },
+      board: "板材",
+      fittingHardware: "装配配件",
+      glazingType: {
+        clear: "配玻璃",
+        double: "配双层玻璃",
+        acrylic: "配亚克力",
+        non_glare: "配防眩玻璃",
+        octagon: "配八角玻璃",
+      },
+      sheetsFixed: "仅双层玻璃使用多于一片。",
+      thickness: "厚度",
+      title: "画框组件",
+      subtitle: "画芯 {length}″ × {width}″ · {count} 次裁切",
+      backingAndFitting: "背板与配件",
+      applyToFrame: "应用到画框",
+      topOpening: "顶层开口",
+      mattingAmount: "卡纸金额",
+      glazingAmount: "玻璃金额",
+      backingAndFittingAmount: "背板与配件金额",
+      allBoardsClear: "所有板材均在尺寸范围内。",
+    },
+    quotationAcceptance: {
+      title: "记录客户确认",
+      lede: "确认 {number} 后即开始投入材料与工时，因此需记录由谁确认以及通过何种方式。",
+      thisQuotation: "此报价单",
+      acceptedBy: "确认人",
+      acceptedByPlaceholder: "同意此报价的人员姓名",
+      channel: "确认渠道",
+      channelPlaceholder: "请选择渠道",
+      channels: {
+        messenger: "Messenger",
+        viber: "Viber",
+        sms: "短信",
+        email: "电子邮件",
+        phone: "电话",
+        in_person: "当面",
+        other: "其他",
+      },
+      waiver: "已签署的确认书",
+      waiverHint:
+        "已签署文件的照片、对方消息的截图，或两者皆可。支持 JPEG、PNG、WebP 或 PDF，单个不超过 10MB。",
+      addFiles: "添加附件",
+      uploading: "上传中…",
+      removeFile: "移除 {name}",
+      tooLarge: "{name} 超过 10MB。",
+      uploadFailed: "上传失败，请重试。",
+      cancel: "取消",
+      confirm: "确认接受",
+      confirming: "确认中…",
+    },
+    frameSizesDialog: {
+      sizes: "尺寸",
+      addSize: "新增尺寸",
+      noSizes: "尚无尺寸，请新增第一个画框",
+      ghostDimensions: "—″ × —″",
+      configureSize: "配置此尺寸",
+      removeSize: "移除此尺寸",
+      lineTotal: "行合计",
+      discountAmount: "折扣金额",
+      beforeDiscount: "折扣前",
+      sizeCount: "此行共 {count} 个尺寸",
+      previewPending: "新增尺寸后即会显示预览与工单申请表。",
+    },
+    frameAttachments: {
+      title: "附件",
+      lede: "此尺寸的参考文件——画作照片、画框草图。这些不计入费用。",
+      empty: "尚无文件。",
+      addFiles: "新增文件",
+      uploading: "上传中…",
+      accepted: "JPG、PNG、WebP 或 PDF，每个最大 10 MB。",
+      remove: "移除此文件",
+      download: "下载",
+      previewFile: "预览 {name}",
+      close: "关闭",
+      cancel: "取消",
+      apply: "完成",
+      tooLarge: "该文件超过 10 MB。",
+      uploadFailed: "无法上传该文件，请重试。",
+      previewUnavailable: "无法预览。",
+      cannotEmbed: "此文件无法在此显示，请使用下载打开。",
+      position: "第 {current} 个，共 {total} 个",
+      rowLabel: "附件",
+      rowEmpty: "无",
+      rowCount: "{count} 个文件",
+      configure: "管理附件",
+    },
+    framingDocuments: {
+      artworkSize: "画芯",
+      matSize: "卡纸裁切",
+      generatedDocument: "生成的文件",
+      live: "实时",
+      requisition: "工单申请表",
+      cutList: "裁切清单",
+      instructions: "补充说明",
+      itemsReceived: "收到物品",
+      itemsReceivedHeading: "客户交来物品",
+      wholeJob: "整单",
+      itemsReceivedHint: "自由文本。交件时凭此核对归还给客户的物品。",
+      attachments: "附件",
+      requisitionTitle: "裁切拼接 / 工单申请表",
+      shopLine: "玻璃、相框与线条",
+      customer: "客户：",
+      address: "地址：",
+      noAddress: "无地址记录",
+      autoGenerated: "自动生成",
+      print: "打印",
+      printing: "正在准备打印…",
+      downloadPdf: "下载 PDF",
+      preparing: "正在准备…",
+      popupBlocked: "请允许本站弹出窗口以进行打印。",
+      documentActionFailed: "无法生成文档，请重试。",
+      transactionNo: "交易编号",
+      actualQty: "实际数量",
+      qty: "数量",
+      unit: "单位",
+      articleDescription: "项目 / 说明",
+      totalCuts: "裁切总数",
+      totalSales: "销售总额",
+      preparedBy: "制单人",
+      receivedBy: "接收人 / 日期",
+      cutListTitle: "生产裁切清单",
+      material: "物料",
+      spec: "规格",
+      perCut: "每次裁切",
+      total: "合计",
+      allClear: "所有物料均在板材尺寸范围内。",
+    },
     quotationViewDialog: {
       title: "报价单详情",
       description: "报价单号 #{number}",
+      previewTitle: "报价单预览",
+      previewDescription: "打印或下载前请检查报价单 {number}。",
+      previewUnavailable: "报价单预览暂不可用。",
+      previewFrameTitle: "报价单 {number}",
       customerInformation: "客户信息",
       name: "名称",
       email: "电子邮箱",
@@ -11537,12 +12837,18 @@ export const translations: Record<Locale, TranslationKeys> = {
       quotationDate: "报价日期",
       validUntil: "有效期至",
       paymentTerms: "付款条款",
+      acceptedBy: "确认人",
       billingAddress: "账单地址",
       lineItems: "行项目",
+      item: "物品",
+      qty: "数量",
+      descriptionColumn: "说明",
       quantity: "数量",
       fulfilled: "已履约",
       unit: "单位",
       unitPrice: "销售价",
+      discountRate: "折扣",
+      amount: "金额",
       discount: "折扣",
       tax: "税额",
       total: "总计",
@@ -11550,7 +12856,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       totalAmount: "总金额",
       termsConditions: "条款和条件",
       notes: "备注",
-      printQuotation: "打印报价单",
+      printPreview: "打印预览",
+      edit: "编辑",
+      close: "关闭",
       draft: "草稿",
       sent: "已发送",
       accepted: "已接受",
@@ -11558,6 +12866,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       rejected: "已拒绝",
       expired: "已过期",
       ordered: "已下单",
+      lineDetails: "行项目详情",
+      showLineDetails: "展开行项目详情",
+      hideLineDetails: "收起行项目详情",
+      noLineItems: "尚未记录报价单行项目。",
     },
     invoicesPage: {
       title: "发票",
@@ -11717,6 +13029,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       defaultPaymentTerms: "月结 30 天",
       billingAddress: "账单地址",
       lineItems: "行项目",
+      itemDescription: "描述",
+      lineDetailsLoading: "正在加载发票行详情...",
+      lineDetailsLoadError: "无法加载发票行详情。",
+      retry: "重试",
       quantity: "数量",
       unit: "单位",
       unitPrice: "销售价",

@@ -1,0 +1,1050 @@
+<title>Framing Quotation Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#FBFAF8; --surface:#FFFFFF; --sunk:#F4F1EC;
+  --ink:#1C1A17; --ink-2:#4A453D; --muted:#7C7568; --faint:#A9A296;
+  --line:#E4DFD6; --line-soft:#F0ECE4;
+  --accent:#7A5C3E; --accent-soft:#F3EDE4; --accent-line:#DCCDB8;
+  --chop:#2F6B5E; --chop-soft:#E8F2EF; --chop-line:#BCD9D1;
+  --frame:#8A4B2A; --frame-soft:#F8EBE3; --frame-line:#E4C6B2;
+  --danger:#9B2C2C; --danger-soft:#FBEBEB;
+  --ok:#2F6B5E;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'Inter',system-ui,-apple-system,sans-serif;
+  --serif:'Source Serif 4',Georgia,serif;
+  --shadow:0 1px 2px rgba(28,26,23,.04), 0 8px 24px -16px rgba(28,26,23,.18);
+  --pop:0 32px 64px -24px rgba(28,26,23,.42), 0 2px 8px rgba(28,26,23,.08);
+  --h:34px; --r:9px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#16150F; --surface:#1E1C16; --sunk:#12110C;
+    --ink:#F2EEE6; --ink-2:#C9C2B4; --muted:#948C7D; --faint:#6C6558;
+    --line:#312E25; --line-soft:#26241D;
+    --accent:#C9A176; --accent-soft:#2A2419; --accent-line:#463A28;
+    --chop:#6FBFAC; --chop-soft:#16241F; --chop-line:#28453C;
+    --frame:#D08C63; --frame-soft:#2A1C13; --frame-line:#4A3020;
+    --danger:#E08585; --danger-soft:#2C1717;
+    --ok:#6FBFAC;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -16px rgba(0,0,0,.6);
+    --pop:0 32px 64px -24px rgba(0,0,0,.8), 0 2px 8px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#16150F; --surface:#1E1C16; --sunk:#12110C;
+  --ink:#F2EEE6; --ink-2:#C9C2B4; --muted:#948C7D; --faint:#6C6558;
+  --line:#312E25; --line-soft:#26241D;
+  --accent:#C9A176; --accent-soft:#2A2419; --accent-line:#463A28;
+  --chop:#6FBFAC; --chop-soft:#16241F; --chop-line:#28453C;
+  --frame:#D08C63; --frame-soft:#2A1C13; --frame-line:#4A3020;
+  --danger:#E08585; --danger-soft:#2C1717;
+  --ok:#6FBFAC;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -16px rgba(0,0,0,.6);
+  --pop:0 32px 64px -24px rgba(0,0,0,.8), 0 2px 8px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:14px;-webkit-font-smoothing:antialiased}
+.mn{font-family:var(--mono);font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ============ app bar ============ */
+.bar{position:sticky;top:0;z-index:60;background:var(--surface);border-bottom:1px solid var(--line);
+  padding:0 18px;height:56px;display:flex;align-items:center;gap:12px}
+.bar h1{margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.docno{font-family:var(--mono);font-size:11.5px;color:var(--muted);background:var(--sunk);
+  border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+.sp{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:4px 11px;font-size:11.5px;font-weight:600;
+  background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent-line)}
+.pill i{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+/* ============ shell ============ */
+.wrap{max-width:1180px;margin:0 auto;padding:22px 18px 90px}
+.lede{margin:0 0 20px;max-width:64ch;color:var(--ink-2);font-size:14.5px;line-height:1.6}
+.lede b{color:var(--ink);font-weight:600}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+.ch{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:linear-gradient(var(--surface),var(--sunk))}
+.ch h2{margin:0;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.cb{padding:16px}
+
+/* ============ form bits ============ */
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c12{grid-column:span 12}
+.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+label{font-size:11.5px;font-weight:600;color:var(--ink-2);display:flex;gap:5px;align-items:center}
+label .opt{font-size:10px;color:var(--faint);font-weight:500}
+.ctl{height:var(--h);width:100%;border:1px solid var(--line);border-radius:8px;background:var(--surface);
+  padding:0 11px;font:inherit;font-size:13.5px;color:var(--ink);transition:border-color .15s,box-shadow .15s}
+.ctl:hover{border-color:var(--accent-line)}
+.ctl:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
+.ctl.m{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.ctl.sm{height:29px;font-size:12.5px;padding:0 8px}
+select.ctl{appearance:none;padding-right:28px;background-repeat:no-repeat;background-position:right 10px center;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%237C7568' stroke-width='2'><path d='M4 6.5 8 10.5 12 6.5'/></svg>")}
+.hint{font-size:11.5px;color:var(--muted);line-height:1.5}
+
+.btn{height:var(--h);border-radius:8px;border:1px solid transparent;background:var(--accent);color:#fff;padding:0 15px;
+  font-size:13.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;transition:filter .15s}
+.btn:hover{filter:brightness(1.08)}
+.btn.ghost{background:var(--surface);border-color:var(--line);color:var(--ink-2)}
+.btn.ghost:hover{border-color:var(--accent-line);color:var(--accent);filter:none}
+.btn.sm{height:29px;font-size:12.5px;padding:0 11px}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+
+/* ============ line item table ============ */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
+  font-weight:700;padding:0 10px 8px;border-bottom:1px solid var(--line)}
+.tbl th.r,.tbl td.r{text-align:right}
+.tbl td{padding:11px 10px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr{transition:background .12s}
+.tbl tbody tr:hover{background:var(--sunk)}
+.ln-name{font-weight:600;font-size:13.5px;line-height:1.35}
+.ln-sub{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;padding:2.5px 7px;border-radius:5px;border:1px solid;white-space:nowrap}
+.tag.raw{background:var(--sunk);color:var(--muted);border-color:var(--line)}
+.tag.chop{background:var(--chop-soft);color:var(--chop);border-color:var(--chop-line)}
+.tag.frame{background:var(--frame-soft);color:var(--frame);border-color:var(--frame-line)}
+.rowact{display:flex;gap:6px;justify-content:flex-end}
+.iconb{width:27px;height:27px;border-radius:6px;border:1px solid var(--line);background:var(--surface);
+  display:grid;place-items:center;font-size:12px;color:var(--muted)}
+.iconb:hover{border-color:var(--accent-line);color:var(--accent)}
+.iconb.del:hover{border-color:var(--danger);color:var(--danger);background:var(--danger-soft)}
+
+/* component breakdown rows */
+.comp-row td{background:color-mix(in srgb,var(--sunk) 55%,transparent);border-bottom:1px solid var(--line-soft)}
+.comp-row:hover td{background:var(--sunk)}
+.comp-name{padding-left:22px;font-size:12.5px;color:var(--ink-2);position:relative}
+.comp-name::before{content:"";position:absolute;left:9px;top:50%;width:6px;height:1px;background:var(--faint)}
+
+.empty{padding:34px 16px;text-align:center;color:var(--muted)}
+.empty p{margin:0 0 4px;font-size:13.5px}
+.empty span{font-size:12px;color:var(--faint)}
+
+/* add-line menu */
+.addwrap{position:relative;display:inline-block}
+.menu{position:absolute;z-index:50;top:calc(100% + 6px);left:0;min-width:288px;background:var(--surface);
+  border:1px solid var(--line);border-radius:11px;box-shadow:var(--pop);padding:6px;display:none}
+.menu.open{display:block}
+.menu button{width:100%;display:flex;gap:11px;align-items:flex-start;background:transparent;border:0;
+  text-align:left;padding:10px;border-radius:8px}
+.menu button:hover{background:var(--sunk)}
+.menu .mi{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;flex:none;font-size:13px;margin-top:1px}
+.menu .mt{font-size:13px;font-weight:600;line-height:1.3}
+.menu .md{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.45}
+
+/* totals */
+.totals{display:flex;justify-content:flex-end;padding:14px 16px;border-top:1px solid var(--line);background:var(--sunk)}
+.tgrid{min-width:290px;display:flex;flex-direction:column;gap:9px}
+.trow{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--ink-2)}
+.trow .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink)}
+.trow.big{padding-top:10px;border-top:1px solid var(--line);font-weight:700;color:var(--ink);font-size:14px}
+.trow.big .v{font-size:19px;letter-spacing:-.02em;color:var(--accent)}
+
+/* ============ dialog ============ */
+.scrim{position:fixed;inset:0;background:color-mix(in srgb,var(--ink) 42%,transparent);backdrop-filter:blur(3px);
+  z-index:100;display:none;place-items:center;padding:22px 16px}
+.scrim.open{display:grid}
+.dlg{width:100%;max-width:1040px;max-height:calc(100vh - 44px);background:var(--surface);border-radius:15px;
+  box-shadow:var(--pop);overflow:hidden;display:flex;flex-direction:column;border:1px solid var(--line)}
+.dlg[data-mode="chop_join"]{--accent:var(--chop);--accent-soft:var(--chop-soft);--accent-line:var(--chop-line)}
+.dlg[data-mode="framing"]{--accent:var(--frame);--accent-soft:var(--frame-soft);--accent-line:var(--frame-line)}
+.dh{display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line);flex:none;
+  background:linear-gradient(var(--surface),var(--sunk))}
+.dh h3{margin:0;font-size:16px;font-weight:700;letter-spacing:-.015em}
+.dh .sub{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.x{width:30px;height:30px;border-radius:8px;border:0;background:transparent;color:var(--muted);display:grid;place-items:center}
+.x:hover{background:var(--line-soft);color:var(--ink)}
+.dbody{display:grid;grid-template-columns:1fr 322px;flex:1;min-height:0}
+.dmain{overflow-y:auto;padding:18px 20px}
+.dside{background:var(--sunk);border-left:1px solid var(--line);padding:16px;overflow-y:auto}
+.dfoot{display:flex;align-items:center;gap:10px;padding:13px 20px;border-top:1px solid var(--line);
+  background:var(--sunk);flex:none;flex-wrap:wrap}
+.dfoot .sum{font-family:var(--mono);font-size:11.5px;color:var(--muted);flex:1;min-width:170px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* mode chooser */
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.mode{border:1.5px solid var(--line);background:var(--surface);border-radius:11px;padding:12px 13px;text-align:left;
+  display:flex;flex-direction:column;gap:4px;transition:border-color .15s,background .15s}
+.mode:hover{border-color:var(--accent-line)}
+.mode[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.mode .mh{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:700}
+.mode .mdesc{font-size:11.5px;color:var(--muted);line-height:1.45}
+.mode .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.mode[data-m="chop_join"] .dot{background:var(--chop)}
+.mode[data-m="framing"] .dot{background:var(--frame)}
+
+/* sections in dialog */
+.sec{border:1px solid var(--line);border-radius:11px;margin-bottom:12px;overflow:hidden;background:var(--surface)}
+.sech{display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--sunk);width:100%;border:0;text-align:left}
+.sech .cv{color:var(--faint);font-size:9px;transition:transform .15s;flex:none}
+.sec.open .cv{transform:rotate(90deg)}
+.sech .st{font-size:13px;font-weight:700}
+.sech .ss{font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:auto;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:46%}
+.secb{padding:13px;display:none;border-top:1px solid var(--line)}
+.sec.open .secb{display:block}
+
+.sw{position:relative;width:34px;height:19px;border-radius:99px;background:var(--line);border:0;flex:none;transition:background .15s;padding:0}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;
+  transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.sw[aria-checked="true"]{background:var(--accent)}
+.sw[aria-checked="true"]::after{transform:translateX(15px)}
+
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px;height:var(--h)}
+.seg button{border:0;background:transparent;border-radius:6px;padding:0 11px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.seg.sm{height:29px}.seg.sm button{font-size:12px;padding:0 9px}
+
+.readout{height:var(--h);display:flex;align-items:center;padding:0 11px;border-radius:8px;background:var(--accent-soft);
+  border:1px solid var(--accent-line);font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* mat layers */
+.layer{border:1px solid var(--line);border-radius:10px;padding:11px;background:var(--surface);display:flex;flex-direction:column;gap:9px}
+.layer+.layer{margin-top:8px}
+.lh{display:flex;align-items:center;gap:9px}
+.chip{width:19px;height:19px;border-radius:5px;flex:none;border:1px solid rgba(0,0,0,.14)}
+.ltag{font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
+.rm{width:25px;height:25px;border:0;background:transparent;color:var(--faint);border-radius:6px;font-size:12px}
+.rm:hover{background:var(--danger-soft);color:var(--danger)}
+.pair{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.pair .f{width:82px}
+.addlayer{height:33px;border:1px dashed var(--accent-line);background:transparent;border-radius:9px;color:var(--accent);
+  font-weight:600;font-size:12.5px;width:100%;margin-top:8px}
+.addlayer:hover{background:var(--accent-soft)}
+.addlayer:disabled{opacity:.4;cursor:not-allowed}
+
+/* option cards */
+.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(124px,1fr));gap:8px}
+.optc{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px;text-align:left;
+  display:flex;flex-direction:column;gap:3px;transition:border-color .15s,background .15s}
+.optc:hover{border-color:var(--accent-line)}
+.optc[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.optc .vis{height:22px;border-radius:6px;border:1px solid rgba(0,0,0,.1);margin-bottom:2px}
+.optc .nm{font-size:12.5px;font-weight:600;line-height:1.3}
+.optc .pr{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+
+.chk{display:flex;align-items:center;gap:10px;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+.chk+.chk{margin-top:6px}
+.chk[data-on]{border-color:var(--accent-line);background:var(--accent-soft)}
+.chk input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px;margin:0;flex:none}
+.chk .nm{font-size:13px;font-weight:600;flex:1}
+.chk .qty{width:70px}
+
+/* rate override callout */
+.rate-note{display:flex;gap:8px;align-items:flex-start;background:var(--accent-soft);border:1px solid var(--accent-line);
+  border-radius:9px;padding:9px 11px;font-size:11.5px;color:var(--ink-2);line-height:1.5;margin-bottom:12px}
+.rate-note b{color:var(--accent)}
+
+/* preview side */
+.pv{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;place-items:center;margin-bottom:11px}
+.legend{display:flex;flex-direction:column;gap:5px;margin-bottom:11px}
+.legend div{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-2)}
+.legend i{width:11px;height:11px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.14)}
+.legend .v{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.spec{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:11px}
+.spec div{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 9px}
+.spec span{display:block;font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.spec b{font-family:var(--mono);font-size:12.5px;font-weight:600;letter-spacing:-.02em}
+.warn{display:flex;gap:8px;align-items:flex-start;background:var(--danger-soft);color:var(--danger);border-radius:9px;
+  padding:9px 11px;font-size:11.5px;font-weight:500;line-height:1.45}
+.okmsg{display:flex;gap:8px;align-items:center;background:var(--chop-soft);color:var(--ok);border-radius:9px;
+  padding:9px 11px;font-size:11.5px;font-weight:500}
+
+/* billing preview inside dialog */
+.billprev{margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.billprev .bh{padding:9px 11px;background:var(--sunk);border-bottom:1px solid var(--line);font-size:10px;
+  font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.billprev table{width:100%;border-collapse:collapse;font-size:11.5px}
+.billprev td{padding:7px 11px;border-bottom:1px solid var(--line-soft)}
+.billprev tr:last-child td{border-bottom:0}
+.billprev .amt{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.billprev .tot td{background:var(--sunk);font-weight:700}
+
+/* invoice preview panel */
+.paper{background:#fff;color:#141210;border-radius:8px;padding:24px 26px;font-family:var(--serif);font-size:12.5px;line-height:1.55;
+  box-shadow:0 14px 38px -18px rgba(28,26,23,.42), 0 1px 3px rgba(28,26,23,.1)}
+:root[data-theme="dark"] .paper,
+:root:not([data-theme="light"]) .paper{color:#141210}
+.paper h3{margin:0 0 3px;text-align:center;font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+.paper .shop{text-align:center;font-size:9.5px;color:#6B6558;margin:0 0 16px;letter-spacing:.07em;text-transform:uppercase;font-family:var(--sans)}
+.pmeta{display:grid;grid-template-columns:1.15fr 1fr;gap:16px;margin-bottom:14px;font-family:var(--sans);font-size:11px}
+.pf{display:flex;gap:7px;align-items:baseline;margin-bottom:5px}
+.pf .k{font-weight:600;white-space:nowrap;color:#4A453D}
+.pf .v{flex:1;border-bottom:1px solid #C9C2B4;min-height:15px;font-weight:600;padding:0 2px 1px}
+.pf .v.mn{font-family:var(--mono);font-size:10.5px}
+.ptbl{width:100%;border-collapse:collapse;border:1.5px solid #2A2620;margin-bottom:12px;font-family:var(--sans)}
+.ptbl th{border:1px solid #2A2620;padding:5px 7px;font-size:10px;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:.04em}
+.ptbl td{border:1px solid #2A2620;padding:6px 7px;font-size:11px;vertical-align:top}
+.ptbl td.c{text-align:center;font-family:var(--mono);font-weight:600}
+.ptbl td.r{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.psum{display:flex;justify-content:flex-end;gap:26px;font-size:11px;padding-top:7px;border-top:1px solid #D9D3C8;font-family:var(--sans)}
+.psum div{text-align:right}
+.psum span{display:block;font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:#7C7568;font-weight:700;margin-bottom:2px}
+.psum b{font-family:var(--mono);font-size:13px}
+
+.docswitch{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:3px}
+.docswitch button{border:0;background:transparent;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--muted)}
+.docswitch button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent)}
+
+.note{font-size:11.5px;color:var(--muted);line-height:1.55;margin:10px 0 0}
+.note code{font-family:var(--mono);font-size:11px;background:var(--sunk);padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
+
+@media (max-width:960px){
+  .dbody{grid-template-columns:1fr}
+  .dside{border-left:0;border-top:1px solid var(--line)}
+  .c3,.c4,.c5,.c6{grid-column:span 12}
+}
+</style>
+
+<div class="bar">
+  <h1>Quotation</h1>
+  <span class="docno">QUO-0000004412</span>
+  <span class="pill"><i></i>Draft</span>
+  <span class="sp"></span>
+  <button class="btn ghost" id="themeBtn" title="Toggle theme">◐ Theme</button>
+  <button class="btn ghost">Save draft</button>
+  <button class="btn">Confirm</button>
+</div>
+
+<div class="wrap">
+  <p class="lede">
+    A single quotation mixes three kinds of line. <b>Raw materials</b> are added straight to the table.
+    <b>Chop &amp; join</b> and <b>framing</b> open the same configuration dialog — same geometry, same engine —
+    and differ only in how the customer is billed: per part consumed, or per finished frame.
+  </p>
+
+  <!-- customer -->
+  <section class="card">
+    <div class="ch"><h2>Customer</h2></div>
+    <div class="cb">
+      <div class="grid">
+        <div class="f c5">
+          <label for="cust">Customer</label>
+          <select class="ctl" id="cust">
+            <option>BM Frames and Gallery</option>
+            <option>Cee Cadid</option>
+            <option>Walk-in customer</option>
+          </select>
+        </div>
+        <div class="f c4">
+          <label for="terms">Payment terms</label>
+          <select class="ctl" id="terms"><option>Cash</option><option>30 days</option><option>50% down</option></select>
+        </div>
+        <div class="f c3">
+          <label for="qdate">Quotation date</label>
+          <input class="ctl m" id="qdate" type="date" value="2026-08-31">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- lines -->
+  <section class="card">
+    <div class="ch">
+      <h2>Line items</h2>
+      <span class="sp"></span>
+      <div class="addwrap">
+        <button class="btn sm" id="addBtn">＋ Add line</button>
+        <div class="menu" id="addMenu">
+          <button data-add="raw">
+            <span class="mi" style="background:var(--sunk);color:var(--muted)">▦</span>
+            <span><span class="mt">Raw material</span><span class="md">Sell stock as-is. Item, quantity, price.</span></span>
+          </button>
+          <button data-add="chop_join">
+            <span class="mi" style="background:var(--chop-soft);color:var(--chop)">◫</span>
+            <span><span class="mt">Chop &amp; join</span><span class="md">Billed per part consumed — each material prints its own line.</span></span>
+          </button>
+          <button data-add="framing">
+            <span class="mi" style="background:var(--frame-soft);color:var(--frame)">▣</span>
+            <span><span class="mt">Framing</span><span class="md">Billed per finished frame — one line, parts hidden.</span></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr>
+          <th style="width:44%">Description</th>
+          <th style="width:88px">Type</th>
+          <th class="r" style="width:60px">Qty</th>
+          <th class="r" style="width:104px">Unit price</th>
+          <th class="r" style="width:112px">Amount</th>
+          <th style="width:76px"></th>
+        </tr></thead>
+        <tbody id="lines"></tbody>
+      </table>
+    </div>
+
+    <div class="totals">
+      <div class="tgrid">
+        <div class="trow"><span>Subtotal</span><span class="v" id="t-sub">₱0.00</span></div>
+        <div class="trow"><span>Discount</span><span class="v" id="t-disc">₱0.00</span></div>
+        <div class="trow big"><span>Total</span><span class="v" id="t-tot">₱0.00</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- document preview -->
+  <section class="card">
+    <div class="ch">
+      <h2>Customer document</h2>
+      <span class="sp"></span>
+      <div class="docswitch" id="docsw">
+        <button aria-selected="true" data-d="inv">Invoice view</button>
+        <button aria-selected="false" data-d="job">Job requisition</button>
+      </div>
+    </div>
+    <div class="cb" style="background:var(--sunk)">
+      <div id="docPane"></div>
+      <p class="note" id="docNote"></p>
+    </div>
+  </section>
+</div>
+
+<!-- ================= DIALOG ================= -->
+<div class="scrim" id="scrim" role="dialog" aria-modal="true" aria-labelledby="dtitle">
+  <div class="dlg" id="dlg" data-mode="chop_join">
+    <div class="dh">
+      <h3 id="dtitle">Configure frame</h3>
+      <span class="sub" id="dsub"></span>
+      <span class="sp"></span>
+      <button class="x" id="dx" aria-label="Close">✕</button>
+    </div>
+
+    <div class="dbody">
+      <div class="dmain">
+        <div class="modes">
+          <button class="mode" data-m="chop_join" aria-pressed="true">
+            <span class="mh"><span class="dot"></span>Chop &amp; join</span>
+            <span class="mdesc">Customer is billed per part. Every material becomes its own invoice line.</span>
+          </button>
+          <button class="mode" data-m="framing" aria-pressed="false">
+            <span class="mh"><span class="dot"></span>Framing</span>
+            <span class="mdesc">Customer is billed one price for the finished frame. Parts stay internal.</span>
+          </button>
+        </div>
+
+        <!-- frame -->
+        <div class="sec open" data-k="frame">
+          <button class="sech"><span class="cv">▶</span><span class="st">Frame &amp; artwork</span><span class="ss" id="s-frame"></span></button>
+          <div class="secb">
+            <div class="grid" style="margin-bottom:12px">
+              <div class="f c8" style="grid-column:span 8">
+                <label for="mould">Moulding</label>
+                <select class="ctl" id="mould"></select>
+              </div>
+              <div class="f c4"><label for="qty">Qty <span class="opt">frames</span></label><input class="ctl m" id="qty" value="1" inputmode="numeric"></div>
+            </div>
+            <div class="f" style="margin-bottom:12px">
+              <label>Artwork size <span class="opt">inches</span></label>
+              <div style="display:flex;align-items:flex-end;gap:9px;flex-wrap:wrap">
+                <div class="f" style="width:88px"><input class="ctl m" id="len" value="15" inputmode="decimal"></div>
+                <span style="height:var(--h);display:flex;align-items:center;color:var(--faint);font-family:var(--mono)">×</span>
+                <div class="f" style="width:88px"><input class="ctl m" id="wid" value="12" inputmode="decimal"></div>
+                <div class="f" style="width:96px"><label class="opt" style="position:absolute;opacity:0">Frame width</label><input class="ctl m" id="fw" value="1.5" inputmode="decimal" title="Frame width"></div>
+                <div class="seg" id="sizemode">
+                  <button aria-pressed="true" data-v="artwork">Artwork</button>
+                  <button aria-pressed="false" data-v="outside">Outside</button>
+                </div>
+              </div>
+              <span class="hint" id="dimhint"></span>
+            </div>
+            <div class="grid">
+              <div class="f c4"><label>Mat outer <span class="opt">glass size</span></label><div class="readout" id="r-outer"></div></div>
+              <div class="f c4"><label>Frame outside</label><div class="readout" id="r-out"></div></div>
+              <div class="f c4"><label>Moulding <span class="opt">+10%</span></label><div class="readout" id="r-ft"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- matting -->
+        <div class="sec open" data-k="mat">
+          <button class="sech"><span class="cv">▶</span><span class="st">Matting</span><span class="ss" id="s-mat"></span></button>
+          <div class="secb">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+              <button class="sw" role="switch" aria-checked="true" data-g="mat"></button>
+              <span style="font-size:13px;font-weight:600">Include matting</span>
+              <span class="sp"></span>
+              <div class="seg sm" id="matsrc">
+                <button aria-pressed="true" data-v="store">Store board</button>
+                <button aria-pressed="false" data-v="customer">Customer's</button>
+              </div>
+            </div>
+            <div id="layers"></div>
+            <button class="addlayer" id="addLayer">＋ Add mat layer</button>
+            <p class="hint" style="margin:9px 0 0">Layer 1 is the top mat — its border runs from the mat edge to the opening. Each layer beneath shows a reveal.</p>
+          </div>
+        </div>
+
+        <!-- glazing -->
+        <div class="sec" data-k="glass">
+          <button class="sech"><span class="cv">▶</span><span class="st">Glazing</span><span class="ss" id="s-glass"></span></button>
+          <div class="secb">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+              <button class="sw" role="switch" aria-checked="true" data-g="glass"></button>
+              <span style="font-size:13px;font-weight:600">Include glazing</span>
+            </div>
+            <div class="rate-note">
+              <span>◎</span>
+              <span><b>Rate is entered here for now.</b> Mat, glass and backing have no per-square-inch rate in the item master yet — the field is pre-filled from the shop's rate sheet and stays editable. Mouldings price automatically from their <code>framing</code> / <code>chop_join</code> tier.</span>
+            </div>
+            <div class="opts" id="glassOpts"></div>
+            <div style="display:flex;gap:12px;align-items:flex-end;margin-top:12px;flex-wrap:wrap">
+              <div class="f" style="width:128px"><label>Rate <span class="opt">₱/sq in</span></label><input class="ctl sm m" id="glassRate"></div>
+              <div class="f" style="width:96px"><label>Sheets</label><input class="ctl sm m" id="glassQty" value="1"></div>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;height:29px">
+                <input type="checkbox" id="glassOuter" checked style="accent-color:var(--accent);width:15px;height:15px"> Cut to mat outer
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- backing -->
+        <div class="sec" data-k="back">
+          <button class="sech"><span class="cv">▶</span><span class="st">Backing &amp; fitting</span><span class="ss" id="s-back"></span></button>
+          <div class="secb">
+            <p class="hint" style="font-weight:700;color:var(--ink-2);margin:0 0 7px">Board</p>
+            <div class="opts" id="backOpts" style="margin-bottom:11px"></div>
+            <div class="f" style="width:128px;margin-bottom:14px"><label>Rate <span class="opt">₱/sq in</span></label><input class="ctl sm m" id="backRate"></div>
+            <p class="hint" style="font-weight:700;color:var(--ink-2);margin:0 0 7px">Fitting hardware</p>
+            <div id="hw"></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="dside">
+        <div class="pv" id="pv"></div>
+        <div class="legend" id="legend"></div>
+        <div class="spec" id="spec"></div>
+        <div id="fit"></div>
+        <div class="billprev">
+          <div class="bh" id="billHead"></div>
+          <table><tbody id="billRows"></tbody></table>
+        </div>
+      </aside>
+    </div>
+
+    <div class="dfoot">
+      <span class="sum" id="dsum"></span>
+      <button class="btn ghost" id="dcancel">Cancel</button>
+      <button class="btn" id="dapply">Add to quotation</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================== reference data (real items from the catalog) ===================== */
+const MOULDINGS=[
+  {code:'057-02Q WHITE', name:'057-02Q White Polystyrene Picture Frame Mouldings', fw:1.5,  framing:4.39,  chop:1.98},
+  {code:'1574-36B-BLK',  name:'1574-36B Blk Polystyrene Picture Frame Mouldings',  fw:2.25, framing:13.76, chop:6.19},
+  {code:'057-197-BLK',   name:'057-197 Blk Polystyrene Picture Frame Mouldings',   fw:1.0,  framing:4.39,  chop:1.98},
+  {code:'057-405-BRN',   name:'057-405 Brn Polystyrene Picture Frame Mouldings',   fw:1.75, framing:4.39,  chop:1.98}
+];
+const BOARDS=[
+  {code:'EM 1019', nm:'Cream White Matboard',  size:'30 x 42', hex:'#F2EDDF'},
+  {code:'EM 1005', nm:'Egg Shell White',       size:'30 x 42', hex:'#F5F1E6'},
+  {code:'EM 1008', nm:'Dark Ivory',            size:'30 x 42', hex:'#E8DCC2'},
+  {code:'EM 2131', nm:'Gingerbread Brown',     size:'30 x 42', hex:'#7A5335'},
+  {code:'EM 2003', nm:'Moss Green',            size:'30 x 42', hex:'#5C6B4A'}
+];
+const GLASS=[
+  {id:'clear',    nm:'Clear glass',   hex:'#DCE7EC', rate:0.35},
+  {id:'nonglare', nm:'Non-glare',     hex:'#E4E9EB', rate:1.50},
+  {id:'acrylic',  nm:'Acrylic 2mm',   hex:'#E8F0F3', rate:2.50},
+  {id:'octagon',  nm:'Octagon glass', hex:'#DDEAF1', rate:0.40}
+];
+const BACKS=[
+  {id:'ply18', nm:'Plywood ⅛″',  hex:'#C9A87C', rate:0.16},
+  {id:'ply36', nm:'Plywood ³⁄₁₆″',hex:'#D6B98F', rate:0.32},
+  {id:'mdf',   nm:'MDF',          hex:'#BE9A6E', rate:0.12},
+  {id:'sintra',nm:'Sintra board', hex:'#E4E4E8', rate:0.45}
+];
+const MAT_RATE_STORE = 0.20;   /* L×W×price×20% (store board) */
+const HW = {flexi:{nm:'Flexipoints', unit:1.50}, multi:{nm:'Multipoints', unit:8.00}, lsup:{nm:'L-support', small:35, big:60}};
+
+/* ===================== state ===================== */
+let LINES=[
+  {kind:'raw', item:'GLS 0006 — 4″ × 6″ cut size clear glass', qty:12, price:38.00}
+];
+let draft=null, editIndex=null, docView='inv';
+
+const $=id=>document.getElementById(id);
+const n=v=>{const x=parseFloat(String(v).replace(/,/g,''));return isNaN(x)?0:x};
+const peso=v=>'₱'+(v||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const inch=v=>Number.isInteger(v)?String(v):String(Math.round(v*1000)/1000);
+const clone=o=>JSON.parse(JSON.stringify(o));
+const board=c=>BOARDS.find(b=>b.code===c)||BOARDS[0];
+const mould=c=>MOULDINGS.find(m=>m.code===c)||MOULDINGS[0];
+
+function blank(mode){
+  const m=MOULDINGS[1];
+  return {kind:mode, qty:1, len:15, wid:12, fw:m.fw, sizeMode:'artwork', overlap:0.125,
+    mouldCode:m.code,
+    mat:{on:true, src:'store', layers:[{board:'EM 1019', L:2, W:2}]},
+    glass:{on:true, type:'clear', rate:0.35, qty:1, outer:true},
+    back:{board:'ply18', rate:0.16, flexi:{on:true,qty:8}, multi:{on:false,qty:0}, lsup:{on:false,size:'small'}}
+  };
+}
+
+/* ===================== geometry (ported from prototype) ===================== */
+function geom(C){
+  const fw=n(C.fw);
+  const art = C.sizeMode==='outside'
+    ? {L:n(C.len)-2*fw, W:n(C.wid)-2*fw}
+    : {L:n(C.len), W:n(C.wid)};
+  let openings=[], matOuter=null;
+  if(C.mat.on && C.mat.layers.length){
+    const ls=C.mat.layers;
+    let cl=art.L-2*n(C.overlap), cw=art.W-2*n(C.overlap);
+    for(let i=ls.length-1;i>=0;i--){
+      if(i===ls.length-1){ openings[i]={L:cl,W:cw}; }
+      else { cl+=2*n(ls[i+1].L); cw+=2*n(ls[i+1].W); openings[i]={L:cl,W:cw}; }
+    }
+    matOuter={L:openings[0].L+2*n(ls[0].L), W:openings[0].W+2*n(ls[0].W)};
+  }
+  const sight = matOuter || art;
+  const out = {L:sight.L+2*fw, W:sight.W+2*fw};
+  return {art, openings, matOuter, sight, out};
+}
+const footage=C=>{const g=geom(C);return (2*(g.out.L+g.out.W)/12)*1.10};
+
+/* ===================== pricing ===================== */
+/* Moulding: tier price × (L+W) per the poly formula. Non-moulding: area × user rate. */
+function components(C){
+  const g=geom(C), q=Math.max(1,n(C.qty)), rows=[];
+  const m=mould(C.mouldCode);
+  const tier = C.kind==='framing' ? m.framing : m.chop;
+  const tierNm = C.kind==='framing' ? 'framing' : 'chop_join';
+
+  rows.push({key:'mould', label:`${g.out.L>0?inch(g.out.L)+' × '+inch(g.out.W)+'  ':''}${m.code}`,
+    detail:m.name, unit:tier, amount:(g.out.L+g.out.W)*tier*q, src:`tier: ${tierNm}`});
+
+  const area=(g.sight.L*g.sight.W)/1;   /* sq in */
+  if(C.mat.on){
+    C.mat.layers.forEach((l,i)=>{
+      const b=board(l.board);
+      const amt = C.mat.src==='store' ? area*n(l.rate??1)*MAT_RATE_STORE*q : (g.sight.L+g.sight.W)*n(l.rate??1)*q;
+      rows.push({key:'mat'+i, label:`${inch(g.sight.L)} × ${inch(g.sight.W)}  ${i===0?'single':i===1?'double':'triple'} matt`,
+        detail:`${b.code} ${b.nm}`, unit:n(l.rate??1), amount:amt, src:'rate entered'});
+    });
+  }
+  if(C.glass.on){
+    const gl=GLASS.find(x=>x.id===C.glass.type);
+    const cut = C.glass.outer && g.matOuter ? g.matOuter : g.sight;
+    rows.push({key:'glass', label:`${inch(cut.L)} × ${inch(cut.W)}  glass`, detail:gl.nm,
+      unit:n(C.glass.rate), amount:(cut.L*cut.W)*n(C.glass.rate)*q*Math.max(1,n(C.glass.qty)), src:'rate entered'});
+  }
+  const bk=BACKS.find(x=>x.id===C.back.board);
+  if(bk){
+    const cut = C.glass.outer && g.matOuter ? g.matOuter : g.sight;
+    rows.push({key:'back', label:`${inch(cut.L)} × ${inch(cut.W)}  ${bk.nm}`, detail:'Backing board',
+      unit:n(C.back.rate), amount:(cut.L*cut.W)*n(C.back.rate)*q, src:'rate entered'});
+  }
+  if(C.back.flexi.on) rows.push({key:'flexi', label:`Flexipoints`, detail:`${C.back.flexi.qty} pcs`,
+    unit:HW.flexi.unit, amount:HW.flexi.unit*n(C.back.flexi.qty)*q, src:'fixed'});
+  if(C.back.multi.on) rows.push({key:'multi', label:`Multipoints`, detail:`${C.back.multi.qty} pcs`,
+    unit:HW.multi.unit, amount:HW.multi.unit*n(C.back.multi.qty)*q, src:'fixed'});
+  if(C.back.lsup.on) rows.push({key:'lsup', label:`L-support (${C.back.lsup.size})`, detail:'4 pcs',
+    unit:HW.lsup[C.back.lsup.size], amount:HW.lsup[C.back.lsup.size]*q, src:'fixed'});
+  return rows;
+}
+const lineTotal=C=>components(C).reduce((s,r)=>s+r.amount,0);
+
+function fitCheck(C){
+  if(!C.mat.on) return null;
+  const g=geom(C); if(!g.matOuter) return null;
+  for(const l of C.mat.layers){
+    const b=board(l.board);
+    const [bl,bw]=b.size.split('x').map(s=>+s.trim());
+    const need=[g.matOuter.L,g.matOuter.W].sort((a,b)=>a-b);
+    const have=[bl,bw].sort((a,b)=>a-b);
+    if(need[0]>have[0]||need[1]>have[1])
+      return `${b.nm} sheets are ${b.size}″ — too small for a ${inch(g.matOuter.L)}″ × ${inch(g.matOuter.W)}″ mat.`;
+  }
+  return null;
+}
+function describe(C){
+  const b=[];
+  if(C.mat.on) b.push(`${({1:'Single',2:'Double',3:'Triple'})[C.mat.layers.length]||C.mat.layers.length+'-layer'} matting`);
+  if(C.glass.on) b.push(GLASS.find(x=>x.id===C.glass.type).nm);
+  const bk=BACKS.find(x=>x.id===C.back.board); if(bk) b.push(bk.nm);
+  if(C.back.flexi.on) b.push(`flexi ×${C.back.flexi.qty}`);
+  return b.join(' · ')||'No components';
+}
+
+/* ===================== svg preview ===================== */
+function svgFrame(C,size){
+  const g=geom(C);
+  const OL=g.out.L||1, OW=g.out.W||1;
+  const sc=(size-18)/Math.max(OL,OW), px=v=>v*sc;
+  const cx=size/2, cy=size/2;
+  let s=`<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Frame cross-section preview">
+    <defs><pattern id="art" width="7" height="7" patternUnits="userSpaceOnUse">
+      <rect width="7" height="7" fill="#EFEBE2"/><path d="M0 7 L7 0" stroke="#CFC7B6" stroke-width="1"/></pattern></defs>`;
+  const R=(w,h,fill,extra='')=>`<rect x="${cx-px(w)/2}" y="${cy-px(h)/2}" width="${px(w)}" height="${px(h)}" ${extra} fill="${fill}"/>`;
+  const mCol = C.kind==='framing' ? '#8A4B2A' : '#2F6B5E';
+  s+=R(g.out.L,g.out.W,mCol,'rx="2"');
+  if(C.mat.on&&g.matOuter){
+    C.mat.layers.forEach((l,i)=>{
+      const o = i===0 ? g.matOuter : g.openings[i-1];
+      s+=R(o.L,o.W,board(l.board).hex,'stroke="rgba(0,0,0,.18)" stroke-width=".7"');
+    });
+    const last=g.openings[g.openings.length-1];
+    s+=R(last.L,last.W,'url(#art)','stroke="rgba(0,0,0,.22)" stroke-width=".7"');
+  } else {
+    s+=R(g.art.L,g.art.W,'url(#art)','stroke="rgba(0,0,0,.22)" stroke-width=".7"');
+  }
+  return s+`</svg>`;
+}
+
+/* ===================== quotation table ===================== */
+function lineAmount(L){ return L.kind==='raw' ? n(L.qty)*n(L.price) : lineTotal(L); }
+
+function renderLines(){
+  const host=$('lines');
+  if(!LINES.length){
+    host.innerHTML=`<tr><td colspan="6"><div class="empty"><p>No lines yet</p><span>Add a raw material, or configure a chop &amp; join or framing job.</span></div></td></tr>`;
+  } else {
+    host.innerHTML = LINES.map((L,i)=>{
+      if(L.kind==='raw'){
+        return `<tr>
+          <td><div class="ln-name">${L.item}</div></td>
+          <td><span class="tag raw">Raw</span></td>
+          <td class="r mn">${L.qty}</td>
+          <td class="r mn">${peso(L.price)}</td>
+          <td class="r mn"><b>${peso(lineAmount(L))}</b></td>
+          <td><div class="rowact"><button class="iconb del" data-del="${i}" title="Remove">✕</button></div></td>
+        </tr>`;
+      }
+      const g=geom(L), rows=components(L), m=mould(L.mouldCode);
+      const isChop = L.kind==='chop_join';
+      const head=`<tr>
+        <td>
+          <div class="ln-name">${inch(g.art.L)}″ × ${inch(g.art.W)}″ — ${m.code}</div>
+          <div class="ln-sub">${describe(L)} · outside ${inch(g.out.L)}″ × ${inch(g.out.W)}″</div>
+        </td>
+        <td><span class="tag ${isChop?'chop':'frame'}">${isChop?'Chop &amp; join':'Framing'}</span></td>
+        <td class="r mn">${L.qty}</td>
+        <td class="r mn">${isChop?'<span style="color:var(--faint)">per part</span>':peso(lineAmount(L)/Math.max(1,n(L.qty)))}</td>
+        <td class="r mn"><b>${peso(lineAmount(L))}</b></td>
+        <td><div class="rowact">
+          <button class="iconb" data-edit="${i}" title="Edit configuration">✎</button>
+          <button class="iconb del" data-del="${i}" title="Remove">✕</button>
+        </div></td>
+      </tr>`;
+      if(!isChop) return head;
+      return head + rows.map(r=>`<tr class="comp-row">
+        <td class="comp-name">${r.label}<div class="ln-sub" style="margin-top:2px">${r.detail}</div></td>
+        <td></td><td class="r mn" style="color:var(--muted)">—</td>
+        <td class="r mn" style="color:var(--muted)">${peso(r.unit)}</td>
+        <td class="r mn" style="color:var(--ink-2)">${peso(r.amount)}</td><td></td>
+      </tr>`).join('');
+    }).join('');
+  }
+  const sub=LINES.reduce((s,L)=>s+lineAmount(L),0);
+  $('t-sub').textContent=peso(sub);
+  $('t-disc').textContent=peso(0);
+  $('t-tot').textContent=peso(sub);
+  renderDoc();
+}
+
+/* ===================== customer document ===================== */
+function renderDoc(){
+  const cust=$('cust').value, date=$('qdate').value;
+  const fmt=d=>{if(!d)return '';const[y,m,dd]=d.split('-');return `${m}/${dd}/${y}`};
+
+  if(docView==='inv'){
+    const rows=[];
+    LINES.forEach(L=>{
+      if(L.kind==='raw'){
+        rows.push(`<tr><td class="c">${L.qty}</td><td class="c">PCS</td><td>${L.item}</td>
+          <td class="r">${peso(L.price)}</td><td class="r">${peso(lineAmount(L))}</td></tr>`);
+        return;
+      }
+      if(L.kind==='chop_join'){
+        components(L).forEach(r=>{
+          rows.push(`<tr><td class="c">${L.qty}</td><td class="c">CUT</td>
+            <td>${r.label}<div style="font-size:10px;color:#6B6558">${r.detail}</div></td>
+            <td class="r">${peso(r.unit)}</td><td class="r">${peso(r.amount)}</td></tr>`);
+        });
+      } else {
+        const g=geom(L), m=mould(L.mouldCode);
+        rows.push(`<tr><td class="c">${L.qty}</td><td class="c">FRAME</td>
+          <td>${inch(g.art.L)} × ${inch(g.art.W)} — ${m.code}<div style="font-size:10px;color:#6B6558">${describe(L)}</div></td>
+          <td class="r">${peso(lineAmount(L)/Math.max(1,n(L.qty)))}</td><td class="r">${peso(lineAmount(L))}</td></tr>`);
+      }
+    });
+    const tot=LINES.reduce((s,L)=>s+lineAmount(L),0);
+    $('docPane').innerHTML=`<div class="paper">
+      <h3>Customer Record</h3>
+      <p class="shop">Achlers Main · Glass, Frames &amp; Mouldings</p>
+      <div class="pmeta">
+        <div><div class="pf"><span class="k">Customer:</span><span class="v">${cust}</span></div>
+             <div class="pf"><span class="k">Address:</span><span class="v">21 South Zuzurrequi St., Quezon City</span></div></div>
+        <div><div class="pf"><span class="k">Transaction No.</span><span class="v mn">SLSINV-0000090114</span></div>
+             <div class="pf"><span class="k">Date:</span><span class="v mn">${fmt(date)}</span></div></div>
+      </div>
+      <table class="ptbl"><thead><tr>
+        <th style="width:46px">Qty</th><th style="width:56px">Unit</th><th>Description</th>
+        <th style="width:82px">Unit Price</th><th style="width:92px">Amount</th>
+      </tr></thead><tbody>${rows.join('')||'<tr><td colspan="5" style="text-align:center;color:#9A9284">No lines</td></tr>'}</tbody></table>
+      <div class="psum"><div><span>Amount due</span><b>${peso(tot)}</b></div></div>
+    </div>`;
+    $('docNote').innerHTML = `Chop &amp; join lines explode into one billed row per part — this is <code>invoice_display_mode = components</code>. Framing lines stay as a single row (<code>summary</code>). Both come from the same stored configuration.`;
+    return;
+  }
+
+  /* job requisition */
+  const jobs=LINES.filter(L=>L.kind!=='raw');
+  const byMode={chop_join:jobs.filter(L=>L.kind==='chop_join'), framing:jobs.filter(L=>L.kind==='framing')};
+  const blocks=Object.entries(byMode).filter(([,v])=>v.length).map(([mode,list])=>{
+    const rows=list.map(L=>{
+      const g=geom(L), m=mould(L.mouldCode);
+      const arts=[];
+      if(L.mat.on){
+        arts.push(`${({1:'Single',2:'Double',3:'Triple'})[L.mat.layers.length]||L.mat.layers.length+'-layer'} Matting`);
+        L.mat.layers.forEach(l=>{const b=board(l.board);arts.push(`${b.code} ${b.nm} ${b.size}″`)});
+      }
+      const tail=[]; if(L.glass.on) tail.push('w/ Glass');
+      const bk=BACKS.find(x=>x.id===L.back.board); if(bk) tail.push(`w/ ${bk.nm}`);
+      if(L.back.flexi.on) tail.push(`w/ Flexi ×${L.back.flexi.qty}`);
+      arts.push(`${m.code} — (${L.mat.src==='store'?'Store':'Customer'}) ${tail.join(' ')}`);
+      return `<tr><td class="c">${L.qty}</td><td class="c">CUT</td>
+        <td><div style="font-family:var(--mono);font-weight:600">${inch(g.art.L)} × ${inch(g.art.W)}</div>
+            <div style="font-family:var(--mono);color:#8A8375;font-size:10px">outer ${inch(g.out.L)} × ${inch(g.out.W)}</div></td>
+        <td>${arts.map(a=>`<div>– ${a}</div>`).join('')}</td></tr>`;
+    }).join('');
+    return `<div class="paper" style="margin-bottom:14px">
+      <h3>Chop and Join / Job Requisition Form</h3>
+      <p class="shop">${mode==='chop_join'?'Chop &amp; join':'Framing'} · JORFRM-00000${mode==='chop_join'?'10312':'10313'}</p>
+      <div class="pmeta">
+        <div><div class="pf"><span class="k">Customer:</span><span class="v">${cust}</span></div></div>
+        <div><div class="pf"><span class="k">Date received:</span><span class="v mn">${fmt(date)}</span></div></div>
+      </div>
+      <table class="ptbl"><thead><tr>
+        <th style="width:46px">Qty</th><th style="width:56px">Unit</th><th style="width:132px">Size</th><th>Article / Description</th>
+      </tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
+  });
+  $('docPane').innerHTML = blocks.join('') || `<div class="empty"><p>No job orders</p><span>Add a chop &amp; join or framing line to generate a requisition.</span></div>`;
+  $('docNote').innerHTML = `One job order per billing mode present on the quotation — <b>${blocks.length}</b> would be created here. Raw-material lines never generate a job order.`;
+}
+
+/* ===================== dialog ===================== */
+function openDlg(mode, idx){
+  editIndex = idx ?? null;
+  draft = idx!=null ? clone(LINES[idx]) : blank(mode);
+  $('dlg').dataset.mode = draft.kind;
+  $('dtitle').textContent = idx!=null ? 'Edit frame' : 'Configure frame';
+  $('dapply').textContent = idx!=null ? 'Save changes' : 'Add to quotation';
+  $('mould').innerHTML = MOULDINGS.map(m=>`<option value="${m.code}" ${m.code===draft.mouldCode?'selected':''}>${m.code} — ${m.nm||m.name}</option>`).join('');
+  $('len').value=draft.len; $('wid').value=draft.wid; $('fw').value=draft.fw; $('qty').value=draft.qty;
+  $('glassRate').value=draft.glass.rate; $('glassQty').value=draft.glass.qty;
+  $('glassOuter').checked=draft.glass.outer; $('backRate').value=draft.back.rate;
+  document.querySelectorAll('#sizemode button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===draft.sizeMode)));
+  renderDlg();
+  $('scrim').classList.add('open');
+  $('dx').focus();
+}
+const closeDlg=()=>{$('scrim').classList.remove('open');draft=null;editIndex=null};
+function applyDlg(){
+  if(editIndex!=null) LINES[editIndex]=clone(draft); else LINES.push(clone(draft));
+  closeDlg(); renderLines();
+}
+
+function layerRows(){
+  const host=$('layers'); host.innerHTML='';
+  draft.mat.layers.forEach((l,i)=>{
+    const b=board(l.board), top=i===0;
+    if(l.rate==null) l.rate = 2.50;
+    const el=document.createElement('div'); el.className='layer';
+    el.innerHTML=`
+      <div class="lh"><span class="chip" style="background:${b.hex}"></span>
+        <span class="ltag">${top?'Top mat':(i===1?'2nd mat':'3rd mat')}</span><span class="sp"></span>
+        ${i>0?'<button class="rm" title="Remove layer">✕</button>':''}</div>
+      <select class="ctl sm" data-b>${BOARDS.map(x=>`<option value="${x.code}" ${x.code===l.board?'selected':''}>${x.code} ${x.nm} ${x.size}</option>`).join('')}</select>
+      <div class="pair">
+        <div class="f"><label>${top?'Border L':'Reveal L'}</label><input class="ctl sm m" data-l value="${l.L}"></div>
+        <div class="f"><label>${top?'Border W':'Reveal W'}</label><input class="ctl sm m" data-w value="${l.W}"></div>
+        <div class="f" style="width:96px"><label>Rate <span class="opt">₱/sq in</span></label><input class="ctl sm m" data-r value="${l.rate}"></div>
+      </div>`;
+    el.querySelector('[data-b]').addEventListener('change',e=>{l.board=e.target.value;renderDlg()});
+    el.querySelector('[data-l]').addEventListener('input',e=>{l.L=e.target.value;light()});
+    el.querySelector('[data-w]').addEventListener('input',e=>{l.W=e.target.value;light()});
+    el.querySelector('[data-r]').addEventListener('input',e=>{l.rate=e.target.value;light()});
+    el.querySelector('.rm')?.addEventListener('click',()=>{draft.mat.layers.splice(i,1);renderDlg()});
+    host.appendChild(el);
+  });
+  $('addLayer').disabled = draft.mat.layers.length>=3;
+}
+function optCards(hostId,list,cur,pick,rateLabel){
+  const host=$(hostId); host.innerHTML='';
+  list.forEach(o=>{
+    const b=document.createElement('button');
+    b.className='optc'; b.setAttribute('aria-pressed',String(o.id===cur));
+    b.innerHTML=`<span class="vis" style="background:${o.hex}"></span><span class="nm">${o.nm}</span><span class="pr">₱${o.rate.toFixed(2)}${rateLabel}</span>`;
+    b.addEventListener('click',()=>{pick(o);renderDlg()});
+    host.appendChild(b);
+  });
+}
+function hardware(){
+  const H=draft.back;
+  $('hw').innerHTML=`
+    <div class="chk" ${H.flexi.on?'data-on':''}><input type="checkbox" ${H.flexi.on?'checked':''} data-hw="flexi">
+      <span class="nm">Flexipoints <span style="color:var(--muted);font-weight:400">₱1.50 ea</span></span>
+      <input class="ctl sm m qty" value="${H.flexi.qty}" data-q="flexi"></div>
+    <div class="chk" ${H.multi.on?'data-on':''}><input type="checkbox" ${H.multi.on?'checked':''} data-hw="multi">
+      <span class="nm">Multipoints <span style="color:var(--muted);font-weight:400">₱8.00 ea</span></span>
+      <input class="ctl sm m qty" value="${H.multi.qty}" data-q="multi"></div>
+    <div class="chk" ${H.lsup.on?'data-on':''}><input type="checkbox" ${H.lsup.on?'checked':''} data-hw="lsup">
+      <span class="nm">L-support</span>
+      <div class="seg sm" data-ls><button aria-pressed="${H.lsup.size==='small'}" data-s="small">Small</button><button aria-pressed="${H.lsup.size==='big'}" data-s="big">Big</button></div></div>`;
+  $('hw').querySelectorAll('[data-hw]').forEach(i=>i.addEventListener('change',e=>{draft.back[e.target.dataset.hw].on=e.target.checked;renderDlg()}));
+  $('hw').querySelectorAll('[data-q]').forEach(i=>i.addEventListener('input',e=>{draft.back[e.target.dataset.q].qty=n(e.target.value);light()}));
+  $('hw').querySelectorAll('[data-ls] button').forEach(b=>b.addEventListener('click',()=>{draft.back.lsup.size=b.dataset.s;renderDlg()}));
+}
+function light(){
+  const C=draft, g=geom(C);
+  $('pv').innerHTML=svgFrame(C,238);
+  $('r-outer').textContent = g.matOuter?`${inch(g.matOuter.L)}″ × ${inch(g.matOuter.W)}″`:'— no mat —';
+  $('r-out').textContent   = `${inch(g.out.L)}″ × ${inch(g.out.W)}″`;
+  $('r-ft').textContent    = `${footage(C).toFixed(1)} ft`;
+  $('dimhint').textContent = C.sizeMode==='artwork'
+    ? 'Frame outside = mat outer + 2 × frame width.'
+    : 'Artwork = outside size − 2 × frame width, less the mat border.';
+  $('spec').innerHTML=`
+    <div><span>Mat outer</span><b>${g.matOuter?`${inch(g.matOuter.L)} × ${inch(g.matOuter.W)}`:'—'}</b></div>
+    <div><span>Top opening</span><b>${g.openings.length?`${inch(g.openings[0].L)} × ${inch(g.openings[0].W)}`:'—'}</b></div>
+    <div><span>Frame outside</span><b>${inch(g.out.L)} × ${inch(g.out.W)}</b></div>
+    <div><span>Line total</span><b>${peso(lineTotal(C))}</b></div>`;
+  const w=fitCheck(C);
+  $('fit').innerHTML = w?`<div class="warn"><span>▲</span><span>${w}</span></div>`
+                        :`<div class="okmsg"><span>✓</span><span>All boards clear their sheet sizes.</span></div>`;
+  let lg='';
+  if(C.mat.on) C.mat.layers.forEach((l,i)=>{
+    const b=board(l.board);
+    lg+=`<div><i style="background:${b.hex}"></i>${i===0?'Top mat':(i===1?'2nd mat':'3rd mat')} — ${b.nm}
+      <span class="v">${i===0?'border':'reveal'} ${inch(n(l.L))}″</span></div>`;
+  });
+  if(C.glass.on){const gl=GLASS.find(x=>x.id===C.glass.type);
+    lg+=`<div><i style="background:${gl.hex}"></i>${gl.nm}<span class="v">₱${n(C.glass.rate).toFixed(2)}/sq in</span></div>`;}
+  const bk=BACKS.find(x=>x.id===C.back.board);
+  if(bk) lg+=`<div><i style="background:${bk.hex}"></i>${bk.nm}<span class="v">₱${n(C.back.rate).toFixed(2)}/sq in</span></div>`;
+  $('legend').innerHTML=lg;
+
+  const rows=components(C), isChop=C.kind==='chop_join';
+  $('billHead').textContent = isChop ? `Customer sees ${rows.length} billed lines` : 'Customer sees 1 billed line';
+  $('billRows').innerHTML = isChop
+    ? rows.map(r=>`<tr><td>${r.label}<div style="color:var(--faint);font-size:10.5px">${r.src}</div></td><td class="amt">${peso(r.amount)}</td></tr>`).join('')
+      + `<tr class="tot"><td>Total</td><td class="amt">${peso(lineTotal(C))}</td></tr>`
+    : `<tr><td>${inch(g.art.L)} × ${inch(g.art.W)} finished frame<div style="color:var(--faint);font-size:10.5px">${rows.length} parts rolled up, hidden from customer</div></td>
+        <td class="amt">${peso(lineTotal(C))}</td></tr>`;
+
+  $('dsum').textContent=describe(C);
+  $('dsub').textContent=`${inch(g.art.L)}″ × ${inch(g.art.W)}″ · ${C.qty} ${n(C.qty)===1?'frame':'frames'}`;
+  $('s-frame').textContent=`${mould(C.mouldCode).code} · ${inch(g.out.L)}×${inch(g.out.W)}`;
+  $('s-mat').textContent=C.mat.on?`${C.mat.layers.length} layer${C.mat.layers.length>1?'s':''} · ${C.mat.src}`:'None';
+  $('s-glass').textContent=C.glass.on?`${GLASS.find(x=>x.id===C.glass.type).nm} · ₱${n(C.glass.rate).toFixed(2)}`:'None';
+  $('s-back').textContent=`${BACKS.find(x=>x.id===C.back.board).nm}`;
+}
+function renderDlg(){
+  $('dlg').dataset.mode=draft.kind;
+  document.querySelectorAll('.mode').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m===draft.kind)));
+  layerRows();
+  optCards('glassOpts',GLASS,draft.glass.type,o=>{draft.glass.type=o.id;draft.glass.rate=o.rate},'/sq in');
+  optCards('backOpts',BACKS,draft.back.board,o=>{draft.back.board=o.id;draft.back.rate=o.rate},'/sq in');
+  hardware();
+  document.querySelectorAll('.sw[data-g]').forEach(s=>s.setAttribute('aria-checked',String(draft[s.dataset.g].on)));
+  document.querySelectorAll('#matsrc button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===draft.mat.src)));
+  $('glassRate').value=draft.glass.rate; $('backRate').value=draft.back.rate;
+  light();
+}
+
+/* ===================== wiring ===================== */
+$('addBtn').addEventListener('click',e=>{e.stopPropagation();$('addMenu').classList.toggle('open')});
+document.addEventListener('click',()=>$('addMenu').classList.remove('open'));
+$('addMenu').addEventListener('click',e=>{
+  const b=e.target.closest('[data-add]'); if(!b)return;
+  $('addMenu').classList.remove('open');
+  const k=b.dataset.add;
+  if(k==='raw'){
+    LINES.push({kind:'raw', item:'EM 1019 — 30″ × 42″ cream white matboard', qty:1, price:186.00});
+    renderLines();
+  } else openDlg(k);
+});
+$('lines').addEventListener('click',e=>{
+  const ed=e.target.closest('[data-edit]'), dl=e.target.closest('[data-del]');
+  if(ed) openDlg(null,+ed.dataset.edit);
+  if(dl){LINES.splice(+dl.dataset.del,1);renderLines()}
+});
+$('dx').addEventListener('click',closeDlg);
+$('dcancel').addEventListener('click',closeDlg);
+$('dapply').addEventListener('click',applyDlg);
+$('scrim').addEventListener('click',e=>{if(e.target===$('scrim'))closeDlg()});
+document.addEventListener('keydown',e=>{
+  if(!$('scrim').classList.contains('open'))return;
+  if(e.key==='Escape')closeDlg();
+  if((e.metaKey||e.ctrlKey)&&e.key==='Enter')applyDlg();
+});
+document.querySelectorAll('.sec .sech').forEach(h=>h.addEventListener('click',()=>h.parentElement.classList.toggle('open')));
+document.querySelectorAll('.mode').forEach(b=>b.addEventListener('click',()=>{draft.kind=b.dataset.m;renderDlg()}));
+document.querySelectorAll('.sw[data-g]').forEach(s=>s.addEventListener('click',()=>{draft[s.dataset.g].on=!draft[s.dataset.g].on;renderDlg()}));
+document.querySelectorAll('#matsrc button').forEach(b=>b.addEventListener('click',()=>{draft.mat.src=b.dataset.v;renderDlg()}));
+document.querySelectorAll('#sizemode button').forEach(b=>b.addEventListener('click',()=>{
+  const prev=draft.sizeMode; draft.sizeMode=b.dataset.v;
+  document.querySelectorAll('#sizemode button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  if(prev!==draft.sizeMode){
+    const g=geom(draft);
+    if(draft.sizeMode==='outside'){draft.len=inch(g.out.L);draft.wid=inch(g.out.W)}
+    else {draft.len=inch(g.art.L);draft.wid=inch(g.art.W)}
+    $('len').value=draft.len; $('wid').value=draft.wid;
+  }
+  light();
+}));
+$('addLayer').addEventListener('click',()=>{
+  if(draft.mat.layers.length>=3)return;
+  const used=draft.mat.layers.map(l=>l.board);
+  const next=BOARDS.find(b=>!used.includes(b.code))||BOARDS[0];
+  draft.mat.layers.push({board:next.code,L:0.25,W:0.25,rate:2.50});
+  renderDlg();
+});
+['len','wid','fw','qty'].forEach(id=>$(id).addEventListener('input',e=>{
+  draft[id==='qty'?'qty':id] = id==='qty' ? (n(e.target.value)||1) : e.target.value; light();
+}));
+$('glassRate').addEventListener('input',e=>{draft.glass.rate=e.target.value;light()});
+$('glassQty').addEventListener('input',e=>{draft.glass.qty=n(e.target.value)||1;light()});
+$('glassOuter').addEventListener('change',e=>{draft.glass.outer=e.target.checked;light()});
+$('backRate').addEventListener('input',e=>{draft.back.rate=e.target.value;light()});
+$('mould').addEventListener('change',e=>{
+  draft.mouldCode=e.target.value; draft.fw=mould(e.target.value).fw; $('fw').value=draft.fw; light();
+});
+document.querySelectorAll('#docsw button').forEach(b=>b.addEventListener('click',()=>{
+  docView=b.dataset.d;
+  document.querySelectorAll('#docsw button').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
+  renderDoc();
+}));
+['cust','qdate'].forEach(id=>$(id).addEventListener('change',renderDoc));
+$('themeBtn').addEventListener('click',()=>{
+  const cur=document.documentElement.getAttribute('data-theme');
+  const next = cur==='dark' ? 'light' : cur==='light' ? 'dark'
+    : (matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme',next);
+});
+
+/* seed with one of each so the difference is visible immediately */
+LINES.push({...blank('chop_join'), len:15, wid:12, qty:1});
+LINES.push({...blank('framing'), len:16, wid:20, qty:2, mouldCode:'057-197-BLK', fw:1.0});
+renderLines();
+</script>

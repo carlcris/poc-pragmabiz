@@ -5,13 +5,120 @@ import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import type { UpdateInvoiceRequest, CreateInvoiceRequest } from "@/types/invoice";
 import { syncSalesOrderInvoiceStatus } from "@/app/api/invoices/_shared";
+import {
+  loadSalesOrderFrameDetails,
+  transformSalesOrderFrameDetails,
+} from "@/app/api/sales-orders/frame-details";
+
+const INVOICE_DETAIL_SELECT = `
+  id,
+  company_id,
+  business_unit_id,
+  invoice_code,
+  customer_id,
+  warehouse_id,
+  custom_fields,
+  sales_order_id,
+  invoice_date,
+  due_date,
+  status,
+  subtotal,
+  discount_amount,
+  tax_amount,
+  total_amount,
+  amount_paid,
+  amount_due,
+  billing_address_line1,
+  billing_city,
+  billing_state,
+  billing_postal_code,
+  billing_country,
+  payment_terms,
+  notes,
+  primary_employee_id,
+  commission_total,
+  commission_split_count,
+  created_by,
+  created_at,
+  updated_at,
+  customers:customer_id (
+    id,
+    customer_name,
+    email
+  ),
+  sales_orders:sales_order_id (
+    id,
+    order_code
+  ),
+  primary_employee:primary_employee_id (
+    id,
+    first_name,
+    last_name
+  )
+` as const;
+
+const INVOICE_ITEM_DETAIL_SELECT = `
+  id,
+  invoice_id,
+  item_id,
+  item_description,
+  quantity,
+  uom_id,
+  pricing_tier,
+  pricing_tier_name,
+  rate,
+  discount_percent,
+  tax_percent,
+  line_total,
+  sort_order,
+  items:item_id (
+    item_code,
+    item_name
+  ),
+  units_of_measure:uom_id (
+    code,
+    name
+  )
+` as const;
+
+const INVOICE_UPDATE_SOURCE_SELECT = `
+  company_id,
+  status,
+  subtotal,
+  discount_amount,
+  tax_amount,
+  total_amount,
+  custom_fields,
+  customer_id,
+  warehouse_id,
+  invoice_date,
+  due_date,
+  amount_paid,
+  billing_address_line1,
+  billing_city,
+  billing_state,
+  billing_postal_code,
+  billing_country,
+  payment_terms,
+  notes
+` as const;
+
+const MAX_DOCUMENT_LINES = 200;
+
+const firstJoined = <T>(value: T | T[] | null | undefined): T | null =>
+  (Array.isArray(value) ? value[0] : value) || null;
+
+const sameMoney = (left: number | null, right: number | null): boolean =>
+  Math.abs(Number(left || 0) - Number(right || 0)) < 0.005;
 
 // GET /api/invoices/[id]
 async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requirePermission(RESOURCES.SALES_INVOICES, "view");
+    const unauthorized = await requirePermission(RESOURCES.SALES_INVOICES, "view");
+    if (unauthorized) return unauthorized;
+
     const { id } = await params;
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Check authentication
     const {
@@ -22,30 +129,16 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    }
 
     // Fetch invoice
     const { data: invoice, error } = await supabase
       .from("sales_invoices")
-      .select(
-        `
-        *,
-        customers:customer_id (
-          id,
-          customer_name,
-          email
-        ),
-        sales_orders:sales_order_id (
-          id,
-          order_code
-        ),
-        primary_employee:primary_employee_id (
-          id,
-          first_name,
-          last_name
-        )
-      `
-      )
+      .select(INVOICE_DETAIL_SELECT)
       .eq("id", id)
+      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 
@@ -68,24 +161,93 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     ]);
 
     // Fetch line items
-    const { data: items } = await supabase
+    const { data: items, error: itemsError } = await supabase
       .from("sales_invoice_items")
-      .select(
-        `
-        *,
-        items:item_id (
-          item_code,
-          item_name
-        ),
-        units_of_measure:uom_id (
-          code,
-          name
-        )
-      `
-      )
+      .select(INVOICE_ITEM_DETAIL_SELECT)
       .eq("invoice_id", id)
       .is("deleted_at", null)
-      .order("sort_order", { ascending: true });
+      .order("sort_order", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(MAX_DOCUMENT_LINES + 1);
+
+    if (itemsError) {
+      console.error("Failed to load invoice items", {
+        invoiceId: id,
+        code: itemsError.code,
+        message: itemsError.message,
+      });
+      return NextResponse.json({ error: "Failed to load invoice items" }, { status: 500 });
+    }
+    if ((items?.length || 0) > MAX_DOCUMENT_LINES) {
+      return NextResponse.json(
+        { error: "Invoice has too many line items to display" },
+        { status: 422 }
+      );
+    }
+
+    const sourceLineByInvoiceKey = new Map<string, string>();
+    if (invoice.sales_order_id && items && items.length > 0) {
+      const invoiceItemByKey = new Map(
+        items.map((item) => [`${item.item_id}:${item.sort_order}`, item])
+      );
+      const { data: sourceLines, error: sourceLinesError } = await supabase
+        .from("sales_order_items")
+        .select(
+          "id, item_id, sort_order, quantity, uom_id, rate, discount_percent, tax_percent, line_total"
+        )
+        .eq("order_id", invoice.sales_order_id)
+        .is("deleted_at", null)
+        .order("sort_order", { ascending: true })
+        .order("id", { ascending: true })
+        .limit(MAX_DOCUMENT_LINES + 1);
+
+      if (sourceLinesError) {
+        console.error("Failed to resolve invoice source lines", {
+          invoiceId: id,
+          salesOrderId: invoice.sales_order_id,
+          code: sourceLinesError.code,
+          message: sourceLinesError.message,
+        });
+        return NextResponse.json({ error: "Failed to load invoice line details" }, { status: 500 });
+      }
+      if ((sourceLines?.length || 0) > MAX_DOCUMENT_LINES) {
+        return NextResponse.json(
+          { error: "Sales order has too many line items to display" },
+          { status: 422 }
+        );
+      }
+
+      for (const sourceLine of sourceLines || []) {
+        const key = `${sourceLine.item_id}:${sourceLine.sort_order}`;
+        const invoiceItem = invoiceItemByKey.get(key);
+        if (
+          invoiceItem &&
+          invoiceItem.uom_id === sourceLine.uom_id &&
+          sameMoney(invoiceItem.quantity, sourceLine.quantity) &&
+          sameMoney(invoiceItem.rate, sourceLine.rate) &&
+          sameMoney(invoiceItem.discount_percent, sourceLine.discount_percent) &&
+          sameMoney(invoiceItem.tax_percent, sourceLine.tax_percent) &&
+          sameMoney(invoiceItem.line_total, sourceLine.line_total)
+        ) {
+          sourceLineByInvoiceKey.set(key, sourceLine.id);
+        }
+      }
+    }
+
+    const sourceLineIds = Array.from(new Set(sourceLineByInvoiceKey.values()));
+    const frameDetails = await loadSalesOrderFrameDetails(supabase, sourceLineIds);
+    if (frameDetails.error) {
+      console.error("Failed to load invoice frame details", {
+        invoiceId: id,
+        salesOrderId: invoice.sales_order_id,
+        error: frameDetails.error,
+      });
+      return NextResponse.json({ error: "Failed to load invoice line details" }, { status: 500 });
+    }
+
+    const customer = firstJoined(invoice.customers);
+    const salesOrder = firstJoined(invoice.sales_orders);
+    const primaryEmployee = firstJoined(invoice.primary_employee);
 
     // Format response
     const formattedInvoice = {
@@ -93,35 +255,49 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       companyId: invoice.company_id,
       invoiceNumber: invoice.invoice_code,
       customerId: invoice.customer_id,
-      customerName: invoice.customers?.customer_name || "",
-      customerEmail: invoice.customers?.email || "",
+      customerName: customer?.customer_name || "",
+      customerEmail: customer?.email || "",
       warehouseId: invoice.warehouse_id || null,
       warehouseName: warehouse?.data?.warehouse_name || "",
       locationId: invoice.custom_fields?.locationId || null,
       locationCode: location?.data?.code || null,
       locationName: location?.data?.name || null,
       salesOrderId: invoice.sales_order_id,
-      salesOrderNumber: invoice.sales_orders?.order_code,
+      salesOrderNumber: salesOrder?.order_code,
       invoiceDate: invoice.invoice_date,
       dueDate: invoice.due_date,
       status: invoice.status,
       lineItems:
-        items?.map((item) => ({
-          id: item.id,
-          itemId: item.item_id,
-          itemCode: item.items?.item_code || "",
-          itemName: item.items?.item_name || "",
-          description: item.item_description || "",
-          quantity: parseFloat(item.quantity),
-          uomId: item.uom_id,
-          uomCode: item.units_of_measure?.code || "",
-          pricingTier: item.pricing_tier || undefined,
-          pricingTierName: item.pricing_tier_name || undefined,
-          unitPrice: parseFloat(item.rate),
-          discount: parseFloat(item.discount_percent),
-          taxRate: parseFloat(item.tax_percent),
-          lineTotal: parseFloat(item.line_total),
-        })) || [],
+        items?.map((item) => {
+          const catalogItem = firstJoined(item.items);
+          const unit = firstJoined(item.units_of_measure);
+          const sourceLineId = sourceLineByInvoiceKey.get(`${item.item_id}:${item.sort_order}`);
+          const sourceFrameDetails = sourceLineId
+            ? transformSalesOrderFrameDetails(
+                frameDetails.configurationsByItemId.get(sourceLineId) || [],
+                frameDetails.componentsByItemId.get(sourceLineId) || [],
+                frameDetails.matLayersByConfigurationId
+              )
+            : undefined;
+
+          return {
+            id: item.id,
+            itemId: item.item_id,
+            itemCode: catalogItem?.item_code || "",
+            itemName: catalogItem?.item_name || "",
+            description: item.item_description || "",
+            quantity: Number(item.quantity),
+            uomId: item.uom_id || "",
+            uomCode: unit?.code || "",
+            pricingTier: item.pricing_tier || undefined,
+            pricingTierName: item.pricing_tier_name || undefined,
+            unitPrice: Number(item.rate),
+            discount: Number(item.discount_percent),
+            taxRate: Number(item.tax_percent),
+            lineTotal: Number(item.line_total),
+            ...sourceFrameDetails,
+          };
+        }) || [],
       subtotal: parseFloat(invoice.subtotal),
       totalDiscount: parseFloat(invoice.discount_amount),
       totalTax: parseFloat(invoice.tax_amount),
@@ -136,8 +312,8 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       paymentTerms: invoice.payment_terms || "",
       notes: invoice.notes || "",
       primaryEmployeeId: invoice.primary_employee_id,
-      primaryEmployeeName: invoice.primary_employee
-        ? `${invoice.primary_employee.first_name} ${invoice.primary_employee.last_name}`
+      primaryEmployeeName: primaryEmployee
+        ? `${primaryEmployee.first_name} ${primaryEmployee.last_name}`
         : "",
       commissionTotal: parseFloat(invoice.commission_total),
       commissionSplitCount: invoice.commission_split_count,
@@ -147,7 +323,8 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     };
 
     return NextResponse.json(formattedInvoice);
-  } catch {
+  } catch (error) {
+    console.error("Failed to load invoice details", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -155,10 +332,12 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
 // PUT /api/invoices/[id]
 async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requirePermission(RESOURCES.SALES_INVOICES, "edit");
+    const unauthorized = await requirePermission(RESOURCES.SALES_INVOICES, "edit");
+    if (unauthorized) return unauthorized;
+
     const { id } = await params;
     const body = (await request.json()) as UpdateInvoiceRequest;
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Check authentication
     const {
@@ -169,12 +348,16 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    }
 
     // Fetch existing invoice
     const { data: existingInvoice, error: fetchError } = await supabase
       .from("sales_invoices")
-      .select("*")
+      .select(INVOICE_UPDATE_SOURCE_SELECT)
       .eq("id", id)
+      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 
@@ -302,9 +485,11 @@ async function DELETEHandler(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission(RESOURCES.SALES_INVOICES, "delete");
+    const unauthorized = await requirePermission(RESOURCES.SALES_INVOICES, "delete");
+    if (unauthorized) return unauthorized;
+
     const { id } = await params;
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Check authentication
     const {
@@ -315,12 +500,16 @@ async function DELETEHandler(
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    }
 
     // Fetch the invoice to check status and sales order relationship
     const { data: invoice, error: fetchError } = await supabase
       .from("sales_invoices")
       .select("id, status, sales_order_id")
       .eq("id", id)
+      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 

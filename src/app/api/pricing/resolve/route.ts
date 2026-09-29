@@ -5,6 +5,7 @@ import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { resolveCustomerPricingSchema } from "@/lib/validations/customer-pricing";
 import { resolveCustomerPrices } from "@/services/pricing/customer-price-resolver";
+import { getCurrentPricingDate } from "@/lib/pricing/pricing-date";
 
 async function POSTHandler(request: NextRequest) {
   try {
@@ -51,7 +52,9 @@ async function POSTHandler(request: NextRequest) {
       businessUnitId: currentBusinessUnitId,
       customerId: parsed.data.customerId,
       itemIds: parsed.data.itemIds,
-      asOfDate: parsed.data.asOfDate || new Date().toISOString().slice(0, 10),
+      asOfDate:
+        parsed.data.asOfDate ||
+        (await getCurrentPricingDate(supabase, companyId, currentBusinessUnitId)),
     });
 
     return NextResponse.json({ data });

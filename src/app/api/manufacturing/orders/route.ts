@@ -8,6 +8,7 @@ import { logQuotationError } from "../../quotations/_shared";
 type ManufacturingOrderRow = {
   id: string;
   manufacturing_order_code: string;
+  frame_job_order_id: string | null;
   sales_order_id: string | null;
   customer_id: string | null;
   production_type: string;
@@ -20,6 +21,10 @@ type ManufacturingOrderRow = {
   notes: string | null;
   custom_fields: Record<string, unknown> | null;
   created_at: string;
+  frame_job_orders?:
+    | { job_order_code: string | null }
+    | Array<{ job_order_code: string | null }>
+    | null;
 };
 
 type OperationRow = {
@@ -101,6 +106,7 @@ async function GETHandler(request: NextRequest) {
         `
         id,
         manufacturing_order_code,
+        frame_job_order_id,
         sales_order_id,
         customer_id,
         production_type,
@@ -112,7 +118,8 @@ async function GETHandler(request: NextRequest) {
         completed_at,
         notes,
         custom_fields,
-        created_at
+        created_at,
+        frame_job_orders:frame_job_order_id(job_order_code)
       `,
         { count: "exact" }
       )
@@ -254,6 +261,9 @@ async function GETHandler(request: NextRequest) {
 
     return NextResponse.json({
       data: orders.map((order) => {
+        const frameJobOrder = Array.isArray(order.frame_job_orders)
+          ? order.frame_job_orders[0]
+          : order.frame_job_orders;
         const operations = operationsByOrderId.get(order.id) || [];
         const activeOperation =
           operations.find((operation) => operation.status === "in_progress") ||
@@ -284,6 +294,8 @@ async function GETHandler(request: NextRequest) {
         return {
           id: order.id,
           manufacturingOrderCode: order.manufacturing_order_code,
+          frameJobOrderId: order.frame_job_order_id,
+          frameJobOrderCode: frameJobOrder?.job_order_code || "",
           salesOrderId: order.sales_order_id,
           salesOrderCode: order.sales_order_id
             ? salesOrdersById.get(order.sales_order_id) || ""

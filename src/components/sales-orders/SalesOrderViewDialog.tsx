@@ -16,15 +16,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useSalesOrderPaymentSummary } from "@/hooks/useSalesOrders";
+import { SalesDocumentLineItemsTable } from "@/components/common/SalesDocumentLineItemsTable";
 import { SalesOrderPDF } from "./SalesOrderPDF";
 import type { SalesOrder, SalesOrderLineItem, SalesOrderStatus } from "@/types/sales-order";
 import { useState, useEffect } from "react";
 
-interface SalesOrderViewDialogProps {
+type SalesOrderViewDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   salesOrder: SalesOrder | null;
-}
+};
 
 export function SalesOrderViewDialog({
   open,
@@ -136,39 +137,39 @@ export function SalesOrderViewDialog({
   const getStatusBadge = (status: SalesOrderStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">Draft</Badge>;
+        return <Badge variant="secondary">{t("draft")}</Badge>;
       case "confirmed":
         return (
           <Badge variant="default" className="bg-blue-600">
-            Confirmed
+            {t("confirmed")}
           </Badge>
         );
       case "in_progress":
         return (
           <Badge variant="default" className="bg-yellow-600">
-            In Progress
+            {t("inProgress")}
           </Badge>
         );
       case "shipped":
         return (
           <Badge variant="default" className="bg-purple-600">
-            Shipped
+            {t("shipped")}
           </Badge>
         );
       case "delivered":
         return (
           <Badge variant="default" className="bg-green-600">
-            Delivered
+            {t("delivered")}
           </Badge>
         );
       case "invoiced":
         return (
           <Badge variant="default" className="bg-indigo-600">
-            Invoiced
+            {t("invoiced")}
           </Badge>
         );
       case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge variant="destructive">{t("cancelled")}</Badge>;
     }
   };
 
@@ -234,7 +235,7 @@ export function SalesOrderViewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-6xl overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-4">
             <DialogTitle>{t("title")}</DialogTitle>
@@ -298,70 +299,34 @@ export function SalesOrderViewDialog({
           {/* Line Items */}
           <div>
             <h3 className="mb-3 text-sm font-semibold">{t("lineItems")}</h3>
-            <div className="overflow-hidden rounded-lg border">
-              <table className="w-full text-sm">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="p-3 text-left">Item</th>
-                    {hasManufacturingLines ? <th className="p-3 text-left">Production</th> : null}
-                    <th className="p-3 text-right">Quantity</th>
-                    <th className="p-3 text-center">Unit</th>
-                    <th className="p-3 text-right">Selling Price</th>
-                    <th className="p-3 text-right">Discount</th>
-                    <th className="p-3 text-right">Tax</th>
-                    <th className="p-3 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {salesOrder.lineItems.map((item, index) => {
-                    return (
-                      <tr key={index} className="border-t">
-                        <td className="p-3">
-                          <div className="font-medium">{item.itemName}</div>
-                          <div className="text-xs text-muted-foreground">{item.itemCode}</div>
-                          {item.description && (
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              {item.description}
+            <SalesDocumentLineItemsTable
+              documentId={salesOrder.id}
+              items={salesOrder.lineItems}
+              showFulfilled={false}
+              productionColumn={
+                hasManufacturingLines
+                  ? {
+                      label: t("production"),
+                      render: (item) =>
+                        item.manufacturing?.required ? (
+                          <div className="space-y-1">
+                            {getManufacturingStatusBadge(item.manufacturing)}
+                            <div className="text-xs text-muted-foreground">
+                              {[
+                                item.manufacturing.jobOrderCode,
+                                item.manufacturing.manufacturingOrderCode,
+                              ]
+                                .filter(Boolean)
+                                .join(" • ")}
                             </div>
-                          )}
-                        </td>
-                        {hasManufacturingLines ? (
-                          <td className="p-3">
-                            {item.manufacturing?.required ? (
-                              <div className="space-y-1">
-                                {getManufacturingStatusBadge(item.manufacturing)}
-                                <div className="text-xs text-muted-foreground">
-                                  {[
-                                    item.manufacturing.jobOrderCode,
-                                    item.manufacturing.manufacturingOrderCode,
-                                  ]
-                                    .filter(Boolean)
-                                    .join(" • ")}
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">Not required</span>
-                            )}
-                          </td>
-                        ) : null}
-                        <td className="p-3 text-right">{item.quantity}</td>
-                        <td className="p-3 text-center">
-                          <span className="text-muted-foreground">
-                            {item.uomCode || item.uomId || "—"}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right">{formatCurrency(item.unitPrice)}</td>
-                        <td className="p-3 text-right">{item.discount}%</td>
-                        <td className="p-3 text-right">{item.taxRate}%</td>
-                        <td className="p-3 text-right font-medium">
-                          {formatCurrency(item.lineTotal)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">{t("notRequired")}</span>
+                        ),
+                    }
+                  : undefined
+              }
+            />
           </div>
 
           {/* Totals */}

@@ -1,6 +1,7 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import type { SalesOrder } from "@/types/sales-order";
+import { formatLineDiscount, salesDocumentRows } from "@/lib/framing/invoicePresenter";
 
 // Define styles
 const styles = StyleSheet.create({
@@ -85,6 +86,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e0e0e0",
     padding: 8,
+  },
+  sizeHeadingRow: {
+    backgroundColor: "#f8f8f8",
   },
   tableCell: {
     fontSize: 9,
@@ -224,6 +228,7 @@ export const SalesOrderPDF: React.FC<SalesOrderPDFProps> = ({
   };
 
   const statusColors = getStatusColor(salesOrder.status);
+  const lineRows = salesOrder.lineItems.flatMap(salesDocumentRows);
 
   return (
     <Document>
@@ -291,39 +296,53 @@ export const SalesOrderPDF: React.FC<SalesOrderPDFProps> = ({
         {/* Line Items Table */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableCell, styles.itemCol]}>Item</Text>
+            <Text style={[styles.tableCell, styles.itemCol]}>Description</Text>
             <Text style={[styles.tableCell, styles.qtyCol]}>Qty</Text>
             <Text style={[styles.tableCell, styles.unitCol]}>Unit</Text>
             <Text style={[styles.tableCell, styles.priceCol]}>Selling Price</Text>
-            <Text style={[styles.tableCell, styles.discountCol]}>Disc%</Text>
+            <Text style={[styles.tableCell, styles.discountCol]}>Discount</Text>
             <Text style={[styles.tableCell, styles.taxCol]}>Tax%</Text>
             <Text style={[styles.tableCell, styles.totalCol]}>Total</Text>
           </View>
 
-          {salesOrder.lineItems.map((item, index) => (
-            <View key={index} style={styles.tableRow}>
+          {lineRows.map((row) => (
+            <View
+              key={row.key}
+              style={[
+                styles.tableRow,
+                ...(row.kind === "sizeHeading" ? [styles.sizeHeadingRow] : []),
+              ]}
+            >
               <View style={styles.itemCol}>
-                <Text style={[styles.tableCell, { fontWeight: "bold" }]}>{item.itemName}</Text>
-                <Text style={[styles.tableCell, { fontSize: 8, color: "#666" }]}>
-                  {item.itemCode}
+                <Text
+                  style={[
+                    styles.tableCell,
+                    ...(row.kind === "sizeHeading" ? [{ fontWeight: "bold" }] : []),
+                  ]}
+                >
+                  {row.description}
                 </Text>
-                {item.description && (
+                {row.detail && (
                   <Text style={[styles.tableCell, { fontSize: 8, color: "#666", marginTop: 2 }]}>
-                    {item.description}
+                    {row.detail}
                   </Text>
                 )}
               </View>
-              <Text style={[styles.tableCell, styles.qtyCol]}>{item.quantity}</Text>
-              <Text style={[styles.tableCell, styles.unitCol]}>
-                {item.uomCode || item.uomId || "-"}
-              </Text>
+              <Text style={[styles.tableCell, styles.qtyCol]}>{row.quantity}</Text>
+              <Text style={[styles.tableCell, styles.unitCol]}>{row.unit || "-"}</Text>
               <Text style={[styles.tableCell, styles.priceCol]}>
-                {formatCurrency(item.unitPrice)}
+                {row.kind === "sizeHeading" ? "" : formatCurrency(row.unitPrice)}
               </Text>
-              <Text style={[styles.tableCell, styles.discountCol]}>{item.discount}%</Text>
-              <Text style={[styles.tableCell, styles.taxCol]}>{item.taxRate}%</Text>
+              <Text style={[styles.tableCell, styles.discountCol]}>
+                {row.kind === "sizeHeading"
+                  ? ""
+                  : formatLineDiscount(row.discountAmount, row.discountRate, formatCurrency)}
+              </Text>
+              <Text style={[styles.tableCell, styles.taxCol]}>
+                {row.kind !== "sizeHeading" && row.taxRate ? `${row.taxRate}%` : ""}
+              </Text>
               <Text style={[styles.tableCell, styles.totalCol]}>
-                {formatCurrency(item.lineTotal)}
+                {row.kind === "sizeHeading" ? "" : formatCurrency(row.amount)}
               </Text>
             </View>
           ))}

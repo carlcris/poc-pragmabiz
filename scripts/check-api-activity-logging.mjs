@@ -3,7 +3,7 @@ import { join, relative } from "node:path";
 
 const API_ROOT = join(process.cwd(), "src", "app", "api");
 const DIRECT_EXPORT_PATTERN =
-  /export\s+(?:async\s+function\s+(GET|POST|PUT|PATCH|DELETE)\b|const\s+(GET|POST|PUT|PATCH|DELETE)\s*=\s*async\b)/g;
+  /export\s+(?:(?:async\s+)?function\s+(GET|POST|PUT|PATCH|DELETE)\b|const\s+(GET|POST|PUT|PATCH|DELETE)\s*=)/g;
 const WRAPPED_EXPORT_PATTERN =
   /export\s+const\s+(GET|POST|PUT|PATCH|DELETE)\s*=\s*withActivityLogging\(/g;
 
@@ -19,10 +19,11 @@ const failures = [];
 
 findRouteFiles(API_ROOT).forEach((filePath) => {
   const source = readFileSync(filePath, "utf8");
-  const directExports = [...source.matchAll(DIRECT_EXPORT_PATTERN)].map(
+  const allExports = [...source.matchAll(DIRECT_EXPORT_PATTERN)].map(
     (match) => match[1] || match[2]
   );
   const wrappedExports = [...source.matchAll(WRAPPED_EXPORT_PATTERN)].map((match) => match[1]);
+  const directExports = allExports.filter((method) => !wrappedExports.includes(method));
 
   if (directExports.length > 0 || wrappedExports.length === 0) {
     failures.push({

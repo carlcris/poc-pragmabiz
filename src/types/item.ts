@@ -37,6 +37,8 @@ export type ItemPriceTier = {
   isActive: boolean;
 };
 
+export type ItemMaterial = "polystyrene" | "wood";
+
 export type Item = {
   id: string;
   companyId: string;
@@ -51,6 +53,8 @@ export type Item = {
   description: string;
   dimensions?: ItemDimensions | null;
   itemType: ItemType;
+  /** What the item is made of, where that changes pricing. Null when unclassified. */
+  material: ItemMaterial | null;
   customFields?: ItemCustomFields | null;
   uom: string;
   uomId: string;

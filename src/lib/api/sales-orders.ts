@@ -4,9 +4,58 @@ import type {
   CreateSalesOrderRequest,
   UpdateSalesOrderRequest,
   SalesOrderPaymentSummary,
+  SalesOrderMutationErrorCode,
 } from "@/types/sales-order";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+
+export class SalesOrderMutationError extends Error {
+  readonly code: SalesOrderMutationErrorCode;
+
+  constructor(message: string, code: SalesOrderMutationErrorCode) {
+    super(message);
+    this.name = "SalesOrderMutationError";
+    this.code = code;
+  }
+}
+
+const salesOrderMutationErrorCodes = new Set<SalesOrderMutationErrorCode>([
+  "SALES_ORDER_UNAUTHENTICATED",
+  "SALES_ORDER_FORBIDDEN",
+  "SALES_ORDER_NOT_FOUND",
+  "SALES_ORDER_NOT_EDITABLE",
+  "SALES_ORDER_ITEMS_REQUIRED",
+  "SALES_ORDER_VALIDATION_FAILED",
+  "SALES_ORDER_CUSTOMER_INVALID",
+  "SALES_ORDER_QUOTATION_LINE_INVALID",
+  "SALES_ORDER_QUOTATION_FRAME_INVALID",
+  "SALES_ORDER_FRAME_SOURCE_REQUIRED",
+  "SALES_ORDER_FRAME_SIZE_INVALID",
+  "SALES_ORDER_FRAME_QUANTITY_EXCEEDS_REMAINING",
+  "SALES_ORDER_FRAME_QUANTITY_MISMATCH",
+  "SALES_ORDER_SAVE_FAILED",
+]);
+
+const isSalesOrderMutationErrorCode = (value: unknown): value is SalesOrderMutationErrorCode =>
+  typeof value === "string" &&
+  salesOrderMutationErrorCodes.has(value as SalesOrderMutationErrorCode);
+
+const parseSalesOrderMutationError = async (
+  response: Response,
+  fallback: string
+): Promise<SalesOrderMutationError> => {
+  const payload: unknown = await response.json().catch(() => null);
+  if (typeof payload !== "object" || payload === null) {
+    return new SalesOrderMutationError(fallback, "SALES_ORDER_SAVE_FAILED");
+  }
+  const message =
+    "error" in payload && typeof payload.error === "string" ? payload.error : fallback;
+  const code =
+    "code" in payload && isSalesOrderMutationErrorCode(payload.code)
+      ? payload.code
+      : "SALES_ORDER_SAVE_FAILED";
+  return new SalesOrderMutationError(message, code);
+};
 
 export interface SalesOrdersResponse {
   data: SalesOrder[];
@@ -16,6 +65,16 @@ export interface SalesOrdersResponse {
     limit: number;
     totalPages: number;
   };
+}
+
+/**
+ * A job order created from a sales order. `billingMode` says which kind of work
+ * it covers — an order mixing chop & join and framing lines produces one of each.
+ */
+export interface FrameJobOrderCreated {
+  id: string;
+  jobOrderCode: string;
+  billingMode: string;
 }
 
 export const salesOrdersApi = {
@@ -47,7 +106,9 @@ export const salesOrdersApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error("Failed to create sales order");
+    if (!response.ok) {
+      throw await parseSalesOrderMutationError(response, "Failed to create sales order");
+    }
     return response.json();
   },
 
@@ -57,7 +118,9 @@ export const salesOrdersApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error("Failed to update sales order");
+    if (!response.ok) {
+      throw await parseSalesOrderMutationError(response, "Failed to update sales order");
+    }
     return response.json();
   },
 
@@ -77,7 +140,9 @@ export const salesOrdersApi = {
     if (!response.ok) {
       const error: unknown = await response.json().catch(() => null);
       const message =
-        typeof error === "object" && error !== null && "error" in error &&
+        typeof error === "object" &&
+        error !== null &&
+        "error" in error &&
         typeof error.error === "string"
           ? error.error
           : "Failed to confirm sales order";
@@ -102,7 +167,9 @@ export const salesOrdersApi = {
     return response.json();
   },
 
-  async cancelOrder(id: string): Promise<{ success: boolean; salesOrderId: string; status: string }> {
+  async cancelOrder(
+    id: string
+  ): Promise<{ success: boolean; salesOrderId: string; status: string }> {
     const response = await fetch(`${API_BASE_URL}/sales-orders/${id}/cancel`, {
       method: "POST",
     });
@@ -134,18 +201,16 @@ export const salesOrdersApi = {
     return response.json();
   },
 
-  async createFrameJobOrder(
-    id: string,
-    warehouseId: string
-  ): Promise<{
+  async createFrameJobOrder(id: string): Promise<{
     success: boolean;
     salesOrderId: string;
-    frameJobOrder: { id: string; jobOrderCode: string };
+    /** The first job order created. Kept for callers that expect a single job. */
+    frameJobOrder: FrameJobOrderCreated;
+    /** Every job order created — one per billing mode present on the order. */
+    frameJobOrders: FrameJobOrderCreated[];
   }> {
     const response = await fetch(`${API_BASE_URL}/sales-orders/${id}/create-frame-job-order`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ warehouseId }),
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: "Failed to create job order" }));

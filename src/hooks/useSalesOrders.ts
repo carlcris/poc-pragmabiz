@@ -34,10 +34,6 @@ export function useCreateSalesOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
       queryClient.invalidateQueries({ queryKey: ["quotations"] });
-      toast.success("Sales order created successfully");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to create sales order");
     },
   });
 }
@@ -51,10 +47,6 @@ export function useUpdateSalesOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
       queryClient.invalidateQueries({ queryKey: ["quotations"] });
-      toast.success("Sales order updated successfully");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to update sales order");
     },
   });
 }
@@ -169,12 +161,10 @@ export function useCreateFrameJobOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ orderId, warehouseId }: { orderId: string; warehouseId: string }) =>
-      salesOrdersApi.createFrameJobOrder(orderId, warehouseId),
+    mutationFn: (orderId: string) => salesOrdersApi.createFrameJobOrder(orderId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
       queryClient.invalidateQueries({ queryKey: ["frame-job-orders"] });
-      toast.success("Job order created successfully");
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to create job order");

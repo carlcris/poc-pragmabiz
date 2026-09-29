@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Box, Download, Eye, Loader2, Printer, Ruler, Scissors } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Download, Eye, Loader2, Pencil, Printer, ShoppingCart } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,15 +12,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SalesDocumentLineItemsTable } from "@/components/common/SalesDocumentLineItemsTable";
 import { useCurrency } from "@/hooks/useCurrency";
+import { quotationTotals } from "@/lib/quotations/quotation-totals";
+import { canEditQuotation } from "@/lib/quotations/editability";
 import type { Quotation, QuotationStatus } from "@/types/quotation";
+import { CreateGuard } from "@/components/permissions/PermissionGuard";
+import { RESOURCES } from "@/constants/resources";
 
 type QuotationViewDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   quotation: Quotation | null;
+  onConvertToSalesOrder?: (quotation: Quotation) => void;
 };
 
 type PreviewFrameProps = {
@@ -127,6 +133,7 @@ function QuotationPrintPreviewDialog({
   onOpenChange: (open: boolean) => void;
   quotation: Quotation;
 }) {
+  const t = useTranslations("quotationViewDialog");
   const tReports = useTranslations("reportsPage");
   const { previewUrl, isGeneratingPreview, setIsGeneratingPreview, replacePreviewUrl } =
     usePdfPreviewState(open);
@@ -179,9 +186,9 @@ function QuotationPrintPreviewDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[92vh] max-w-[88vw] flex-col gap-0 overflow-hidden p-0 xl:max-w-[1500px]">
         <DialogHeader className="border-b px-6 py-4">
-          <DialogTitle>Quotation Preview</DialogTitle>
+          <DialogTitle>{t("previewTitle")}</DialogTitle>
           <DialogDescription>
-            Review {quotation.quotationNumber} before printing or downloading.
+            {t("previewDescription", { number: quotation.quotationNumber })}
           </DialogDescription>
         </DialogHeader>
 
@@ -189,9 +196,9 @@ function QuotationPrintPreviewDialog({
           <PreviewFrame
             url={previewUrl}
             isGenerating={isGeneratingPreview}
-            emptyLabel="The quotation preview is not available yet."
+            emptyLabel={t("previewUnavailable")}
             loadingLabel={tReports("generatingPreview")}
-            title={`Quotation ${quotation.quotationNumber}`}
+            title={t("previewFrameTitle", { number: quotation.quotationNumber })}
           />
         </div>
 
@@ -221,10 +228,18 @@ function QuotationPrintPreviewDialog({
   );
 }
 
-export function QuotationViewDialog({ open, onOpenChange, quotation }: QuotationViewDialogProps) {
+export function QuotationViewDialog({
+  open,
+  onOpenChange,
+  quotation,
+  onConvertToSalesOrder,
+}: QuotationViewDialogProps) {
   const t = useTranslations("quotationViewDialog");
+  const tq = useTranslations("quotationsPage");
+  const ta = useTranslations("quotationAcceptance");
   const locale = useLocale();
   const { formatCurrency } = useCurrency();
+  const router = useRouter();
   const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
@@ -235,40 +250,34 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
 
   if (!quotation) return null;
 
+  // Editing is a page, not a dialog, so this closes the preview first —
+  // otherwise the route changes behind an open overlay and the user returns to
+  // a dialog they thought they had left.
+  const handleEdit = () => {
+    onOpenChange(false);
+    router.push(`/sales/quotations/${quotation.id}/edit`);
+  };
+
   const handlePrint = () => {
     setPreviewOpen(true);
   };
 
-  const getStatusBadge = (status: QuotationStatus) => {
+  const getStatusText = (status: QuotationStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">Draft</Badge>;
+        return <span className="text-muted-foreground">{t("draft")}</span>;
       case "sent":
-        return (
-          <Badge variant="default" className="bg-blue-600">
-            Sent
-          </Badge>
-        );
+        return <span className="text-blue-600">{t("sent")}</span>;
       case "accepted":
-        return (
-          <Badge variant="default" className="bg-green-600">
-            Accepted
-          </Badge>
-        );
+        return <span className="text-green-600">{t("accepted")}</span>;
+      case "partially_ordered":
+        return <span className="text-amber-700">{t("partiallyOrdered")}</span>;
       case "rejected":
-        return <Badge variant="destructive">Rejected</Badge>;
+        return <span className="text-destructive">{t("rejected")}</span>;
       case "expired":
-        return (
-          <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-            Expired
-          </Badge>
-        );
+        return <span className="text-orange-700">{t("expired")}</span>;
       case "ordered":
-        return (
-          <Badge variant="default" className="bg-purple-600">
-            Ordered
-          </Badge>
-        );
+        return <span className="text-purple-700">{t("ordered")}</span>;
     }
   };
 
@@ -280,38 +289,21 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
     });
   };
 
-  const formatNumber = (value: number | undefined) => {
-    if (value === undefined || !Number.isFinite(value)) return "—";
-    return new Intl.NumberFormat(locale, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(value);
-  };
-
-  const formatServiceFeeMode = (value: string) => {
-    if (value === "per_frame") return "Per frame";
-    if (value === "per_order") return "Per order";
-    if (value === "size_based") return "By frame size";
-    if (value === "service_type") return "By service type";
-    if (value === "manual") return "Manual";
-    return value;
-  };
-
-  const formatInvoiceDisplayMode = (value: string) => {
-    if (value === "summary") return "Summary";
-    if (value === "components") return "Components";
-    if (value === "both") return "Summary and components";
-    return value;
-  };
+  const showTermsAndConditions =
+    Boolean(quotation.terms) && quotation.paymentTerms.trim().toLowerCase() !== "cash";
+  const totals = quotationTotals(quotation.lineItems);
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto print:max-h-none">
+        <DialogContent
+          className="max-h-[90vh] max-w-6xl overflow-y-auto print:max-h-none"
+          hideCloseButton
+        >
           <DialogHeader>
             <div className="flex items-center gap-4">
               <DialogTitle>{t("title")}</DialogTitle>
-              {getStatusBadge(quotation.status)}
+              <span className="text-sm font-medium">{getStatusText(quotation.status)}</span>
             </div>
             <DialogDescription>
               {t("description", { number: quotation.quotationNumber })}
@@ -320,7 +312,7 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
 
           <div className="space-y-6">
             {/* Header Information */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid gap-6 md:grid-cols-2">
               <div>
                 <h3 className="mb-3 text-sm font-semibold">{t("customerInformation")}</h3>
                 <div className="space-y-2 text-sm">
@@ -346,10 +338,31 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
                     <span className="text-muted-foreground">{t("validUntil")}:</span>
                     <div className="font-medium">{formatDate(quotation.validUntil)}</div>
                   </div>
-                  {quotation.terms && (
+                  {quotation.paymentTerms && (
                     <div>
                       <span className="text-muted-foreground">{t("paymentTerms")}:</span>
-                      <div className="font-medium">{quotation.terms}</div>
+                      <div className="font-medium">{quotation.paymentTerms}</div>
+                    </div>
+                  )}
+                  {/* The acceptance record, once there is one. This is what the
+                      shop produces months later if a job is disputed. */}
+                  {quotation.acceptedByName && (
+                    <div>
+                      <span className="text-muted-foreground">{t("acceptedBy")}:</span>
+                      <div className="font-medium">
+                        {quotation.acceptedByName}
+                        {quotation.acceptedChannel ? (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            · {ta(`channels.${quotation.acceptedChannel}`)}
+                          </span>
+                        ) : null}
+                      </div>
+                      {quotation.acceptedAt ? (
+                        <div className="text-xs text-muted-foreground">
+                          {formatDate(quotation.acceptedAt)}
+                        </div>
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -374,257 +387,46 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
 
             <hr className="border-t" />
 
-            <div className="space-y-3">
-              <h3 className="mb-3 text-sm font-semibold">{t("lineItems")}</h3>
-              {quotation.lineItems.map((item, index) => {
-                const config = item.frameConfiguration;
-                const components = item.frameComponents || [];
-                const moldingComponent = components.find(
-                  (component) => component.componentType === "molding"
-                );
-                const otherComponents = components.filter(
-                  (component) => component.componentType !== "molding"
-                );
-
-                return (
-                  <div key={`${item.id}-${index}`} className="overflow-hidden rounded-lg border">
-                    <div className="grid gap-3 bg-muted/40 p-4 text-sm md:grid-cols-12 md:items-start">
-                      <div className="md:col-span-4">
-                        <div className="font-semibold">{item.itemName}</div>
-                        <div className="text-xs text-muted-foreground">{item.itemCode}</div>
-                        {item.description && (
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {item.description}
-                          </div>
-                        )}
-                      </div>
-                      <div className="md:col-span-2 md:text-right">
-                        <div className="text-xs text-muted-foreground">Quantity</div>
-                        <div className="font-medium">
-                          {formatNumber(item.quantity)} {item.uomCode || item.uomName || ""}
-                        </div>
-                        <div className="mt-2 text-xs text-muted-foreground">
-                          {t("fulfilled")}
-                        </div>
-                        <div className="font-medium">
-                          {formatNumber(item.orderedQuantity ?? 0)}{" "}
-                          {item.uomCode || item.uomName || ""}
-                        </div>
-                      </div>
-                      <div className="md:col-span-2 md:text-right">
-                        <div className="text-xs text-muted-foreground">Selling Price</div>
-                        <div className="font-medium">{formatCurrency(item.unitPrice)}</div>
-                      </div>
-                      <div className="md:col-span-1 md:text-right">
-                        <div className="text-xs text-muted-foreground">Disc</div>
-                        <div className="font-medium">{formatNumber(item.discount)}%</div>
-                      </div>
-                      <div className="md:col-span-1 md:text-right">
-                        <div className="text-xs text-muted-foreground">Tax</div>
-                        <div className="font-medium">{formatNumber(item.taxRate)}%</div>
-                      </div>
-                      <div className="md:col-span-2 md:text-right">
-                        <div className="text-xs text-muted-foreground">Total</div>
-                        <div className="text-base font-bold">{formatCurrency(item.lineTotal)}</div>
-                      </div>
-                    </div>
-
-                    {config && (
-                      <div className="space-y-4 p-4">
-                        <div className="grid gap-3 md:grid-cols-3">
-                          <div className="rounded-md border p-3">
-                            <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                              <Ruler className="h-4 w-4" />
-                              Frame Size
-                            </div>
-                            <div className="space-y-1 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Width</span>
-                                <span>{formatNumber(config.width)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Height</span>
-                                <span>{formatNumber(config.height)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Allowance</span>
-                                <span>{formatNumber(config.fixedAllowance)}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="rounded-md border p-3">
-                            <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                              <Scissors className="h-4 w-4" />
-                              Molding
-                            </div>
-                            <div className="space-y-1 text-sm">
-                              <div className="font-medium">
-                                {config.moldingItemCode || moldingComponent?.itemCode || "—"}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {config.moldingItemName || moldingComponent?.itemName || ""}
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Stick length</span>
-                                <span>{formatNumber(config.moldingStickLength)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Sticks</span>
-                                <span>{formatNumber(config.moldingSticksRequired)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Amount</span>
-                                <span>{formatCurrency(moldingComponent?.totalAmount || 0)}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="rounded-md border p-3">
-                            <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                              <Box className="h-4 w-4" />
-                              Service
-                            </div>
-                            <div className="space-y-1 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Mode</span>
-                                <span>{formatServiceFeeMode(config.serviceFeeMode)}</span>
-                              </div>
-                              {config.serviceType && (
-                                <div className="flex justify-between">
-                                  <span className="text-muted-foreground">Type</span>
-                                  <span>{config.serviceType}</span>
-                                </div>
-                              )}
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Fee</span>
-                                <span>{formatCurrency(config.serviceFeeAmount)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Total service</span>
-                                <span>{formatCurrency(config.totalServiceFee)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Invoice</span>
-                                <span>{formatInvoiceDisplayMode(config.invoiceDisplayMode)}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="mb-2 text-sm font-semibold">Material Components</div>
-                          <div className="overflow-hidden rounded-md border">
-                            <table className="w-full text-sm">
-                              <thead className="bg-muted/60">
-                                <tr>
-                                  <th className="p-2 text-left">Type</th>
-                                  <th className="p-2 text-left">Item</th>
-                                  <th className="p-2 text-right">Qty / Frame</th>
-                                  <th className="p-2 text-right">Total Qty</th>
-                                  <th className="p-2 text-center">Unit</th>
-                                  <th className="p-2 text-right">Rate</th>
-                                  <th className="p-2 text-right">Amount</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {components.length === 0 ? (
-                                  <tr>
-                                    <td
-                                      colSpan={7}
-                                      className="p-3 text-center text-muted-foreground"
-                                    >
-                                      No material components recorded.
-                                    </td>
-                                  </tr>
-                                ) : (
-                                  components.map((component) => (
-                                    <tr key={component.id || component.itemId} className="border-t">
-                                      <td className="p-2 capitalize">{component.componentType}</td>
-                                      <td className="p-2">
-                                        <div className="font-medium">
-                                          {component.itemCode || "—"} {component.itemName || ""}
-                                        </div>
-                                        {component.description && (
-                                          <div className="text-xs text-muted-foreground">
-                                            {component.description}
-                                          </div>
-                                        )}
-                                      </td>
-                                      <td className="p-2 text-right">
-                                        {formatNumber(component.qtyPerFrame)}
-                                      </td>
-                                      <td className="p-2 text-right">
-                                        {formatNumber(component.totalQuantity)}
-                                      </td>
-                                      <td className="p-2 text-center">
-                                        {component.uomCode || component.uomId}
-                                      </td>
-                                      <td className="p-2 text-right">
-                                        {formatCurrency(component.unitRate)}
-                                      </td>
-                                      <td className="p-2 text-right font-medium">
-                                        {formatCurrency(component.totalAmount)}
-                                      </td>
-                                    </tr>
-                                  ))
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-
-                        {otherComponents.length > 0 && (
-                          <div className="text-right text-sm">
-                            <span className="text-muted-foreground">Other materials: </span>
-                            <span className="font-medium">
-                              {formatCurrency(
-                                otherComponents.reduce(
-                                  (sum, component) => sum + component.totalAmount,
-                                  0
-                                )
-                              )}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold">{t("lineItems")}</h3>
+              <SalesDocumentLineItemsTable
+                documentId={quotation.id}
+                items={quotation.lineItems}
+                showFulfilled
+              />
+            </section>
 
             {/* Totals */}
             <div className="flex justify-end">
               <div className="w-64 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{t("subtotal")}:</span>
-                  <span className="font-medium">{formatCurrency(quotation.subtotal)}</span>
+                  <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{t("discount")}:</span>
                   <span className="font-medium text-red-600">
-                    -{formatCurrency(quotation.totalDiscount)}
+                    -{formatCurrency(totals.totalDiscount)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{t("tax")}:</span>
-                  <span className="font-medium">{formatCurrency(quotation.totalTax)}</span>
+                  <span className="font-medium">{formatCurrency(totals.totalTax)}</span>
                 </div>
                 <hr className="border-t" />
                 <div className="flex justify-between text-base font-bold">
                   <span>{t("totalAmount")}:</span>
-                  <span>{formatCurrency(quotation.totalAmount)}</span>
+                  <span>{formatCurrency(totals.totalAmount)}</span>
                 </div>
               </div>
             </div>
 
             {/* Terms and Notes */}
-            {(quotation.terms || quotation.notes) && (
+            {(showTermsAndConditions || quotation.notes) && (
               <>
                 <hr className="border-t" />
                 <div className="space-y-4">
-                  {quotation.terms && (
+                  {showTermsAndConditions && (
                     <div>
                       <h3 className="mb-2 text-sm font-semibold">{t("termsConditions")}</h3>
                       <p className="whitespace-pre-wrap text-sm text-muted-foreground">
@@ -645,11 +447,35 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
             )}
           </div>
 
-          <DialogFooter className="print:hidden">
-            <Button onClick={handlePrint} variant="outline">
-              <Printer className="mr-2 h-4 w-4" />
-              {t("printQuotation")}
+          {/* Close sits left, away from the actions, so it is not fallen into
+              while reaching for Print. Edit is the primary move on a quotation
+              still being negotiated; once confirmed or accepted it is gone
+              rather than disabled — a locked quotation is not "edit later", it
+              is not editable at all. */}
+          <DialogFooter className="gap-2 border-t pt-4 sm:justify-between print:hidden">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              {t("close")}
             </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button onClick={handlePrint} variant="outline">
+                <Printer className="mr-2 h-4 w-4" />
+                {t("printPreview")}
+              </Button>
+              {quotation.status === "accepted" && onConvertToSalesOrder ? (
+                <CreateGuard resource={RESOURCES.SALES_ORDERS}>
+                  <Button onClick={() => onConvertToSalesOrder(quotation)}>
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    {tq("convertAction")}
+                  </Button>
+                </CreateGuard>
+              ) : null}
+              {canEditQuotation(quotation.status) ? (
+                <Button onClick={handleEdit}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  {t("edit")}
+                </Button>
+              ) : null}
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

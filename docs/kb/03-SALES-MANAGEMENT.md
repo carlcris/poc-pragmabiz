@@ -42,6 +42,10 @@ A **Quotation** is a sales proposal sent to customers with pricing and terms.
 - Validity period
 - Terms and conditions
 - PDF generation for customer
+- Quotation details expose component drilldown only for Chop & Join lines. Framing lines are customer-facing finished items and display like ordinary lines; their stored components remain internal production details.
+- Raw-material quotation entry only adds ordinary inventory lines with quantity, selling price, discount, and tax. Frame configurations are created and edited exclusively through the Chop & Join or Framing dialogs; raw-material entry has no job-order configuration, component editor, cut planner, or service-fee controls.
+- Configured-frame line descriptions lead with the finished outside frame size. Artwork/opening dimensions remain part of the saved production geometry but are not presented as the quoted item's size.
+- Draft and Sent quotations can be edited. Saving changes to a Sent quotation returns it to Draft so the revised version must be sent again; Accepted and later states are immutable through the edit workflow.
 
 **Fulfillment Tracking**:
 
@@ -80,6 +84,13 @@ are deducted in the item's base unit. Sales Invoices remain accounting documents
 second reservation. The conversion dialog shows the warehouse reserved during confirmation as a
 read-only value. Users may choose a location within that warehouse, but cannot switch the invoice
 to another warehouse because its physical deduction must consume the existing commitment.
+
+Customer-facing Sales Order and Sales Invoice views and PDFs expand Chop & Join lines into their
+billable component rows (moulding, mat, glazing, backing, and hardware). The synthetic Chop & Join
+parent is not printed as a separate line. Framing work and ordinary inventory remain single summary
+lines. Linked invoices resolve the immutable component snapshot from their originating Sales Order,
+so component quantities, rates, discounts, and amounts match the confirmed order without creating
+duplicate invoice inventory rows.
 
 ### 3. Delivery Note
 
@@ -121,6 +132,7 @@ An **Invoice** is a bill sent to customers for payment.
 - Credit note support
 - PDF generation
 - Email delivery
+- Component-level Chop & Join lines in the detail view and PDF
 
 **GL Posting** (automatic):
 
@@ -167,13 +179,70 @@ CREATE TABLE customers (
 );
 ```
 
-Sales line entry uses active item price tiers as the selling price source. A customer can override the price for a specific item and tier in the customer's **Special Prices** tab. At pricing time, an active customer-specific price whose effective date range includes today replaces only the matching standard item tier; tiers without an override continue to use the standard item price. Quotations, sales orders, invoices, and POS lines default to the configured inventory default pricing tier and allow users to select another available tier; the selected tier code/name and resolved selling price are persisted on the line as a price snapshot.
+Sales line entry uses active item price tiers as the selling price source. Standard item price tiers are company-scoped by RLS: authenticated users can read, create, and update tiers only for their own company. A customer can override the price for a specific item and tier in the customer's **Special Prices** tab. At pricing time, an active customer-specific price whose effective date range includes today replaces only the matching standard item tier; tiers without an override continue to use the standard item price. Quotations, sales orders, invoices, and POS lines default to the configured inventory default pricing tier and allow users to select another available tier; the selected tier code/name and resolved selling price are persisted on the line as a price snapshot.
 
 Special-price date ranges for the same customer, item, and tier cannot overlap. The special-price list is server-filtered and paginated. Viewing it requires `customers.tab.special_prices.view`; creating, editing, or deactivating a price additionally requires `customers.operation.special_prices.edit` and the corresponding customer edit permission. Admin and Super Admin roles receive both granular permissions by default.
 
 Changing a customer does not rewrite prices already saved on quotation, sales-order, or invoice lines. Selecting an item or tier resolves pricing for the currently selected customer. POS additionally reprices its open cart when the selected customer changes and restores standard pricing for a walk-in customer.
 
 When a sales-order line is added from an accepted quotation, the quotation's captured pricing tier, tier name, and unit price are copied unchanged into the sales order. The import does not reprice the line against current item or customer pricing.
+
+Configured framing and chop-and-join work can only enter a Sales Order from an accepted quotation. The item, description, unit, price, discount, tax, geometry, mat layers, and components are read-only in the Sales Order; only the quantity to order may change. The quantity dialog identifies each configured line and size by its finished outside frame dimensions, not its artwork/opening dimensions, and omits sizes whose quoted quantity has already been fully allocated. For a multi-size line, the user enters a separate partial quantity for each quoted size and the line quantity is their sum. Every selected size is stored as its own Sales Order configuration and remains linked to the matching quotation configuration. Draft creation and replacement editing copy the selected quotation hierarchy and commercial values in one database transaction. The Sales Order no longer supports manually configuring an inventory line as a frame job.
+
+Creating the Frame Job Order from a confirmed Sales Order copies production demand only; it does not
+ask for a warehouse or check, reserve, or deduct inventory. Warehouse ownership begins in the job
+order's Production Material Request: draft records demand, approval reserves all lines atomically,
+and issue creates the outbound stock transaction. Production may start and finish without a request
+or with partial issued quantities when residual materials are used. Completion preserves actual issued
+quantities, closes unissued requests and releases unused reservations; it never fabricates consumption
+or deducts inventory again. Each sales-order line reports its own job order's production status.
+
+Quotation headers aggregate saved exact line totals, discounts and taxes rather than multiplying
+rounded display rates. Header subtotal and discount include component-level discounts, while parent
+line discounts remain separate so conversion cannot subtract component discounts twice.
+Sales-order edits preserve fixed quotation discounts; partial multi-size
+orders use the selected sizes' saved commercial amounts, not the parent line's average rate.
+Component discount amounts and percentages are copied into each order-size snapshot. Full
+conversion and draft edits include those component deductions in both the header subtotal and
+discount without subtracting them from the payable amount again. Partial sizes prorate the saved
+component amounts and discounts to cents. Setting a size quantity to zero excludes that size from
+the request; at least one positive whole-frame quantity is required. Opening an ordinary line with
+no frame sizes retains its saved quantity.
+
+Printed quotation, order, and invoice discount amounts and effective percentages use the pre-tax
+base. For example, two units at 100 with a 10% discount and 12% tax show a 20 discount (10%),
+not 22.40; a fully discounted ordinary line retains its full gross discount amount.
+New configuration rates (frame, mat, glazing, and backing), mat-layer rates, component discount
+amounts, and frame quantities are stored with two decimal places. Frame counts remain whole-number
+selections; geometric dimensions retain their separate precision.
+
+Quotation and Sales Order Details share the same compact line table. Each configured line shows
+one parent row with an em dash for selling price, its saved discount amount and effective pre-tax
+percentage, and its exact pre-discount, pre-tax total. Component discounts are included in both
+the parent gross amount and its displayed discount, so the row amounts reconcile to the document
+subtotal. Expanded component rows also show amounts before their own discounts. Saved payable
+line totals are unchanged; the summary subtracts discounts and adds tax once.
+
+The editable Sales Order form and its quantity dialog also retain fixed and component discounts.
+Their Discount cells show the amount and effective pre-tax percentage, configured selling prices
+are shown as an em dash, and the editable table's row totals are before discount and tax. Quantity
+previews use read-only original quotation pricing, including per-component cent rounding and
+value-based allocation of whole-line discounts, rather than multiplying a rounded average rate.
+The availability endpoint loads saved discount/tax amounts for its bounded page instead of
+substituting zero. Order responses include `quotationPricing` from existing source relationships;
+this preview metadata is never sent in mutation payloads. The database RPC still owns final pricing.
+If source pricing cannot be read, the quantity dialog asks the user to reload rather than guessing.
+
+Chop & Join components expand beneath the parent; Framing stays a summary row.
+Ordinary inventory lines retain their selling price. Sales Orders retain
+per-line production context, while quotations retain fulfilled quantities. Both sales-order list
+and detail responses include each line's saved `discountAmount`, including fixed discounts with
+a zero stored percentage. Print/PDF layouts are separate from this on-screen table.
+
+Both quotation confirmation and acceptance through the status endpoint save acceptance metadata and
+waivers in one database transaction. A waiver failure leaves the prior status and evidence unchanged.
+New moulding selections without a price tier for the selected billing mode cannot be applied; reopening
+a saved configuration preserves its captured rates without requiring a catalogue reprice.
 
 #### quotations
 
@@ -528,7 +597,29 @@ Confirm quotation.
 
 **Permissions**: `edit` on `sales_quotations`
 
-**Effect**: Changes status to 'confirmed', quotation can now spawn sales orders
+**Effect**: Records customer acceptance and changes status to `accepted`, allowing the quotation to spawn sales orders.
+
+#### POST /api/quotations/[id]/convert-to-sales-order
+
+Convert every line of a fully accepted, unfulfilled quotation into one draft sales order.
+
+**Permissions**: `create` on `sales_orders`
+
+**Effect**:
+
+- Copies every quotation line and preserves each framing or chop-and-join size as a distinct configuration.
+- Preserves the accepted quotation's exact prices, discounts, taxes, and totals.
+- Links each sales-order line to its source quotation line and updates quotation fulfillment to `ordered`.
+- Rejects quotations that are not accepted or already have an active sales-order allocation. Partially ordered quotations continue through the quantity-selecting Sales Order flow.
+- Creates the sales order and all dependent line/configuration records in one database transaction.
+
+#### PUT /api/quotations/[id]
+
+Update an editable quotation and its line items in one transaction.
+
+**Permissions**: `edit` on `sales_quotations`
+
+**Status rule**: Draft and Sent quotations may be updated. A successful update always leaves the quotation in Draft; all other statuses return `QUOTATION_NOT_EDITABLE` without changing quotation data.
 
 #### GET /api/quotations/[id]/fulfillment
 
@@ -568,26 +659,44 @@ Create sales order.
 
 ```json
 {
-  "quotation_id": "uuid", // Optional
-  "customer_id": "uuid",
-  "order_date": "2025-06-14",
-  "delivery_date": "2025-06-21",
-  "lines": [
+  "customerId": "uuid",
+  "orderDate": "2025-06-14",
+  "expectedDeliveryDate": "2025-06-21",
+  "lineItems": [
     {
-      "quotation_line_id": "uuid", // If from quotation
-      "item_id": "uuid",
-      "quantity": 50, // Cannot exceed quotation remaining
-      "unit_id": "uuid",
-      "unit_price": 10.0
+      "quotationId": "uuid",
+      "quotationItemId": "uuid",
+      "itemId": "uuid",
+      "description": "Quoted frame",
+      "quantity": 5,
+      "uomId": "uuid",
+      "unitPrice": 648.67,
+      "discount": 0,
+      "taxRate": 0,
+      "frameSizeSelections": [
+        { "quotationConfigurationId": "uuid", "quantity": 3 },
+        { "quotationConfigurationId": "uuid", "quantity": 2 }
+      ]
     }
-  ]
+  ],
+  "shippingAddress": "",
+  "shippingCity": "",
+  "shippingState": "",
+  "shippingPostalCode": "",
+  "shippingCountry": "",
+  "paymentTerms": "Cash",
+  "notes": ""
 }
 ```
 
 **Validation** (if from quotation):
 
-- Line quantities cannot exceed remaining quotation quantities
-- Updates quotation line `fulfilled_quantity`
+- The quotation must be accepted and belong to the selected customer.
+- The line quantity cannot exceed the quotation line's remaining quantity.
+- Frame-size selections must reference configurations on that quotation line, cannot exceed each size's remaining quantity, and must sum to the line quantity.
+- The database ignores client-provided commercial values for linked lines and copies the accepted quotation values.
+- Direct inventory lines cannot submit frame configuration data.
+- Active draft Sales Orders count toward quotation fulfillment; cancellation or deletion releases the quantity.
 
 #### POST /api/sales-orders/[id]/confirm
 
@@ -815,9 +924,9 @@ Cancel invoice.
 ### Workflow 1: Quotation to Sales Order
 
 1. Create quotation with line items
-2. Confirm quotation (status: confirmed)
-3. Customer accepts quotation
-4. Create sales order from quotation
+2. Confirm customer acceptance (status: accepted)
+3. Review the accepted quotation
+4. Convert the complete accepted quotation into one draft Sales Order, or use Create Sales Order to select partial quantities
 5. Link sales order lines to quotation lines
 6. System validates quantities don't exceed remaining
 7. System updates quotation fulfillment tracking

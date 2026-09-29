@@ -74,10 +74,29 @@ export function useConfirmQuotation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, warehouseId }: { id: string; warehouseId?: string | null }) =>
-      quotationsApi.confirm(id, warehouseId),
+    mutationFn: ({
+      id,
+      warehouseId,
+      acceptance,
+    }: {
+      id: string;
+      warehouseId?: string | null;
+      acceptance?: Parameters<typeof quotationsApi.confirm>[2];
+    }) => quotationsApi.confirm(id, warehouseId, acceptance),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUOTATIONS_KEY] });
+    },
+  });
+}
+
+export function useConvertQuotationToSalesOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => quotationsApi.convertToSalesOrder(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUOTATIONS_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
     },
   });
 }

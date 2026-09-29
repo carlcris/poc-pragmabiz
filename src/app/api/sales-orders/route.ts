@@ -1,12 +1,25 @@
+import {
+  getLineManufacturingStatus,
+  type LineManufacturingContext,
+} from "@/lib/sales-orders/line-manufacturing-status";
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
-import type { SalesOrder, SalesOrderLineItem, CreateSalesOrderRequest } from "@/types/sales-order";
-import type { FrameQuotationComponent, FrameQuotationConfiguration } from "@/types/quotation";
+import type { SalesOrder, SalesOrderLineItem } from "@/types/sales-order";
+import { salesOrderMutationSchema } from "@/lib/validations/sales-order";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import {
+  getSalesOrderMutationFailure,
+  loadSalesOrderFrameDetails,
+  transformSalesOrderFrameDetails,
+  transformSalesOrderQuotationPricing,
+  type DbQuotationPricing,
+  type DbSalesOrderItemComponent,
+  type DbSalesOrderItemConfiguration,
+  type DbSalesOrderItemMatLayer,
+} from "./frame-details";
 
-type SupabaseClient = Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"];
 type DbSalesOrder = {
   id: string;
   company_id: string;
@@ -46,6 +59,7 @@ type DbSalesOrderItem = {
   pricing_tier_name: string | null;
   rate: number | string;
   discount_percent: number | string | null;
+  discount_amount: number | string | null;
   tax_percent: number | string | null;
   line_total: number | string;
   quantity_shipped: number | string | null;
@@ -61,42 +75,10 @@ type DbUser = { id: string; first_name: string | null; last_name: string | null 
 type DbUoM = { id: string; code: string; name: string };
 type DbWarehouse = { id: string; warehouse_code: string; warehouse_name: string };
 type DbSalesOrderItemWithRelations = DbSalesOrderItem & {
+  source_pricing?: DbQuotationPricing | DbQuotationPricing[] | null;
   items?: DbItem | DbItem[] | null;
   units_of_measure?: DbUoM | DbUoM[] | null;
   sales_quotations?: { quotation_code: string } | { quotation_code: string }[] | null;
-};
-type DbSalesOrderItemConfiguration = {
-  id: string;
-  order_item_id: string;
-  width: number | string;
-  height: number | string;
-  fixed_allowance: number | string | null;
-  molding_item_id: string | null;
-  molding_stick_length: number | string | null;
-  molding_sticks_required: number | string | null;
-  service_fee_mode: string;
-  service_type: string | null;
-  service_fee_amount: number | string | null;
-  total_service_fee: number | string | null;
-  invoice_display_mode: string;
-  items?: DbItem | DbItem[] | null;
-};
-type DbSalesOrderItemComponent = {
-  id: string;
-  order_item_id: string;
-  component_type: string;
-  source: string;
-  item_id: string;
-  description: string | null;
-  qty_per_frame: number | string;
-  total_quantity: number | string;
-  uom_id: string;
-  unit_rate: number | string;
-  total_amount: number | string;
-  rounding_mode: string | null;
-  sort_order: number | null;
-  items?: DbItem | DbItem[] | null;
-  units_of_measure?: DbUoM | DbUoM[] | null;
 };
 type DbFrameJobOrderSummary = {
   id: string;
@@ -121,31 +103,6 @@ type DbManufacturingOperationSummary = {
   operation_type: string;
   status: string;
   sequence_no: number;
-};
-type DbSalesOrderFrameConfigSummary = {
-  order_item_id: string;
-};
-type LineManufacturingContext = {
-  eligibleItemIds: Set<string>;
-  itemOrderById: Map<string, string>;
-  frameJobOrderBySalesOrderId: Map<string, { id: string; jobOrderCode: string; status: string }>;
-  frameJobOrderItemBySalesOrderItemId: Map<string, DbFrameJobOrderItemSummary>;
-  manufacturingOrderByJobOrderId: Map<
-    string,
-    { id: string; manufacturingOrderCode: string; status: string }
-  >;
-  operationByManufacturingOrderId: Map<string, DbManufacturingOperationSummary>;
-};
-type SalesOrderLineItemInput = Omit<
-  SalesOrderLineItem,
-  "id" | "lineTotal" | "quantityShipped" | "quantityDelivered"
->;
-type CalculatedSalesOrderLineItem = SalesOrderLineItemInput & {
-  discountAmount: number;
-  taxAmount: number;
-  lineTotal: number;
-  quantityShipped?: number;
-  quantityDelivered?: number;
 };
 
 const SALES_ORDER_SELECT = `
@@ -190,6 +147,7 @@ const SALES_ORDER_SELECT = `
 ` as const;
 
 const SALES_ORDER_ITEM_SELECT = `
+  source_pricing:quotation_item_id (quantity, discount_amount, tax_amount, line_total),
   id,
   order_id,
   item_id,
@@ -203,6 +161,7 @@ const SALES_ORDER_ITEM_SELECT = `
   pricing_tier_name,
   rate,
   discount_percent,
+  discount_amount,
   tax_percent,
   line_total,
   quantity_shipped,
@@ -225,159 +184,6 @@ const SALES_ORDER_ITEM_SELECT = `
     quotation_code
   )
 ` as const;
-
-const SALES_ORDER_CONFIGURATION_SELECT = `
-  id,
-  order_item_id,
-  width,
-  height,
-  fixed_allowance,
-  molding_item_id,
-  molding_stick_length,
-  molding_sticks_required,
-  service_fee_mode,
-  service_type,
-  service_fee_amount,
-  total_service_fee,
-  invoice_display_mode,
-  items:molding_item_id (
-    id,
-    item_code,
-    item_name
-  )
-` as const;
-
-const SALES_ORDER_COMPONENT_SELECT = `
-  id,
-  order_item_id,
-  component_type,
-  source,
-  item_id,
-  description,
-  qty_per_frame,
-  total_quantity,
-  uom_id,
-  unit_rate,
-  total_amount,
-  rounding_mode,
-  sort_order,
-  items:item_id (
-    id,
-    item_code,
-    item_name
-  ),
-  units_of_measure:uom_id (
-    id,
-    code,
-    name
-  )
-` as const;
-
-type QuotationLinkRow = {
-  id: string;
-  item_id: string;
-  quotation_id: string;
-  sales_quotations?:
-    | { id: string; customer_id: string; status: string | null }
-    | { id: string; customer_id: string; status: string | null }[]
-    | null;
-};
-
-async function normalizeQuotationLinkedItems(
-  supabase: SupabaseClient,
-  customerId: string,
-  items: CalculatedSalesOrderLineItem[]
-): Promise<{ items: CalculatedSalesOrderLineItem[]; error?: string }> {
-  const quotationItemIds = Array.from(
-    new Set(items.map((item) => item.quotationItemId).filter((id): id is string => !!id))
-  );
-
-  if (quotationItemIds.length === 0) {
-    return {
-      items: items.map((item) => ({ ...item, quotationId: null, quotationItemId: null })),
-    };
-  }
-
-  const { data, error } = await supabase
-    .from("sales_quotation_items")
-    .select(
-      `
-      id,
-      item_id,
-      quotation_id,
-      sales_quotations:quotation_id (
-        id,
-        customer_id,
-        status
-      )
-    `
-    )
-    .in("id", quotationItemIds)
-    .is("deleted_at", null);
-
-  if (error) {
-    return { items, error: "Failed to validate quotation line items" };
-  }
-
-  const quotationLineById = new Map((data as QuotationLinkRow[]).map((row) => [row.id, row]));
-  const normalizedItems: CalculatedSalesOrderLineItem[] = [];
-
-  for (const item of items) {
-    if (!item.quotationItemId || !item.quotationId) {
-      normalizedItems.push({ ...item, quotationId: null, quotationItemId: null });
-      continue;
-    }
-
-    const quotationLine = quotationLineById.get(item.quotationItemId);
-    const quotation = Array.isArray(quotationLine?.sales_quotations)
-      ? quotationLine?.sales_quotations[0]
-      : quotationLine?.sales_quotations;
-
-    if (
-      !quotationLine ||
-      quotationLine.quotation_id !== item.quotationId ||
-      !quotation ||
-      quotation.customer_id !== customerId ||
-      !["accepted", "partially_ordered", "ordered"].includes(quotation.status || "")
-    ) {
-      return { items, error: "Selected quotation line is not available for this customer" };
-    }
-
-    normalizedItems.push(
-      quotationLine.item_id === item.itemId
-        ? item
-        : { ...item, quotationId: null, quotationItemId: null }
-    );
-  }
-
-  return { items: normalizedItems };
-}
-
-const asFrameServiceFeeMode = (value: string): FrameQuotationConfiguration["serviceFeeMode"] => {
-  switch (value) {
-    case "per_order":
-    case "size_based":
-    case "service_type":
-    case "manual":
-      return value;
-    default:
-      return "per_frame";
-  }
-};
-
-const asFrameInvoiceDisplayMode = (
-  value: string
-): FrameQuotationConfiguration["invoiceDisplayMode"] => {
-  return value === "components" || value === "both" ? value : "summary";
-};
-
-const asFrameComponentType = (value: string): FrameQuotationComponent["componentType"] => {
-  return value === "molding" || value === "accessory" ? value : "material";
-};
-
-const asFrameComponentSource = (value: string): FrameQuotationComponent["source"] => {
-  return value === "manual" ? "manual" : "auto";
-};
 
 // Transform database sales order to frontend type
 function transformDbSalesOrder(
@@ -429,16 +235,19 @@ function transformDbSalesOrder(
 // Transform database sales order item to frontend type
 function transformDbSalesOrderItem(
   dbItem: DbSalesOrderItemWithRelations,
-  configuration?: DbSalesOrderItemConfiguration | null,
-  components: DbSalesOrderItemComponent[] = []
+  configurations: DbSalesOrderItemConfiguration[] = [],
+  components: DbSalesOrderItemComponent[] = [],
+  matLayersByConfigurationId: Map<string, DbSalesOrderItemMatLayer[]> = new Map()
 ): SalesOrderLineItem {
   const item = Array.isArray(dbItem.items) ? (dbItem.items[0] ?? null) : dbItem.items;
   const quotation = Array.isArray(dbItem.sales_quotations)
     ? (dbItem.sales_quotations[0] ?? null)
     : dbItem.sales_quotations;
-  const moldingItem = Array.isArray(configuration?.items)
-    ? (configuration?.items[0] ?? null)
-    : configuration?.items;
+  const frameDetails = transformSalesOrderFrameDetails(
+    configurations,
+    components,
+    matLayersByConfigurationId
+  );
 
   return {
     id: dbItem.id,
@@ -459,122 +268,19 @@ function transformDbSalesOrderItem(
     pricingTierName: dbItem.pricing_tier_name || undefined,
     unitPrice: Number(dbItem.rate),
     discount: Number(dbItem.discount_percent) || 0,
+    discountAmount: Number(dbItem.discount_amount) || 0,
+    quotationPricing: transformSalesOrderQuotationPricing(
+      dbItem.source_pricing,
+      configurations,
+      components
+    ),
     taxRate: Number(dbItem.tax_percent) || 0,
     lineTotal: Number(dbItem.line_total),
     skipInventory: dbItem.skip_inventory ?? false,
     quantityShipped: Number(dbItem.quantity_shipped) || 0,
     quantityDelivered: Number(dbItem.quantity_delivered) || 0,
-    frameConfiguration: configuration
-      ? {
-          id: configuration.id,
-          width: Number(configuration.width),
-          height: Number(configuration.height),
-          fixedAllowance: Number(configuration.fixed_allowance) || 0,
-          moldingItemId: configuration.molding_item_id || undefined,
-          moldingItemCode: moldingItem?.item_code || undefined,
-          moldingItemName: moldingItem?.item_name || undefined,
-          moldingStickLength: configuration.molding_stick_length
-            ? Number(configuration.molding_stick_length)
-            : undefined,
-          moldingSticksRequired: configuration.molding_sticks_required
-            ? Number(configuration.molding_sticks_required)
-            : undefined,
-          serviceFeeMode: asFrameServiceFeeMode(configuration.service_fee_mode),
-          serviceType: configuration.service_type || undefined,
-          serviceFeeAmount: Number(configuration.service_fee_amount) || 0,
-          totalServiceFee: Number(configuration.total_service_fee) || 0,
-          invoiceDisplayMode: asFrameInvoiceDisplayMode(configuration.invoice_display_mode),
-        }
-      : null,
-    frameComponents: components.map((component) => {
-      const componentItem = Array.isArray(component.items) ? component.items[0] : component.items;
-      const uom = Array.isArray(component.units_of_measure)
-        ? component.units_of_measure[0]
-        : component.units_of_measure;
-      return {
-        id: component.id,
-        componentType: asFrameComponentType(component.component_type),
-        source: asFrameComponentSource(component.source),
-        itemId: component.item_id,
-        itemCode: componentItem?.item_code || undefined,
-        itemName: componentItem?.item_name || undefined,
-        description: component.description || "",
-        qtyPerFrame: Number(component.qty_per_frame),
-        totalQuantity: Number(component.total_quantity),
-        uomId: component.uom_id,
-        uomCode: uom?.code || undefined,
-        unitRate: Number(component.unit_rate),
-        totalAmount: Number(component.total_amount),
-        roundingMode: component.rounding_mode === "ceil_per_order" ? "ceil_per_order" : "none",
-        sortOrder: component.sort_order || 0,
-      };
-    }),
+    ...frameDetails,
   };
-}
-
-function getLineManufacturingStatus(
-  lineItemId: string,
-  context: LineManufacturingContext
-): SalesOrderLineItem["manufacturing"] {
-  if (!context.eligibleItemIds.has(lineItemId)) return null;
-
-  const orderId = context.itemOrderById.get(lineItemId);
-  const jobOrder = orderId ? context.frameJobOrderBySalesOrderId.get(orderId) : null;
-
-  if (!jobOrder) {
-    return {
-      required: true,
-      status: "needs_job_order",
-      label: "Needs Job Order",
-    };
-  }
-
-  const jobOrderItem = context.frameJobOrderItemBySalesOrderItemId.get(lineItemId);
-  const manufacturingOrder = context.manufacturingOrderByJobOrderId.get(
-    jobOrderItem?.job_order_id || jobOrder.id
-  );
-
-  if (!manufacturingOrder) {
-    return {
-      required: true,
-      status: "job_order_ready",
-      label: "Job Order Ready",
-      jobOrderId: jobOrder.id,
-      jobOrderCode: jobOrder.jobOrderCode,
-    };
-  }
-
-  const operation = context.operationByManufacturingOrderId.get(manufacturingOrder.id);
-  const base = {
-    required: true,
-    jobOrderId: jobOrder.id,
-    jobOrderCode: jobOrder.jobOrderCode,
-    manufacturingOrderId: manufacturingOrder.id,
-    manufacturingOrderCode: manufacturingOrder.manufacturingOrderCode,
-    operationName: operation?.operation_name,
-  };
-
-  if (manufacturingOrder.status === "completed") {
-    return { ...base, status: "ready_for_release", label: "Ready for Release" };
-  }
-  if (manufacturingOrder.status === "quality_check") {
-    return {
-      ...base,
-      status: "quality_check",
-      label: operation?.operation_name || "Quality Check",
-    };
-  }
-  if (manufacturingOrder.status === "in_progress") {
-    return { ...base, status: "in_progress", label: operation?.operation_name || "In Production" };
-  }
-  if (manufacturingOrder.status === "on_hold") {
-    return { ...base, status: "on_hold", label: "On Hold" };
-  }
-  if (manufacturingOrder.status === "cancelled") {
-    return { ...base, status: "cancelled", label: "Cancelled" };
-  }
-
-  return { ...base, status: "ready", label: "Ready for Production" };
 }
 
 // GET /api/sales-orders - List sales orders with filters
@@ -643,7 +349,8 @@ async function GETHandler(request: NextRequest) {
     const { data: orders, error, count } = await query;
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Failed to load sales orders", { code: error.code, message: error.message });
+      return NextResponse.json({ error: "Failed to load sales orders" }, { status: 500 });
     }
 
     if (!orders) {
@@ -668,46 +375,33 @@ async function GETHandler(request: NextRequest) {
       .order("sort_order", { ascending: true });
 
     if (itemsError) {
+      console.error("Failed to load sales order items", {
+        code: itemsError.code,
+        message: itemsError.message,
+      });
+      return NextResponse.json({ error: "Failed to load sales order items" }, { status: 500 });
     }
 
     const orderItemIds = (items || []).map((item) => item.id);
-    const { data: frameConfigurations } =
-      orderItemIds.length > 0
-        ? await supabase
-            .from("sales_order_item_configurations")
-            .select(SALES_ORDER_CONFIGURATION_SELECT)
-            .in("order_item_id", orderItemIds)
-            .is("deleted_at", null)
-        : { data: [] };
-    const configurationsByItemId = new Map(
-      ((frameConfigurations || []) as DbSalesOrderItemConfiguration[]).map((configuration) => [
-        configuration.order_item_id,
-        configuration,
-      ])
-    );
-    const { data: frameComponents } =
-      orderItemIds.length > 0
-        ? await supabase
-            .from("sales_order_item_components")
-            .select(SALES_ORDER_COMPONENT_SELECT)
-            .in("order_item_id", orderItemIds)
-            .is("deleted_at", null)
-            .order("sort_order", { ascending: true })
-        : { data: [] };
-    const componentsByItemId = new Map<string, DbSalesOrderItemComponent[]>();
-    for (const component of (frameComponents || []) as DbSalesOrderItemComponent[]) {
-      const existing = componentsByItemId.get(component.order_item_id) || [];
-      existing.push(component);
-      componentsByItemId.set(component.order_item_id, existing);
+    const frameDetails = await loadSalesOrderFrameDetails(supabase, orderItemIds);
+    if (frameDetails.error) {
+      console.error("Failed to load sales order frame details", frameDetails.error);
+      return NextResponse.json(
+        { error: "Failed to load sales order frame details" },
+        { status: 500 }
+      );
     }
+    const { configurationsByItemId, componentsByItemId, matLayersByConfigurationId } = frameDetails;
 
     const frameEligibleOrderIds = new Set<string>();
     const frameEligibleItemIds = new Set<string>();
     const itemOrderById = new Map((items || []).map((item) => [item.id, item.order_id]));
-    for (const configuration of (frameConfigurations || []) as DbSalesOrderFrameConfigSummary[]) {
-      const orderId = itemOrderById.get(configuration.order_item_id);
-      if (orderId) frameEligibleOrderIds.add(orderId);
-      frameEligibleItemIds.add(configuration.order_item_id);
+    for (const configurations of configurationsByItemId.values()) {
+      for (const configuration of configurations) {
+        const orderId = itemOrderById.get(configuration.order_item_id);
+        if (orderId) frameEligibleOrderIds.add(orderId);
+        frameEligibleItemIds.add(configuration.order_item_id);
+      }
     }
 
     const { data: frameJobOrders } = await supabase
@@ -728,6 +422,12 @@ async function GETHandler(request: NextRequest) {
       ])
     );
 
+    const frameJobOrderById = new Map(
+      ((frameJobOrders || []) as DbFrameJobOrderSummary[]).map((job) => [
+        job.id,
+        { id: job.id, jobOrderCode: job.job_order_code, status: job.status },
+      ])
+    );
     const frameJobOrderIds = ((frameJobOrders || []) as DbFrameJobOrderSummary[]).map(
       (jobOrder) => jobOrder.id
     );
@@ -797,8 +497,7 @@ async function GETHandler(request: NextRequest) {
 
     const manufacturingContext: LineManufacturingContext = {
       eligibleItemIds: frameEligibleItemIds,
-      itemOrderById,
-      frameJobOrderBySalesOrderId,
+      frameJobOrderById,
       frameJobOrderItemBySalesOrderItemId,
       manufacturingOrderByJobOrderId,
       operationByManufacturingOrderId,
@@ -812,8 +511,9 @@ async function GETHandler(request: NextRequest) {
           }
           const transformedItem = transformDbSalesOrderItem(
             item,
-            configurationsByItemId.get(item.id) || null,
-            componentsByItemId.get(item.id) || []
+            configurationsByItemId.get(item.id) || [],
+            componentsByItemId.get(item.id) || [],
+            matLayersByConfigurationId
           );
           transformedItem.manufacturing = getLineManufacturingStatus(item.id, manufacturingContext);
           acc[item.order_id].push(transformedItem);
@@ -872,274 +572,97 @@ async function POSTHandler(request: NextRequest) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
 
-    const body = await request.json();
-    const orderData: CreateSalesOrderRequest = body;
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
-
-    // Validate required fields
-    if (
-      !orderData.customerId ||
-      !orderData.orderDate ||
-      !orderData.lineItems ||
-      orderData.lineItems.length === 0
-    ) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
-
-    // Calculate totals
-    let subtotal = 0;
-    let totalDiscount = 0;
-    let totalTax = 0;
-
-    let itemsWithCalculations: CalculatedSalesOrderLineItem[] = orderData.lineItems.map((item) => {
-      const itemSubtotal = Number(item.quantity) * item.unitPrice;
-      const discountAmount = (itemSubtotal * (item.discount || 0)) / 100;
-      const taxableAmount = itemSubtotal - discountAmount;
-      const taxAmount = (taxableAmount * (item.taxRate || 0)) / 100;
-      const lineTotal = taxableAmount + taxAmount;
-
-      subtotal += itemSubtotal;
-      totalDiscount += discountAmount;
-      totalTax += taxAmount;
-
-      return {
-        ...item,
-        discountAmount,
-        taxAmount,
-        lineTotal,
-      };
-    });
-    const normalized = await normalizeQuotationLinkedItems(
-      supabase,
-      orderData.customerId,
-      itemsWithCalculations
-    );
-    if (normalized.error) {
-      return NextResponse.json({ error: normalized.error }, { status: 400 });
-    }
-    itemsWithCalculations = normalized.items;
-
-    const totalAmount = subtotal - totalDiscount + totalTax;
-
-    // business_unit_id from JWT - set by auth hook
-    // Create order header (status will default to 'draft' from database)
-    const { data: order, error: orderError } = await supabase
-      .from("sales_orders")
-      .insert({
-        company_id: userData.company_id,
-        business_unit_id: currentBusinessUnitId,
-        order_date: orderData.orderDate,
-        customer_id: orderData.customerId,
-        expected_delivery_date: orderData.expectedDeliveryDate,
-        subtotal: subtotal.toFixed(4),
-        discount_amount: totalDiscount.toFixed(4),
-        tax_amount: totalTax.toFixed(4),
-        total_amount: totalAmount.toFixed(4),
-        shipping_address: orderData.shippingAddress,
-        shipping_city: orderData.shippingCity,
-        shipping_state: orderData.shippingState,
-        shipping_postal_code: orderData.shippingPostalCode,
-        shipping_country: orderData.shippingCountry,
-        payment_terms: orderData.paymentTerms,
-        notes: orderData.notes,
-        created_by: user.id,
-        updated_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (orderError || !order) {
+    const parsedBody = salesOrderMutationSchema.safeParse(await request.json());
+    if (!parsedBody.success) {
       return NextResponse.json(
-        { error: orderError?.message || "Failed to create sales order" },
-        { status: 500 }
+        {
+          error: "Review the sales order details and try again.",
+          code: "SALES_ORDER_VALIDATION_FAILED",
+        },
+        { status: 400 }
       );
     }
+    const orderData = parsedBody.data;
 
-    // Create order items
-    const itemsToInsert = itemsWithCalculations.map((item, index) => ({
-      company_id: userData.company_id,
-      order_id: order.id,
-      item_id: item.itemId,
-      quotation_id: item.quotationId || null,
-      quotation_item_id: item.quotationItemId || null,
-      skip_inventory: item.skipInventory ?? !!item.frameConfiguration,
-      item_description: item.description,
-      quantity: item.quantity,
-      uom_id: item.uomId,
-      pricing_tier: item.pricingTier || null,
-      pricing_tier_name: item.pricingTierName || null,
-      rate: item.unitPrice,
-      discount_percent: item.discount || 0,
-      discount_amount: item.discountAmount,
-      tax_percent: item.taxRate || 0,
-      tax_amount: item.taxAmount,
-      line_total: item.lineTotal,
-      sort_order: index,
-      created_by: user.id,
-      updated_by: user.id,
-    }));
-
-    const { data: insertedItems, error: itemsError } = await supabase
-      .from("sales_order_items")
-      .insert(itemsToInsert)
-      .select("id, sort_order");
-
-    if (itemsError || !insertedItems) {
-      // Rollback: delete the order
-      await supabase.from("sales_orders").delete().eq("id", order.id);
-      return NextResponse.json(
-        { error: itemsError.message || "Failed to create sales order items" },
-        { status: 500 }
-      );
-    }
-
-    const orderItemIdBySortOrder = new Map(
-      insertedItems.map((item) => [item.sort_order || 0, item.id] as const)
-    );
-    const configurationRows = itemsWithCalculations.flatMap((item, index) =>
-      item.frameConfiguration
-        ? [
-            {
-              company_id: userData.company_id,
-              order_item_id: orderItemIdBySortOrder.get(index),
-              quotation_configuration_id: item.quotationItemId
-                ? item.frameConfiguration.id || null
-                : null,
-              width: item.frameConfiguration.width,
-              height: item.frameConfiguration.height,
-              fixed_allowance: item.frameConfiguration.fixedAllowance || 0,
-              molding_item_id: item.frameConfiguration.moldingItemId || null,
-              molding_stick_length: item.frameConfiguration.moldingStickLength || null,
-              molding_sticks_required: item.frameConfiguration.moldingSticksRequired || null,
-              service_fee_mode: item.frameConfiguration.serviceFeeMode,
-              service_type: item.frameConfiguration.serviceType || null,
-              service_fee_amount: item.frameConfiguration.serviceFeeAmount || 0,
-              total_service_fee: item.frameConfiguration.totalServiceFee || 0,
-              invoice_display_mode: item.frameConfiguration.invoiceDisplayMode,
-              created_by: user.id,
-              updated_by: user.id,
-            },
-          ]
-        : []
-    );
-
-    if (configurationRows.length > 0) {
-      const { data: insertedConfigurations, error: configurationError } = await supabase
-        .from("sales_order_item_configurations")
-        .insert(configurationRows.filter((row) => row.order_item_id))
-        .select("id, order_item_id");
-
-      if (configurationError) {
-        await supabase.from("sales_orders").delete().eq("id", order.id);
-        return NextResponse.json(
-          { error: "Failed to create sales order item configurations" },
-          { status: 500 }
-        );
+    const { data: orderId, error: orderError } = await supabase.rpc(
+      "create_sales_order_draft_transaction",
+      {
+        p_customer_id: orderData.customerId,
+        p_order_date: orderData.orderDate,
+        p_expected_delivery_date: orderData.expectedDeliveryDate,
+        p_business_unit_id: currentBusinessUnitId,
+        p_shipping_address: orderData.shippingAddress,
+        p_shipping_city: orderData.shippingCity,
+        p_shipping_state: orderData.shippingState,
+        p_shipping_postal_code: orderData.shippingPostalCode,
+        p_shipping_country: orderData.shippingCountry,
+        p_payment_terms: orderData.paymentTerms,
+        p_notes: orderData.notes,
+        p_items: orderData.lineItems,
       }
+    );
 
-      const configurationIdByOrderItemId = new Map(
-        (insertedConfigurations || []).map((row) => [row.order_item_id, row.id] as const)
-      );
-      const componentRows = itemsWithCalculations.flatMap((item, index) => {
-        const orderItemId = orderItemIdBySortOrder.get(index);
-        const configurationId = orderItemId ? configurationIdByOrderItemId.get(orderItemId) : null;
-        if (!orderItemId || !configurationId || !item.frameComponents?.length) return [];
-        return item.frameComponents.map((component, componentIndex) => ({
-          company_id: userData.company_id,
-          order_item_id: orderItemId,
-          configuration_id: configurationId,
-          quotation_component_id: item.quotationItemId ? component.id || null : null,
-          component_type: component.componentType,
-          source: component.source,
-          item_id: component.itemId,
-          description: component.description,
-          qty_per_frame: component.qtyPerFrame,
-          total_quantity: component.totalQuantity,
-          uom_id: component.uomId,
-          unit_rate: component.unitRate,
-          total_amount: component.totalAmount,
-          rounding_mode: component.roundingMode || "none",
-          sort_order: component.sortOrder ?? componentIndex,
-          created_by: user.id,
-          updated_by: user.id,
-        }));
+    if (orderError || !orderId) {
+      console.error("Failed to create sales order transaction", {
+        code: orderError?.code,
+        message: orderError?.message,
       });
-
-      if (componentRows.length > 0) {
-        const { error: componentError } = await supabase
-          .from("sales_order_item_components")
-          .insert(componentRows);
-
-        if (componentError) {
-          await supabase.from("sales_orders").delete().eq("id", order.id);
-          return NextResponse.json(
-            { error: "Failed to create sales order item components" },
-            { status: 500 }
-          );
-        }
-      }
+      const failure = getSalesOrderMutationFailure(orderError?.message);
+      return NextResponse.json(
+        { error: failure.message, code: failure.code },
+        { status: failure.status }
+      );
     }
 
     // Fetch the complete order with joins
-    const { data: completeOrder } = await supabase
+    const { data: completeOrder, error: completeOrderError } = await supabase
       .from("sales_orders")
       .select(SALES_ORDER_SELECT)
-      .eq("id", order.id)
+      .eq("id", orderId)
       .single();
 
-    const { data: orderItems } = await supabase
+    const { data: orderItems, error: orderItemsError } = await supabase
       .from("sales_order_items")
       .select(SALES_ORDER_ITEM_SELECT)
-      .eq("order_id", order.id)
+      .eq("order_id", orderId)
       .order("sort_order", { ascending: true });
 
+    if (completeOrderError || !completeOrder || orderItemsError) {
+      console.error("Failed to load created sales order", {
+        orderId,
+        order: completeOrderError
+          ? { code: completeOrderError.code, message: completeOrderError.message }
+          : null,
+        items: orderItemsError
+          ? { code: orderItemsError.code, message: orderItemsError.message }
+          : null,
+      });
+      return NextResponse.json(
+        {
+          error: "Sales order was created but could not be loaded",
+          code: "SALES_ORDER_SAVE_FAILED",
+        },
+        { status: 500 }
+      );
+    }
+
     const createdOrderItemIds = (orderItems || []).map((item) => item.id);
-    const { data: createdConfigurations } =
-      createdOrderItemIds.length > 0
-        ? await supabase
-            .from("sales_order_item_configurations")
-            .select(SALES_ORDER_CONFIGURATION_SELECT)
-            .in("order_item_id", createdOrderItemIds)
-            .is("deleted_at", null)
-        : { data: [] };
-    const createdConfigurationsByItemId = new Map(
-      ((createdConfigurations || []) as DbSalesOrderItemConfiguration[]).map((configuration) => [
-        configuration.order_item_id,
-        configuration,
-      ])
-    );
-    const { data: createdComponents } =
-      createdOrderItemIds.length > 0
-        ? await supabase
-            .from("sales_order_item_components")
-            .select(SALES_ORDER_COMPONENT_SELECT)
-            .in("order_item_id", createdOrderItemIds)
-            .is("deleted_at", null)
-            .order("sort_order", { ascending: true })
-        : { data: [] };
-    const createdComponentsByItemId = new Map<string, DbSalesOrderItemComponent[]>();
-    for (const component of (createdComponents || []) as DbSalesOrderItemComponent[]) {
-      const existing = createdComponentsByItemId.get(component.order_item_id) || [];
-      existing.push(component);
-      createdComponentsByItemId.set(component.order_item_id, existing);
+    const createdFrameDetails = await loadSalesOrderFrameDetails(supabase, createdOrderItemIds);
+    if (createdFrameDetails.error) {
+      console.error("Failed to load created sales order frame details", createdFrameDetails.error);
+      return NextResponse.json(
+        { error: "Sales order was created but could not be loaded" },
+        { status: 500 }
+      );
     }
 
     const items =
       orderItems?.map((item) =>
         transformDbSalesOrderItem(
           item as DbSalesOrderItemWithRelations,
-          createdConfigurationsByItemId.get(item.id) || null,
-          createdComponentsByItemId.get(item.id) || []
+          createdFrameDetails.configurationsByItemId.get(item.id) || [],
+          createdFrameDetails.componentsByItemId.get(item.id) || [],
+          createdFrameDetails.matLayersByConfigurationId
         )
       ) || [];
     const result = transformDbSalesOrder(
@@ -1151,8 +674,12 @@ async function POSTHandler(request: NextRequest) {
     );
 
     return NextResponse.json(result, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } catch (error) {
+    console.error("Unexpected sales order creation failure", error);
+    return NextResponse.json(
+      { error: "Internal server error", code: "SALES_ORDER_SAVE_FAILED" },
+      { status: 500 }
+    );
   }
 }
 

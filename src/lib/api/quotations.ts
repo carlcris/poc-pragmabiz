@@ -6,6 +6,7 @@ import type {
   QuotationLineItem,
 } from "@/types/quotation";
 import { apiClient } from "@/lib/api";
+import type { QuotationLinePricing } from "@/lib/sales-orders/sales-order-line-pricing";
 
 export type QuotationsResponse = {
   data: Quotation[];
@@ -23,7 +24,14 @@ export type ConfirmQuotationResponse = {
   status: string;
 };
 
+export type ConvertQuotationResponse = {
+  success: boolean;
+  salesOrderId: string;
+  orderNumber: string;
+};
+
 export type AvailableQuotationLine = QuotationLineItem & {
+  quotationPricing: QuotationLinePricing;
   quotationId: string;
   quotationNumber: string;
   quotationItemId: string;
@@ -94,9 +102,35 @@ export const quotationsApi = {
     return apiClient.patch<Quotation>(`/api/quotations/${id}/status`, { status });
   },
 
-  async confirm(id: string, warehouseId?: string | null): Promise<ConfirmQuotationResponse> {
+  /**
+   * Confirming a quotation accepts it, so it carries the acceptance record:
+   * who agreed, through which channel, and the waiver proving it. The RPC
+   * refuses the call without them.
+   */
+  async confirm(
+    id: string,
+    warehouseId?: string | null,
+    acceptance?: {
+      acceptedByName: string;
+      acceptedChannel: string;
+      waivers: {
+        storagePath: string;
+        fileName: string;
+        mimeType: string;
+        fileSizeBytes: number;
+      }[];
+    }
+  ): Promise<ConfirmQuotationResponse> {
     return apiClient.post<ConfirmQuotationResponse>(`/api/quotations/${id}/confirm`, {
       warehouseId,
+      ...acceptance,
     });
+  },
+
+  async convertToSalesOrder(id: string): Promise<ConvertQuotationResponse> {
+    return apiClient.post<ConvertQuotationResponse>(
+      `/api/quotations/${id}/convert-to-sales-order`,
+      {}
+    );
   },
 };

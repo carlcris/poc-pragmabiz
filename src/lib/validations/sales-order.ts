@@ -9,54 +9,54 @@ export const salesOrderStatusEnum = z.enum([
   "cancelled",
 ]);
 
-export const salesOrderLineItemSchema = z.object({
-  itemId: z.string().min(1, "Item is required"),
-  quotationId: z.string().nullable().optional(),
-  quotationItemId: z.string().nullable().optional(),
-  itemCode: z.string().min(1, "Item code is required"),
-  itemName: z.string().min(1, "Item name is required"),
-  description: z.string().default(""),
-  quantity: z.number().min(0.01, "Quantity must be greater than 0"),
-  pricingTier: z.string().optional(),
-  pricingTierName: z.string().optional(),
-  unitPrice: z.number().min(0, "Selling price must be non-negative"),
-  discount: z
-    .number()
-    .min(0, "Discount cannot be negative")
-    .max(100, "Discount cannot exceed 100%"),
-  taxRate: z.number().min(0, "Tax rate cannot be negative").max(100, "Tax rate cannot exceed 100%"),
-});
+const optionalUuid = z.string().uuid().nullable().optional();
 
-export const salesOrderFormSchema = z
+export const salesOrderFrameSizeSelectionSchema = z
   .object({
-    companyId: z.string().min(1, "Company is required"),
-    customerId: z.string().min(1, "Customer is required"),
-    orderDate: z.string().min(1, "Order date is required"),
-    expectedDeliveryDate: z.string().min(1, "Expected delivery date is required"),
-    lineItems: z.array(salesOrderLineItemSchema).min(1, "At least one line item is required"),
-    shippingAddress: z.string().min(1, "Shipping address is required"),
-    shippingCity: z.string().min(1, "Shipping city is required"),
-    shippingState: z.string().min(1, "Shipping state is required"),
-    shippingPostalCode: z.string().min(1, "Shipping postal code is required"),
-    shippingCountry: z.string().min(1, "Shipping country is required"),
-    paymentTerms: z.string().default(""),
-    notes: z.string().default(""),
+    quotationConfigurationId: z.string().uuid(),
+    quantity: z.number().int().positive(),
   })
-  .refine(
-    (data) => {
-      const orderDate = new Date(data.orderDate);
-      const deliveryDate = new Date(data.expectedDeliveryDate);
-      return deliveryDate >= orderDate;
-    },
-    {
-      message: "Expected delivery date must be on or after order date",
-      path: ["expectedDeliveryDate"],
-    }
-  );
+  .strict();
+
+export const salesOrderLineItemSchema = z
+  .object({
+    itemId: z.string().uuid(),
+    quotationId: optionalUuid,
+    quotationItemId: optionalUuid,
+    description: z.string().max(2000),
+    quantity: z.number().positive(),
+    uomId: z.string().uuid(),
+    pricingTier: z.string().max(100).optional(),
+    pricingTierName: z.string().max(200).optional(),
+    unitPrice: z.number().nonnegative(),
+    discount: z.number().min(0).max(100),
+    taxRate: z.number().min(0).max(100),
+    frameSizeSelections: z.array(salesOrderFrameSizeSelectionSchema).min(1).max(50).optional(),
+  })
+  .strict();
+
+export const salesOrderMutationSchema = z
+  .object({
+    customerId: z.string().uuid(),
+    orderDate: z.iso.date(),
+    expectedDeliveryDate: z.iso.date(),
+    lineItems: z.array(salesOrderLineItemSchema).min(1).max(200),
+    shippingAddress: z.string().max(500),
+    shippingCity: z.string().max(200),
+    shippingState: z.string().max(200),
+    shippingPostalCode: z.string().max(50),
+    shippingCountry: z.string().max(200),
+    paymentTerms: z.string().max(2000),
+    notes: z.string().max(5000),
+  })
+  .strict()
+  .refine((data) => data.expectedDeliveryDate >= data.orderDate, {
+    path: ["expectedDeliveryDate"],
+  });
 
 export const updateSalesOrderStatusSchema = z.object({
   status: salesOrderStatusEnum,
 });
 
-export type SalesOrderFormValues = z.infer<typeof salesOrderFormSchema>;
+export type SalesOrderFormValues = z.infer<typeof salesOrderMutationSchema>;
 export type SalesOrderLineItemValues = z.infer<typeof salesOrderLineItemSchema>;

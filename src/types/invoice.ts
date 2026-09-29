@@ -1,3 +1,10 @@
+import type {
+  FrameQuotationComponent,
+  FrameQuotationConfiguration,
+  FrameQuotationMatLayer,
+  FrameQuotationSize,
+} from "@/types/quotation";
+
 export type InvoiceStatus = "draft" | "sent" | "paid" | "partially_paid" | "overdue" | "cancelled";
 
 export interface InvoiceLineItem {
@@ -15,6 +22,10 @@ export interface InvoiceLineItem {
   discount: number; // Percentage
   taxRate: number; // Percentage
   lineTotal: number;
+  frameConfiguration?: FrameQuotationConfiguration | null;
+  frameComponents?: FrameQuotationComponent[];
+  matLayers?: FrameQuotationMatLayer[];
+  frameSizes?: FrameQuotationSize[];
 }
 
 // Commission split for invoices with multiple sales agents

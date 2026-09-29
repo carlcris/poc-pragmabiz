@@ -7,7 +7,7 @@ import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useItem, useItems } from "@/hooks/useItems";
 import { cn } from "@/lib/utils";
-import type { ItemPriceTier } from "@/types/item";
+import type { ItemMaterial, ItemPriceTier } from "@/types/item";
 
 export type ItemSelectOption = {
   id: string;
@@ -19,6 +19,8 @@ export type ItemSelectOption = {
   listPrice: number;
   defaultPriceTier?: string | null;
   priceTiers?: ItemPriceTier[];
+  /** Mirrors `items.material`; drives the moulding pricing formula. */
+  material?: ItemMaterial | null;
   available?: number;
   reorderPoint?: number;
   isActive?: boolean;
@@ -50,6 +52,7 @@ const toItemSelectOption = (item: {
   listPrice: number | null;
   defaultPriceTier?: string | null;
   priceTiers?: ItemPriceTier[];
+  material?: ItemMaterial | null;
   available?: number;
   reorderPoint?: number;
   reorderLevel?: number;
@@ -65,6 +68,7 @@ const toItemSelectOption = (item: {
   listPrice: item.listPrice ?? 0,
   defaultPriceTier: item.defaultPriceTier,
   priceTiers: item.priceTiers,
+  material: item.material,
   available: item.available,
   reorderPoint: item.reorderPoint ?? item.reorderLevel,
   isActive: item.isActive,

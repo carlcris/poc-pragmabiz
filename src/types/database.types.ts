@@ -1906,6 +1906,7 @@ export type Database = {
       };
       frame_job_orders: {
         Row: {
+          billing_mode: string;
           business_unit_id: string | null;
           company_id: string;
           completed_at: string | null;
@@ -1926,6 +1927,7 @@ export type Database = {
           updated_by: string | null;
         };
         Insert: {
+          billing_mode?: string;
           business_unit_id?: string | null;
           company_id: string;
           completed_at?: string | null;
@@ -1946,6 +1948,7 @@ export type Database = {
           updated_by?: string | null;
         };
         Update: {
+          billing_mode?: string;
           business_unit_id?: string | null;
           company_id?: string;
           completed_at?: string | null;
@@ -1997,7 +2000,7 @@ export type Database = {
           {
             foreignKeyName: "frame_job_orders_quotation_id_fkey";
             columns: ["quotation_id"];
-            isOneToOne: true;
+            isOneToOne: false;
             referencedRelation: "sales_quotations";
             referencedColumns: ["id"];
           },
@@ -2488,6 +2491,8 @@ export type Database = {
           id: string;
           item_id: string;
           job_order_id: string | null;
+          production_material_request_id: string | null;
+          production_material_request_item_id: string | null;
           quantity: number;
           quotation_component_id: string | null;
           quotation_id: string | null;
@@ -2526,6 +2531,8 @@ export type Database = {
           id?: string;
           item_id: string;
           job_order_id?: string | null;
+          production_material_request_id?: string | null;
+          production_material_request_item_id?: string | null;
           quantity: number;
           quotation_component_id?: string | null;
           quotation_id?: string | null;
@@ -2564,6 +2571,8 @@ export type Database = {
           id?: string;
           item_id?: string;
           job_order_id?: string | null;
+          production_material_request_id?: string | null;
+          production_material_request_item_id?: string | null;
           quantity?: number;
           quotation_component_id?: string | null;
           quotation_id?: string | null;
@@ -2636,6 +2645,20 @@ export type Database = {
             columns: ["job_order_id"];
             isOneToOne: false;
             referencedRelation: "frame_job_orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "inventory_reservations_production_material_request_id_fkey";
+            columns: ["production_material_request_id"];
+            isOneToOne: false;
+            referencedRelation: "production_material_requests";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "inventory_reservations_production_material_request_item_id_fkey";
+            columns: ["production_material_request_item_id"];
+            isOneToOne: false;
+            referencedRelation: "production_material_request_items";
             referencedColumns: ["id"];
           },
           {
@@ -3557,6 +3580,7 @@ export type Database = {
           item_name: string;
           item_name_cn: string | null;
           item_type: string;
+          material: string | null;
           purchase_price: number | null;
           reorder_level: number;
           reorder_quantity: number;
@@ -3592,6 +3616,7 @@ export type Database = {
           item_name: string;
           item_name_cn?: string | null;
           item_type: string;
+          material?: string | null;
           purchase_price?: number | null;
           reorder_level?: number;
           reorder_quantity?: number;
@@ -3627,6 +3652,7 @@ export type Database = {
           item_name?: string;
           item_name_cn?: string | null;
           item_type?: string;
+          material?: string | null;
           purchase_price?: number | null;
           reorder_level?: number;
           reorder_quantity?: number;
@@ -5525,6 +5551,238 @@ export type Database = {
           },
         ];
       };
+      production_material_request_items: {
+        Row: {
+          base_quantity: number;
+          base_uom_id: string;
+          company_id: string;
+          created_at: string;
+          created_by: string;
+          frame_job_order_item_id: string;
+          id: string;
+          issued_quantity: number;
+          item_id: string;
+          production_material_request_id: string;
+          requested_quantity: number;
+          uom_id: string;
+          updated_at: string;
+          updated_by: string;
+        };
+        Insert: {
+          base_quantity: number;
+          base_uom_id: string;
+          company_id: string;
+          created_at?: string;
+          created_by: string;
+          frame_job_order_item_id: string;
+          id?: string;
+          issued_quantity?: number;
+          item_id: string;
+          production_material_request_id: string;
+          requested_quantity: number;
+          uom_id: string;
+          updated_at?: string;
+          updated_by: string;
+        };
+        Update: {
+          base_quantity?: number;
+          base_uom_id?: string;
+          company_id?: string;
+          created_at?: string;
+          created_by?: string;
+          frame_job_order_item_id?: string;
+          id?: string;
+          issued_quantity?: number;
+          item_id?: string;
+          production_material_request_id?: string;
+          requested_quantity?: number;
+          uom_id?: string;
+          updated_at?: string;
+          updated_by?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "production_material_request_i_production_material_request__fkey";
+            columns: ["production_material_request_id"];
+            isOneToOne: false;
+            referencedRelation: "production_material_requests";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_material_request_items_base_uom_id_fkey";
+            columns: ["base_uom_id"];
+            isOneToOne: false;
+            referencedRelation: "units_of_measure";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_material_request_items_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_material_request_items_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_material_request_items_frame_job_order_item_id_fkey";
+            columns: ["frame_job_order_item_id"];
+            isOneToOne: false;
+            referencedRelation: "frame_job_order_items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_material_request_items_item_id_fkey";
+            columns: ["item_id"];
+            isOneToOne: false;
+            referencedRelation: "items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_material_request_items_uom_id_fkey";
+            columns: ["uom_id"];
+            isOneToOne: false;
+            referencedRelation: "units_of_measure";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_material_request_items_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      production_material_requests: {
+        Row: {
+          approved_at: string | null;
+          approved_by: string | null;
+          business_unit_id: string;
+          cancelled_at: string | null;
+          cancelled_by: string | null;
+          company_id: string;
+          created_at: string;
+          created_by: string;
+          frame_job_order_id: string;
+          id: string;
+          issued_at: string | null;
+          issued_by: string | null;
+          requested_at: string;
+          status: string;
+          updated_at: string;
+          updated_by: string;
+          warehouse_id: string;
+        };
+        Insert: {
+          approved_at?: string | null;
+          approved_by?: string | null;
+          business_unit_id: string;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          company_id: string;
+          created_at?: string;
+          created_by: string;
+          frame_job_order_id: string;
+          id?: string;
+          issued_at?: string | null;
+          issued_by?: string | null;
+          requested_at?: string;
+          status?: string;
+          updated_at?: string;
+          updated_by: string;
+          warehouse_id: string;
+        };
+        Update: {
+          approved_at?: string | null;
+          approved_by?: string | null;
+          business_unit_id?: string;
+          cancelled_at?: string | null;
+          cancelled_by?: string | null;
+          company_id?: string;
+          created_at?: string;
+          created_by?: string;
+          frame_job_order_id?: string;
+          id?: string;
+          issued_at?: string | null;
+          issued_by?: string | null;
+          requested_at?: string;
+          status?: string;
+          updated_at?: string;
+          updated_by?: string;
+          warehouse_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "production_material_requests_approved_by_fkey";
+            columns: ["approved_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_material_requests_business_unit_id_fkey";
+            columns: ["business_unit_id"];
+            isOneToOne: false;
+            referencedRelation: "business_units";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_material_requests_cancelled_by_fkey";
+            columns: ["cancelled_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_material_requests_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_material_requests_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_material_requests_frame_job_order_id_fkey";
+            columns: ["frame_job_order_id"];
+            isOneToOne: false;
+            referencedRelation: "frame_job_orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_material_requests_issued_by_fkey";
+            columns: ["issued_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_material_requests_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_material_requests_warehouse_id_fkey";
+            columns: ["warehouse_id"];
+            isOneToOne: false;
+            referencedRelation: "warehouses";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       purchase_order_items: {
         Row: {
           company_id: string;
@@ -7111,6 +7369,8 @@ export type Database = {
           created_by: string | null;
           deleted_at: string | null;
           description: string | null;
+          discount_amount: number;
+          discount_percent: number;
           id: string;
           item_id: string;
           order_item_id: string;
@@ -7134,6 +7394,8 @@ export type Database = {
           created_by?: string | null;
           deleted_at?: string | null;
           description?: string | null;
+          discount_amount?: number;
+          discount_percent?: number;
           id?: string;
           item_id: string;
           order_item_id: string;
@@ -7157,6 +7419,8 @@ export type Database = {
           created_by?: string | null;
           deleted_at?: string | null;
           description?: string | null;
+          discount_amount?: number;
+          discount_percent?: number;
           id?: string;
           item_id?: string;
           order_item_id?: string;
@@ -7233,66 +7497,147 @@ export type Database = {
       };
       sales_order_item_configurations: {
         Row: {
+          artwork_length_in: number | null;
+          artwork_width_in: number | null;
+          backing_type: string | null;
+          backing_unit_rate: number | null;
+          billing_mode: string;
           company_id: string;
           created_at: string;
           created_by: string | null;
           deleted_at: string | null;
           fixed_allowance: number;
+          flexipoints_denominator: number | null;
+          flexipoints_numerator: number | null;
+          frame_quantity: number;
+          frame_rate: number | null;
+          frame_width_in: number | null;
+          glazing_cut_to_mat_outer: boolean;
+          glazing_included: boolean;
+          glazing_remarks: string | null;
+          glazing_sheets: number;
+          glazing_type: string | null;
+          glazing_unit_rate: number | null;
           height: number;
           id: string;
           invoice_display_mode: string;
+          mat_border_l_in: number | null;
+          mat_border_w_in: number | null;
+          mat_included: boolean;
+          mat_source: string;
+          mat_unit_rate: number | null;
           molding_item_id: string | null;
           molding_stick_length: number | null;
           molding_sticks_required: number | null;
+          moulding_material: string | null;
+          multipoints_denominator: number | null;
+          multipoints_numerator: number | null;
           order_item_id: string;
+          overlap_in: number;
           quotation_configuration_id: string | null;
           service_fee_amount: number;
           service_fee_mode: string;
           service_type: string | null;
+          size_index: number;
+          size_mode: string;
           total_service_fee: number;
           updated_at: string;
           updated_by: string | null;
           width: number;
         };
         Insert: {
+          artwork_length_in?: number | null;
+          artwork_width_in?: number | null;
+          backing_type?: string | null;
+          backing_unit_rate?: number | null;
+          billing_mode?: string;
           company_id: string;
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
           fixed_allowance?: number;
+          flexipoints_denominator?: number | null;
+          flexipoints_numerator?: number | null;
+          frame_quantity?: number;
+          frame_rate?: number | null;
+          frame_width_in?: number | null;
+          glazing_cut_to_mat_outer?: boolean;
+          glazing_included?: boolean;
+          glazing_remarks?: string | null;
+          glazing_sheets?: number;
+          glazing_type?: string | null;
+          glazing_unit_rate?: number | null;
           height: number;
           id?: string;
           invoice_display_mode?: string;
+          mat_border_l_in?: number | null;
+          mat_border_w_in?: number | null;
+          mat_included?: boolean;
+          mat_source?: string;
+          mat_unit_rate?: number | null;
           molding_item_id?: string | null;
           molding_stick_length?: number | null;
           molding_sticks_required?: number | null;
+          moulding_material?: string | null;
+          multipoints_denominator?: number | null;
+          multipoints_numerator?: number | null;
           order_item_id: string;
+          overlap_in?: number;
           quotation_configuration_id?: string | null;
           service_fee_amount?: number;
           service_fee_mode?: string;
           service_type?: string | null;
+          size_index?: number;
+          size_mode?: string;
           total_service_fee?: number;
           updated_at?: string;
           updated_by?: string | null;
           width: number;
         };
         Update: {
+          artwork_length_in?: number | null;
+          artwork_width_in?: number | null;
+          backing_type?: string | null;
+          backing_unit_rate?: number | null;
+          billing_mode?: string;
           company_id?: string;
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
           fixed_allowance?: number;
+          flexipoints_denominator?: number | null;
+          flexipoints_numerator?: number | null;
+          frame_quantity?: number;
+          frame_rate?: number | null;
+          frame_width_in?: number | null;
+          glazing_cut_to_mat_outer?: boolean;
+          glazing_included?: boolean;
+          glazing_remarks?: string | null;
+          glazing_sheets?: number;
+          glazing_type?: string | null;
+          glazing_unit_rate?: number | null;
           height?: number;
           id?: string;
           invoice_display_mode?: string;
+          mat_border_l_in?: number | null;
+          mat_border_w_in?: number | null;
+          mat_included?: boolean;
+          mat_source?: string;
+          mat_unit_rate?: number | null;
           molding_item_id?: string | null;
           molding_stick_length?: number | null;
           molding_sticks_required?: number | null;
+          moulding_material?: string | null;
+          multipoints_denominator?: number | null;
+          multipoints_numerator?: number | null;
           order_item_id?: string;
+          overlap_in?: number;
           quotation_configuration_id?: string | null;
           service_fee_amount?: number;
           service_fee_mode?: string;
           service_type?: string | null;
+          size_index?: number;
+          size_mode?: string;
           total_service_fee?: number;
           updated_at?: string;
           updated_by?: string | null;
@@ -7323,7 +7668,7 @@ export type Database = {
           {
             foreignKeyName: "sales_order_item_configurations_order_item_id_fkey";
             columns: ["order_item_id"];
-            isOneToOne: true;
+            isOneToOne: false;
             referencedRelation: "sales_order_items";
             referencedColumns: ["id"];
           },
@@ -7336,6 +7681,100 @@ export type Database = {
           },
           {
             foreignKeyName: "sales_order_item_configurations_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      sales_order_item_mat_layers: {
+        Row: {
+          border_or_reveal_l_in: number | null;
+          border_or_reveal_w_in: number | null;
+          company_id: string;
+          configuration_id: string;
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          id: string;
+          layer_index: number;
+          mat_board_item_id: string;
+          quotation_mat_layer_id: string | null;
+          unit_rate: number;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          border_or_reveal_l_in?: number | null;
+          border_or_reveal_w_in?: number | null;
+          company_id: string;
+          configuration_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          layer_index: number;
+          mat_board_item_id: string;
+          quotation_mat_layer_id?: string | null;
+          unit_rate?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          border_or_reveal_l_in?: number | null;
+          border_or_reveal_w_in?: number | null;
+          company_id?: string;
+          configuration_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          layer_index?: number;
+          mat_board_item_id?: string;
+          quotation_mat_layer_id?: string | null;
+          unit_rate?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sales_order_item_mat_layers_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_order_item_mat_layers_configuration_id_fkey";
+            columns: ["configuration_id"];
+            isOneToOne: false;
+            referencedRelation: "sales_order_item_configurations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_order_item_mat_layers_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_order_item_mat_layers_mat_board_item_id_fkey";
+            columns: ["mat_board_item_id"];
+            isOneToOne: false;
+            referencedRelation: "items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_order_item_mat_layers_quotation_mat_layer_id_fkey";
+            columns: ["quotation_mat_layer_id"];
+            isOneToOne: false;
+            referencedRelation: "sales_quotation_item_mat_layers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_order_item_mat_layers_updated_by_fkey";
             columns: ["updated_by"];
             isOneToOne: false;
             referencedRelation: "users";
@@ -7629,6 +8068,69 @@ export type Database = {
           },
         ];
       };
+      sales_quotation_item_attachments: {
+        Row: {
+          company_id: string;
+          configuration_id: string;
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          file_name: string;
+          file_size_bytes: number;
+          id: string;
+          mime_type: string;
+          sort_order: number;
+          storage_path: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          company_id: string;
+          configuration_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          file_name: string;
+          file_size_bytes: number;
+          id?: string;
+          mime_type: string;
+          sort_order?: number;
+          storage_path: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          company_id?: string;
+          configuration_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          file_name?: string;
+          file_size_bytes?: number;
+          id?: string;
+          mime_type?: string;
+          sort_order?: number;
+          storage_path?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sales_quotation_item_attachments_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_quotation_item_attachments_configuration_id_fkey";
+            columns: ["configuration_id"];
+            isOneToOne: false;
+            referencedRelation: "sales_quotation_item_configurations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       sales_quotation_item_components: {
         Row: {
           company_id: string;
@@ -7638,6 +8140,8 @@ export type Database = {
           created_by: string | null;
           deleted_at: string | null;
           description: string | null;
+          discount_amount: number;
+          discount_percent: number;
           id: string;
           item_id: string;
           qty_per_frame: number;
@@ -7660,6 +8164,8 @@ export type Database = {
           created_by?: string | null;
           deleted_at?: string | null;
           description?: string | null;
+          discount_amount?: number;
+          discount_percent?: number;
           id?: string;
           item_id: string;
           qty_per_frame?: number;
@@ -7682,6 +8188,8 @@ export type Database = {
           created_by?: string | null;
           deleted_at?: string | null;
           description?: string | null;
+          discount_amount?: number;
+          discount_percent?: number;
           id?: string;
           item_id?: string;
           qty_per_frame?: number;
@@ -7750,63 +8258,153 @@ export type Database = {
       };
       sales_quotation_item_configurations: {
         Row: {
+          artwork_length_in: number | null;
+          artwork_width_in: number | null;
+          backing_thickness_in: number | null;
+          backing_type: string | null;
+          backing_unit_rate: number | null;
+          billing_mode: string;
           company_id: string;
+          component_discounts: Json | null;
           created_at: string;
           created_by: string | null;
           deleted_at: string | null;
           fixed_allowance: number;
+          flexipoints_denominator: number | null;
+          flexipoints_numerator: number | null;
+          frame_quantity: number;
+          frame_rate: number | null;
+          frame_width_in: number | null;
+          framing_instructions: string | null;
+          glazing_cut_to_mat_outer: boolean;
+          glazing_included: boolean;
+          glazing_remarks: string | null;
+          glazing_sheets: number;
+          glazing_type: string | null;
+          glazing_unit_rate: number | null;
           height: number;
           id: string;
           invoice_display_mode: string;
+          mat_border_l_in: number | null;
+          mat_border_w_in: number | null;
+          mat_included: boolean;
+          mat_source: string;
+          mat_unit_rate: number | null;
           molding_item_id: string | null;
           molding_stick_length: number | null;
           molding_sticks_required: number | null;
+          moulding_material: string | null;
+          multipoints_denominator: number | null;
+          multipoints_numerator: number | null;
+          overlap_in: number;
           quotation_item_id: string;
           service_fee_amount: number;
           service_fee_mode: string;
           service_type: string | null;
+          size_index: number;
+          size_mode: string;
           total_service_fee: number;
           updated_at: string;
           updated_by: string | null;
           width: number;
         };
         Insert: {
+          artwork_length_in?: number | null;
+          artwork_width_in?: number | null;
+          backing_thickness_in?: number | null;
+          backing_type?: string | null;
+          backing_unit_rate?: number | null;
+          billing_mode?: string;
           company_id: string;
+          component_discounts?: Json | null;
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
           fixed_allowance?: number;
+          flexipoints_denominator?: number | null;
+          flexipoints_numerator?: number | null;
+          frame_quantity?: number;
+          frame_rate?: number | null;
+          frame_width_in?: number | null;
+          framing_instructions?: string | null;
+          glazing_cut_to_mat_outer?: boolean;
+          glazing_included?: boolean;
+          glazing_remarks?: string | null;
+          glazing_sheets?: number;
+          glazing_type?: string | null;
+          glazing_unit_rate?: number | null;
           height: number;
           id?: string;
           invoice_display_mode?: string;
+          mat_border_l_in?: number | null;
+          mat_border_w_in?: number | null;
+          mat_included?: boolean;
+          mat_source?: string;
+          mat_unit_rate?: number | null;
           molding_item_id?: string | null;
           molding_stick_length?: number | null;
           molding_sticks_required?: number | null;
+          moulding_material?: string | null;
+          multipoints_denominator?: number | null;
+          multipoints_numerator?: number | null;
+          overlap_in?: number;
           quotation_item_id: string;
           service_fee_amount?: number;
           service_fee_mode?: string;
           service_type?: string | null;
+          size_index?: number;
+          size_mode?: string;
           total_service_fee?: number;
           updated_at?: string;
           updated_by?: string | null;
           width: number;
         };
         Update: {
+          artwork_length_in?: number | null;
+          artwork_width_in?: number | null;
+          backing_thickness_in?: number | null;
+          backing_type?: string | null;
+          backing_unit_rate?: number | null;
+          billing_mode?: string;
           company_id?: string;
+          component_discounts?: Json | null;
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
           fixed_allowance?: number;
+          flexipoints_denominator?: number | null;
+          flexipoints_numerator?: number | null;
+          frame_quantity?: number;
+          frame_rate?: number | null;
+          frame_width_in?: number | null;
+          framing_instructions?: string | null;
+          glazing_cut_to_mat_outer?: boolean;
+          glazing_included?: boolean;
+          glazing_remarks?: string | null;
+          glazing_sheets?: number;
+          glazing_type?: string | null;
+          glazing_unit_rate?: number | null;
           height?: number;
           id?: string;
           invoice_display_mode?: string;
+          mat_border_l_in?: number | null;
+          mat_border_w_in?: number | null;
+          mat_included?: boolean;
+          mat_source?: string;
+          mat_unit_rate?: number | null;
           molding_item_id?: string | null;
           molding_stick_length?: number | null;
           molding_sticks_required?: number | null;
+          moulding_material?: string | null;
+          multipoints_denominator?: number | null;
+          multipoints_numerator?: number | null;
+          overlap_in?: number;
           quotation_item_id?: string;
           service_fee_amount?: number;
           service_fee_mode?: string;
           service_type?: string | null;
+          size_index?: number;
+          size_mode?: string;
           total_service_fee?: number;
           updated_at?: string;
           updated_by?: string | null;
@@ -7837,12 +8435,96 @@ export type Database = {
           {
             foreignKeyName: "sales_quotation_item_configurations_quotation_item_id_fkey";
             columns: ["quotation_item_id"];
-            isOneToOne: true;
+            isOneToOne: false;
             referencedRelation: "sales_quotation_items";
             referencedColumns: ["id"];
           },
           {
             foreignKeyName: "sales_quotation_item_configurations_updated_by_fkey";
+            columns: ["updated_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      sales_quotation_item_mat_layers: {
+        Row: {
+          border_or_reveal_l_in: number | null;
+          border_or_reveal_w_in: number | null;
+          company_id: string;
+          configuration_id: string;
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          id: string;
+          layer_index: number;
+          mat_board_item_id: string;
+          unit_rate: number;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          border_or_reveal_l_in?: number | null;
+          border_or_reveal_w_in?: number | null;
+          company_id: string;
+          configuration_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          layer_index: number;
+          mat_board_item_id: string;
+          unit_rate?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          border_or_reveal_l_in?: number | null;
+          border_or_reveal_w_in?: number | null;
+          company_id?: string;
+          configuration_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          id?: string;
+          layer_index?: number;
+          mat_board_item_id?: string;
+          unit_rate?: number;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sales_quotation_item_mat_layers_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_quotation_item_mat_layers_configuration_id_fkey";
+            columns: ["configuration_id"];
+            isOneToOne: false;
+            referencedRelation: "sales_quotation_item_configurations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_quotation_item_mat_layers_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_quotation_item_mat_layers_mat_board_item_id_fkey";
+            columns: ["mat_board_item_id"];
+            isOneToOne: false;
+            referencedRelation: "items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_quotation_item_mat_layers_updated_by_fkey";
             columns: ["updated_by"];
             isOneToOne: false;
             referencedRelation: "users";
@@ -7971,20 +8653,89 @@ export type Database = {
           },
         ];
       };
+      sales_quotation_waivers: {
+        Row: {
+          company_id: string;
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          file_name: string;
+          file_size_bytes: number;
+          id: string;
+          mime_type: string;
+          quotation_id: string;
+          storage_path: string;
+        };
+        Insert: {
+          company_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          file_name: string;
+          file_size_bytes?: number;
+          id?: string;
+          mime_type: string;
+          quotation_id: string;
+          storage_path: string;
+        };
+        Update: {
+          company_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          deleted_at?: string | null;
+          file_name?: string;
+          file_size_bytes?: number;
+          id?: string;
+          mime_type?: string;
+          quotation_id?: string;
+          storage_path?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sales_quotation_waivers_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_quotation_waivers_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_quotation_waivers_quotation_id_fkey";
+            columns: ["quotation_id"];
+            isOneToOne: false;
+            referencedRelation: "sales_quotations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       sales_quotations: {
         Row: {
+          accepted_at: string | null;
+          accepted_by_name: string | null;
+          accepted_channel: string | null;
+          accepted_recorded_by: string | null;
           business_unit_id: string | null;
           company_id: string;
           created_at: string;
           created_by: string | null;
           custom_fields: Json | null;
           customer_id: string;
+          date_received: string;
           deleted_at: string | null;
           discount_amount: number | null;
           draft_invoice_id: string | null;
+          due_date: string;
           frame_job_order_id: string | null;
           id: string;
+          items_received: string | null;
           notes: string | null;
+          payment_terms: string;
           price_list_id: string | null;
           quotation_code: string;
           quotation_date: string;
@@ -7999,18 +8750,26 @@ export type Database = {
           version: number;
         };
         Insert: {
+          accepted_at?: string | null;
+          accepted_by_name?: string | null;
+          accepted_channel?: string | null;
+          accepted_recorded_by?: string | null;
           business_unit_id?: string | null;
           company_id: string;
           created_at?: string;
           created_by?: string | null;
           custom_fields?: Json | null;
           customer_id: string;
+          date_received: string;
           deleted_at?: string | null;
           discount_amount?: number | null;
           draft_invoice_id?: string | null;
+          due_date: string;
           frame_job_order_id?: string | null;
           id?: string;
+          items_received?: string | null;
           notes?: string | null;
+          payment_terms?: string;
           price_list_id?: string | null;
           quotation_code: string;
           quotation_date: string;
@@ -8025,18 +8784,26 @@ export type Database = {
           version?: number;
         };
         Update: {
+          accepted_at?: string | null;
+          accepted_by_name?: string | null;
+          accepted_channel?: string | null;
+          accepted_recorded_by?: string | null;
           business_unit_id?: string | null;
           company_id?: string;
           created_at?: string;
           created_by?: string | null;
           custom_fields?: Json | null;
           customer_id?: string;
+          date_received?: string;
           deleted_at?: string | null;
           discount_amount?: number | null;
           draft_invoice_id?: string | null;
+          due_date?: string;
           frame_job_order_id?: string | null;
           id?: string;
+          items_received?: string | null;
           notes?: string | null;
+          payment_terms?: string;
           price_list_id?: string | null;
           quotation_code?: string;
           quotation_date?: string;
@@ -8051,6 +8818,13 @@ export type Database = {
           version?: number;
         };
         Relationships: [
+          {
+            foreignKeyName: "sales_quotations_accepted_recorded_by_fkey";
+            columns: ["accepted_recorded_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "sales_quotations_business_unit_id_fkey";
             columns: ["business_unit_id"];
@@ -11148,6 +11922,10 @@ export type Database = {
         };
         Returns: string;
       };
+      approve_production_material_request_transaction: {
+        Args: { p_frame_job_order_id: string };
+        Returns: string;
+      };
       assign_user_role_to_business_unit: {
         Args: {
           p_actor_user_id: string;
@@ -11184,6 +11962,10 @@ export type Database = {
         };
         Returns: undefined;
       };
+      cancel_production_material_request_transaction: {
+        Args: { p_frame_job_order_id: string };
+        Returns: string;
+      };
       cancel_sales_order_transaction: {
         Args: { p_sales_order_id: string };
         Returns: {
@@ -11195,6 +11977,16 @@ export type Database = {
         Args: { p_order_id: string };
         Returns: string;
       };
+      change_sales_quotation_status_transaction: {
+        Args: {
+          p_accepted_by_name?: string;
+          p_accepted_channel?: string;
+          p_quotation_id: string;
+          p_status: string;
+          p_waiver_paths?: Json;
+        };
+        Returns: undefined;
+      };
       claim_pick_list_item: {
         Args: {
           p_company_id: string;
@@ -11203,6 +11995,10 @@ export type Database = {
           p_user_id: string;
         };
         Returns: string;
+      };
+      close_unissued_production_material_request: {
+        Args: { p_actor_id: string; p_frame_job_order_id: string };
+        Returns: undefined;
       };
       complete_delivery_note_direct_customer_pickup: {
         Args: {
@@ -11281,12 +12077,25 @@ export type Database = {
             }[];
           }
         | {
-            Args: { p_quotation_id: string; p_warehouse_id?: string };
+            Args: {
+              p_accepted_by_name?: string;
+              p_accepted_channel?: string;
+              p_quotation_id: string;
+              p_waivers?: Json;
+              p_warehouse_id?: string;
+            };
             Returns: {
               quotation_id: string;
               status: string;
             }[];
           };
+      convert_accepted_sales_quotation_to_order_transaction: {
+        Args: { p_business_unit_id: string; p_quotation_id: string };
+        Returns: {
+          order_code: string;
+          sales_order_id: string;
+        }[];
+      };
       convert_sales_order_to_invoice_transaction: {
         Args: {
           p_location_id?: string;
@@ -11330,8 +12139,9 @@ export type Database = {
         }[];
       };
       create_frame_job_order_from_sales_order_transaction: {
-        Args: { p_sales_order_id: string; p_warehouse_id: string };
+        Args: { p_sales_order_id: string };
         Returns: {
+          billing_mode: string;
           job_order_code: string;
           job_order_id: string;
         }[];
@@ -11387,6 +12197,10 @@ export type Database = {
         };
         Returns: Json;
       };
+      create_production_material_request_transaction: {
+        Args: { p_frame_job_order_id: string; p_warehouse_id: string };
+        Returns: string;
+      };
       create_putaway_task:
         | {
             Args: {
@@ -11428,6 +12242,23 @@ export type Database = {
             };
             Returns: string;
           };
+      create_sales_order_draft_transaction: {
+        Args: {
+          p_business_unit_id: string;
+          p_customer_id: string;
+          p_expected_delivery_date: string;
+          p_items: Json;
+          p_notes: string;
+          p_order_date: string;
+          p_payment_terms: string;
+          p_shipping_address: string;
+          p_shipping_city: string;
+          p_shipping_country: string;
+          p_shipping_postal_code: string;
+          p_shipping_state: string;
+        };
+        Returns: string;
+      };
       create_sales_order_transaction: {
         Args: { p_business_unit_id: string; p_quotation_id: string };
         Returns: {
@@ -11439,8 +12270,12 @@ export type Database = {
         Args: {
           p_business_unit_id: string;
           p_customer_id: string;
+          p_date_received?: string;
+          p_due_date?: string;
           p_items: Json;
+          p_items_received?: string;
           p_notes: string;
+          p_payment_terms?: string;
           p_price_list_id: string;
           p_quotation_date: string;
           p_terms_conditions: string;
@@ -11635,6 +12470,15 @@ export type Database = {
           summary_total_balance: number;
           total_amount: number;
           total_count: number;
+        }[];
+      };
+      get_available_sales_quotation_frame_sizes: {
+        Args: { p_quotation_item_ids: string[] };
+        Returns: {
+          configuration_id: string;
+          ordered_quantity: number;
+          quoted_quantity: number;
+          remaining_quantity: number;
         }[];
       };
       get_available_sales_quotation_lines: {
@@ -12181,6 +13025,10 @@ export type Database = {
         };
         Returns: string;
       };
+      issue_production_material_request_transaction: {
+        Args: { p_frame_job_order_id: string };
+        Returns: string;
+      };
       link_load_list_stock_requisitions: {
         Args: {
           p_business_unit_id: string;
@@ -12410,6 +13258,10 @@ export type Database = {
           stock_transaction_id: string;
         }[];
       };
+      prepare_sales_order_draft_item: {
+        Args: { p_company_id: string; p_customer_id: string; p_item: Json };
+        Returns: Json;
+      };
       recalculate_sales_order_linked_quotation_statuses: {
         Args: { p_sales_order_id: string };
         Returns: undefined;
@@ -12621,6 +13473,16 @@ export type Database = {
         };
         Returns: undefined;
       };
+      save_sales_order_item_frame_sizes: {
+        Args: {
+          p_company_id: string;
+          p_item: Json;
+          p_order_item_id: string;
+          p_quotation_item_id: string;
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
       save_sales_quotation_item_frame_details: {
         Args: {
           p_company_id: string;
@@ -12783,10 +13645,31 @@ export type Database = {
           status: string;
         }[];
       };
-      update_sales_quotation_transaction: {
+      update_sales_order_draft_transaction: {
         Args: {
+          p_customer_id: string;
+          p_expected_delivery_date: string;
           p_items: Json;
           p_notes: string;
+          p_order_date: string;
+          p_payment_terms: string;
+          p_sales_order_id: string;
+          p_shipping_address: string;
+          p_shipping_city: string;
+          p_shipping_country: string;
+          p_shipping_postal_code: string;
+          p_shipping_state: string;
+        };
+        Returns: string;
+      };
+      update_sales_quotation_transaction: {
+        Args: {
+          p_date_received?: string;
+          p_due_date?: string;
+          p_items: Json;
+          p_items_received?: string;
+          p_notes: string;
+          p_payment_terms?: string;
           p_quotation_date: string;
           p_quotation_id: string;
           p_terms_conditions: string;

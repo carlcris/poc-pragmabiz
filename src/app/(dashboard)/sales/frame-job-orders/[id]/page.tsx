@@ -1,19 +1,11 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowLeft,
-  CalendarDays,
-  ClipboardList,
-  Factory,
-  PackageCheck,
-  Ruler,
-  UserRound,
-} from "lucide-react";
+import { useTranslations } from "next-intl";
+import { ArrowLeft, Factory, PackageOpen } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,80 +17,61 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { MetricCard } from "@/components/shared/MetricCard";
-
-type FrameJobOrderComponent = {
-  id: string;
-  componentType: string;
-  source: string;
-  itemCode: string;
-  itemName: string;
-  description: string;
-  qtyPerFrame: number;
-  requiredQuantity: number;
-  issuedQuantity: number;
-  uomCode: string;
-  unitRate: number;
-  totalAmount: number;
-  roundingMode: string;
-  reservation: {
-    quantity: number;
-    status: string;
-    warehouseCode: string;
-    warehouseName: string;
-    reservedAt: string;
-    consumedAt: string | null;
-    releasedAt: string | null;
-  } | null;
-};
-
-type FrameJobOrderLine = {
-  quotationItemId: string;
-  itemCode: string;
-  itemName: string;
-  description: string;
-  quantity: number;
-  uomCode: string;
-  rate: number;
-  lineTotal: number;
-  configuration: {
-    width: number;
-    height: number;
-    fixedAllowance: number;
-    moldingItemCode: string;
-    moldingItemName: string;
-    moldingStickLength: number;
-    moldingSticksRequired: number;
-    serviceFeeMode: string;
-    serviceType: string;
-    serviceFeeAmount: number;
-    totalServiceFee: number;
-    invoiceDisplayMode: string;
-  } | null;
-  components: FrameJobOrderComponent[];
-};
+import { StatusText } from "@/components/shared/StatusText";
+import { FrameJobOrderRequisitionView } from "@/components/frame-job-orders/FrameJobOrderRequisitionView";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
+import { RESOURCES } from "@/constants/resources";
+import { useCanCreate, useCanEdit } from "@/hooks/usePermissions";
+import {
+  getProductionMaterialRequestErrorCode,
+  mutateProductionMaterialRequest,
+  type ProductionMaterialRequestAction,
+  type ProductionMaterialRequestErrorCode,
+} from "@/lib/frame-job-orders/production-material-request";
+import { INVENTORY_RESERVATIONS_QUERY_KEY } from "@/hooks/queryKeys";
+import type { FrameJobOrderRequisitionResponse } from "@/lib/frame-job-orders/requisition";
 
 type FrameJobOrderDetail = {
   id: string;
   jobOrderCode: string;
-  salesOrderCode: string;
-  quotationCode: string;
-  draftInvoiceCode: string;
   customerName: string;
   status: string;
-  orderDate: string;
-  completedAt: string | null;
-  notes: string | null;
-  componentCount: number;
   requiredQuantity: number;
   issuedQuantity: number;
-  createdAt: string;
   manufacturingOrder: {
     id: string;
     manufacturingOrderCode: string;
     status: string;
   } | null;
-  lines: FrameJobOrderLine[];
+  materialRequest: {
+    id: string;
+    status: "draft" | "approved" | "issued";
+    warehouseId: string;
+    warehouseCode: string;
+    warehouseName: string;
+    requestedAt: string;
+    approvedAt: string | null;
+    issuedAt: string | null;
+    cancelledAt: string | null;
+    items: Array<{
+      id: string;
+      frameJobOrderItemId: string;
+      itemCode: string;
+      itemName: string;
+      requestedQuantity: number;
+      issuedQuantity: number;
+      baseQuantity: number;
+      baseUomCode: string;
+    }>;
+  } | null;
 };
 
 type FrameJobOrderDetailResponse = {
@@ -110,6 +83,7 @@ type PageProps = {
 };
 
 const detailQueryKey = (id: string) => ["frame-job-order", id];
+const requisitionQueryKey = (id: string) => ["frame-job-order", id, "requisition"];
 const listQueryKey = ["frame-job-orders"];
 
 const fetchFrameJobOrder = async (id: string): Promise<FrameJobOrderDetailResponse> => {
@@ -123,6 +97,20 @@ const fetchFrameJobOrder = async (id: string): Promise<FrameJobOrderDetailRespon
   }
 
   return response.json() as Promise<FrameJobOrderDetailResponse>;
+};
+
+const fetchFrameJobOrderRequisition = async (
+  id: string
+): Promise<FrameJobOrderRequisitionResponse> => {
+  const response = await fetch(`/api/frame-job-orders/${id}/requisition`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error("FAILED_TO_LOAD_JOB_REQUISITION");
+  }
+
+  return response.json() as Promise<FrameJobOrderRequisitionResponse>;
 };
 
 const pushFrameJobOrderToProduction = async (id: string) => {
@@ -143,15 +131,6 @@ const pushFrameJobOrderToProduction = async (id: string) => {
   }>;
 };
 
-const formatDate = (value?: string | null) => {
-  if (!value) return "-";
-  return new Intl.DateTimeFormat(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-  }).format(new Date(value));
-};
-
 const formatDateTime = (value?: string | null) => {
   if (!value) return "-";
   return new Intl.DateTimeFormat(undefined, {
@@ -168,12 +147,6 @@ const formatNumber = (value: number) =>
     maximumFractionDigits: 4,
   }).format(value);
 
-const formatMoney = (value: number) =>
-  new Intl.NumberFormat(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-
 const labelize = (value: string) =>
   value
     .split("_")
@@ -181,20 +154,17 @@ const labelize = (value: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 
-const getStatusBadge = (status: string) => {
-  if (status === "completed") return <Badge className="bg-green-600">Completed</Badge>;
-  if (status === "pending") return <Badge variant="outline">Pending</Badge>;
-  if (status === "queued") return <Badge className="bg-blue-600">Queued</Badge>;
-  if (status === "in_progress") return <Badge variant="secondary">In progress</Badge>;
-  if (status === "on_hold") return <Badge variant="destructive">On hold</Badge>;
-  if (status === "cancelled") return <Badge variant="destructive">Cancelled</Badge>;
-  return <Badge variant="outline">{labelize(status)}</Badge>;
-};
+const getStatusText = (status: string) => {
+  const tone =
+    status === "completed"
+      ? "green"
+      : status === "queued" || status === "in_progress"
+        ? "blue"
+        : status === "on_hold" || status === "cancelled"
+          ? "red"
+          : "muted";
 
-const getComponentBadge = (type: string) => {
-  if (type === "molding") return <Badge variant="secondary">Molding</Badge>;
-  if (type === "accessory") return <Badge variant="outline">Accessory</Badge>;
-  return <Badge variant="outline">Material</Badge>;
+  return <StatusText tone={tone}>{labelize(status)}</StatusText>;
 };
 
 const DetailValue = ({ label, value }: { label: string; value: React.ReactNode }) => (
@@ -207,26 +177,19 @@ const DetailValue = ({ label, value }: { label: string; value: React.ReactNode }
 const LoadingShell = () => (
   <div className="space-y-6">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-start gap-3">
-        <Skeleton className="h-10 w-10 rounded-md" />
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-56" />
-          <Skeleton className="h-4 w-80" />
-        </div>
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-4 w-80" />
       </div>
       <Skeleton className="h-10 w-36" />
     </div>
-    <div className="grid gap-4 md:grid-cols-4">
-      {[1, 2, 3, 4].map((item) => (
-        <Card key={item}>
-          <CardHeader className="pb-2">
-            <Skeleton className="h-4 w-24" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-8 w-28" />
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-4">
+      <Skeleton className="h-96 w-full rounded-lg" />
+      <div className="flex gap-2">
+        <Skeleton className="h-10 w-24" />
+        <Skeleton className="h-10 w-36" />
+      </div>
     </div>
     <Card>
       <CardHeader>
@@ -245,10 +208,27 @@ const LoadingShell = () => (
 export default function FrameJobOrderDetailsPage({ params }: PageProps) {
   const { id } = use(params);
   const queryClient = useQueryClient();
+  const t = useTranslations("frameJobOrderDetailsPage");
+  const tCommon = useTranslations("common");
+  const [materialDialogOpen, setMaterialDialogOpen] = useState(false);
+  const [selectedWarehouse, setSelectedWarehouse] = useState("");
+  const [materialRequestError, setMaterialRequestError] =
+    useState<ProductionMaterialRequestErrorCode | null>(null);
+  const canCreateMaterialRequest = useCanCreate(RESOURCES.STOCK_REQUESTS);
+  const canManageMaterialRequest = useCanEdit(RESOURCES.STOCK_REQUESTS);
 
   const { data, isLoading, error } = useQuery({
     queryKey: detailQueryKey(id),
     queryFn: () => fetchFrameJobOrder(id),
+  });
+  const {
+    data: requisitionData,
+    isLoading: isRequisitionLoading,
+    error: requisitionError,
+    refetch: refetchRequisition,
+  } = useQuery({
+    queryKey: requisitionQueryKey(id),
+    queryFn: () => fetchFrameJobOrderRequisition(id),
   });
 
   const pushToProductionMutation = useMutation({
@@ -262,21 +242,105 @@ export default function FrameJobOrderDetailsPage({ params }: PageProps) {
     },
   });
 
+  const materialRequestMutation = useMutation({
+    mutationFn: ({
+      action,
+      warehouseId,
+    }: {
+      action: ProductionMaterialRequestAction;
+      warehouseId?: string;
+    }) => mutateProductionMaterialRequest(id, action, warehouseId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: detailQueryKey(id) }),
+        queryClient.invalidateQueries({ queryKey: listQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ["manufacturing-orders"] }),
+        queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] }),
+      ]);
+    },
+  });
+
   const order = data?.data;
   const canPushToProduction = order && !order.manufacturingOrder && order.status === "pending";
+
+  const getMaterialRequestErrorMessage = (code: ProductionMaterialRequestErrorCode) => {
+    switch (code) {
+      case "MATERIAL_REQUEST_INVALID":
+        return t("errors.invalid");
+      case "MATERIAL_REQUEST_UNAUTHORIZED":
+        return t("errors.unauthorized");
+      case "MATERIAL_REQUEST_CONTEXT_INVALID":
+        return t("errors.contextInvalid");
+      case "MATERIAL_REQUEST_PERMISSION_DENIED":
+        return t("errors.permissionDenied");
+      case "MATERIAL_REQUEST_WAREHOUSE_REQUIRED":
+        return t("errors.warehouseRequired");
+      case "MATERIAL_REQUEST_WAREHOUSE_INVALID":
+        return t("errors.warehouseInvalid");
+      case "MATERIAL_REQUEST_JOB_NOT_FOUND":
+        return t("errors.jobNotFound");
+      case "MATERIAL_REQUEST_JOB_CLOSED":
+        return t("errors.jobClosed");
+      case "MATERIAL_REQUEST_ACTIVE_EXISTS":
+        return t("errors.activeExists");
+      case "MATERIAL_REQUEST_NO_OUTSTANDING_MATERIALS":
+        return t("errors.noOutstandingMaterials");
+      case "MATERIAL_REQUEST_MATERIAL_UNAVAILABLE":
+        return t("errors.materialUnavailable");
+      case "MATERIAL_REQUEST_TOO_LARGE":
+        return t("errors.tooLarge");
+      case "MATERIAL_REQUEST_NOT_FOUND":
+        return t("errors.notFound");
+      case "MATERIAL_REQUEST_STATUS_CHANGED":
+        return t("errors.statusChanged");
+      case "MATERIAL_REQUEST_STOCK_UNAVAILABLE":
+        return t("errors.stockUnavailable");
+      case "MATERIAL_REQUEST_INSUFFICIENT_STOCK":
+        return t("errors.insufficientStock");
+      case "MATERIAL_REQUEST_RESERVATION_MISSING":
+        return t("errors.reservationMissing");
+      case "MATERIAL_REQUEST_FAILED":
+        return t("errors.failed");
+    }
+  };
+
+  const handleMaterialRequestAction = async (
+    action: ProductionMaterialRequestAction,
+    warehouseId?: string
+  ) => {
+    setMaterialRequestError(null);
+    try {
+      await materialRequestMutation.mutateAsync({ action, warehouseId });
+      if (action === "create") {
+        setMaterialDialogOpen(false);
+        setSelectedWarehouse("");
+      }
+      const successMessage =
+        action === "create"
+          ? t("success.create")
+          : action === "approve"
+            ? t("success.approve")
+            : action === "issue"
+              ? t("success.issue")
+              : t("success.cancel");
+      toast.success(successMessage);
+    } catch (mutationError) {
+      const code = getProductionMaterialRequestErrorCode(mutationError);
+      setMaterialRequestError(code);
+      if (action !== "create") toast.error(getMaterialRequestErrorMessage(code));
+    }
+  };
 
   const handlePushToProduction = async () => {
     if (!order) return;
 
     try {
       const result = await pushToProductionMutation.mutateAsync(order.id);
-      toast.success(`${result.manufacturingOrder.manufacturingOrderCode} sent to production`);
-    } catch (mutationError) {
-      toast.error(
-        mutationError instanceof Error
-          ? mutationError.message
-          : "Failed to push job order to production"
+      toast.success(
+        t("productionSent", { code: result.manufacturingOrder.manufacturingOrderCode })
       );
+    } catch (mutationError) {
+      toast.error(mutationError instanceof Error ? mutationError.message : t("productionFailed"));
     }
   };
 
@@ -285,12 +349,13 @@ export default function FrameJobOrderDetailsPage({ params }: PageProps) {
   if (error || !order) {
     return (
       <div className="space-y-6">
-        <Button variant="ghost" asChild>
-          <Link href="/sales/frame-job-orders">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to job orders
-          </Link>
-        </Button>
+        <Link
+          href="/sales/frame-job-orders"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          {t("backToJobOrders")}
+        </Link>
         <Card>
           <CardContent className="py-10 text-center">
             <p className="text-sm text-destructive">
@@ -302,29 +367,27 @@ export default function FrameJobOrderDetailsPage({ params }: PageProps) {
     );
   }
 
-  const issuedPercent =
-    order.requiredQuantity > 0
-      ? Math.min((order.issuedQuantity / order.requiredQuantity) * 100, 100)
-      : 0;
+  const hasOutstandingMaterials = order.issuedQuantity < order.requiredQuantity;
+  const materialRequest = order.materialRequest;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/sales/frame-job-orders" aria-label="Back to job orders">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-3xl font-bold tracking-tight">{order.jobOrderCode}</h1>
-              {getStatusBadge(order.status)}
-            </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Job order for {order.customerName || "unnamed customer"}
-            </p>
+        <div className="min-w-0">
+          <Link
+            href="/sales/frame-job-orders"
+            className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            {t("backToJobOrders")}
+          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-3xl font-bold tracking-tight">{order.jobOrderCode}</h1>
+            {getStatusText(order.status)}
           </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Job order for {order.customerName || "unnamed customer"}
+          </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           {order.manufacturingOrder ? (
@@ -347,192 +410,220 @@ export default function FrameJobOrderDetailsPage({ params }: PageProps) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <MetricCard title="Customer" icon={UserRound} value={order.customerName || "-"} />
-        <MetricCard title="Order date" icon={CalendarDays} value={formatDate(order.orderDate)} />
-        <MetricCard title="Components" icon={ClipboardList} value={String(order.componentCount)} />
-        <MetricCard
-          title="Issued quantity"
-          icon={PackageCheck}
-          value={`${formatNumber(order.issuedQuantity)} / ${formatNumber(order.requiredQuantity)}`}
-          caption={`${formatNumber(issuedPercent)}% issued`}
-        />
-      </div>
+      {isRequisitionLoading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-96 w-full rounded-lg" />
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-36" />
+          </div>
+        </div>
+      ) : requisitionError || !requisitionData ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+            <p className="text-sm text-destructive">{t("requisitionLoadFailed")}</p>
+            <Button variant="outline" onClick={() => void refetchRequisition()}>
+              {t("retryRequisition")}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <FrameJobOrderRequisitionView requisition={requisitionData.data} />
+      )}
 
       <Card>
         <CardHeader>
-          <CardTitle>Linked Documents</CardTitle>
-          <CardDescription>Source quotation, draft invoice, and completion timing.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-4">
-          <DetailValue label="Quotation" value={order.quotationCode || "-"} />
-          <DetailValue label="Sales order" value={order.salesOrderCode || "-"} />
-          <DetailValue label="Draft invoice" value={order.draftInvoiceCode || "-"} />
-          <DetailValue label="Completed at" value={formatDateTime(order.completedAt)} />
-        </CardContent>
-      </Card>
-
-      {order.notes ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Notes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="whitespace-pre-wrap text-sm">{order.notes}</p>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {order.lines.map((line, index) => (
-        <Card key={line.quotationItemId || index}>
-          <CardHeader>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <CardTitle>{line.itemName || line.description || "Frame line"}</CardTitle>
-                <CardDescription>
-                  {[
-                    line.itemCode,
-                    line.quantity ? `${formatNumber(line.quantity)} ${line.uomCode}` : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" • ")}
-                </CardDescription>
-              </div>
-              <Badge variant="outline">Line total {formatMoney(line.lineTotal)}</Badge>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle>{t("materialRequest.title")}</CardTitle>
+              <CardDescription>{t("materialRequest.description")}</CardDescription>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {line.configuration ? (
-              <div className="grid gap-4 rounded-md border p-4 md:grid-cols-4">
+            {materialRequest ? (
+              <StatusText
+                tone={
+                  materialRequest.status === "issued"
+                    ? "green"
+                    : materialRequest.status === "approved"
+                      ? "blue"
+                      : "muted"
+                }
+              >
+                {materialRequest.status === "issued"
+                  ? t("materialRequest.statusIssued")
+                  : materialRequest.status === "approved"
+                    ? t("materialRequest.statusApproved")
+                    : t("materialRequest.statusDraft")}
+              </StatusText>
+            ) : null}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {materialRequest ? (
+            <>
+              <div className="grid gap-4 md:grid-cols-4">
                 <DetailValue
-                  label="Frame size"
+                  label={t("materialRequest.warehouse")}
                   value={
-                    <span className="inline-flex items-center gap-2">
-                      <Ruler className="h-4 w-4 text-muted-foreground" />
-                      {formatNumber(line.configuration.width)} x{" "}
-                      {formatNumber(line.configuration.height)}
-                    </span>
-                  }
-                />
-                <DetailValue
-                  label="Allowance"
-                  value={formatNumber(line.configuration.fixedAllowance)}
-                />
-                <DetailValue
-                  label="Molding"
-                  value={
-                    [line.configuration.moldingItemCode, line.configuration.moldingItemName]
+                    [materialRequest.warehouseCode, materialRequest.warehouseName]
                       .filter(Boolean)
                       .join(" - ") || "-"
                   }
                 />
                 <DetailValue
-                  label="Sticks required"
-                  value={
-                    line.configuration.moldingSticksRequired
-                      ? `${formatNumber(line.configuration.moldingSticksRequired)} @ ${formatNumber(
-                          line.configuration.moldingStickLength
-                        )}`
-                      : "-"
-                  }
+                  label={t("materialRequest.requested")}
+                  value={formatDateTime(materialRequest.requestedAt)}
                 />
                 <DetailValue
-                  label="Service fee"
-                  value={`${labelize(line.configuration.serviceFeeMode)} / ${formatMoney(
-                    line.configuration.totalServiceFee
-                  )}`}
-                />
-                <DetailValue label="Service type" value={line.configuration.serviceType || "-"} />
-                <DetailValue
-                  label="Fee amount"
-                  value={formatMoney(line.configuration.serviceFeeAmount)}
+                  label={t("materialRequest.approved")}
+                  value={formatDateTime(materialRequest.approvedAt)}
                 />
                 <DetailValue
-                  label="Invoice display"
-                  value={labelize(line.configuration.invoiceDisplayMode)}
+                  label={t("materialRequest.issued")}
+                  value={formatDateTime(materialRequest.issuedAt)}
                 />
               </div>
-            ) : null}
-
-            <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Component</TableHead>
-                    <TableHead>Material</TableHead>
-                    <TableHead className="text-right">Qty per frame</TableHead>
-                    <TableHead className="text-right">Required</TableHead>
-                    <TableHead className="text-right">Issued</TableHead>
-                    <TableHead>Reservation</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>{t("materialRequest.material")}</TableHead>
+                    <TableHead className="text-right">
+                      {t("materialRequest.requestQuantity")}
+                    </TableHead>
+                    <TableHead className="text-right">
+                      {t("materialRequest.issuedQuantity")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {line.components.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-                        No materials found for this frame line.
+                  {materialRequest.items.map((requestItem) => (
+                    <TableRow key={requestItem.id}>
+                      <TableCell>
+                        {[requestItem.itemCode, requestItem.itemName].filter(Boolean).join(" - ") ||
+                          "-"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatNumber(requestItem.baseQuantity)} {requestItem.baseUomCode}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatNumber(
+                          requestItem.issuedQuantity > 0 ? requestItem.baseQuantity : 0
+                        )}{" "}
+                        {requestItem.baseUomCode}
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    line.components.map((component) => (
-                      <TableRow key={component.id}>
-                        <TableCell>{getComponentBadge(component.componentType)}</TableCell>
-                        <TableCell>
-                          <div className="font-medium">
-                            {[component.itemCode, component.itemName].filter(Boolean).join(" - ") ||
-                              "-"}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {component.description || labelize(component.source)}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {component.qtyPerFrame ? formatNumber(component.qtyPerFrame) : "-"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatNumber(component.requiredQuantity)} {component.uomCode}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatNumber(component.issuedQuantity)} {component.uomCode}
-                        </TableCell>
-                        <TableCell>
-                          {component.reservation ? (
-                            <div>
-                              <div className="font-medium">
-                                {component.reservation.warehouseName ||
-                                  component.reservation.warehouseCode ||
-                                  "-"}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {labelize(component.reservation.status)} • reserved{" "}
-                                {formatNumber(component.reservation.quantity)}
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatMoney(component.totalAmount)}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
+              <div className="flex flex-wrap gap-2">
+                {materialRequest.status === "draft" && canManageMaterialRequest ? (
+                  <Button
+                    onClick={() => handleMaterialRequestAction("approve")}
+                    disabled={materialRequestMutation.isPending}
+                  >
+                    {materialRequestMutation.isPending
+                      ? t("materialRequest.approving")
+                      : t("materialRequest.approve")}
+                  </Button>
+                ) : null}
+                {materialRequest.status === "approved" && canManageMaterialRequest ? (
+                  <Button
+                    onClick={() => handleMaterialRequestAction("issue")}
+                    disabled={materialRequestMutation.isPending}
+                  >
+                    <PackageOpen className="mr-2 h-4 w-4" />
+                    {materialRequestMutation.isPending
+                      ? t("materialRequest.issuing")
+                      : t("materialRequest.issue")}
+                  </Button>
+                ) : null}
+                {(materialRequest.status === "draft" || materialRequest.status === "approved") &&
+                canManageMaterialRequest ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => handleMaterialRequestAction("cancel")}
+                    disabled={materialRequestMutation.isPending}
+                  >
+                    {t("materialRequest.cancel")}
+                  </Button>
+                ) : null}
+              </div>
+            </>
+          ) : hasOutstandingMaterials ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                {t("materialRequest.emptyDescription")}
+              </p>
+              {canCreateMaterialRequest ? (
+                <Button
+                  onClick={() => {
+                    setMaterialRequestError(null);
+                    setMaterialDialogOpen(true);
+                  }}
+                >
+                  <PackageOpen className="mr-2 h-4 w-4" />
+                  {t("materialRequest.create")}
+                </Button>
+              ) : null}
             </div>
-          </CardContent>
-        </Card>
-      ))}
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {t("materialRequest.noStockManagedMaterials")}
+            </p>
+          )}
 
-      {order.lines.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            No frame lines found for this job order.
-          </CardContent>
-        </Card>
-      ) : null}
+          {materialRequestError && !materialDialogOpen ? (
+            <p className="text-sm text-destructive">
+              {getMaterialRequestErrorMessage(materialRequestError)}
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={materialDialogOpen}
+        onOpenChange={(open) => {
+          setMaterialDialogOpen(open);
+          if (!open) {
+            setSelectedWarehouse("");
+            setMaterialRequestError(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("materialRequest.dialogTitle")}</DialogTitle>
+            <DialogDescription>{t("materialRequest.dialogDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            <WarehouseSelect
+              value={selectedWarehouse}
+              onValueChange={(value) => {
+                setSelectedWarehouse(value);
+                setMaterialRequestError(null);
+              }}
+              scope="current_business_unit"
+            />
+            {materialRequestError ? (
+              <p className="text-sm text-destructive">
+                {getMaterialRequestErrorMessage(materialRequestError)}
+              </p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMaterialDialogOpen(false)}>
+              {tCommon("cancel")}
+            </Button>
+            <Button
+              onClick={() => handleMaterialRequestAction("create", selectedWarehouse)}
+              disabled={!selectedWarehouse || materialRequestMutation.isPending}
+            >
+              {materialRequestMutation.isPending
+                ? t("materialRequest.creating")
+                : t("materialRequest.create")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

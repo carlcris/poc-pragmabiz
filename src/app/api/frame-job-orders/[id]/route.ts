@@ -131,11 +131,37 @@ type DbManufacturingOrderSummary = {
   status: string;
 };
 
+type DbProductionMaterialRequest = {
+  id: string;
+  warehouse_id: string;
+  status: string;
+  requested_at: string;
+  approved_at: string | null;
+  issued_at: string | null;
+  cancelled_at: string | null;
+  warehouses?: RelatedOne<DbRelatedName>;
+};
+
+type DbProductionMaterialRequestItem = {
+  id: string;
+  production_material_request_id: string;
+  frame_job_order_item_id: string;
+  item_id: string;
+  requested_quantity: number | string;
+  issued_quantity: number | string;
+  uom_id: string;
+  base_quantity: number | string;
+  base_uom_id: string;
+  items?: RelatedOne<DbRelatedName>;
+  base_units?: RelatedOne<DbRelatedName>;
+};
+
 type QueryBuilder = {
   eq: (column: string, value: string) => QueryBuilder;
   is: (column: string, value: null) => QueryBuilder;
   in: (column: string, values: string[]) => QueryBuilder;
   order: (column: string, options?: { ascending?: boolean }) => QueryBuilder;
+  limit: (count: number) => QueryBuilder;
   maybeSingle: () => Promise<{ data: unknown; error: unknown }>;
 };
 
@@ -408,6 +434,69 @@ async function GETHandler(_request: NextRequest, { params }: { params: Promise<{
     const manufacturingOrder =
       (manufacturingRows || []).find((order) => order.status !== "cancelled") || null;
 
+    const { data: materialRequestRows, error: materialRequestsError } =
+      await fetchRows<DbProductionMaterialRequest>(
+        queryClient
+          .from("production_material_requests")
+          .select(
+            `
+            id,
+            warehouse_id,
+            status,
+            requested_at,
+            approved_at,
+            issued_at,
+            cancelled_at,
+            warehouses:warehouse_id(warehouse_code, warehouse_name)
+          `
+          )
+          .eq("frame_job_order_id", jobOrderId)
+          .in("status", ["draft", "approved", "issued"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+      );
+
+    if (materialRequestsError) {
+      logQuotationError("Error fetching production material request:", materialRequestsError);
+      return NextResponse.json({ error: "Failed to load job order" }, { status: 500 });
+    }
+
+    const materialRequest = materialRequestRows?.[0] || null;
+    let materialRequestItems: DbProductionMaterialRequestItem[] = [];
+
+    if (materialRequest) {
+      const { data: requestItemRows, error: requestItemsError } =
+        await fetchRows<DbProductionMaterialRequestItem>(
+          queryClient
+            .from("production_material_request_items")
+            .select(
+              `
+              id,
+              production_material_request_id,
+              frame_job_order_item_id,
+              item_id,
+              requested_quantity,
+              issued_quantity,
+              uom_id,
+              base_quantity,
+              base_uom_id,
+              items:item_id(item_code, item_name),
+              base_units:units_of_measure!production_material_request_items_base_uom_id_fkey(code, name)
+            `
+            )
+            .eq("production_material_request_id", materialRequest.id)
+            .order("created_at", { ascending: true })
+            .limit(500)
+        );
+
+      if (requestItemsError) {
+        logQuotationError("Error fetching production material request items:", requestItemsError);
+        return NextResponse.json({ error: "Failed to load job order" }, { status: 500 });
+      }
+
+      materialRequestItems = requestItemRows || [];
+    }
+
     const configurationByQuotationItemId = new Map(
       configurations
         .filter((configuration) => configuration.quotation_item_id)
@@ -491,6 +580,29 @@ async function GETHandler(_request: NextRequest, { params }: { params: Promise<{
               id: manufacturingOrder.id,
               manufacturingOrderCode: manufacturingOrder.manufacturing_order_code,
               status: manufacturingOrder.status,
+            }
+          : null,
+        materialRequest: materialRequest
+          ? {
+              id: materialRequest.id,
+              status: materialRequest.status,
+              warehouseId: materialRequest.warehouse_id,
+              warehouseCode: one(materialRequest.warehouses)?.warehouse_code || "",
+              warehouseName: one(materialRequest.warehouses)?.warehouse_name || "",
+              requestedAt: materialRequest.requested_at,
+              approvedAt: materialRequest.approved_at,
+              issuedAt: materialRequest.issued_at,
+              cancelledAt: materialRequest.cancelled_at,
+              items: materialRequestItems.map((requestItem) => ({
+                id: requestItem.id,
+                frameJobOrderItemId: requestItem.frame_job_order_item_id,
+                itemCode: one(requestItem.items)?.item_code || "",
+                itemName: one(requestItem.items)?.item_name || "",
+                requestedQuantity: toNumber(requestItem.requested_quantity),
+                issuedQuantity: toNumber(requestItem.issued_quantity),
+                baseQuantity: toNumber(requestItem.base_quantity),
+                baseUomCode: one(requestItem.base_units)?.code || "",
+              })),
             }
           : null,
         lines: Array.from(quotationLines.values()).sort((a, b) => a.sortOrder - b.sortOrder),

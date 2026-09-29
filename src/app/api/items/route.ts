@@ -9,6 +9,7 @@ import type { CreateItemRequest, Item, ItemPriceTier } from "@/types/item";
 import type { Database } from "@/types/database.types";
 import { insertItemUnitOptionWithRetry } from "@/lib/items/insertItemUnitOption";
 import { DEFAULT_PRICE_TIER_CODE } from "@/lib/pricing/itemPriceTiers";
+import { getCurrentPricingDate } from "@/lib/pricing/pricing-date";
 import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
 import {
   getPrimaryItemUnitOption,
@@ -69,6 +70,7 @@ type ItemsRpcRow = {
   import_currency: string | null;
   sales_price: number;
   item_type: string;
+  material: string | null;
   custom_fields: Record<string, unknown> | null;
   is_active: boolean | null;
   image_url: string | null;
@@ -120,6 +122,7 @@ type DbItem = {
   description: string | null;
   dimensions: Item["dimensions"] | null;
   item_type: string;
+  material: string | null;
   uom_id: string;
   purchase_price: number | string | null;
   import_cost: number | string | null;
@@ -292,13 +295,14 @@ const transformItemPriceRow = (row: DbItemPriceRow): ItemPriceTier => ({
 const fetchCurrentPriceTiersByItemId = async (
   supabase: SupabaseClient<Database>,
   companyId: string,
+  businessUnitId: string | null,
   itemIds: string[]
 ) => {
   const priceTiersByItemId = new Map<string, ItemPriceTier[]>();
   if (itemIds.length === 0) return priceTiersByItemId;
 
   const uniqueItemIds = [...new Set(itemIds)];
-  const today = new Date().toISOString().split("T")[0];
+  const today = await getCurrentPricingDate(supabase, companyId, businessUnitId);
 
   for (let startIndex = 0; startIndex < uniqueItemIds.length; startIndex += ID_FILTER_CHUNK_SIZE) {
     const itemIdChunk = uniqueItemIds.slice(startIndex, startIndex + ID_FILTER_CHUNK_SIZE);
@@ -485,6 +489,7 @@ const transformDbItem = (
     description: dbItem.description || "",
     dimensions: dbItem.dimensions || null,
     itemType: dbItem.item_type as Item["itemType"],
+    material: (dbItem.material as Item["material"]) ?? null,
     customFields: dbItem.custom_fields || null,
     uom: uom?.code || "",
     uomId: dbItem.uom_id,
@@ -552,7 +557,40 @@ async function GETHandler(request: NextRequest) {
         .from("items")
         .select(
           `
-          *,
+id,
+          company_id,
+          item_code,
+          item_name,
+          item_name_cn,
+          description,
+          category_id,
+          uom_id,
+          item_type,
+          purchase_price,
+          sales_price,
+          is_stock_item,
+          track_serial,
+          track_batch,
+          weight,
+          weight_uom,
+          dimensions,
+          default_warehouse,
+          is_active,
+          created_at,
+          created_by,
+          updated_at,
+          updated_by,
+          deleted_at,
+          version,
+          custom_fields,
+          image_url,
+          import_cost,
+          import_currency,
+          supplier_code,
+          sop,
+          reorder_level,
+          reorder_quantity,
+          material,
           item_categories (
             id,
             name,
@@ -609,6 +647,7 @@ async function GETHandler(request: NextRequest) {
       const priceTiersByItemId = await fetchCurrentPriceTiersByItemId(
         supabase,
         companyId,
+        currentBusinessUnitId,
         fetchedItems.map((item) => item.id)
       );
       const unitOptionRowsByItemId = await fetchItemUnitOptionsByItemId(
@@ -731,6 +770,7 @@ async function GETHandler(request: NextRequest) {
     const priceTiersByItemId = await fetchCurrentPriceTiersByItemId(
       supabase,
       companyId,
+      currentBusinessUnitId,
       rows.map((row) => row.id)
     );
     const unitOptionRowsByItemId = await fetchItemUnitOptionsByItemId(
@@ -976,7 +1016,40 @@ async function POSTHandler(request: NextRequest) {
       .insert(insertPayloadBase)
       .select(
         `
-        *,
+id,
+        company_id,
+        item_code,
+        item_name,
+        item_name_cn,
+        description,
+        category_id,
+        uom_id,
+        item_type,
+        purchase_price,
+        sales_price,
+        is_stock_item,
+        track_serial,
+        track_batch,
+        weight,
+        weight_uom,
+        dimensions,
+        default_warehouse,
+        is_active,
+        created_at,
+        created_by,
+        updated_at,
+        updated_by,
+        deleted_at,
+        version,
+        custom_fields,
+        image_url,
+        import_cost,
+        import_currency,
+        supplier_code,
+        sop,
+        reorder_level,
+        reorder_quantity,
+        material,
         item_categories (
           id,
           name,
@@ -1032,9 +1105,12 @@ async function POSTHandler(request: NextRequest) {
     const unitOptionRowsByItemId = await fetchItemUnitOptionsByItemId(supabase, companyId, [
       (newItem as ItemRow).id,
     ]);
-    const priceTiersByItemId = await fetchCurrentPriceTiersByItemId(supabase, companyId, [
-      (newItem as ItemRow).id,
-    ]);
+    const priceTiersByItemId = await fetchCurrentPriceTiersByItemId(
+      supabase,
+      companyId,
+      context.currentBusinessUnitId,
+      [(newItem as ItemRow).id]
+    );
 
     return NextResponse.json(
       {

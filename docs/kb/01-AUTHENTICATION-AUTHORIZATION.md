@@ -734,6 +734,22 @@ const { data: items } = useQuery({
 3. Clear permission cache
 4. Verify RLS policies
 
+#### Issue: Login reports "Failed to load user profile" after a local reset
+
+**Symptoms**: `POST /api/auth/login` returns 500 after authentication succeeds, and PostgREST logs
+error `42501` for `public.users`.
+
+**Solution**:
+
+1. Apply the complete local migration chain with `supabase db reset`.
+2. Confirm `20260904120000_restore_data_api_table_privileges.sql` was applied.
+3. Retry login with a seeded account.
+
+The privilege migration restores authenticated operations only where an existing RLS policy allows
+that operation. It also grants read-only access to the business-unit tables required during login.
+Do not resolve this failure by disabling RLS or by using the service-role credential in the login
+handler.
+
 #### Issue: Session expired frequently
 
 **Symptoms**: User redirected to login often
@@ -808,3 +824,4 @@ Key migrations related to authentication and authorization:
 - `20240201000000_add_capabilities.sql` - Granular capabilities
 - `20240301000000_add_business_units.sql` - Multi-tenant support
 - `20240315000000_add_user_business_unit_access.sql` - BU access control
+- `20260904120000_restore_data_api_table_privileges.sql` - RLS-aligned Data API table privileges

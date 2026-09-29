@@ -19,6 +19,7 @@ import {
   type DbItemUnitOptionRow,
 } from "@/lib/items/itemUnitOptions";
 import { DEFAULT_PRICE_TIER_CODE } from "@/lib/pricing/itemPriceTiers";
+import { getCurrentPricingDate } from "@/lib/pricing/pricing-date";
 
 type DbItem = {
   id: string;
@@ -34,6 +35,7 @@ type DbItem = {
   dimensions: Item["dimensions"] | null;
   category_id: string | null;
   item_type: string;
+  material: string | null;
   uom_id: string;
   purchase_price: number | string | null;
   import_cost: number | string | null;
@@ -171,9 +173,10 @@ const transformItemPriceRow = (row: DbItemPriceRow): ItemPriceTier => ({
 const fetchCurrentPriceTiers = async (
   supabase: SupabaseClient<Database>,
   companyId: string,
+  businessUnitId: string | null,
   itemId: string
 ): Promise<ItemPriceTier[]> => {
-  const today = new Date().toISOString().split("T")[0];
+  const today = await getCurrentPricingDate(supabase, companyId, businessUnitId);
   const { data, error } = await supabase
     .from("item_prices")
     .select(
@@ -313,6 +316,7 @@ function transformDbItem(
     description: dbItem.description || "",
     dimensions: dbItem.dimensions || null,
     itemType: dbItem.item_type as Item["itemType"],
+    material: (dbItem.material as Item["material"]) ?? null,
     customFields: dbItem.custom_fields || null,
     uom: dbItem.unit_of_measure?.code || "",
     uomId: dbItem.uom_id,
@@ -407,7 +411,12 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     const data = fetchedItem;
     const unitOptionRows = await fetchItemUnitOptions(supabase, data.company_id, id);
     const defaultPricingTier = await getDefaultPricingTier(supabase, data.company_id);
-    const priceTiers = await fetchCurrentPriceTiers(supabase, data.company_id, id);
+    const priceTiers = await fetchCurrentPriceTiers(
+      supabase,
+      data.company_id,
+      currentBusinessUnitId ?? null,
+      id
+    );
 
     let onHand = 0;
     let allocated = 0;
@@ -741,7 +750,12 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
     // Transform and return
     const unitOptionRows = await fetchItemUnitOptions(supabase, existing.company_id, id);
     const defaultPricingTier = await getDefaultPricingTier(supabase, existing.company_id);
-    const priceTiers = await fetchCurrentPriceTiers(supabase, existing.company_id, id);
+    const priceTiers = await fetchCurrentPriceTiers(
+      supabase,
+      existing.company_id,
+      currentBusinessUnitId ?? null,
+      id
+    );
     const capabilities = await getUserCapabilities(user.id, currentBusinessUnitId);
     const canViewPricingDetails = hasCapability(
       capabilities,

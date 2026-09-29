@@ -81,14 +81,23 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
         p_terms_conditions: body.termsConditions || null,
         p_notes: body.notes || null,
         p_items: body.items,
+        p_date_received: body.dateReceived,
+        p_due_date: body.dueDate,
+        p_items_received: body.itemsReceived ?? null,
+        p_payment_terms: body.paymentTerms ?? null,
       }
     );
 
     if (rpcError || typeof quotationId !== "string") {
       logQuotationError("Error updating quotation:", rpcError);
       const message = getClientErrorMessage(rpcError, "Failed to update quotation");
-      const status = message === "Quotation not found" ? 404 : 400;
-      return NextResponse.json({ error: message }, { status });
+      const errorCode =
+        rpcError?.message === "QUOTATION_NOT_EDITABLE" ? "QUOTATION_NOT_EDITABLE" : null;
+      const status = message === "Quotation not found" ? 404 : errorCode ? 409 : 400;
+      return NextResponse.json(
+        { error: message, ...(errorCode ? { code: errorCode } : {}) },
+        { status }
+      );
     }
 
     const { quotation, error: fetchError } = await fetchQuotationById(supabase, quotationId);

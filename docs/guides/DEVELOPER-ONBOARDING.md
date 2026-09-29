@@ -79,8 +79,20 @@ supabase db reset
 
 This will:
 1. Reset the database
-2. Run all 209 migrations
+2. Run all migrations in timestamp order
 3. Seed the database with test data (from `supabase/seed.sql`)
+
+The unfinalized chop-and-join schema is consolidated in
+`20260901100000_add_chop_join_framing_configuration.sql`, with the final frame-details
+save function in `20260901120000_persist_chop_join_framing_details.sql`. Edit these
+origins rather than adding another same-session replacement. The committed April
+framing migration remains part of the historical chain.
+
+Existing development databases that applied the superseded September files need
+migration-history reconciliation after confirming schema equivalence. Do not reset
+a database containing work you need to keep; a reset deletes its data. In particular,
+verify that both mat-layer `unit_rate` columns use `numeric(20,2)` before treating an
+older local database as equivalent to the consolidated schema.
 
 ### 6. Set Up Environment Variables
 
@@ -645,6 +657,21 @@ lsof -ti:3000 | xargs kill -9
 4. **Ask team members** if stuck
 
 ## Mandatory Checklist
+
+### Framing reference data and regression checks
+
+`supabase/seed.sql` owns framing reference items, their default hardware prices, and the CUT unit.
+The framing reference block is idempotent and covers every active company with tenant-owned units
+and categories. Run it as part of environment provisioning after companies exist; schema migrations
+do not insert these demo/reference items. The former four seed-only September migrations were removed.
+For a populated local database, reconcile those exact local migration-history entries rather than
+resetting user data; do not replay unrelated demo opening-stock sections.
+
+Database regression scripts under `supabase/tests/` verify exact financial snapshots, acceptance
+rollback, production material requests, and manufacturing-order uniqueness. Run these only on a
+coordinated local/test database: the workflow tests use rollback-only fixtures and fault-injection
+triggers. The financial script's header lists its required fixture-ID parameters. Browser checks
+should additionally cover the two-job sales-order status display and the unpriced-moulding Apply guard.
 
 Before considering yourself onboarded, ensure you can:
 

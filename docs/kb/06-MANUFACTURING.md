@@ -50,6 +50,7 @@ Dashboard stock transformation screens are under **Manufacturing > Stock Transfo
 A **Transformation Template** defines a production recipe: what inputs are required to produce what outputs.
 
 **Key Features**:
+
 - Multi-input items (raw materials)
 - Multi-output items (finished goods, by-products)
 - Quantity relationships
@@ -63,6 +64,7 @@ same company. The copied values are editable before saving and become a new acti
 by the current business unit. Later changes to either template do not propagate to the other.
 
 **Example - Sheet Cutting**:
+
 ```
 Template: "Cut 40x80 Sheet into 10x20 Pieces"
 Inputs:
@@ -73,6 +75,7 @@ Outputs:
 ```
 
 **Example - Large Sheet to Small Pieces**:
+
 ```
 Template: "Cut 48x96 Sheet into 12x24 Pieces"
 Inputs:
@@ -87,6 +90,7 @@ Outputs:
 A **Transformation Order** executes a production run based on a template.
 
 **Key Features**:
+
 - Based on an active template
 - Status workflow: Draft → Preparing → Completed (or Cancelled)
 - Quantity scaling (make 10x the template)
@@ -96,6 +100,7 @@ A **Transformation Order** executes a production run based on a template.
 - Lineage tracking
 
 **Workflow**:
+
 ```
 Draft → Preparing → Completed
 ```
@@ -129,11 +134,13 @@ Transformation completion hands produced output quantities into the shared putaw
 
 **Cost Redistribution**:
 When executing a transformation:
+
 1. Calculate total cost of all inputs (qty × avg_cost)
 2. Redistribute total cost across outputs based on proportion
 3. Update output item costs
 
 **Example**:
+
 ```
 Input Costs:
   - Sheet 40x80 (1 unit @ ₱1,200/unit): ₱1,200.00
@@ -151,11 +158,13 @@ Unit Cost per 10x20 Piece: ₱74.50
 The system tracks **lineage** - the relationship between input items and output items through transformations.
 
 **Use Cases**:
+
 - Quality recalls (trace which outputs came from bad inputs)
 - Batch tracking for expiry management
 - Audit trail for production
 
 **Example**:
+
 ```
 Sheet Batch #SH-2025-001 (40x80) → Transformation Order #TO-456 → Pieces 10x20 (Batch #PC-2025-456)
 If Sheet Batch #SH-2025-001 is defective, can find all 10x20 Pieces produced from it
@@ -166,41 +175,54 @@ If Sheet Batch #SH-2025-001 is defective, can find all 10x20 Pieces produced fro
 A **Frame Job Order** represents custom assembly/framing work created from sales orders requiring custom manufacturing (e.g., picture framing, custom furniture assembly, made-to-order products).
 
 **Key Features**:
+
 - **Created from sales orders** - Triggered when sales order requires custom work
-- **Material reservation** - Reserves materials from warehouse inventory
+- **Production material requests** - Separates production demand, reservation, and warehouse issue
 - **Cost tracking** - Tracks material costs and labor
 - **Sales integration** - Links back to sales order for invoicing
 - **Status workflow** - Draft → In Progress → Completed
 - **Atomic transactions** - Uses RPC for data integrity
 
 **Workflow**:
+
 ```
 Sales Order Created (custom work required)
    ↓
-Create Frame Job Order (reserve materials)
+Create Frame Job Order (copy demand; no inventory change)
+   ↓
+Optionally create and approve Material Request (reserve warehouse materials)
+   ↓
+Issue Material Request if needed (deduct inventory actually issued)
    ↓
 Start Job (status: in_progress)
    ↓
-Complete Job (consume materials, calculate costs)
+Complete Job (no second inventory deduction)
    ↓
 Link to Sales Order (ready for invoicing)
 ```
 
 **Use Cases**:
+
 - **Picture framing** - Custom frame dimensions, glass, matting
 - **Custom furniture** - Made-to-order pieces with specific materials
 - **Product assembly** - Assembling components per customer specifications
 - **Engraving/customization** - Adding custom work to existing products
 
 **Material Consumption**:
-When a frame job order is completed:
+When an approved production material request is issued:
+
 1. Materials are consumed from warehouse inventory
 2. Stock transactions are created for each material
-3. Total material cost is calculated
-4. Job order cost is recorded
-5. Sales order is updated with job completion status
+3. The request reservations are consumed
+4. The frame and manufacturing material lines are marked issued
+
+Job completion verifies linked production is complete but does not require a material request or
+full issue: residual materials can finish the work. Actual issued quantities remain unchanged.
+Completion cancels unissued requests and releases their unused reservations in the same transaction;
+issued requests stay in inventory history. No additional stock transaction is posted.
 
 **Example - Custom Picture Frame**:
+
 ```
 Sales Order: Custom frame for 24x36 poster
    ↓
@@ -214,8 +236,11 @@ Frame Job Order Created:
   Total estimated cost: ₱3,250
   Selling price: ₱7,500
    ↓
-Job Completed:
+Materials Issued:
   Actual materials consumed (from inventory)
+   ↓
+Job Completed:
+  No additional inventory movement
   Actual cost: ₱3,400
   Margin: ₱4,100
 ```
@@ -225,6 +250,7 @@ Job Completed:
 A **Workstation** represents a production area or equipment.
 
 **Key Features**:
+
 - Capacity tracking
 - Schedule management
 - Assigned to transformation orders
@@ -235,6 +261,7 @@ A **Workstation** represents a production area or equipment.
 ### Core Tables
 
 #### transformation_templates
+
 ```sql
 CREATE TABLE transformation_templates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -253,6 +280,7 @@ CREATE TABLE transformation_templates (
 ```
 
 #### template_inputs
+
 ```sql
 CREATE TABLE template_inputs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -265,6 +293,7 @@ CREATE TABLE template_inputs (
 ```
 
 #### template_outputs
+
 ```sql
 CREATE TABLE template_outputs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -278,6 +307,7 @@ CREATE TABLE template_outputs (
 ```
 
 #### transformation_orders
+
 ```sql
 CREATE TABLE transformation_orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -299,6 +329,7 @@ CREATE TABLE transformation_orders (
 ```
 
 #### transformation_order_inputs
+
 ```sql
 CREATE TABLE transformation_order_inputs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -314,6 +345,7 @@ CREATE TABLE transformation_order_inputs (
 ```
 
 #### transformation_order_outputs
+
 ```sql
 CREATE TABLE transformation_order_outputs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -329,6 +361,7 @@ CREATE TABLE transformation_order_outputs (
 ```
 
 #### transformation_lineage
+
 ```sql
 CREATE TABLE transformation_lineage (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -343,6 +376,7 @@ CREATE TABLE transformation_lineage (
 ```
 
 #### frame_job_orders
+
 ```sql
 CREATE TABLE frame_job_orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -362,6 +396,7 @@ CREATE TABLE frame_job_orders (
 ```
 
 #### frame_job_materials
+
 ```sql
 CREATE TABLE frame_job_materials (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -376,6 +411,7 @@ CREATE TABLE frame_job_materials (
 ```
 
 #### workstations
+
 ```sql
 CREATE TABLE workstations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -394,11 +430,13 @@ CREATE TABLE workstations (
 ### Transformation Template Management
 
 #### GET /api/transformations/templates
+
 List transformation templates owned by the current business unit.
 
 **Permissions**: `view` on `stock_transformations`
 
 **Response**:
+
 ```json
 {
   "data": [
@@ -406,9 +444,7 @@ List transformation templates owned by the current business unit.
       "id": "uuid",
       "template_code": "SHEET-CUT-001",
       "template_name": "Cut 40x80 Sheet into 10x20 Pieces",
-      "inputs": [
-        { "item": "Sheet 40x80", "quantity": 1, "unit": "unit" }
-      ],
+      "inputs": [{ "item": "Sheet 40x80", "quantity": 1, "unit": "unit" }],
       "outputs": [
         { "item": "Piece 10x20", "quantity": 16, "unit": "unit", "cost_proportion": 0.993 },
         { "item": "Scrap/Trim", "quantity": 0.1, "unit": "kg", "cost_proportion": 0.007 }
@@ -420,6 +456,7 @@ List transformation templates owned by the current business unit.
 ```
 
 #### POST /api/transformations/templates
+
 Create transformation template.
 
 **Permissions**: `create` on `stock_transformations` in the current business unit. Template header,
@@ -427,6 +464,7 @@ inputs, outputs, and optional copy lineage are created in one database transacti
 are active immediately.
 
 **Request**:
+
 ```json
 {
   "templateCode": "SHEET-CUT-002",
@@ -458,6 +496,7 @@ are active immediately.
 ```
 
 #### GET /api/transformations/templates/copy-sources
+
 List active copy sources from the current or other business units in the same company. The endpoint
 uses bounded server-side search and pagination and does not grant normal read access to another
 business unit's template records.
@@ -468,17 +507,20 @@ business unit's template records.
 `page`, and `limit` (maximum 50; creation selectors request 5 at a time).
 
 #### GET /api/transformations/templates/copy-sources/[id]
+
 Return the active source template snapshot needed to initialize a new template. Access is restricted
 to the authenticated user's company and current-BU Stock Transformations `create` permission.
 
 ### Transformation Order Management
 
 #### POST /api/transformations/orders
+
 Create a draft transformation order atomically from a template.
 
 **Permissions**: `create` on `stock_transformations` in the current business unit.
 
 **Request**:
+
 ```json
 {
   "templateId": "uuid",
@@ -490,6 +532,7 @@ Create a draft transformation order atomically from a template.
 ```
 
 **Effect**:
+
 - Creates the order, scaled template inputs, primary outputs, inherited additional outputs, and initial cost allocation in one database transaction.
 - The order form groups template inputs and outputs under **Planned Quantity**. Entering any
   displayed input, primary output, or additional output quantity recalculates every other displayed
@@ -508,20 +551,24 @@ remain server-side. A planned quantity that would produce a fractional input or 
 `TRANSFORMATION_PLANNED_QUANTITY_RATIO_INVALID` with HTTP `400 Bad Request`.
 
 #### POST /api/transformations/orders/[id]/release
+
 Prepare the transformation order.
 
 **Permissions**: `edit` on `stock_transformations`.
 
 **Effect**:
+
 1. Validates sufficient inventory for inputs
 2. Status changes to `PREPARING`
 
 #### POST /api/transformations/orders/[id]/execute
+
 Complete transformation (atomic RPC).
 
 **Permissions**: `edit` on `stock_transformations`.
 
 **Effect** (all in single transaction):
+
 1. **Remove input inventory**
    - Consume the exact FIFO batch/rack allocations recorded when the order entered `PREPARING`
    - Convert the execution quantity to base units before reducing stock or recording ledger quantity
@@ -552,11 +599,13 @@ order should be cancelled and recreated from a corrected template if it must rem
 If any consumption, output, waste, putaway, lineage, costing, or final-status write fails, the entire completion rolls back.
 
 #### POST /api/transformations/orders/[id]/cancel
+
 Cancel transformation order.
 
 **Permissions**: `delete` on `transformation_orders`
 
 **Effect**:
+
 - If status = 'reserved', releases reservations
 - Status changes to 'cancelled'
 
@@ -565,18 +614,15 @@ Cancel transformation order.
 Frame job orders are created from sales orders and managed through their lifecycle.
 
 #### POST /api/sales-orders/[id]/create-frame-job-order
+
 Create frame job order from a sales order.
 
 **Permissions**: `edit` on `sales_orders`
 
-**Request**:
-```json
-{
-  "warehouseId": "uuid"  // Warehouse to reserve materials from
-}
-```
+**Request**: no body
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -589,45 +635,79 @@ Create frame job order from a sales order.
 ```
 
 **Effect**:
+
 - Creates frame job order record
 - Generates unique job order code (FJO-XXX)
 - Links to sales order
-- Reserves materials from specified warehouse
-- Status set to 'draft'
+- Copies the configured production components without checking or changing inventory
+- Does not require a warehouse
+- Status set to `pending`
 - Uses RPC: `create_frame_job_order_from_sales_order_transaction`
 
 **Validation**:
+
 - Sales order must exist
-- Warehouse ID is required
 - User must have edit permission on sales orders
-- Sufficient material inventory must be available
+- Sales order must contain frame-configured items
 
 **Example Usage**:
+
 ```typescript
 // Create frame job order from sales order
 const response = await fetch(`/api/sales-orders/${salesOrderId}/create-frame-job-order`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    warehouseId: 'warehouse-uuid-here'
-  })
-})
+  method: "POST",
+});
 
-const { frameJobOrder } = await response.json()
-console.log(`Created job order: ${frameJobOrder.jobOrderCode}`)
+const { frameJobOrder } = await response.json();
+console.log(`Created job order: ${frameJobOrder.jobOrderCode}`);
 ```
 
+#### POST /api/frame-job-orders/[id]/material-request
+
+Manage the warehouse material lifecycle for a frame job order. The endpoint accepts exactly one
+transactional action per request.
+
+**Permissions**: `create` on `stock_requests` for `create`; `edit` on `stock_requests` for
+`approve`, `issue`, and `cancel`.
+
+**Request examples**:
+
+```json
+{ "action": "create", "warehouseId": "uuid" }
+```
+
+```json
+{ "action": "approve" }
+```
+
+**Lifecycle**:
+
+- `create` records outstanding stock-managed materials in a draft request. It does not check,
+  reserve, or deduct stock. An inactive, deleted, or foreign-company
+  required material rejects the entire request instead of silently dropping the line.
+- `approve` locks and checks all warehouse stock rows, then reserves every request line atomically.
+  Insufficient stock leaves the request in draft and creates no partial reservations.
+- `issue` consumes the request reservations, creates the posted outbound stock transaction, deducts
+  on-hand and reserved stock, and updates the job and manufacturing material quantities atomically.
+- `cancel` is allowed for draft or approved requests. Cancelling an approved request releases all
+  of its reservations; an issued request cannot be cancelled.
+- One non-cancelled request is allowed per frame job order, and one request is limited to 500
+  material lines.
+
 #### GET /api/frame-job-orders
+
 List all frame job orders.
 
 **Permissions**: `view` on `frame_job_orders`
 
 **Query Parameters**:
+
 - `status` (optional) - Filter by status (draft, in_progress, completed, cancelled)
 - `sales_order_id` (optional) - Filter by sales order
 - `customer_id` (optional) - Filter by customer
 
 **Response**:
+
 ```json
 {
   "jobOrders": [
@@ -641,16 +721,16 @@ List all frame job orders.
       },
       "status": "in_progress",
       "description": "Custom picture frame 24x36",
-      "total_cost": 3400.00,
-      "total_price": 7500.00,
+      "total_cost": 3400.0,
+      "total_price": 7500.0,
       "job_date": "2025-06-14",
       "materials": [
         {
           "item": "Wood Molding",
           "quantity": 10,
           "unit": "feet",
-          "unit_cost": 175.00,
-          "total_cost": 1750.00
+          "unit_cost": 175.0,
+          "total_cost": 1750.0
         }
       ]
     }
@@ -659,41 +739,52 @@ List all frame job orders.
 ```
 
 #### POST /api/frame-job-orders/[id]/start
+
 Start a frame job order.
 
 **Permissions**: `edit` on `frame_job_orders`
 
 **Effect**:
-- Validates materials are reserved
+
+- Production may start without a material request or full issue when using residual materials
 - Status changes to 'in_progress'
 - Records start timestamp
 
 #### POST /api/frame-job-orders/[id]/complete
+
 Complete a frame job order.
 
 **Permissions**: `edit` on `frame_job_orders`
 
 **Effect**:
-- Consumes materials from inventory (creates stock transactions)
-- Calculates total material cost
+
+- Permits no material request or partial issue when residual materials were used
+- Releases unused reservations and closes unissued requests; issue is the only stock deduction event
 - Status changes to 'completed'
 - Records completion timestamp
 - Links completed job back to sales order
 - Sales order ready for invoicing
 
 **Validation**:
+
 - Job must be in 'in_progress' status
-- All materials must be available in inventory
+- Linked production must be complete
+- Issued quantities remain the actual warehouse quantities; completion does not mark shortages as issued
 
 #### POST /api/frame-job-orders/[id]/cancel
+
 Cancel a frame job order.
 
 **Permissions**: `edit` on `frame_job_orders`
 
 **Effect**:
-- Releases reserved materials back to available inventory
+
 - Status changes to 'cancelled'
 - Unlinks from sales order (sales order can create new job order if needed)
+
+An approved production material request must be cancelled first so its reservation is released. An
+issued request remains part of inventory history and is not reversed by cancelling or completing the
+job order.
 
 ## Services
 
@@ -834,27 +925,26 @@ Transformation order creation and completion are database-owned operations:
 2. **Create Frame Job Order**
    - Sales rep clicks "Create Frame Job Order"
    - API: `POST /api/sales-orders/{id}/create-frame-job-order`
-   - Request body: `{ warehouseId: "uuid" }`
-   - System validates warehouse has materials
    - System generates job order code (FJO-001)
-   - Frame job order created, status: Draft
-   - Materials reserved from warehouse
+   - Frame job order created, status: Pending
+   - No warehouse or inventory validation occurs
 
-3. **Review Job Specifications**
+3. **Review and Request Materials**
    - Production manager reviews job order
    - Verifies materials list:
      - Wood molding: 10 feet
      - Glass sheet: 1 unit (24x36)
      - Backing board: 1 unit
      - Hanging wire: 3 feet
-   - Confirms material reservations
-   - Estimates labor time
+   - Creates a draft material request and selects the issuing warehouse
+   - Approves the request to check and reserve all required stock atomically
+   - Issues the request to deduct inventory before work starts
 
 4. **Start Production**
-   - Production team starts work
-   - API: `POST /api/frame-job-orders/{id}/start`
+   - Sales or production pushes the job to a linked Manufacturing Order
+   - Production team starts the first operation
+   - Starting without a request or with partial issue is allowed for residual-material work
    - Frame job order status: In Progress
-   - Materials remain reserved
    - Start timestamp recorded
 
 5. **Physical Work Performed**
@@ -868,12 +958,12 @@ Transformation order creation and completion are database-owned operations:
    - Production team marks job complete
    - API: `POST /api/frame-job-orders/{id}/complete`
    - System performs (atomic transaction):
-     - Consumes reserved materials from inventory
-     - Creates stock transactions for each material
-     - Calculates total material cost (₱3,400)
+     - Verifies production is complete, without requiring full material issue
+     - Cancels unissued requests and releases their unused reservations
      - Records completion timestamp
      - Updates frame job order status: Completed
      - Links completed job to sales order
+   - No inventory is deducted again
 
 7. **Invoice Customer**
    - Sales order now shows job complete
@@ -883,9 +973,12 @@ Transformation order creation and completion are database-owned operations:
    - Gross margin: ₱4,100
 
 **Example Timeline**:
+
 ```
 Day 1, 10:00 AM - Sales order created
 Day 1, 10:15 AM - Frame job order created (FJO-001)
+Day 1, 10:30 AM - Material request created and approved (stock reserved)
+Day 1, 01:45 PM - Materials issued (inventory deducted)
 Day 1, 02:00 PM - Job started (production begins)
 Day 2, 11:00 AM - Job completed (frame assembled)
 Day 2, 02:00 PM - Invoice sent to customer
@@ -893,6 +986,7 @@ Day 3          - Customer picks up framed poster
 ```
 
 **Integration Points**:
+
 - **Sales Module**: Sales order triggers frame job order creation
 - **Inventory Module**: Material reservation and consumption
 - **Accounting Module**: Cost tracking for profitability analysis
@@ -903,31 +997,41 @@ Day 3          - Customer picks up framed poster
 ### Key Components
 
 #### TransformationTemplateForm
+
 **Location**: `src/components/manufacturing/TransformationTemplateForm.tsx`
+
 - Create/edit templates
 - Add input/output items
 - Set cost proportions
 
 #### TransformationOrderForm
+
 **Location**: `src/components/manufacturing/TransformationOrderForm.tsx`
+
 - Create transformation orders
 - Select template
 - Set scale factor
 
 #### TransformationExecutionUI
+
 **Location**: `src/components/manufacturing/TransformationExecutionUI.tsx`
+
 - Execute transformation
 - View cost calculations
 - Confirm execution
 
 #### LineageViewer
+
 **Location**: `src/components/manufacturing/LineageViewer.tsx`
+
 - Visualize lineage tree
 - Trace forward/backward
 - Export lineage report
 
 #### FrameJobOrderForm
+
 **Location**: `src/components/manufacturing/FrameJobOrderForm.tsx`
+
 - Create custom jobs
 - Add materials
 - Track status
@@ -935,16 +1039,19 @@ Day 3          - Customer picks up framed poster
 ## Reports
 
 ### Transformation Efficiency Report
+
 **Location**: `/api/reports/transformation-efficiency`
 
 Shows production efficiency metrics: planned vs actual, waste, costs.
 
 ### Production Summary
+
 **Location**: `/api/analytics/manufacturing/production`
 
 Summarizes production volumes by template, workstation, period.
 
 ### Lineage Report
+
 **Location**: `/api/reports/lineage`
 
 Detailed lineage tracing for quality management.
@@ -952,8 +1059,10 @@ Detailed lineage tracing for quality management.
 ## Troubleshooting
 
 ### Issue: Transformation execution fails
+
 **Symptoms**: Error when executing order
 **Solution**:
+
 1. Check sufficient inventory for inputs
 2. Verify all items exist and are active
 3. Check warehouse has locations
@@ -961,16 +1070,20 @@ Detailed lineage tracing for quality management.
 5. Ensure atomic transaction not interrupted
 
 ### Issue: Cost allocation incorrect
+
 **Symptoms**: Output costs don't match expectations
 **Solution**:
+
 1. Verify cost proportions sum to 1.0
 2. Check input costs at time of reservation
 3. Review moving average calculation
 4. Ensure all inputs have valid costs
 
 ### Issue: Lineage tracking broken
+
 **Symptoms**: Cannot trace products
 **Solution**:
+
 1. Check transformation_lineage table populated
 2. Verify batch tracking enabled if needed
 3. Ensure execution completed successfully

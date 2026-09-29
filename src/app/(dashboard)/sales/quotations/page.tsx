@@ -14,14 +14,18 @@ import {
   Clock,
   Send,
   MoreVertical,
+  ShoppingCart,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   useQuotations,
   useChangeQuotationStatus,
   useConfirmQuotation,
+  useConvertQuotationToSalesOrder,
 } from "@/hooks/useQuotations";
 import { quotationsApi } from "@/lib/api/quotations";
+import { getApiErrorCode } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +51,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useCurrency } from "@/hooks/useCurrency";
+import { useRouter } from "next/navigation";
+import type { Quotation, QuotationStatus } from "@/types/quotation";
+import { canEditQuotation } from "@/lib/quotations/editability";
+import {
+  QuotationAcceptanceDialog,
+  type AcceptancePayload,
+} from "@/components/quotations/QuotationAcceptanceDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,9 +69,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useCurrency } from "@/hooks/useCurrency";
-import { useRouter } from "next/navigation";
-import type { Quotation, QuotationStatus } from "@/types/quotation";
+import { CreateGuard } from "@/components/permissions/PermissionGuard";
+import { RESOURCES } from "@/constants/resources";
+
+const conversionErrorCodes = [
+  "QUOTATION_CONVERT_NOT_FOUND",
+  "QUOTATION_CONVERT_NOT_ACCEPTED",
+  "QUOTATION_CONVERT_ALREADY_ORDERED",
+  "QUOTATION_CONVERT_WRONG_BUSINESS_UNIT",
+  "QUOTATION_CONVERT_CHANGED",
+  "QUOTATION_CONVERT_FORBIDDEN",
+] as const;
 
 const QuotationViewDialog = dynamic(
   () =>
@@ -81,11 +101,14 @@ export default function QuotationsPage() {
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [quotationToConfirm, setQuotationToConfirm] = useState<Quotation | null>(null);
+  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [quotationToConvert, setQuotationToConvert] = useState<Quotation | null>(null);
 
   const { formatCurrency } = useCurrency();
   const router = useRouter();
   const changeStatus = useChangeQuotationStatus();
   const confirmQuotation = useConfirmQuotation();
+  const convertQuotation = useConvertQuotationToSalesOrder();
 
   const { data, isLoading, isFetching, error } = useQuotations({
     search,
@@ -228,19 +251,59 @@ export default function QuotationsPage() {
     }
   };
 
-  const handleConfirmQuotation = async () => {
+  const handleConfirmQuotation = async (acceptance: AcceptancePayload) => {
     if (!quotationToConfirm) return;
 
     try {
       await confirmQuotation.mutateAsync({
         id: quotationToConfirm.id,
         warehouseId: null,
+        acceptance,
       });
       toast.success("Quotation confirmed");
       setConfirmDialogOpen(false);
       setQuotationToConfirm(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to confirm quotation");
+    }
+  };
+
+  const handleRequestConversion = (quotation: Quotation) => {
+    setViewDialogOpen(false);
+    setQuotationToConvert(quotation);
+    setConvertDialogOpen(true);
+  };
+
+  const handleConvertQuotation = async () => {
+    if (!quotationToConvert) return;
+
+    try {
+      const result = await convertQuotation.mutateAsync(quotationToConvert.id);
+      toast.success(t("convertSuccess", { number: result.orderNumber }));
+      setConvertDialogOpen(false);
+      setQuotationToConvert(null);
+      router.push("/sales/orders");
+    } catch (error) {
+      const errorCode = getApiErrorCode(error, conversionErrorCodes);
+      const message = (() => {
+        switch (errorCode) {
+          case "QUOTATION_CONVERT_NOT_FOUND":
+            return t("convertNotFound");
+          case "QUOTATION_CONVERT_NOT_ACCEPTED":
+            return t("convertNotAccepted");
+          case "QUOTATION_CONVERT_ALREADY_ORDERED":
+            return t("convertAlreadyOrdered");
+          case "QUOTATION_CONVERT_WRONG_BUSINESS_UNIT":
+            return t("convertWrongBusinessUnit");
+          case "QUOTATION_CONVERT_CHANGED":
+            return t("convertChanged");
+          case "QUOTATION_CONVERT_FORBIDDEN":
+            return t("convertForbidden");
+          default:
+            return t("convertFailed");
+        }
+      })();
+      toast.error(message);
     }
   };
 
@@ -402,7 +465,7 @@ export default function QuotationsPage() {
                         onClick={(event) => event.stopPropagation()}
                       >
                         <div className="flex justify-end gap-2">
-                          {(quotation.status === "draft" || quotation.status === "sent") && (
+                          {canEditQuotation(quotation.status) && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -412,6 +475,20 @@ export default function QuotationsPage() {
                               <Pencil className="mr-2 h-4 w-4" />
                               <span>{tCommon("edit")}</span>
                             </Button>
+                          )}
+                          {quotation.status === "accepted" && (
+                            <CreateGuard resource={RESOURCES.SALES_ORDERS}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-2"
+                                onClick={() => handleRequestConversion(quotation)}
+                                disabled={convertQuotation.isPending}
+                              >
+                                <ShoppingCart className="mr-2 h-4 w-4" />
+                                <span>{t("convertToOrder")}</span>
+                              </Button>
+                            </CreateGuard>
                           )}
                           {canChangeStatus(quotation.status) && (
                             <DropdownMenu>
@@ -470,25 +547,65 @@ export default function QuotationsPage() {
           open={viewDialogOpen}
           onOpenChange={setViewDialogOpen}
           quotation={selectedQuotation}
+          onConvertToSalesOrder={handleRequestConversion}
         />
       )}
 
-      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+      {/* Acceptance is evidenced, not assumed — the dialog takes who agreed,
+          through which channel, and the waiver. All three are also required by
+          `confirm_sales_quotation_transaction`. */}
+      <QuotationAcceptanceDialog
+        open={confirmDialogOpen}
+        onOpenChange={setConfirmDialogOpen}
+        quotationNumber={quotationToConfirm?.quotationNumber}
+        submitting={confirmQuotation.isPending}
+        onConfirm={handleConfirmQuotation}
+      />
+
+      <AlertDialog
+        open={convertDialogOpen}
+        onOpenChange={(open) => {
+          if (convertQuotation.isPending) return;
+          setConvertDialogOpen(open);
+          if (!open) setQuotationToConvert(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm quotation</AlertDialogTitle>
+            <AlertDialogTitle>{t("convertTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Confirming {quotationToConfirm?.quotationNumber ?? "this quotation"} will mark the
-              quotation as accepted. Sales orders are created manually from the sales order module.
+              {t("convertDescription", {
+                number: quotationToConvert?.quotationNumber || "",
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-3 text-sm">
+            <p className="font-medium">{t("convertWillLabel")}</p>
+            <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+              <li>{t("convertBulletCreateOrder")}</li>
+              <li>{t("convertBulletCopyItems")}</li>
+              <li>{t("convertBulletStatus")}</li>
+              <li>{t("convertBulletLink")}</li>
+            </ul>
+            <p className="text-muted-foreground">{t("convertDraftHint")}</p>
+          </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={convertQuotation.isPending}>
+              {tCommon("cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirmQuotation}
-              disabled={confirmQuotation.isPending}
+              disabled={convertQuotation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConvertQuotation();
+              }}
             >
-              {confirmQuotation.isPending ? "Confirming..." : "Confirm quotation"}
+              {convertQuotation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ShoppingCart className="mr-2 h-4 w-4" />
+              )}
+              {convertQuotation.isPending ? t("converting") : t("convertAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

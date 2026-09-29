@@ -3,34 +3,42 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { fetchQuotationById, logQuotationError } from "../../_shared";
+import {
+  asRpcClient,
+  fetchQuotationById,
+  getClientErrorMessage,
+  logQuotationError,
+} from "../../_shared";
+import { z } from "zod";
 import type { QuotationStatus } from "@/types/quotation";
+import { validateAcceptance, type AcceptanceChannel } from "@/lib/quotations/acceptance";
 
 const validManualStatuses: QuotationStatus[] = ["sent", "accepted", "rejected", "expired"];
-
-const getInvalidTransitionMessage = (currentStatus: string, nextStatus: string) => {
-  if (currentStatus === "draft" && ["sent", "accepted", "rejected"].includes(nextStatus)) {
-    return null;
-  }
-
-  if (currentStatus === "sent" && ["accepted", "rejected", "expired"].includes(nextStatus)) {
-    return null;
-  }
-
-  if (nextStatus === "ordered") {
-    return "Accepted quotations must be converted to orders through the conversion endpoint";
-  }
-
-  return `Cannot change status from ${currentStatus} to ${nextStatus}`;
-};
+const statusPayloadSchema = z
+  .object({
+    status: z.string(),
+    acceptedByName: z.string().trim().max(200).optional(),
+    acceptedChannel: z.string().max(30).optional(),
+    waiverPaths: z.array(z.string().min(1).max(1024)).max(50).optional(),
+  })
+  .strict();
 
 // PATCH /api/quotations/[id]/status
 async function PATCHHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requirePermission(RESOURCES.SALES_QUOTATIONS, "edit");
+    const unauthorized = await requirePermission(RESOURCES.SALES_QUOTATIONS, "edit");
+    if (unauthorized) return unauthorized;
 
     const { id: quotationId } = await params;
-    const { status } = (await request.json()) as { status?: string };
+    const parsed = statusPayloadSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Review the quotation status details and try again." },
+        { status: 400 }
+      );
+    }
+    const body = parsed.data;
+    const { status } = body;
 
     if (!status) {
       return NextResponse.json({ error: "Status is required" }, { status: 400 });
@@ -51,34 +59,49 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: quotation, error: fetchError } = await supabase
-      .from("sales_quotations")
-      .select("status")
-      .eq("id", quotationId)
-      .is("deleted_at", null)
-      .single();
+    // Acceptance carries a record or it does not happen. Checked here and not
+    // only in the dialog: a client-side guard leaves this endpoint able to
+    // accept a quotation with no evidence, which is what the record exists to
+    // prevent.
+    const acceptance =
+      status === "accepted"
+        ? {
+            acceptedByName: body.acceptedByName?.trim() ?? "",
+            acceptedChannel: body.acceptedChannel as AcceptanceChannel,
+            waiverPaths: body.waiverPaths ?? [],
+          }
+        : null;
 
-    if (fetchError || !quotation) {
-      return NextResponse.json({ error: "Quotation not found" }, { status: 404 });
+    if (acceptance) {
+      const errors = validateAcceptance(acceptance);
+      if (errors.length > 0) {
+        return NextResponse.json({ error: errors.join(" ") }, { status: 400 });
+      }
     }
 
-    const currentStatus = quotation.status || "draft";
-    const invalidMessage = getInvalidTransitionMessage(currentStatus, status);
-    if (invalidMessage) {
-      return NextResponse.json({ error: invalidMessage }, { status: 400 });
-    }
-
-    const { error: updateError } = await supabase
-      .from("sales_quotations")
-      .update({
-        status,
-        updated_by: user.id,
-      })
-      .eq("id", quotationId);
+    const { error: updateError } = await asRpcClient(supabase).rpc(
+      "change_sales_quotation_status_transaction",
+      {
+        p_quotation_id: quotationId,
+        p_status: status,
+        p_accepted_by_name: acceptance?.acceptedByName ?? null,
+        p_accepted_channel: acceptance?.acceptedChannel ?? null,
+        p_waiver_paths: acceptance?.waiverPaths ?? null,
+      }
+    );
 
     if (updateError) {
       logQuotationError("Error updating quotation status:", updateError);
-      return NextResponse.json({ error: "Failed to update quotation status" }, { status: 500 });
+      const message = getClientErrorMessage(updateError, "Failed to update quotation status");
+      const statusCode =
+        message === "Quotation not found"
+          ? 404
+          : updateError.message === "QUOTATION_STATUS_TRANSITION_INVALID"
+            ? 409
+            : message === "Failed to update quotation status"
+              ? 500
+              : 400;
+      return NextResponse.json({ error: message }, { status: statusCode });
     }
 
     const { quotation: updatedQuotation, error: updatedFetchError } = await fetchQuotationById(

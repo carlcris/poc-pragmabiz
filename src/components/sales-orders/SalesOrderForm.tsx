@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { frameSizeSelectionPayload } from "@/lib/sales-orders/frame-size-selection-payload";
+import { salesOrderLinePricing } from "@/lib/sales-orders/sales-order-line-pricing";
+import { discountRateOf, formatLineDiscount } from "@/lib/framing/invoicePresenter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Pencil, Trash2, Calculator, TriangleAlert } from "lucide-react";
@@ -34,10 +37,12 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { quotationsApi, type AvailableQuotationLine } from "@/lib/api/quotations";
 import type { SalesOrder } from "@/types/sales-order";
 import type { CreateSalesOrderRequest } from "@/types/sales-order";
+import { SalesOrderMutationError } from "@/lib/api/sales-orders";
+import { toast } from "sonner";
 import {
-  QuotationLineItemDialog,
-  type LineItemFormValues,
-} from "../quotations/QuotationLineItemDialog";
+  SalesOrderLineItemDialog,
+  type SalesOrderLineItemFormValues,
+} from "./SalesOrderLineItemDialog";
 import {
   Dialog,
   DialogContent,
@@ -91,12 +96,17 @@ const mapSalesOrderLineItemToFormValues = (item: SalesOrder["lineItems"][number]
   pricingTier: item.pricingTier,
   pricingTierName: item.pricingTierName,
   discount: item.discount,
+  discountAmount: item.discountAmount,
+  quotationPricing: item.quotationPricing,
+  lineTotal: item.lineTotal,
   taxRate: item.taxRate,
   available: item.available,
   reorderPoint: item.reorderPoint,
   skipInventory: item.skipInventory,
   frameConfiguration: item.frameConfiguration,
   frameComponents: item.frameComponents,
+  matLayers: item.matLayers,
+  frameSizes: item.frameSizes,
 });
 
 export function SalesOrderForm({
@@ -122,7 +132,9 @@ export function SalesOrderForm({
   });
   const customers = customersData?.data || [];
 
-  const [lineItems, setLineItems] = useState<LineItemFormValues[]>([]);
+  const [lineItems, setLineItems] = useState<SalesOrderLineItemFormValues[]>(() =>
+    (salesOrder?.lineItems ?? initialValues?.lineItems ?? []).map(mapSalesOrderLineItemToFormValues)
+  );
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [quotationLinesOpen, setQuotationLinesOpen] = useState(false);
   const [quotationLineSearch, setQuotationLineSearch] = useState("");
@@ -133,7 +145,7 @@ export function SalesOrderForm({
   const [quotationLinesLoading, setQuotationLinesLoading] = useState(false);
   const [editingItem, setEditingItem] = useState<{
     index: number | null;
-    item: LineItemFormValues;
+    item: SalesOrderLineItemFormValues;
   } | null>(null);
 
   const defaultValues = useMemo<SalesOrderFormInput>(
@@ -167,23 +179,18 @@ export function SalesOrderForm({
   const isCustomerLocked = !isEditMode && !!initialValues?.lockCustomer;
 
   const totals = useMemo(() => {
-    const subtotal = lineItems.reduce(
-      (sum, item) => sum + (item.quantity || 0) * (item.unitPrice || 0),
-      0
+    return lineItems.reduce(
+      (sum, item) => {
+        const amounts = salesOrderLinePricing(item);
+        return {
+          subtotal: sum.subtotal + amounts.subtotal,
+          totalDiscount: sum.totalDiscount + amounts.totalDiscount,
+          totalTax: sum.totalTax + amounts.totalTax,
+          totalAmount: sum.totalAmount + amounts.totalAmount,
+        };
+      },
+      { subtotal: 0, totalDiscount: 0, totalTax: 0, totalAmount: 0 }
     );
-    const totalDiscount = lineItems.reduce((sum, item) => {
-      const itemSubtotal = (item.quantity || 0) * (item.unitPrice || 0);
-      return sum + (itemSubtotal * (item.discount || 0)) / 100;
-    }, 0);
-    const totalTax = lineItems.reduce((sum, item) => {
-      const itemSubtotal = (item.quantity || 0) * (item.unitPrice || 0);
-      const itemDiscount = (itemSubtotal * (item.discount || 0)) / 100;
-      const taxableAmount = itemSubtotal - itemDiscount;
-      return sum + (taxableAmount * (item.taxRate || 0)) / 100;
-    }, 0);
-    const totalAmount = subtotal - totalDiscount + totalTax;
-
-    return { subtotal, totalDiscount, totalTax, totalAmount };
   }, [lineItems]);
 
   useEffect(() => {
@@ -227,7 +234,7 @@ export function SalesOrderForm({
     setLineItems((items) => items.filter((_, i) => i !== index));
   };
 
-  const handleSaveItem = (item: LineItemFormValues) => {
+  const handleSaveItem = (item: SalesOrderLineItemFormValues) => {
     setLineItems((items) => {
       if (editingItem?.index !== null && editingItem?.index !== undefined) {
         return items.map((it, i) => (i === editingItem.index ? item : it));
@@ -248,10 +255,36 @@ export function SalesOrderForm({
   };
 
   const handleSelectQuotationLine = (line: AvailableQuotationLine) => {
-    const nextLine = mapQuotationLineToSalesOrderLine(line);
     const existingIndex = lineItems.findIndex(
       (item) => item.quotationItemId === line.quotationItemId
     );
+    const existingItem = existingIndex >= 0 ? lineItems[existingIndex] : null;
+    const availableSizeBySourceId = new Map(
+      (line.frameSizes || []).map((size) => [
+        size.frameConfiguration.quotationConfigurationId || size.frameConfiguration.id,
+        size,
+      ])
+    );
+    const nextLine = existingItem
+      ? {
+          ...existingItem,
+          quotationPricing: line.quotationPricing,
+          quotationRemainingQuantity: existingItem.quantity + line.quotationRemainingQuantity,
+          frameSizes: existingItem.frameSizes?.map((size) => {
+            const sourceId =
+              size.frameConfiguration.quotationConfigurationId || size.frameConfiguration.id;
+            const availableSize = availableSizeBySourceId.get(sourceId);
+            return {
+              ...size,
+              quotedQuantity: availableSize?.quotedQuantity,
+              orderedQuantity: availableSize?.orderedQuantity,
+              remainingQuantity:
+                (size.frameConfiguration.frameQuantity || 0) +
+                (availableSize?.remainingQuantity || 0),
+            };
+          }),
+        }
+      : mapQuotationLineToSalesOrderLine(line);
 
     setEditingItem({ index: existingIndex >= 0 ? existingIndex : null, item: nextLine });
     setQuotationLinesOpen(false);
@@ -260,30 +293,58 @@ export function SalesOrderForm({
 
   const mapQuotationLineToSalesOrderLine = (
     line: AvailableQuotationLine,
-    quantity = line.quotationRemainingQuantity || line.quantity
-  ): LineItemFormValues => ({
-    itemId: line.itemId,
-    itemCode: line.itemCode,
-    itemName: line.itemName,
-    quotationId: line.quotationId,
-    quotationNumber: line.quotationNumber,
-    quotationItemId: line.quotationItemId,
-    quotationRemainingQuantity: line.quotationRemainingQuantity,
-    description: line.description,
-    quantity,
-    unitPrice: line.unitPrice,
-    uomId: line.uomId,
-    uomCode: line.uomCode,
-    uomName: line.uomName,
-    pricingTier: line.pricingTier,
-    pricingTierName: line.pricingTierName,
-    discount: line.discount,
-    taxRate: line.taxRate,
-    lineTotal: line.lineTotal,
-    skipInventory: !!line.frameConfiguration,
-    frameConfiguration: line.frameConfiguration,
-    frameComponents: line.frameComponents,
-  });
+    quantity = line.quotationRemainingQuantity ?? line.quantity
+  ): SalesOrderLineItemFormValues => {
+    const frameSizes = line.frameSizes?.map((size) => ({
+      ...size,
+      frameConfiguration: {
+        ...size.frameConfiguration,
+        quotationConfigurationId:
+          size.frameConfiguration.quotationConfigurationId || size.frameConfiguration.id,
+      },
+      frameComponents: size.frameComponents.map((component) => ({
+        ...component,
+        quotationComponentId: component.id,
+      })),
+      matLayers: size.matLayers.map((layer) => ({
+        ...layer,
+        quotationMatLayerId: layer.id,
+      })),
+    }));
+
+    return {
+      itemId: line.itemId,
+      itemCode: line.itemCode,
+      itemName: line.itemName,
+      quotationId: line.quotationId,
+      quotationNumber: line.quotationNumber,
+      quotationItemId: line.quotationItemId,
+      quotationRemainingQuantity: line.quotationRemainingQuantity,
+      description: line.description,
+      quantity: frameSizes?.length
+        ? frameSizes.reduce(
+            (total, size) => total + (size.frameConfiguration.frameQuantity || 0),
+            0
+          )
+        : quantity,
+      unitPrice: line.unitPrice,
+      uomId: line.uomId,
+      uomCode: line.uomCode,
+      uomName: line.uomName,
+      pricingTier: line.pricingTier,
+      pricingTierName: line.pricingTierName,
+      discount: line.discount,
+      discountAmount: line.discountAmount,
+      quotationPricing: line.quotationPricing,
+      taxRate: line.taxRate,
+      lineTotal: line.lineTotal,
+      skipInventory: !!frameSizes?.length,
+      frameConfiguration: line.frameConfiguration,
+      frameComponents: line.frameComponents,
+      matLayers: line.matLayers,
+      frameSizes,
+    };
+  };
 
   useEffect(() => {
     if (!quotationLinesOpen || !selectedCustomerId) {
@@ -333,12 +394,8 @@ export function SalesOrderForm({
         expectedDeliveryDate: parsed.expectedDeliveryDate,
         lineItems: lineItems.map((item) => ({
           itemId: item.itemId,
-          itemCode: item.itemCode || "",
-          itemName: item.itemName || "",
           quotationId: item.quotationId || null,
-          quotationNumber: item.quotationNumber,
           quotationItemId: item.quotationItemId || null,
-          quotationRemainingQuantity: item.quotationRemainingQuantity,
           description: item.description,
           quantity: item.quantity,
           uomId: item.uomId,
@@ -347,9 +404,7 @@ export function SalesOrderForm({
           unitPrice: item.unitPrice,
           discount: item.discount,
           taxRate: item.taxRate,
-          skipInventory: item.skipInventory ?? !!item.frameConfiguration,
-          frameConfiguration: item.frameConfiguration,
-          frameComponents: item.frameComponents,
+          frameSizeSelections: frameSizeSelectionPayload(item.frameSizes),
         })),
         shippingAddress: parsed.shippingAddress,
         shippingCity: parsed.shippingCity,
@@ -368,8 +423,55 @@ export function SalesOrderForm({
             })
           : await createMutation.mutateAsync(apiRequest);
 
+      toast.success(t(isEditMode ? "updatedSuccess" : "createdSuccess"));
       onSuccess?.(result);
-    } catch {}
+    } catch (error) {
+      if (!(error instanceof SalesOrderMutationError)) {
+        toast.error(t("saveFailed"));
+        return;
+      }
+
+      switch (error.code) {
+        case "SALES_ORDER_FORBIDDEN":
+          toast.error(t("saveForbidden"));
+          break;
+        case "SALES_ORDER_NOT_FOUND":
+          toast.error(t("saveNotFound"));
+          break;
+        case "SALES_ORDER_NOT_EDITABLE":
+          toast.error(t("saveNotEditable"));
+          break;
+        case "SALES_ORDER_ITEMS_REQUIRED":
+          toast.error(t("addLineItemRequired"));
+          break;
+        case "SALES_ORDER_VALIDATION_FAILED":
+          toast.error(t("saveValidationFailed"));
+          break;
+        case "SALES_ORDER_CUSTOMER_INVALID":
+          toast.error(t("saveCustomerInvalid"));
+          break;
+        case "SALES_ORDER_QUOTATION_LINE_INVALID":
+          toast.error(t("saveQuotationLineInvalid"));
+          break;
+        case "SALES_ORDER_QUOTATION_FRAME_INVALID":
+          toast.error(t("saveQuotationFrameInvalid"));
+          break;
+        case "SALES_ORDER_FRAME_SIZE_INVALID":
+          toast.error(t("saveFrameSizeInvalid"));
+          break;
+        case "SALES_ORDER_FRAME_SOURCE_REQUIRED":
+          toast.error(t("saveFrameSourceRequired"));
+          break;
+        case "SALES_ORDER_FRAME_QUANTITY_EXCEEDS_REMAINING":
+          toast.error(t("saveFrameQuantityExceedsRemaining"));
+          break;
+        case "SALES_ORDER_FRAME_QUANTITY_MISMATCH":
+          toast.error(t("saveFrameQuantityMismatch"));
+          break;
+        default:
+          toast.error(t("saveFailed"));
+      }
+    }
   };
 
   return (
@@ -473,11 +575,11 @@ export function SalesOrderForm({
                   disabled={!selectedCustomerId}
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  Add from Quotation
+                  {t("addFromQuotation")}
                 </Button>
                 <Button type="button" onClick={handleAddItem} size="sm">
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Inventory Item
+                  {t("addInventoryItem")}
                 </Button>
               </div>
             </div>
@@ -501,21 +603,15 @@ export function SalesOrderForm({
                           <TableHead className="text-right">{t("qty")}</TableHead>
                           <TableHead className="text-center">{t("unit")}</TableHead>
                           <TableHead className="text-right">{t("price")}</TableHead>
-                          <TableHead className="text-right">{t("discountPct")}</TableHead>
+                          <TableHead className="text-right">{t("discount")}</TableHead>
                           <TableHead className="text-right">{t("taxPct")}</TableHead>
                           <TableHead className="text-right">{t("total")}</TableHead>
-                          <TableHead className="w-[100px] text-center">
-                            {tCommon("actions")}
-                          </TableHead>
+                          <TableHead className="w-40 text-center">{tCommon("actions")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {lineItems.map((item, index) => {
-                          const itemSubtotal = item.quantity * item.unitPrice;
-                          const discountAmount = (itemSubtotal * item.discount) / 100;
-                          const taxableAmount = itemSubtotal - discountAmount;
-                          const taxAmount = (taxableAmount * item.taxRate) / 100;
-                          const lineTotal = taxableAmount + taxAmount;
+                          const { subtotal, totalDiscount } = salesOrderLinePricing(item);
 
                           return (
                             <TableRow key={index}>
@@ -527,7 +623,9 @@ export function SalesOrderForm({
                                   </div>
                                   {item.quotationNumber ? (
                                     <div className="mt-1 text-xs text-muted-foreground">
-                                      From quotation {item.quotationNumber}
+                                      {t("fromQuotation", {
+                                        quotationNumber: item.quotationNumber,
+                                      })}
                                     </div>
                                   ) : null}
                                   {!item.skipInventory &&
@@ -547,32 +645,41 @@ export function SalesOrderForm({
                                 </span>
                               </TableCell>
                               <TableCell className="text-right">
-                                {formatCurrency(item.unitPrice)}
+                                {item.frameConfiguration || item.frameSizes?.length
+                                  ? "—"
+                                  : formatCurrency(item.unitPrice)}
                               </TableCell>
-                              <TableCell className="text-right">{item.discount}%</TableCell>
+                              <TableCell className="text-right">
+                                {formatLineDiscount(
+                                  totalDiscount,
+                                  discountRateOf(totalDiscount, subtotal - totalDiscount),
+                                  formatCurrency
+                                ) || "—"}
+                              </TableCell>
                               <TableCell className="text-right">{item.taxRate}%</TableCell>
                               <TableCell className="text-right font-medium">
-                                {formatCurrency(lineTotal)}
+                                {formatCurrency(subtotal)}
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center justify-center gap-1">
                                   <Button
                                     type="button"
                                     variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
+                                    size="sm"
                                     onClick={() => handleEditItem(index)}
                                   >
-                                    <Pencil className="h-4 w-4" />
+                                    <Pencil className="mr-1 h-4 w-4" />
+                                    {tCommon("edit")}
                                   </Button>
                                   <Button
                                     type="button"
                                     variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive"
                                     onClick={() => handleDeleteItem(index)}
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="mr-1 h-4 w-4" />
+                                    {tCommon("delete")}
                                   </Button>
                                 </div>
                               </TableCell>
@@ -751,7 +858,7 @@ export function SalesOrderForm({
         </form>
       </Form>
 
-      <QuotationLineItemDialog
+      <SalesOrderLineItemDialog
         open={itemDialogOpen}
         onOpenChange={(open) => {
           setItemDialogOpen(open);
@@ -766,10 +873,8 @@ export function SalesOrderForm({
       <Dialog open={quotationLinesOpen} onOpenChange={setQuotationLinesOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Add from customer quotations</DialogTitle>
-            <DialogDescription>
-              Select accepted or partially ordered quotation lines for this customer.
-            </DialogDescription>
+            <DialogTitle>{t("quotationPickerTitle")}</DialogTitle>
+            <DialogDescription>{t("quotationPickerDescription")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Input
@@ -778,9 +883,9 @@ export function SalesOrderForm({
                 setQuotationLineSearch(event.target.value);
                 setQuotationLinePage(1);
               }}
-              placeholder="Search quotation number, item code, or item name..."
+              placeholder={t("quotationPickerSearch")}
             />
-            <div className="max-h-[420px] overflow-y-auto rounded-md border">
+            <div className="max-h-96 overflow-y-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -788,7 +893,7 @@ export function SalesOrderForm({
                     <TableHead>{tCommon("item")}</TableHead>
                     <TableHead className="text-right">Remaining</TableHead>
                     <TableHead className="text-right">{t("price")}</TableHead>
-                    <TableHead className="w-[100px] text-right">{tCommon("actions")}</TableHead>
+                    <TableHead className="w-28 text-right">{tCommon("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -802,7 +907,7 @@ export function SalesOrderForm({
                   ) : quotationLines.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                        No available quotation lines found.
+                        {t("quotationPickerEmpty")}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -825,7 +930,7 @@ export function SalesOrderForm({
                             size="sm"
                             onClick={() => handleSelectQuotationLine(line)}
                           >
-                            Add
+                            {tCommon("add")}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -841,16 +946,18 @@ export function SalesOrderForm({
                 disabled={quotationLinePage <= 1 || quotationLinesLoading}
                 onClick={() => setQuotationLinePage((page) => Math.max(1, page - 1))}
               >
-                Previous
+                {t("previous")}
               </Button>
-              <span className="text-sm text-muted-foreground">Page {quotationLinePage}</span>
+              <span className="text-sm text-muted-foreground">
+                {t("pageNumber", { page: quotationLinePage })}
+              </span>
               <Button
                 type="button"
                 variant="outline"
                 disabled={!quotationLinesHasMore || quotationLinesLoading}
                 onClick={() => setQuotationLinePage((page) => page + 1)}
               >
-                Next
+                {t("next")}
               </Button>
             </div>
           </div>

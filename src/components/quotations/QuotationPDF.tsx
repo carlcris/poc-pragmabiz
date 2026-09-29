@@ -1,5 +1,13 @@
 import { Document, Font, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
-import type { Quotation } from "@/types/quotation";
+import {
+  formatLineDiscount,
+  invoiceRows,
+  showsComponentBreakdown,
+  type InvoiceRow,
+} from "@/lib/framing/invoicePresenter";
+import { showsPrintedTerms } from "@/lib/quotations/printedTerms";
+import { quotationTotals } from "@/lib/quotations/quotation-totals";
+import type { Quotation, QuotationLineItem } from "@/types/quotation";
 
 Font.register({
   family: "ArialUnicode",
@@ -14,185 +22,332 @@ type QuotationPDFProps = {
   generatedAt: string;
 };
 
+const colors = {
+  ink: "#172033",
+  navy: "#203A5F",
+  slate: "#667085",
+  border: "#D8DEE8",
+  surface: "#F7F9FC",
+  white: "#FFFFFF",
+  discount: "#B54708",
+};
+
 const styles = StyleSheet.create({
   page: {
-    padding: 24,
-    fontSize: 11,
+    paddingTop: 26,
+    paddingBottom: 40,
+    paddingHorizontal: 24,
+    fontSize: 9.5,
     fontFamily: "ArialUnicode",
-    color: "#111827",
-    backgroundColor: "#ffffff",
+    color: colors.ink,
+    backgroundColor: colors.white,
+  },
+  accentBar: {
+    height: 5,
+    marginBottom: 17,
+    backgroundColor: colors.navy,
   },
   header: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
     marginBottom: 14,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#d1d5db",
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontFamily: "ArialUnicode",
-    marginBottom: 4,
+    fontWeight: "bold",
+    color: colors.navy,
   },
-  subtitle: {
-    fontSize: 12,
-    color: "#6b7280",
+  quotationNumber: {
+    marginTop: 4,
+    fontSize: 11,
+    color: colors.slate,
+    letterSpacing: 0.4,
+  },
+  headerMeta: {
+    width: 170,
+    gap: 5,
   },
   metaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 16,
-    marginTop: 8,
+    gap: 14,
   },
-  metaCol: {
-    flex: 1,
-    gap: 3,
+  metaLabel: {
+    color: colors.slate,
   },
-  metaRight: {
+  metaValue: {
+    fontFamily: "ArialUnicode",
+    fontWeight: "bold",
     textAlign: "right",
   },
-  label: {
-    color: "#6b7280",
-    fontSize: 10,
+  customerPanel: {
+    flexDirection: "row",
+    marginBottom: 14,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  value: {
-    fontSize: 11,
+  customerDetails: {
+    width: "100%",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
-  section: {
-    marginTop: 12,
+  customerLabel: {
+    marginBottom: 4,
+    fontSize: 8,
+    color: colors.slate,
+    letterSpacing: 0.7,
+  },
+  customerName: {
+    fontSize: 12,
+    fontFamily: "ArialUnicode",
+    fontWeight: "bold",
+    color: colors.ink,
+  },
+  customerEmail: {
+    marginTop: 3,
+    color: colors.slate,
+  },
+  sectionHeading: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    marginBottom: 7,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: "ArialUnicode",
-    marginBottom: 6,
+    fontWeight: "bold",
+    color: colors.navy,
   },
-  lineCard: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 4,
-    marginBottom: 10,
-    overflow: "hidden",
-  },
-  lineHeader: {
-    flexDirection: "row",
-    backgroundColor: "#f3f4f6",
-    paddingVertical: 7,
-    paddingHorizontal: 8,
-  },
-  lineItem: {
-    width: "41%",
-    paddingRight: 8,
-  },
-  lineQty: {
-    width: "11%",
-    textAlign: "right",
-  },
-  linePrice: {
-    width: "13%",
-    textAlign: "right",
-  },
-  lineRate: {
-    width: "8%",
-    textAlign: "right",
-  },
-  lineTotal: {
-    width: "19%",
-    textAlign: "right",
-    fontFamily: "ArialUnicode",
-  },
-  muted: {
-    color: "#6b7280",
-    fontSize: 9,
-    marginTop: 2,
-  },
-  detailGrid: {
-    flexDirection: "row",
-    padding: 8,
-  },
-  detailBox: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 4,
-    padding: 7,
-    marginRight: 8,
-  },
-  detailBoxLast: {
-    marginRight: 0,
-  },
-  detailTitle: {
-    fontSize: 11,
-    fontFamily: "ArialUnicode",
-    marginBottom: 4,
-  },
-  detailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 2,
-  },
-  componentsTable: {
-    marginHorizontal: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
+  table: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#f3f4f6",
+    alignItems: "center",
+    minHeight: 22,
+    backgroundColor: colors.navy,
+  },
+  tableHeaderCell: {
+    paddingVertical: 4,
+    paddingHorizontal: 7,
+    fontSize: 8.5,
+    fontFamily: "ArialUnicode",
+    fontWeight: "bold",
+    color: colors.white,
   },
   tableRow: {
     flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
+    alignItems: "center",
+    minHeight: 22,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  th: {
+  lineItemRow: {
+    minHeight: 26,
+  },
+  lineItemCell: {
+    fontFamily: "ArialUnicode",
+    fontWeight: "bold",
+  },
+  lastTableRow: {
+    borderBottomWidth: 0,
+  },
+  tableCell: {
+    paddingVertical: 4,
+    paddingHorizontal: 7,
+    fontSize: 9,
+  },
+  groupRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 26,
+    paddingVertical: 4,
+    paddingHorizontal: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  groupIdentity: {
+    width: "86%",
+    paddingRight: 10,
+  },
+  groupName: {
     fontSize: 10,
     fontFamily: "ArialUnicode",
-    paddingVertical: 5,
-    paddingHorizontal: 4,
+    fontWeight: "bold",
+    color: colors.ink,
   },
-  td: {
-    fontSize: 10,
-    paddingVertical: 5,
-    paddingHorizontal: 4,
+  groupCode: {
+    marginTop: 2,
+    fontSize: 8,
+    color: colors.slate,
   },
-  colType: { width: "11%" },
-  colItem: { width: "37%" },
-  colQty: { width: "10%", textAlign: "right" },
+  groupTotal: {
+    width: "14%",
+    textAlign: "right",
+    fontFamily: "ArialUnicode",
+    fontWeight: "bold",
+    color: colors.ink,
+  },
+  sizeRow: {
+    backgroundColor: colors.surface,
+  },
+  sizeDescription: {
+    fontFamily: "ArialUnicode",
+    fontWeight: "bold",
+    color: colors.navy,
+  },
+  description: {
+    lineHeight: 1.25,
+  },
+  lineItemDescription: {
+    fontFamily: "ArialUnicode",
+    fontWeight: "bold",
+  },
+  componentDescription: {
+    paddingLeft: 10,
+  },
+  detail: {
+    marginTop: 2,
+    fontSize: 7.8,
+    color: colors.slate,
+  },
+  money: {
+    textAlign: "right",
+  },
+  amount: {
+    textAlign: "right",
+    fontFamily: "ArialUnicode",
+    fontWeight: "bold",
+  },
+  discount: {
+    textAlign: "right",
+    color: colors.discount,
+  },
+  // The breakdown is its own small table beneath the line it belongs to. Kept
+  // deliberately light — a grey heading strip and plain rows, no border and no
+  // box. A bordered panel reads as a competing table and fights the outer one;
+  // the heading alone is enough to say "different columns, different subject".
+  componentPanel: {
+    marginLeft: 24,
+  },
+  // Closes the group at FULL width, back at the outer table's left edge. The
+  // last component's own divider stops at the 24pt inset, so the boundary
+  // between a frame's parts and the next line item had a gap in it.
+  componentPanelClose: {
+    marginBottom: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  componentPanelHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 16,
+    backgroundColor: colors.surface,
+  },
+  componentPanelHeaderCell: {
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+    fontSize: 7,
+    color: colors.slate,
+  },
+  componentRowLast: {
+    borderBottomWidth: 0,
+  },
+  colQty: { width: "7%", textAlign: "right" },
   colUnit: { width: "8%", textAlign: "center" },
-  colMoney: { width: "12%", textAlign: "right" },
-  totals: {
+  colDescription: { width: "46%" },
+  colUnitPrice: { width: "13%", textAlign: "right" },
+  colDiscount: { width: "12%", textAlign: "right" },
+  colAmount: { width: "14%", textAlign: "right" },
+  summarySection: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
     marginTop: 10,
-    marginLeft: "auto",
-    width: 220,
-    gap: 4,
+  },
+  totals: {
+    width: 235,
+    borderTopWidth: 3,
+    borderTopColor: colors.navy,
+    paddingTop: 5,
   },
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    paddingVertical: 1.5,
+  },
+  totalLabel: {
+    color: colors.slate,
+  },
+  totalValue: {
+    fontFamily: "ArialUnicode",
+    fontWeight: "bold",
+  },
+  discountValue: {
+    fontFamily: "ArialUnicode",
+    fontWeight: "bold",
+    color: colors.discount,
   },
   grandTotal: {
-    marginTop: 4,
-    paddingTop: 6,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 3,
+    paddingTop: 5,
     borderTopWidth: 1,
-    borderTopColor: "#d1d5db",
-    fontSize: 14,
+    borderTopColor: colors.border,
+    fontSize: 12,
     fontFamily: "ArialUnicode",
+    fontWeight: "bold",
+    color: colors.navy,
   },
   terms: {
-    marginTop: 14,
+    marginTop: 18,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: "#d1d5db",
+    borderTopColor: colors.border,
+  },
+  termsTitle: {
+    marginBottom: 4,
+    fontSize: 9,
+    fontFamily: "ArialUnicode",
+    fontWeight: "bold",
+    color: colors.navy,
+  },
+  termsText: {
+    fontSize: 8.5,
+    lineHeight: 1.35,
+    color: colors.slate,
+  },
+  notesTitle: {
+    marginTop: 9,
+  },
+  footer: {
+    position: "absolute",
+    right: 24,
+    bottom: 18,
+    left: 24,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingTop: 7,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    fontSize: 7.5,
+    color: colors.slate,
   },
 });
-
-const formatMoney = (value: number) => `PHP ${formatAmount(value)}`;
 
 const formatAmount = (value: number) =>
   new Intl.NumberFormat("en-PH", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(Number.isFinite(value) ? value : 0);
+
+const formatMoney = (value: number) => `PHP ${formatAmount(value)}`;
 
 const formatNumber = (value: number | undefined) =>
   new Intl.NumberFormat("en-PH", {
@@ -202,191 +357,263 @@ const formatNumber = (value: number | undefined) =>
 
 const formatDate = (value: string) => new Date(value).toLocaleDateString("en-PH");
 
-const serviceModeLabel = (value: string) => {
-  if (value === "per_frame") return "Per frame";
-  if (value === "per_order") return "Per order";
-  if (value === "size_based") return "By frame size";
-  if (value === "service_type") return "By service type";
-  if (value === "manual") return "Manual";
-  return value;
-};
+function QuotationTableRow({ row, isLast }: { row: InvoiceRow; isLast: boolean }) {
+  const rowStyles = [
+    styles.tableRow,
+    ...(row.kind === "summary" ? [styles.lineItemRow] : []),
+    ...(row.kind === "sizeHeading" ? [styles.sizeRow] : []),
+    ...(isLast ? [styles.lastTableRow] : []),
+  ];
+  const descriptionStyles = [
+    styles.description,
+    ...(row.kind === "summary" ? [styles.lineItemDescription] : []),
+    ...(row.kind === "component" ? [styles.componentDescription] : []),
+    ...(row.kind === "sizeHeading" ? [styles.sizeDescription] : []),
+  ];
 
-export const QuotationPDF = ({ quotation, generatedAt }: QuotationPDFProps) => (
-  <Document title={`Quotation ${quotation.quotationNumber}`}>
-    <Page size="A4" orientation="landscape" style={styles.page}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Quotation</Text>
-        <Text style={styles.subtitle}>{quotation.quotationNumber}</Text>
-        <View style={styles.metaRow}>
-          <View style={styles.metaCol}>
-            <Text style={styles.label}>Customer</Text>
-            <Text style={styles.value}>{quotation.customerName || "-"}</Text>
-            <Text style={styles.muted}>{quotation.customerEmail || ""}</Text>
-          </View>
-          <View style={[styles.metaCol, styles.metaRight]}>
-            <Text style={styles.value}>Date: {formatDate(quotation.quotationDate)}</Text>
-            <Text style={styles.value}>Valid until: {formatDate(quotation.validUntil)}</Text>
-            <Text style={styles.muted}>Generated: {generatedAt}</Text>
-          </View>
-        </View>
+  return (
+    <View style={rowStyles} wrap={false}>
+      <Text
+        style={[
+          styles.tableCell,
+          styles.colQty,
+          ...(row.kind === "summary" ? [styles.lineItemCell] : []),
+        ]}
+      >
+        {formatNumber(row.quantity)}
+      </Text>
+      <Text
+        style={[
+          styles.tableCell,
+          styles.colUnit,
+          ...(row.kind === "summary" ? [styles.lineItemCell] : []),
+        ]}
+      >
+        {row.unit}
+      </Text>
+      <View style={[styles.tableCell, styles.colDescription]}>
+        <Text style={descriptionStyles}>{row.description}</Text>
+        {row.detail ? <Text style={styles.detail}>{row.detail}</Text> : null}
       </View>
+      <Text
+        style={[
+          styles.tableCell,
+          styles.colUnitPrice,
+          styles.money,
+          ...(row.kind === "summary" ? [styles.lineItemCell] : []),
+        ]}
+      >
+        {row.kind === "sizeHeading" ? "" : formatAmount(row.unitPrice)}
+      </Text>
+      <Text
+        style={[
+          styles.tableCell,
+          styles.colDiscount,
+          styles.discount,
+          ...(row.kind === "summary" ? [styles.lineItemCell] : []),
+        ]}
+      >
+        {row.kind === "sizeHeading"
+          ? ""
+          : formatLineDiscount(row.discountAmount, row.discountRate, formatAmount)}
+      </Text>
+      <Text
+        style={[
+          styles.tableCell,
+          styles.colAmount,
+          styles.amount,
+          ...(row.kind === "summary" ? [styles.lineItemCell] : []),
+        ]}
+      >
+        {row.kind === "sizeHeading" ? "" : formatAmount(row.amount)}
+      </Text>
+    </View>
+  );
+}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Line Items</Text>
-        {quotation.lineItems.map((item, index) => {
-          const config = item.frameConfiguration;
-          const components = item.frameComponents || [];
-          const moldingComponent = components.find(
-            (component) => component.componentType === "molding"
-          );
+function QuotationLineGroup({ item }: { item: QuotationLineItem }) {
+  return (
+    <View style={styles.groupRow} wrap={false}>
+      <View style={styles.groupIdentity}>
+        <Text style={styles.groupName}>{item.itemName || item.description || "-"}</Text>
+        {item.itemCode ? <Text style={styles.groupCode}>{item.itemCode}</Text> : null}
+      </View>
+      <Text style={styles.groupTotal}>{formatMoney(item.lineTotal)}</Text>
+    </View>
+  );
+}
 
-          return (
-            <View key={`${item.id}-${index}`} style={styles.lineCard}>
-              <View style={styles.lineHeader}>
-                <View style={styles.lineItem}>
-                  <Text style={styles.value}>{item.itemName || item.description}</Text>
-                  <Text style={styles.muted}>{item.itemCode || ""}</Text>
-                </View>
-                <Text style={styles.lineQty}>
-                  {formatNumber(item.quantity)} {item.uomCode || item.uomName || ""}
-                </Text>
-                <Text style={styles.linePrice}>{formatAmount(item.unitPrice)}</Text>
-                <Text style={styles.lineRate}>{formatNumber(item.discount)}%</Text>
-                <Text style={styles.lineRate}>{formatNumber(item.taxRate)}%</Text>
-                <Text style={styles.lineTotal}>{formatMoney(item.lineTotal)}</Text>
-              </View>
+export const QuotationPDF = ({ quotation, generatedAt }: QuotationPDFProps) => {
+  const showTerms = showsPrintedTerms(quotation);
+  const totals = quotationTotals(quotation.lineItems);
 
-              {config && (
-                <>
-                  <View style={styles.detailGrid}>
-                    <View style={styles.detailBox}>
-                      <Text style={styles.detailTitle}>Frame Size</Text>
-                      <View style={styles.detailRow}>
-                        <Text style={styles.label}>Width</Text>
-                        <Text>{formatNumber(config.width)}</Text>
-                      </View>
-                      <View style={styles.detailRow}>
-                        <Text style={styles.label}>Height</Text>
-                        <Text>{formatNumber(config.height)}</Text>
-                      </View>
-                      <View style={styles.detailRow}>
-                        <Text style={styles.label}>Allowance</Text>
-                        <Text>{formatNumber(config.fixedAllowance)}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.detailBox}>
-                      <Text style={styles.detailTitle}>Molding</Text>
-                      <Text style={styles.value}>
-                        {config.moldingItemCode || moldingComponent?.itemCode || "-"}
-                      </Text>
-                      <Text style={styles.muted}>
-                        {config.moldingItemName || moldingComponent?.itemName || ""}
-                      </Text>
-                      <View style={styles.detailRow}>
-                        <Text style={styles.label}>Stick length</Text>
-                        <Text>{formatNumber(config.moldingStickLength)}</Text>
-                      </View>
-                      <View style={styles.detailRow}>
-                        <Text style={styles.label}>Sticks</Text>
-                        <Text>{formatNumber(config.moldingSticksRequired)}</Text>
-                      </View>
-                    </View>
-                    <View style={[styles.detailBox, styles.detailBoxLast]}>
-                      <Text style={styles.detailTitle}>Service</Text>
-                      <View style={styles.detailRow}>
-                        <Text style={styles.label}>Mode</Text>
-                        <Text>{serviceModeLabel(config.serviceFeeMode)}</Text>
-                      </View>
-                      <View style={styles.detailRow}>
-                        <Text style={styles.label}>Fee</Text>
-                        <Text>{formatMoney(config.serviceFeeAmount)}</Text>
-                      </View>
-                      <View style={styles.detailRow}>
-                        <Text style={styles.label}>Total</Text>
-                        <Text>{formatMoney(config.totalServiceFee)}</Text>
-                      </View>
-                    </View>
-                  </View>
+  const printableLines = quotation.lineItems.map((item) => {
+    const rows = invoiceRows(item);
+    const componentsOnly =
+      showsComponentBreakdown(item.frameConfiguration) &&
+      rows.some((row) => row.kind === "component") &&
+      rows.every((row) => row.kind !== "summary");
 
-                  <View style={styles.componentsTable}>
-                    <View style={styles.tableHeader}>
-                      <Text style={[styles.th, styles.colType]}>Type</Text>
-                      <Text style={[styles.th, styles.colItem]}>Item</Text>
-                      <Text style={[styles.th, styles.colQty]}>Qty/Frame</Text>
-                      <Text style={[styles.th, styles.colQty]}>Total Qty</Text>
-                      <Text style={[styles.th, styles.colUnit]}>Unit</Text>
-                      <Text style={[styles.th, styles.colMoney]}>Rate</Text>
-                      <Text style={[styles.th, styles.colMoney]}>Amount</Text>
-                    </View>
-                    {components.map((component) => (
-                      <View key={component.id || component.itemId} style={styles.tableRow}>
-                        <Text style={[styles.td, styles.colType]}>{component.componentType}</Text>
-                        <View style={[styles.td, styles.colItem]}>
-                          <Text>
-                            {component.itemCode || "-"} {component.itemName || ""}
-                          </Text>
-                          {component.description ? (
-                            <Text style={styles.muted}>{component.description}</Text>
-                          ) : null}
-                        </View>
-                        <Text style={[styles.td, styles.colQty]}>
-                          {formatNumber(component.qtyPerFrame)}
-                        </Text>
-                        <Text style={[styles.td, styles.colQty]}>
-                          {formatNumber(component.totalQuantity)}
-                        </Text>
-                        <Text style={[styles.td, styles.colUnit]}>{component.uomCode || ""}</Text>
-                        <Text style={[styles.td, styles.colMoney]}>
-                          {formatAmount(component.unitRate)}
-                        </Text>
-                        <Text style={[styles.td, styles.colMoney]}>
-                          {formatAmount(component.totalAmount)}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </>
-              )}
+    return { item, rows, componentsOnly };
+  });
+
+  return (
+    <Document title={`Quotation ${quotation.quotationNumber}`}>
+      <Page size="A4" orientation="portrait" style={styles.page}>
+        <View style={styles.accentBar} />
+
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>Quotation</Text>
+            <Text style={styles.quotationNumber}>{quotation.quotationNumber}</Text>
+          </View>
+          <View style={styles.headerMeta}>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Date</Text>
+              <Text style={styles.metaValue}>{formatDate(quotation.quotationDate)}</Text>
             </View>
-          );
-        })}
-      </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Valid until</Text>
+              <Text style={styles.metaValue}>{formatDate(quotation.validUntil)}</Text>
+            </View>
+          </View>
+        </View>
 
-      <View style={styles.totals}>
-        <View style={styles.totalRow}>
-          <Text>Subtotal</Text>
-          <Text>{formatMoney(quotation.subtotal)}</Text>
+        <View style={styles.customerPanel}>
+          <View style={styles.customerDetails}>
+            <Text style={styles.customerLabel}>Customer</Text>
+            <Text style={styles.customerName}>{quotation.customerName || "-"}</Text>
+            {quotation.customerEmail ? (
+              <Text style={styles.customerEmail}>{quotation.customerEmail}</Text>
+            ) : null}
+          </View>
         </View>
-        <View style={styles.totalRow}>
-          <Text>Discount</Text>
-          <Text>-{formatMoney(quotation.totalDiscount)}</Text>
-        </View>
-        <View style={styles.totalRow}>
-          <Text>Tax</Text>
-          <Text>{formatMoney(quotation.totalTax)}</Text>
-        </View>
-        <View style={[styles.totalRow, styles.grandTotal]}>
-          <Text>Total</Text>
-          <Text>{formatMoney(quotation.totalAmount)}</Text>
-        </View>
-      </View>
 
-      {(quotation.terms || quotation.notes) && (
-        <View style={styles.terms}>
-          {quotation.terms ? (
-            <>
-              <Text style={styles.sectionTitle}>Terms and Conditions</Text>
-              <Text>{quotation.terms}</Text>
-            </>
-          ) : null}
-          {quotation.notes ? (
-            <>
-              <Text style={[styles.sectionTitle, { marginTop: 8 }]}>Notes</Text>
-              <Text>{quotation.notes}</Text>
-            </>
-          ) : null}
+        <View style={styles.sectionHeading}>
+          <Text style={styles.sectionTitle}>Line Items</Text>
         </View>
-      )}
-    </Page>
-  </Document>
-);
+
+        <View style={styles.table}>
+          {/* `fixed` repeats it on every page — rows continuing onto page 2
+              under no column labels leave the reader guessing which figure is
+              the rate and which the amount. */}
+          <View style={styles.tableHeader} wrap={false} fixed>
+            <Text style={[styles.tableHeaderCell, styles.colQty]}>Qty</Text>
+            <Text style={[styles.tableHeaderCell, styles.colUnit]}>Unit</Text>
+            <Text style={[styles.tableHeaderCell, styles.colDescription]}>Description</Text>
+            <Text style={[styles.tableHeaderCell, styles.colUnitPrice]}>Unit Price</Text>
+            <Text style={[styles.tableHeaderCell, styles.colDiscount]}>Disc.</Text>
+            <Text style={[styles.tableHeaderCell, styles.colAmount]}>Amount</Text>
+          </View>
+
+          {printableLines.map(({ item, rows, componentsOnly }, lineIndex) => {
+            // The line's own row stays in the outer table; its parts move into
+            // a small table of their own beneath it, so the NEXT line item is
+            // plainly a sibling rather than one more component.
+            const ownRow = rows.find((row) => row.kind === "summary");
+            const parts = rows.filter((row) => row.kind !== "summary");
+            const isLastLine = lineIndex === printableLines.length - 1;
+
+            return (
+              // Enough of the block must fit for it to make sense where it
+              // starts: a "Chop & Join" header alone at the foot of a page
+              // reads as a frame with no parts. 64pt is its header (26), the
+              // heading strip (16) and one component row (22) — reserving more
+              // pushed whole blocks to the next page and left a half-empty one
+              // behind.
+              <View key={item.id}>
+                {componentsOnly ? <QuotationLineGroup item={item} /> : null}
+                {ownRow ? (
+                  <QuotationTableRow row={ownRow} isLast={isLastLine && parts.length === 0} />
+                ) : null}
+                {parts.length > 0 ? (
+                  // The closing rule lives on this wrapper, at full width, so
+                  // it meets the outer table's edges; the panel inside it stays
+                  // inset.
+                  <View style={styles.componentPanelClose}>
+                    <View style={styles.componentPanel}>
+                      {/* The enclosing block already reserves room for this and
+                        its first rows, so no guard of its own. */}
+                      <View style={styles.componentPanelHeader} wrap={false}>
+                        <Text style={[styles.componentPanelHeaderCell, styles.colQty]}>Qty</Text>
+                        <Text style={[styles.componentPanelHeaderCell, styles.colUnit]}>Unit</Text>
+                        <Text style={[styles.componentPanelHeaderCell, styles.colDescription]}>
+                          Component
+                        </Text>
+                        <Text style={[styles.componentPanelHeaderCell, styles.colUnitPrice]}>
+                          Rate
+                        </Text>
+                        <Text style={[styles.componentPanelHeaderCell, styles.colDiscount]}>
+                          Disc.
+                        </Text>
+                        <Text style={[styles.componentPanelHeaderCell, styles.colAmount]}>
+                          Amount
+                        </Text>
+                      </View>
+                      {parts.map((row, index) => (
+                        <QuotationTableRow
+                          key={row.key}
+                          row={row}
+                          // The full-width rule below closes the group, so the
+                          // last row drops its own inset one.
+                          isLast={index === parts.length - 1}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
+
+        {/* One unit: split across a page break, Subtotal is stranded at the
+            foot of one page and reads as the amount owed. */}
+        <View style={styles.summarySection} wrap={false}>
+          <View style={styles.totals}>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Subtotal</Text>
+              <Text style={styles.totalValue}>{formatMoney(totals.subtotal)}</Text>
+            </View>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Discount</Text>
+              <Text style={styles.discountValue}>-{formatMoney(totals.totalDiscount)}</Text>
+            </View>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Tax</Text>
+              <Text style={styles.totalValue}>{formatMoney(totals.totalTax)}</Text>
+            </View>
+            <View style={styles.grandTotal}>
+              <Text>Total</Text>
+              <Text>{formatMoney(totals.totalAmount)}</Text>
+            </View>
+          </View>
+        </View>
+
+        {showTerms || quotation.notes ? (
+          <View style={styles.terms} wrap={false}>
+            {showTerms ? (
+              <>
+                <Text style={styles.termsTitle}>Terms and Conditions</Text>
+                <Text style={styles.termsText}>{quotation.terms}</Text>
+              </>
+            ) : null}
+            {quotation.notes ? (
+              <>
+                <Text style={[styles.termsTitle, styles.notesTitle]}>Notes</Text>
+                <Text style={styles.termsText}>{quotation.notes}</Text>
+              </>
+            ) : null}
+          </View>
+        ) : null}
+
+        <View style={styles.footer} fixed>
+          <Text>
+            {quotation.quotationNumber} - Generated {generatedAt}
+          </Text>
+          <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+        </View>
+      </Page>
+    </Document>
+  );
+};

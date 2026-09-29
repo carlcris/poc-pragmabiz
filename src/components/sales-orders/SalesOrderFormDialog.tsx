@@ -20,6 +20,7 @@ import { useSalesOrderPaymentSummary } from "@/hooks/useSalesOrders";
 import type { SalesOrder, SalesOrderLineItem, SalesOrderStatus } from "@/types/sales-order";
 import { SalesOrderForm, type SalesOrderFormInitialValues } from "./SalesOrderForm";
 import { SalesOrderPDF } from "./SalesOrderPDF";
+import { SalesDocumentLineItemsTable } from "@/components/common/SalesDocumentLineItemsTable";
 
 type SalesOrderDialogMode = "view" | "edit";
 
@@ -167,7 +168,9 @@ export function SalesOrderFormDialog({
         return <Badge className="bg-green-600">Paid</Badge>;
       case "overdue":
       case "cancelled":
-        return <Badge variant="destructive">{status === "overdue" ? "Overdue" : "Cancelled"}</Badge>;
+        return (
+          <Badge variant="destructive">{status === "overdue" ? "Overdue" : "Cancelled"}</Badge>
+        );
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -256,68 +259,36 @@ export function SalesOrderFormDialog({
 
         <div>
           <h3 className="mb-3 text-sm font-semibold">{tView("lineItems")}</h3>
-          <div className="overflow-hidden rounded-lg border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="p-3 text-left">Item</th>
-                  {hasManufacturingLines ? <th className="p-3 text-left">Production</th> : null}
-                  <th className="p-3 text-right">Quantity</th>
-                  <th className="p-3 text-center">Unit</th>
-                  <th className="p-3 text-right">Selling Price</th>
-                  <th className="p-3 text-right">Discount</th>
-                  <th className="p-3 text-right">Tax</th>
-                  <th className="p-3 text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {salesOrder.lineItems.map((item, index) => (
-                  <tr key={index} className="border-t">
-                    <td className="p-3">
-                      <div className="font-medium">{item.itemName}</div>
-                      <div className="text-xs text-muted-foreground">{item.itemCode}</div>
-                      {item.description ? (
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {item.description}
-                        </div>
-                      ) : null}
-                    </td>
-                    {hasManufacturingLines ? (
-                      <td className="p-3">
-                        {item.manufacturing?.required ? (
-                          <div className="space-y-1">
-                            {getManufacturingStatusBadge(item.manufacturing)}
-                            <div className="text-xs text-muted-foreground">
-                              {[
-                                item.manufacturing.jobOrderCode,
-                                item.manufacturing.manufacturingOrderCode,
-                              ]
-                                .filter(Boolean)
-                                .join(" • ")}
-                            </div>
+          <SalesDocumentLineItemsTable
+            documentId={salesOrder.id}
+            items={salesOrder.lineItems}
+            showFulfilled={false}
+            productionColumn={
+              hasManufacturingLines
+                ? {
+                    label: tView("production"),
+                    render: (item) =>
+                      item.manufacturing?.required ? (
+                        <div className="space-y-1">
+                          {getManufacturingStatusBadge(item.manufacturing)}
+                          <div className="text-xs text-muted-foreground">
+                            {[
+                              item.manufacturing.jobOrderCode,
+                              item.manufacturing.manufacturingOrderCode,
+                            ]
+                              .filter(Boolean)
+                              .join(" • ")}
                           </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Not required</span>
-                        )}
-                      </td>
-                    ) : null}
-                    <td className="p-3 text-right">{item.quantity}</td>
-                    <td className="p-3 text-center">
-                      <span className="text-muted-foreground">
-                        {item.uomCode || item.uomId || "-"}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right">{formatCurrency(item.unitPrice)}</td>
-                    <td className="p-3 text-right">{item.discount}%</td>
-                    <td className="p-3 text-right">{item.taxRate}%</td>
-                    <td className="p-3 text-right font-medium">
-                      {formatCurrency(item.lineTotal)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          {tView("notRequired")}
+                        </span>
+                      ),
+                  }
+                : undefined
+            }
+          />
         </div>
 
         <div className="flex justify-end">
@@ -354,9 +325,7 @@ export function SalesOrderFormDialog({
               </div>
               <div className="mb-4 grid grid-cols-3 gap-4">
                 <div className="rounded-lg border p-3">
-                  <div className="mb-1 text-xs text-muted-foreground">
-                    {tView("totalInvoiced")}
-                  </div>
+                  <div className="mb-1 text-xs text-muted-foreground">{tView("totalInvoiced")}</div>
                   <div className="text-lg font-bold">
                     {formatCurrency(paymentSummary.summary.totalInvoiced)}
                   </div>

@@ -16,7 +16,17 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
     if (unauthorized) return unauthorized;
 
     const { id: quotationId } = await params;
-    const body = (await request.json().catch(() => ({}))) as { warehouseId?: string | null };
+    const body = (await request.json().catch(() => ({}))) as {
+      warehouseId?: string | null;
+      acceptedByName?: string;
+      acceptedChannel?: string;
+      waivers?: {
+        storagePath: string;
+        fileName: string;
+        mimeType: string;
+        fileSizeBytes: number;
+      }[];
+    };
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     const {
@@ -32,9 +42,15 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
 
+    // The acceptance record travels with the confirmation so the status change
+    // and the waiver rows commit together — recording them separately left a
+    // window where a quotation could end up accepted with no waiver.
     const { data, error } = await asRpcClient(supabase).rpc("confirm_sales_quotation_transaction", {
       p_quotation_id: quotationId,
       p_warehouse_id: body.warehouseId || null,
+      p_accepted_by_name: body.acceptedByName?.trim() || null,
+      p_accepted_channel: body.acceptedChannel || null,
+      p_waivers: body.waivers?.length ? body.waivers : null,
     });
 
     const rows = Array.isArray(data) ? (data as ConfirmQuotationResult[]) : [];

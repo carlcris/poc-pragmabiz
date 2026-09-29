@@ -12,19 +12,18 @@ export default function CreateSalesOrderPage() {
 
   return (
     <div className="container mx-auto max-w-6xl space-y-6 pb-10">
-      <div className="flex items-center gap-4">
+      <div>
         <Button
           variant="ghost"
-          size="icon"
+          size="sm"
           onClick={() => router.push("/sales/orders")}
-          className="h-8 w-8"
+          className="-ml-2 mb-1 h-7 px-2 text-xs font-medium text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="mr-1 h-3.5 w-3.5" />
+          {t("back")}
         </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">{t("createTitle")}</h1>
-          <p className="text-sm text-muted-foreground">{t("createDescription")}</p>
-        </div>
+        <h1 className="text-3xl font-bold tracking-tight">{t("createTitle")}</h1>
+        <p className="text-sm text-muted-foreground">{t("createDescription")}</p>
       </div>
 
       <SalesOrderForm

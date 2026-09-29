@@ -963,19 +963,31 @@ The Suggestions endpoint currently returns an empty list unconditionally, so sto
 
 1. **Create** → status Draft.
 2. A status-change menu (not individual buttons) lets you move a Draft quotation to Sent, Accepted, or Rejected; a Sent quotation can move to Accepted, Rejected, or Expired. You cannot manually set a quotation to Ordered — the app explicitly refuses this and tells you it has to happen through actually creating a Sales Order.
-3. **Confirm quotation** is a separate action from the status menu — it marks the quotation Accepted (optionally reserving stock at a chosen warehouse). Confirming does **not** automatically create a Sales Order; that's a deliberate, separate manual step.
-4. Partially Ordered / Ordered get set automatically as Sales Orders are created that draw down the quotation's remaining line quantities.
+3. A Sent quotation remains editable until it is confirmed. Saving a change atomically returns it to Draft, so the revised version must be sent again before acceptance. Accepted and later workflow states cannot be edited.
+4. **Confirm quotation** is a separate action from the status menu — it records the accepting person's name, acceptance channel, and waiver evidence, then marks the quotation Accepted (optionally reserving stock at a chosen warehouse). The acceptance record and waiver metadata are committed together. Confirming does **not** automatically create a Sales Order; that's a deliberate, separate manual step.
+5. Partially Ordered / Ordered get set automatically as Sales Orders are created that draw down the quotation's remaining line quantities.
 
 **Who can do it**: edit access to Sales Quotations.
 
 **Things to test**:
 
 - Try to manually set a quotation's status to Ordered via the status menu — should be refused with a clear message.
+- Add and edit a raw-material quotation line. Confirm there is no job-order toggle, frame dimensions, component picker, cut planner, or service-fee control; quantity, selling price, discount, and tax must still save normally. Separately add Chop & Join and Framing lines and reopen each to confirm their dedicated configuration dialogs remain available. Repeat raw-material validation with English and Chinese selected.
+- Save a Chop & Join or Framing line with a fixed whole-line discount, leave the quotation, and reopen it for editing. Verify the size dialog retains that discount and the net total (for example, 459.67 before discount minus 50.00 equals 409.67). Apply and save without changes, then reopen again; the discount must remain. Switch to an undiscounted line and confirm its discount is zero.
+- In the quotation editor, add an ordinary line with quantity 2, unit price 100, and 5% discount. Its Discount cell must show the currency amount and rate (10.00 (5%)), consistent with configured-frame lines. Save and reopen; the same amount and rate must remain, including when tax is nonzero.
+- With the fitting catalogue already loaded, add a second Chop & Join size and select Flexipoints, Multipoints, and L-support. Save and reopen the quotation; verify each fitting, its fractions/support size, and its charge remain. Repeat after cancelling and reopening the size editor. Selected fittings without resolved inventory items must block Apply with an English/Chinese explanation rather than silently disappear.
+- Mark a quotation Sent, edit and save it, and confirm the changes persist while its status returns to Draft. Open an Accepted quotation's edit URL directly and confirm the form is not shown. Also verify that a Sent quotation confirmed by another user while its edit form is open produces a conflict message instead of overwriting the accepted quotation.
+- Open a quotation and confirm its lines use the compact table view. A configured-frame description must lead with the finished outside frame size, not the artwork/opening size (for example, a 21 × 16 artwork in a 25 × 20 frame displays 25 × 20). Only Chop & Join lines should have an expand control revealing the component table with quantity, unit, description, unit price, discount, and amount; matting appears in that same list. Configured parent rows must show an em dash for selling price and the saved discount amount with its effective percentage. Framing lines retain their quantity and pre-discount, pre-tax amount, with no drilldown. A plain item should likewise have no empty expand control. Apply a discount to one Chop & Join component and confirm the summary subtotal is before that discount, the Discount row includes it, and the Total Amount remains equal to the net component amounts.
+- Add that accepted configured-frame quotation line to a Sales Order and confirm the read-only quantity dialog repeats the finished outside size in both the line description and each size row, using length × width order (25 × 20, not the 21 × 16 artwork/opening and not 20 × 25). After fully ordering one size from a multi-size quotation, reopen the line picker and confirm that exhausted size is absent, contributes nothing to the order quantity or total, and does not trigger an exceeds-remaining error.
+- Print that quotation and confirm the PDF uses an A4 portrait layout with one continuous six-column line-item table. Chop & Join lines should appear as a bold group row followed directly by regular-weight component rows, without a nested card or second table. Plain inventory and Framing lines should use the same bold top-level treatment so they are visibly separate from the preceding component breakdown. Confirm discounts and totals agree with the on-screen quotation, and that the quotation number, generated timestamp, and page count remain clear without overlapping the document body.
+- Confirming without an accepting person's name, channel, or waiver evidence should be refused without changing the quotation status or saving partial waiver metadata.
 - Confirm a quotation, then create a Sales Order referencing only some of its lines/quantities, and confirm the quotation becomes Partially Ordered, not Ordered.
 - Fully draw down all quotation lines via Sales Orders and confirm it then becomes Ordered.
 - Select a customer before adding a line, then select an item and WS/SRP tiers. Confirm a matching customer override is used and an unconfigured tier falls back to the standard item-tier price. Repeat on a standalone Sales Order and Sales Invoice.
 - Confirm an already saved line keeps its captured price when the customer or special-price setup later changes; explicitly reselecting the item or tier should resolve the current customer's effective price.
 - Accept a quotation containing a customer-specific tier price, add that quotation line to a Sales Order, and confirm the tier code, tier name, and quoted unit price are copied unchanged rather than recalculated from current pricing.
+- Accept a framing or chop-and-join quotation line containing at least two sizes with different quantities and components. Add it to a Sales Order and confirm all quotation fields and configuration details are read-only, with only a quantity input for each quoted size; confirm there is no "Configure as job order" option for direct inventory items. For a quoted total of 10, order only 5 split across the two sizes, save, then reopen the draft. Confirm the line quantity is 5, every selected size retains its own dimensions and partial quantity, and each size shows only its own mat layers and components. Create another Sales Order and confirm only the unallocated per-size quantities remain available. Attempt to exceed one size's remaining quantity and confirm the whole save is rejected without a partial order. After confirmation, create the Frame Job Order and confirm every selected size/component is copied without selecting a warehouse or creating an inventory reservation.
+- Accept an unfulfilled quotation containing multiple normal lines plus a multi-size chop-and-join line, then choose **Convert to Sales Order**. Confirm one draft Sales Order is created, every quotation line is present, each frame size retains its own quantity/components, monetary totals exactly match the quotation, and the quotation becomes Ordered. Confirm the action is absent for Partially Ordered and Ordered quotations. Force an invalid later frame size and confirm no Sales Order, line, configuration, or fulfillment update remains committed.
 
 ---
 
@@ -994,7 +1006,7 @@ The Suggestions endpoint currently returns an empty list unconditionally, so sto
    stock-managed line is reserved in base units in that warehouse. Confirmation is all-or-nothing.
    Confirmed inventory demand is read-only; cancel/delete and recreate the order to change it.
 3. **Invoice** (available once Confirmed or In Progress) — opens a dialog to choose a warehouse, then creates a linked Sales Invoice (section 22) as a draft, validating and reserving/deducting stock at that warehouse.
-4. **Create Job Order** — only appears for orders that actually contain items requiring production (e.g. custom framing). Opens a warehouse dialog, then creates a linked Frame Job Order (section 23). Once a job order exists, this button becomes **View Job Order** instead, linking straight to it.
+4. **Create Job Order** — only appears for orders that actually contain items requiring production (e.g. custom framing). Creates the linked Frame Job Order without choosing a warehouse or checking inventory (section 23). Once a job order exists, this button becomes **View Job Order** instead, linking straight to it.
 5. **Cancel Order** — blocked once the order has already been invoiced; the app is explicit that invoiced orders cannot be cancelled.
 6. In Progress, Shipped, Delivered, and Invoiced are set automatically as invoicing/shipment progresses, not via direct buttons on this screen.
 
@@ -1003,6 +1015,36 @@ The Suggestions endpoint currently returns an empty list unconditionally, so sto
 **Things to test**:
 
 - Try to cancel an already-invoiced order — should be refused.
+- Test the **editable** Sales Order form, not only its read-only details view: import a quotation
+  line priced at 647.67 with a fixed 100 discount. The row must show Discount 100.00 (15.44%),
+  pre-discount Total 647.67, and an em dash for a configured item's selling price. The summary
+  must show Discount 100.00 and payable Total 547.67. Save, reopen the draft for editing, and open
+  its quantity dialog; verify all three surfaces retain the discount. Repeat in English and Chinese.
+- In that form, select different quantities of differently priced frame sizes. Verify component
+  discounts and the proportional whole-line deduction match the saved order, including an already
+  partially ordered quotation, zero/deselected sizes, nonzero tax, and repeated quantity changes.
+  Ordinary inventory percentage discounts must still respond to quantity, price, and discount edits.
+- Convert a quotation with a component priced at 100 less a 10 discount and no parent discount.
+  Confirm quotation and order both show subtotal 100, discount 10, and payable 90. Reopen and
+  save the draft twice; the values and expanded component discount must remain unchanged. Repeat
+  with multiple sizes, a parent fixed discount, and tax. For a partial size, confirm the copied
+  discount scales with its selected quantity and is rounded to cents.
+- Select size A with quantity 1 and size B with quantity 0. Save and reopen: only A is ordered,
+  and B remains available for a later order. Repeat while editing a draft to remove one size.
+  Selecting zero for every size, a negative quantity, or a fractional frame count must still fail.
+- Open an ordinary saved line with quantity 7 for editing. Confirm it still shows 7 and can be
+  saved unchanged; repeat with an ordinary line imported from a quotation.
+- Print quotations and sales orders, and view/print invoices, containing two units at 100,
+  a 10% discount, and 12% tax. The discount must be 20 (10%), tax 21.60, and payable total 201.60.
+  Repeat with a fixed 20 discount, no tax, and a 100% discount (200 discount, zero payable).
+- Check the local database definitions for new frame, mat, glazing, and backing rates and
+  component discount amounts: each must have numeric scale 2. A rate saved as 1.2345 must store
+  as 1.23. Reopen affected frame configurations and confirm their rates retain cent precision.
+- Edit a draft containing configured-frame and ordinary inventory lines, add another ordinary item,
+  and save. Existing and new ordinary lines must omit `frameSizeSelections`; configured lines retain
+  their quotation configuration IDs and positive whole-frame quantities. Reopen and verify all lines
+  remain. Invalid request payloads return `SALES_ORDER_VALIDATION_FAILED` with translated guidance
+  to review dates and item details, rather than incorrectly reporting that the order has no items.
 - Confirm an order with multiple stock-managed lines and verify **Inventory → Reservations** shows
   one Sales Order source row per line and that warehouse reserved stock rises by the same base-unit
   quantities. Repeat with one insufficient line and confirm no reservation or status change remains.
@@ -1012,6 +1054,25 @@ The Suggestions endpoint currently returns an empty list unconditionally, so sto
   consumed while the invoice itself creates no duplicate reservation.
 - Confirm the "Create Job Order" button only shows for orders that actually need production, and correctly flips to "View Job Order" once one exists.
 - Invoice an order and confirm stock is correctly reserved/deducted at the chosen warehouse, and that the resulting invoice is linked back to this order.
+- From the Sales Orders list, use **View** to open the combined view/edit dialog (not an isolated
+  table preview). Test Sales Order Details with Chop & Join at 500.67 less a fixed 200.00 discount, Framing at
+  1,025.00 less 100.00, and seven inventory units at 118.00. Both configured selling prices must
+  show an em dash; discounts must show 200.00 (39.95%) and 100.00 (9.76%); line totals must be
+  500.67, 1,025.00, and 826.00 before discount and tax. The inventory selling price remains 118.00, and the order total
+  remains 2,051.67 with a 300.00 discount. Close, reopen, and refresh to verify persistence.
+  Compare with quotation details, expand Chop & Join components, and confirm Framing stays a
+  summary row and production statuses remain associated with the correct lines. Repeat with
+  percentage discounts, nonzero tax, multiple sizes, and English/Chinese locales.
+- In both quotation and Sales Order Details, verify an ordinary line with quantity 2, price 100,
+  and 5% discount shows row total 200.00 and discount 10.00 (5%). With 12% tax, the summary should
+  show subtotal 200.00, discount 10.00, tax 22.80, and payable total 212.80. For Chop & Join with
+  component discounts, parent and expanded component amounts must show their pre-discount amounts;
+  the parent discount includes component and whole-line deductions without changing the payable total.
+- Print a Sales Order containing Chop & Join, Framing, and ordinary inventory lines. Confirm
+  Chop & Join shows its moulding, mat, glazing, backing, and hardware components as the actual table
+  rows with no separate Chop & Join parent row. Confirm Framing and ordinary inventory each remain
+  one line, multi-size Chop & Join groups remain distinguishable by size, and the displayed component
+  amounts reconcile to the order totals.
 
 ---
 
@@ -1056,6 +1117,11 @@ What happens when you submit:
 - Confirm cancelling an invoice correctly updates the status shown back on its originating Sales Order.
 - Confirm the Overdue display only appears once the due date has actually passed on an unpaid invoice, and disappears once paid.
 - Delete a Draft invoice and confirm it disappears from active views while the invoice and related rows remain persisted with deletion timestamps for audit purposes.
+- Open and print an invoice converted from a Sales Order with Chop & Join work. Confirm the invoice
+  fetches the originating order's component snapshot and displays each component as a normal invoice
+  line with quantity, unit, description, selling price, discount, tax, and amount. The Chop & Join
+  parent must not appear, while Framing and ordinary inventory still appear as single lines. Confirm
+  the component amounts and invoice totals match the Sales Order.
 - If possible, verify the "payment succeeds but ledger posting silently fails" gap described above — this is a real, confirmed behavior, not a hypothetical.
 
 ---
@@ -1068,20 +1134,36 @@ What happens when you submit:
 
 **Stages**: Pending → Queued → In Progress → On Hold → Completed, or Cancelled.
 
+For a sales order containing both Chop & Join and Framing, push each job to production.
+Both must succeed with separate manufacturing orders. Repeating a push for the same job must
+not create a duplicate. Direct sales-order production without a frame job still permits only
+one non-cancelled, non-deleted manufacturing order per sales order. Database regression check:
+run `supabase/tests/manufacturing-order-uniqueness.sql` inside a transaction after migrations.
+
 **Step-by-step workflow**:
 
-1. Created from a Sales Order, materials reserved at the chosen warehouse.
-2. **Push to Production** → creates a linked Manufacturing Order (section 24). From this point, the job order's status is largely driven automatically by the linked manufacturing order's progress.
-3. **Complete** — this is blocked until the linked manufacturing order has itself fully finished; trying to complete a job order while production is still ongoing should fail with a clear message.
+1. Created from a Sales Order with no warehouse selection, stock check, reservation, or deduction.
+2. Open a job order to see the saved Chop and Join / Job Requisition Form in the same paper layout used by the framing dialog. The detail view includes **Print** and **Download PDF** actions. **Print JO** on the Job Orders list opens the same saved form directly as a printable PDF. The form includes the customer and delivery address, FJO transaction number, every configured frame size and quantity, mat/glazing/backing/hardware specifications, instructions, sales total, and signature lines.
+3. **Create Material Request** → choose the issuing warehouse. Draft creation records demand only.
+4. **Approve and Reserve** → atomically validates availability and reserves every material line. A failure on any line leaves the request draft with no partial reservation.
+5. **Issue to Production** → atomically creates the outbound stock transaction, consumes every reservation, deducts inventory, and marks the job materials issued.
+6. **Push to Production** → creates a linked Manufacturing Order (section 24). From this point, the job order's status is largely driven automatically by the linked manufacturing order's progress. Starting production is blocked until step 5 is complete.
+7. **Complete** — the linked manufacturing order must finish, but no material request or full issue is required when residual materials are used. Completion preserves actual issued quantities, cancels unissued requests, releases unused reservations, and does not deduct inventory again.
 
-**Who can do it**: pushing to production requires manufacturing or transformation-level create access. There is a known permission mix-up on the Complete action — its endpoint currently requires Sales Quotations edit permission rather than a job-order or manufacturing permission. Test the mismatch in both reachable directions: a user with quotation edit access but without the intended job/manufacturing access may be allowed to complete, while an intended job/manufacturing operator without quotation edit access is denied. Either result exposes the permission defect; it is not expected behavior to validate.
+**Who can do it**: pushing to production requires manufacturing or transformation-level create access. Completing the job requires edit access to either manufacturing or transformations. Creating a material request requires Stock Requests create access; approving, issuing, or cancelling it requires Stock Requests edit access.
 
 **Things to test**:
 
+- Open single-size and multi-size jobs and confirm the on-screen paper view matches the framing dialog. Print and download each form, then confirm both PDFs match the saved quantities, dimensions, materials, instructions, FJO number, customer address, and Sales Order total.
 - Try to Complete a job order while its linked manufacturing order is still In Progress — should be refused.
+- Create a draft material request and confirm on-hand and reserved stock do not change. Approve it and confirm only reserved stock changes. Issue it and confirm both the reservation and on-hand stock are consumed exactly once.
+- Force insufficient stock on a later request line and confirm approval rolls back any earlier line reservations. Cancel an approved request and confirm every reservation is released.
+- Start and finish production without a material request, then repeat with partial issued quantities; both must succeed without inventing stock consumption. Repeat with an approved unissued request and confirm completion releases its reservations. Force a completion failure and verify all changes roll back.
+- Deactivate one required material before creating a request: the whole request must fail with actionable guidance, not silently omit that material. Reactivate it and retry.
+- For two job orders on one sales order, finish only one and verify each line shows its own job code and production status.
 - Push a job order to production and confirm a Manufacturing Order actually gets created and linked correctly.
 - Confirm status changes on the manufacturing side (hold, resume, complete a step) are reflected back on the job order's own status.
-- Test job-order completion with quotation edit but without the intended job/manufacturing permission, then with the intended job/manufacturing permission but without quotation edit; the current mismatch may allow the first user and denies the second.
+- Confirm quotation-edit access alone cannot complete a job order, while a user with manufacturing or transformation edit access can complete it after production and material issue are finished.
 
 ---
 
@@ -1095,6 +1177,8 @@ What happens when you submit:
 
 **Step-by-step workflow**:
 
+Each production card leads with the Frame Job Order number and customer. Standalone production orders without a linked frame job order fall back to the Manufacturing Order number. Long item/size descriptions and the per-card materials viewer are intentionally omitted; the due date, exceptional priority, workstation, active operation, status, queue time, material-shortage warning, and valid workflow actions remain visible. Normal priority is hidden to reduce visual noise. **View JO** opens the saved requisition paper in a production-only dialog without Print, Download, sales totals, total cuts, or prepared/received signature details.
+
 The shop-floor screen shows one dynamic primary button per order, depending on current stage:
 
 1. Queued/Ready → **Start**.
@@ -1107,6 +1191,9 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 
 **Things to test**:
 
+- Confirm linked frame production cards show the FJO number rather than the MO number, with the customer directly below it. Confirm standalone production orders still show their MO number.
+- Confirm cards omit the item/size description and **View Materials** action, hide Normal priority, show exceptional priorities, and display the auto-refresh indicator once in the page header rather than once per card.
+- Open **View JO** from a production card and confirm the dialog shows the saved requisition header and work specification table, with no Print, Download, total cuts, sales amount, Prepared by, or Received by / Date details. Confirm the full Job Order page and its printable PDF still include the complete footer. Confirm Manufacturing and Transformation viewers can load the preview without requiring Sales Quotations access.
 - Try to Hold a Queued order that was never started — should be refused.
 - Step through a multi-step order and confirm the button label correctly changes from "Complete Step" to "Complete Job" on the final step.
 - Confirm the direct **Complete** action is absent while In Progress or Quality Check, then appears after the order is placed On Hold.

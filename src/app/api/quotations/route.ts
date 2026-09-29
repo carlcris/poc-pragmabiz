@@ -258,6 +258,10 @@ async function POSTHandler(request: NextRequest) {
         p_notes: body.notes || null,
         p_business_unit_id: currentBusinessUnitId,
         p_items: body.items,
+        p_date_received: body.dateReceived,
+        p_due_date: body.dueDate,
+        p_items_received: body.itemsReceived ?? null,
+        p_payment_terms: body.paymentTerms ?? null,
       }
     );
 

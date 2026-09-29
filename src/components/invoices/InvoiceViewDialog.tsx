@@ -16,7 +16,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useInvoicePayments } from "@/hooks/useInvoices";
+import { useInvoice, useInvoicePayments } from "@/hooks/useInvoices";
+import { formatLineDiscount, salesDocumentRows } from "@/lib/framing/invoicePresenter";
 import { InvoicePDF } from "./InvoicePDF";
 import type { Invoice, InvoiceStatus } from "@/types/invoice";
 
@@ -35,6 +36,12 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
 
   const { data: paymentsData } = useInvoicePayments(invoice?.id || "");
+  const {
+    data: detailedInvoice,
+    isLoading: isLoadingLineDetails,
+    isError: isLineDetailsError,
+    refetch: refetchLineDetails,
+  } = useInvoice(open && invoice?.salesOrderId ? invoice.id : "");
   const payments = paymentsData?.data || [];
 
   useEffect(() => {
@@ -58,11 +65,23 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
 
   if (!invoice) return null;
 
+  const lineDetailsReady = !invoice.salesOrderId || Boolean(detailedInvoice);
+  const documentInvoice = detailedInvoice || invoice;
+  const presentedLines = lineDetailsReady
+    ? documentInvoice.lineItems.flatMap(salesDocumentRows)
+    : [];
+
   const handlePrint = async () => {
+    if (!lineDetailsReady) return;
+
     try {
       setIsPrinting(true);
       const blob = await pdf(
-        <InvoicePDF invoice={invoice} currencySymbol={symbol} qrCodeDataUrl={qrCodeDataUrl} />
+        <InvoicePDF
+          invoice={documentInvoice}
+          currencySymbol={symbol}
+          qrCodeDataUrl={qrCodeDataUrl}
+        />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const printWindow = window.open(url, "_blank");
@@ -79,10 +98,16 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
   };
 
   const handleDownloadPDF = async () => {
+    if (!lineDetailsReady) return;
+
     try {
       setIsGeneratingPDF(true);
       const blob = await pdf(
-        <InvoicePDF invoice={invoice} currencySymbol={symbol} qrCodeDataUrl={qrCodeDataUrl} />
+        <InvoicePDF
+          invoice={documentInvoice}
+          currencySymbol={symbol}
+          qrCodeDataUrl={qrCodeDataUrl}
+        />
       ).toBlob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -218,48 +243,77 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
 
           <div>
             <h3 className="mb-3 text-sm font-semibold">{t("lineItems")}</h3>
-            <div className="overflow-hidden rounded-lg border">
-              <table className="w-full text-sm">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="p-3 text-left">{t("lineItems")}</th>
-                    <th className="p-3 text-right">{t("quantity")}</th>
-                    <th className="p-3 text-center">{t("unit")}</th>
-                    <th className="p-3 text-right">{t("unitPrice")}</th>
-                    <th className="p-3 text-right">{t("discount")}</th>
-                    <th className="p-3 text-right">{t("tax")}</th>
-                    <th className="p-3 text-right">{t("total")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoice.lineItems.map((item, index) => (
-                    <tr key={index} className="border-t">
-                      <td className="p-3">
-                        <div className="font-medium">{item.itemName}</div>
-                        <div className="text-xs text-muted-foreground">{item.itemCode}</div>
-                        {item.description && (
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {item.description}
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-3 text-right">{item.quantity}</td>
-                      <td className="p-3 text-center">
-                        <span className="text-muted-foreground">
-                          {item.uomCode || item.uomId || t("notAvailable")}
-                        </span>
-                      </td>
-                      <td className="p-3 text-right">{formatCurrency(item.unitPrice)}</td>
-                      <td className="p-3 text-right">{item.discount}%</td>
-                      <td className="p-3 text-right">{item.taxRate}%</td>
-                      <td className="p-3 text-right font-medium">
-                        {formatCurrency(item.lineTotal)}
-                      </td>
+            {!lineDetailsReady && isLoadingLineDetails ? (
+              <div className="rounded-lg border p-6 text-center text-sm text-muted-foreground">
+                {t("lineDetailsLoading")}
+              </div>
+            ) : !lineDetailsReady && isLineDetailsError ? (
+              <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+                <p className="text-sm text-destructive">{t("lineDetailsLoadError")}</p>
+                <Button variant="outline" size="sm" onClick={() => void refetchLineDetails()}>
+                  {t("retry")}
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-lg border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="p-3 text-left">{t("itemDescription")}</th>
+                      <th className="p-3 text-right">{t("quantity")}</th>
+                      <th className="p-3 text-center">{t("unit")}</th>
+                      <th className="p-3 text-right">{t("unitPrice")}</th>
+                      <th className="p-3 text-right">{t("discount")}</th>
+                      <th className="p-3 text-right">{t("tax")}</th>
+                      <th className="p-3 text-right">{t("total")}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {presentedLines.map((row) => (
+                      <tr
+                        key={row.key}
+                        className={row.kind === "sizeHeading" ? "border-t bg-muted/40" : "border-t"}
+                      >
+                        <td className="p-3">
+                          <div
+                            className={row.kind === "sizeHeading" ? "font-semibold" : "font-medium"}
+                          >
+                            {row.description}
+                          </div>
+                          {row.detail && (
+                            <div className="mt-1 text-xs text-muted-foreground">{row.detail}</div>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">{row.quantity}</td>
+                        <td className="p-3 text-center">
+                          <span className="text-muted-foreground">
+                            {row.unit || t("notAvailable")}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">
+                          {row.kind === "sizeHeading" ? "" : formatCurrency(row.unitPrice)}
+                        </td>
+                        <td className="p-3 text-right">
+                          {row.kind === "sizeHeading"
+                            ? ""
+                            : formatLineDiscount(
+                                row.discountAmount,
+                                row.discountRate,
+                                formatCurrency
+                              )}
+                        </td>
+                        <td className="p-3 text-right">
+                          {row.kind !== "sizeHeading" && row.taxRate ? `${row.taxRate}%` : ""}
+                        </td>
+                        <td className="p-3 text-right font-medium">
+                          {row.kind === "sizeHeading" ? "" : formatCurrency(row.amount)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end">
@@ -399,12 +453,16 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
           <Button
             onClick={handleDownloadPDF}
             variant="default"
-            disabled={isGeneratingPDF || isPrinting}
+            disabled={!lineDetailsReady || isGeneratingPDF || isPrinting}
           >
             <Download className="mr-2 h-4 w-4" />
             {isGeneratingPDF ? t("generatingPdf") : t("downloadPdf")}
           </Button>
-          <Button onClick={handlePrint} variant="outline" disabled={isGeneratingPDF || isPrinting}>
+          <Button
+            onClick={handlePrint}
+            variant="outline"
+            disabled={!lineDetailsReady || isGeneratingPDF || isPrinting}
+          >
             <Printer className="mr-2 h-4 w-4" />
             {isPrinting ? t("preparingPrint") : t("printInvoice")}
           </Button>

@@ -12,7 +12,25 @@ import { suppliersApi } from "@/lib/api/suppliers";
 import { transformationOrdersApi } from "@/lib/api/transformation-orders";
 import { transformationOrderIdSchema } from "@/lib/validations/transformation-order";
 import { DELIVERY_NOTES_QUERY_KEY } from "@/hooks/useDeliveryNotes";
+import { useQuotation } from "@/hooks/useQuotations";
 import { TRANSFORMATION_ORDERS_QUERY_KEY } from "@/hooks/useTransformationOrders";
+
+type FrameJobOrderBreadcrumbResponse = {
+  data: {
+    jobOrderCode: string;
+  };
+};
+
+const fetchFrameJobOrderBreadcrumb = async (
+  id: string
+): Promise<FrameJobOrderBreadcrumbResponse> => {
+  const response = await fetch(`/api/frame-job-orders/${id}`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) throw new Error("FAILED_TO_LOAD_FRAME_JOB_ORDER");
+  return response.json() as Promise<FrameJobOrderBreadcrumbResponse>;
+};
 
 export function Breadcrumb() {
   const t = useTranslations("navigation");
@@ -30,6 +48,13 @@ export function Breadcrumb() {
   const isDeliveryNoteDetail = parentSegment === "delivery-notes" && pathSegments.length >= 3;
   const deliveryNoteId = isDeliveryNoteDetail ? lastSegment : "";
   const isItemCreate = pathname === "/inventory/items/create";
+  const isQuotationCreate = pathname === "/sales/quotations/create";
+  const isSalesOrderCreate = pathname === "/sales/orders/create";
+  const isQuotationEdit =
+    pathSegments[0] === "sales" &&
+    pathSegments[1] === "quotations" &&
+    pathSegments.length === 4 &&
+    lastSegment === "edit";
   const isItemDetail =
     parentSegment === "items" &&
     pathSegments.length >= 3 &&
@@ -40,6 +65,10 @@ export function Breadcrumb() {
     pathSegments[0] === "purchasing" && parentSegment === "suppliers" && pathSegments.length >= 3;
   const isCustomerDetail =
     pathSegments[0] === "sales" && parentSegment === "customers" && pathSegments.length >= 3;
+  const isFrameJobOrderDetail =
+    pathSegments[0] === "sales" &&
+    parentSegment === "frame-job-orders" &&
+    pathSegments.length === 3;
   const isTransformationOrderDetail =
     pathSegments[0] === "manufacturing" &&
     parentSegment === "transformations" &&
@@ -60,7 +89,9 @@ export function Breadcrumb() {
       : "";
   const supplierId = isSupplierDetail ? lastSegment : "";
   const customerId = isCustomerDetail ? lastSegment : "";
+  const frameJobOrderId = isFrameJobOrderDetail ? lastSegment : "";
   const transformationOrderId = isTransformationOrderDetail ? lastSegment : "";
+  const quotationId = isQuotationEdit ? pathSegments[2] : "";
   const adminSettingsLabelMap: Record<string, string> = {
     settings: tAdminSettingsIndex("title"),
     company: tAdminSettingsPages("companyTitle"),
@@ -124,6 +155,14 @@ export function Breadcrumb() {
     enabled: !!transformationOrderId,
   });
 
+  const { data: quotation, isLoading: isQuotationLoading } = useQuotation(quotationId);
+
+  const { data: frameJobOrderResponse, isLoading: isFrameJobOrderLoading } = useQuery({
+    queryKey: ["frame-job-order", frameJobOrderId],
+    queryFn: () => fetchFrameJobOrderBreadcrumb(frameJobOrderId),
+    enabled: !!frameJobOrderId,
+  });
+
   // Handle detail pages that use dynamic ids in the URL.
   const currentPageLabel =
     parentSegment === "stock-requisitions"
@@ -162,6 +201,94 @@ export function Breadcrumb() {
         </Link>
         <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
         <span className="font-medium text-foreground">{deliveryNote?.dn_no || lastSegment}</span>
+      </nav>
+    );
+  }
+
+  if (isFrameJobOrderDetail) {
+    const jobOrderCode = frameJobOrderResponse?.data.jobOrderCode;
+
+    return (
+      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+        <Link
+          href="/dashboard"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {t("Home")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <Link
+          href="/sales/frame-job-orders"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {t("Job Orders")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        {jobOrderCode ? (
+          <span className="font-medium text-foreground">{jobOrderCode}</span>
+        ) : isFrameJobOrderLoading ? (
+          <span
+            aria-label={tCommon("loading")}
+            className="h-4 w-40 animate-pulse rounded bg-muted"
+          />
+        ) : (
+          <span className="font-medium text-foreground">{t("Job Orders")}</span>
+        )}
+      </nav>
+    );
+  }
+
+  if (isQuotationCreate || isQuotationEdit) {
+    return (
+      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+        <Link
+          href="/dashboard"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {t("Home")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <Link
+          href="/sales/quotations"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {isQuotationCreate ? t("Quotations") : t("Quotation")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        {isQuotationCreate ? (
+          <span className="font-medium text-foreground">{tCommon("new")}</span>
+        ) : quotation?.quotationNumber ? (
+          <span className="font-medium text-foreground">{quotation.quotationNumber}</span>
+        ) : isQuotationLoading ? (
+          <span
+            aria-label={tCommon("loading")}
+            className="h-4 w-40 animate-pulse rounded bg-muted"
+          />
+        ) : (
+          <span className="font-medium text-foreground">{t("Quotation")}</span>
+        )}
+      </nav>
+    );
+  }
+
+  if (isSalesOrderCreate) {
+    return (
+      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+        <Link
+          href="/dashboard"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {t("Home")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <Link
+          href="/sales/orders"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {t("Sales Orders")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <span className="font-medium text-foreground">{tCommon("new")}</span>
       </nav>
     );
   }

@@ -49,6 +49,8 @@ The Inventory Management module is a comprehensive multi-warehouse inventory tra
 
 The **Item** is the central entity representing a product or material in the system.
 
+Item list/detail pricing and customer price resolution without an explicit `asOfDate` use the current business unit's timezone (`business_unit.timezone`, default `Asia/Manila`) to evaluate inclusive price effective dates. This includes chop-and-join and framing tiers: prices become available at local midnight, not UTC midnight. Explicit customer pricing dates remain unchanged.
+
 **Key Attributes**:
 
 - **Code**: Unique item identifier (SKU)
@@ -913,8 +915,13 @@ Note voiding releases both levels, while dispatch consumes on-hand and reserved 
 recorded warehouse, batch, rack, and batch-location SKU.
 
 Reservation ownership is source-neutral. Delivery Note lines, confirmed Sales Order lines,
-Transformation Order inputs, and Frame Job Order components own warehouse-level commitments in
-`inventory_reservations`. Pick-list lines and preparing Transformation Order inputs additionally own
+Transformation Order inputs, and approved Production Material Request lines own warehouse-level
+commitments in `inventory_reservations`. Creating a Frame Job Order or a draft Production Material
+Request does not reserve stock. Approving the request creates the commitment; issuing it consumes the
+commitment and deducts on-hand stock. Frame production may proceed with residual materials without
+a request or full issue; completion releases unused request reservations without recording extra
+consumption. Pick-list lines and preparing
+Transformation Order inputs additionally own
 their exact FIFO batch/rack sources in `inventory_reservation_allocations`. An active allocation
 total cannot exceed its parent commitment. `item_warehouse.reserved_stock`,
 `item_batches.qty_reserved`, and `item_batch_locations.qty_reserved` remain cached balance

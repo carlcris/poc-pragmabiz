@@ -24,6 +24,11 @@ export const quotationFormSchema = z
     customerId: z.string().min(1, "Customer is required"),
     quotationDate: z.string().min(1, "Quotation date is required"),
     validUntil: z.string().min(1, "Valid until date is required"),
+    // Job dates: when the artwork came in and when the work is promised back.
+    // Independent of the commercial dates above — a quote may be raised days
+    // after the artwork arrived, and its validity window is a separate thing.
+    dateReceived: z.string().min(1, "Date received is required"),
+    dueDate: z.string().min(1, "Due date is required"),
     lineItems: z.array(quotationLineItemSchema).min(1, "At least one line item is required"),
     terms: z.string().default(""),
     notes: z.string().default(""),
@@ -37,6 +42,15 @@ export const quotationFormSchema = z
     {
       message: "Valid until date must be on or after quotation date",
       path: ["validUntil"],
+    }
+  )
+  .refine(
+    (data) => new Date(data.dueDate) >= new Date(data.dateReceived),
+    {
+      // Mirrors chk_quotation_due_after_received: promising work back before the
+      // artwork arrived is a slip. Same-day is legitimate, so this is inclusive.
+      message: "Due date must be on or after the date received",
+      path: ["dueDate"],
     }
   );
 

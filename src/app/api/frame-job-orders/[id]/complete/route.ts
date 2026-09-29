@@ -1,13 +1,16 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
-import { requirePermission } from "@/lib/auth";
+import { requireAnyPermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { asRpcClient, getClientErrorMessage, logQuotationError } from "../../../quotations/_shared";
 
 async function POSTHandler(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.SALES_QUOTATIONS, "edit");
+    const unauthorized = await requireAnyPermission([
+      [RESOURCES.MANUFACTURING, "edit"],
+      [RESOURCES.STOCK_TRANSFORMATIONS, "edit"],
+    ]);
     if (unauthorized) return unauthorized;
 
     const { id: jobOrderId } = await params;

@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chop &amp; join — job order entry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#534AB7; --brand-deep:#26215C; --brand-soft:#EEECF9; --brand-line:#D9D5F0;
+  --bg:#F6F5FB; --surface:#FFFFFF;
+  --line:#E4E2F0; --line-soft:#F0EFF7;
+  --ink:#1A1730; --ink-2:#4A4666; --muted:#78748F; --faint:#A5A2B8;
+  --ok-fg:#12764A; --ok-bg:#E8F6EE;
+  --warn-fg:#B45309; --warn-bg:#FDF3E3;
+  --dang-fg:#B4234B; --dang-bg:#FCEBF0;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --shadow:0 1px 2px rgba(38,33,92,.05), 0 8px 24px -14px rgba(38,33,92,.18);
+  --pop:0 26px 60px -18px rgba(38,33,92,.38), 0 2px 8px rgba(38,33,92,.08);
+  --h:34px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--brand);outline-offset:1px;border-radius:7px}
+button{font:inherit;color:inherit;cursor:pointer}
+.mn{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ================= app bar ================= */
+.appbar{position:sticky;top:0;z-index:60;background:#fff;border-bottom:1px solid var(--line);
+  padding:0 16px;height:52px;display:flex;align-items:center;gap:11px}
+.appbar .back{width:30px;height:30px;border:1px solid var(--line);background:#fff;border-radius:8px;display:grid;place-items:center;color:var(--muted)}
+.appbar .back:hover{border-color:var(--brand-line);color:var(--brand)}
+.appbar .t{font-weight:800;font-size:15px;letter-spacing:-.02em;white-space:nowrap}
+.appbar .docno{font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:3px 8px}
+.appbar .sp{flex:1}
+.stat{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;background:var(--warn-bg);color:var(--warn-fg)}
+.stat i{width:5px;height:5px;border-radius:50%;background:currentColor}
+.saved{font-size:12px;color:var(--faint);white-space:nowrap}
+
+/* ================= layout ================= */
+.split{display:grid;grid-template-columns:minmax(540px,1.1fr) minmax(420px,.9fr);height:calc(100vh - 52px)}
+.pane{overflow-y:auto;min-width:0}
+.left{padding:18px 18px 80px;border-right:1px solid var(--line)}
+.right{background:#EFEDF7;padding:18px 18px 80px}
+
+/* ================= primitives ================= */
+.ctl{height:var(--h);width:100%;border:1px solid var(--line);border-radius:8px;background:#fff;padding:0 11px;font:inherit;font-size:13.5px;color:var(--ink);transition:.15s}
+.ctl:hover{border-color:var(--brand-line)}
+.ctl:focus{outline:0;border-color:var(--brand);box-shadow:0 0 0 3px rgba(83,74,183,.13)}
+.ctl::placeholder{color:var(--faint)}
+select.ctl{appearance:none;padding-right:30px;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2378748F' stroke-width='2'><path d='M4 6.5 8 10.5 12 6.5'/></svg>");
+  background-repeat:no-repeat;background-position:right 10px center}
+.ctl.sm{height:29px;font-size:12.5px;padding:0 8px}
+.ctl.m{font-family:var(--mono);font-variant-numeric:tabular-nums}
+textarea.ctl{height:auto;padding:9px 11px;min-height:58px;resize:vertical;line-height:1.5}
+label{font-size:12px;font-weight:600;color:var(--ink-2);display:flex;align-items:center;gap:5px}
+label .opt{font-size:10.5px;color:var(--faint);font-weight:600}
+.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+.hint{font-size:11.5px;color:var(--muted);line-height:1.45}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}
+.c7{grid-column:span 7}.c8{grid-column:span 8}.c12{grid-column:span 12}
+.btn{height:var(--h);border-radius:8px;border:0;background:var(--brand);color:#fff;padding:0 15px;font-size:13.5px;font-weight:700;
+  display:inline-flex;align-items:center;gap:7px;box-shadow:0 8px 16px -9px rgba(83,74,183,.7);transition:.15s;white-space:nowrap}
+.btn:hover{background:#463EA0}
+.btn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink-2);font-weight:600;box-shadow:none}
+.btn.ghost:hover{border-color:var(--brand-line);color:var(--brand)}
+.btn.sm{height:29px;font-size:12.5px;padding:0 11px;box-shadow:none}
+.seg{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:8px;padding:2px;gap:2px;height:var(--h)}
+.seg button{border:0;background:transparent;border-radius:6px;padding:0 12px;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--brand-soft);color:var(--brand-deep)}
+.seg.sm{height:29px}.seg.sm button{font-size:12px;padding:0 10px}
+.sw{position:relative;width:34px;height:19px;border-radius:99px;background:#DCDAE8;border:0;flex:none;transition:.15s;padding:0}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.sw[aria-checked="true"]{background:var(--brand)}
+.sw[aria-checked="true"]::after{transform:translateX(15px)}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
+.sech{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);background:#FCFCFE}
+.sech .n{width:20px;height:20px;border-radius:6px;background:var(--brand-soft);color:var(--brand-deep);display:grid;place-items:center;font-family:var(--mono);font-size:11px;font-weight:700;flex:none}
+.sech h2{margin:0;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+.sech .sp{flex:1}
+.sech .agg{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.secb{padding:14px}
+.readout{height:var(--h);display:flex;align-items:center;padding:0 11px;border-radius:8px;background:var(--brand-soft);
+  border:1px solid var(--brand-line);font-family:var(--mono);font-size:13px;font-weight:600;color:var(--brand-deep);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.warn{display:flex;gap:8px;align-items:flex-start;background:var(--warn-bg);color:var(--warn-fg);border-radius:9px;padding:9px 11px;font-size:12px;font-weight:600;line-height:1.45}
+.okmsg{display:flex;gap:8px;align-items:center;background:var(--ok-bg);color:var(--ok-fg);border-radius:9px;padding:9px 11px;font-size:12px;font-weight:600}
+
+/* combobox */
+.cb{position:relative}
+.cbres{position:absolute;z-index:40;top:calc(100% + 5px);left:0;right:0;background:#fff;border:1px solid var(--line);
+  border-radius:10px;box-shadow:var(--pop);overflow:hidden;display:none;max-height:240px;overflow-y:auto}
+.cb.open .cbres{display:block}
+.cbres button{width:100%;display:flex;align-items:center;gap:10px;background:#fff;border:0;text-align:left;padding:9px 12px;border-bottom:1px solid var(--line-soft);font-size:13px}
+.cbres button:last-child{border-bottom:0}
+.cbres button:hover{background:var(--brand-soft)}
+.cbres .cc{font-family:var(--mono);font-size:11px;background:var(--brand-soft);color:var(--brand-deep);padding:2px 6px;border-radius:5px;flex:none}
+.cbres button:hover .cc{background:#fff}
+.cbres .nn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cbres .pp{font-family:var(--mono);font-size:11.5px;color:var(--muted);flex:none}
+
+/* ============ component summary card (opens dialog) ============ */
+.compcard{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#fff}
+.compcard .row{display:flex;align-items:center;gap:11px;padding:10px 12px;border-bottom:1px solid var(--line-soft)}
+.compcard .row:last-child{border-bottom:0}
+.compcard .row .sw-chip{width:20px;height:20px;border-radius:5px;flex:none;border:1px solid rgba(0,0,0,.12)}
+.compcard .row .k{font-size:12.5px;font-weight:700;width:80px;flex:none}
+.compcard .row .v{font-size:12.5px;color:var(--ink-2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.compcard .row.none .v{color:var(--faint);font-style:italic}
+.compcard .row .m{font-family:var(--mono);font-size:11.5px;color:var(--muted);flex:none}
+.compbar{display:flex;align-items:center;gap:10px;margin-top:11px;flex-wrap:wrap}
+.compbar .desc{flex:1;min-width:200px;font-size:12px;color:var(--muted);line-height:1.5}
+
+/* ============ dialog ============ */
+.scrim{position:fixed;inset:0;background:rgba(38,33,92,.34);backdrop-filter:blur(2px);z-index:100;
+  display:none;place-items:center;padding:26px 18px}
+.scrim.open{display:grid}
+.dlg{width:100%;max-width:920px;max-height:calc(100vh - 52px);background:#fff;border-radius:16px;box-shadow:var(--pop);
+  overflow:hidden;display:flex;flex-direction:column}
+.dh{display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line);flex:none}
+.dh h3{margin:0;font-size:16px;font-weight:800;letter-spacing:-.02em}
+.dh .sub{font-size:12px;color:var(--muted);font-family:var(--mono)}
+.dh .sp{flex:1}
+.dh .x{width:30px;height:30px;border-radius:8px;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;font-size:14px}
+.dh .x:hover{background:var(--line-soft);color:var(--ink)}
+.dbody{display:grid;grid-template-columns:1fr 296px;flex:1;min-height:0}
+.dmain{overflow-y:auto;padding:16px 20px}
+.dside{background:#F1EFFA;border-left:1px solid var(--line);padding:15px;overflow-y:auto}
+.dfoot{display:flex;align-items:center;gap:10px;padding:13px 20px;border-top:1px solid var(--line);background:#FBFAFE;flex:none;flex-wrap:wrap}
+.dfoot .sumtext{font-family:var(--mono);font-size:11.5px;color:var(--muted);flex:1;min-width:180px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* accordion inside dialog */
+.acc{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.accitem{border-bottom:1px solid var(--line)}
+.accitem:last-child{border-bottom:0}
+.acch{display:flex;align-items:center;gap:11px;padding:12px 14px;background:#FCFCFE;width:100%;border:0;text-align:left}
+.acch .cv{color:var(--faint);font-size:10px;transition:.15s;flex:none}
+.accitem.open .cv{transform:rotate(90deg)}
+.acch .ttl{font-size:13.5px;font-weight:700}
+.acch .sum{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48%}
+.accb{padding:14px;display:none;border-top:1px solid var(--line)}
+.accitem.open .accb{display:block}
+
+/* mat layers */
+.layer{border:1px solid var(--line);border-radius:10px;padding:11px;background:#fff;display:flex;flex-direction:column;gap:9px}
+.layer + .layer{margin-top:8px}
+.layer .lh{display:flex;align-items:center;gap:9px}
+.layer .sw-chip{width:20px;height:20px;border-radius:5px;flex:none;border:1px solid rgba(0,0,0,.12)}
+.layer .tag{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--brand)}
+.layer .sp{flex:1}
+.layer .rm{width:25px;height:25px;border:0;background:transparent;color:var(--faint);border-radius:6px;font-size:12px}
+.layer .rm:hover{background:var(--dang-bg);color:var(--dang-fg)}
+.pair{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.pair .f{width:86px}
+.pair .lk{height:var(--h);width:30px;border:1px solid var(--line);background:#fff;border-radius:8px;color:var(--muted);display:grid;place-items:center;font-size:12px;flex:none}
+.pair .lk[aria-pressed="true"]{background:var(--brand-soft);border-color:var(--brand-line);color:var(--brand)}
+.addlayer{height:34px;border:1px dashed var(--brand-line);background:#fff;border-radius:9px;color:var(--brand);font-weight:600;font-size:12.5px;width:100%;margin-top:8px}
+.addlayer:hover{background:var(--brand-soft);border-color:var(--brand)}
+.addlayer:disabled{opacity:.45;cursor:not-allowed}
+
+/* option cards */
+.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:8px}
+.optc{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;text-align:left;transition:.15s;display:flex;flex-direction:column;gap:4px}
+.optc:hover{border-color:var(--brand-line)}
+.optc[aria-pressed="true"]{border-color:var(--brand);background:var(--brand-soft);box-shadow:0 0 0 3px rgba(83,74,183,.1)}
+.optc .sw-vis{height:24px;border-radius:6px;border:1px solid rgba(0,0,0,.1);margin-bottom:2px}
+.optc .nm{font-size:12.5px;font-weight:700;line-height:1.3}
+.optc .pr{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+
+/* hardware checks */
+.chk{display:flex;align-items:center;gap:10px;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:#fff;transition:.15s}
+.chk + .chk{margin-top:6px}
+.chk[data-on]{border-color:var(--brand-line);background:var(--brand-soft)}
+.chk input[type=checkbox]{accent-color:var(--brand);width:15px;height:15px;margin:0;flex:none}
+.chk .nm{font-size:13px;font-weight:600;flex:1}
+.chk .qty{width:72px}
+
+/* preview */
+.pvcanvas{background:#fff;border-radius:9px;padding:14px;display:grid;place-items:center;margin-bottom:11px}
+.legend{display:flex;flex-direction:column;gap:5px;margin-bottom:11px}
+.legend div{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-2)}
+.legend i{width:11px;height:11px;border-radius:3px;flex:none;border:1px solid rgba(0,0,0,.12)}
+.legend .v{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.spec{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:11px}
+.spec div{background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+.spec span{display:block;font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.spec b{font-family:var(--mono);font-size:12.5px;font-weight:600;letter-spacing:-.02em}
+
+/* ================= totals ================= */
+.trow{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px;color:var(--ink-2)}
+.trow:last-child{border-bottom:0}
+.trow .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink)}
+.trow.big{padding-top:12px;font-weight:700;color:var(--ink)}
+.trow.big .v{font-size:19px;letter-spacing:-.03em;color:var(--brand-deep)}
+.trow input{width:130px;text-align:right;height:30px;font-family:var(--mono)}
+
+/* ================= right pane ================= */
+.rhead{display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-wrap:wrap}
+.rhead .lab{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.rhead .sp{flex:1}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--ok-fg);background:var(--ok-bg);border-radius:999px;padding:3px 9px}
+.live i{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.doctabs{display:flex;gap:4px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:3px}
+.doctabs button{border:0;background:transparent;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--muted)}
+.doctabs button[aria-selected="true"]{background:var(--brand-soft);color:var(--brand-deep)}
+
+.paper{background:#fff;border-radius:6px;box-shadow:0 12px 34px -14px rgba(38,33,92,.35), 0 1px 3px rgba(38,33,92,.1);
+  padding:24px 26px;color:#111;font-size:12.5px;line-height:1.5}
+.paper h3{margin:0 0 3px;text-align:center;font-size:15px;font-weight:800;text-transform:uppercase}
+.paper .shopline{text-align:center;font-size:10px;color:#666;margin:0 0 15px;letter-spacing:.06em;text-transform:uppercase}
+.pmeta{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;margin-bottom:14px}
+.pfield{display:flex;gap:7px;align-items:baseline;margin-bottom:6px}
+.pfield .k{font-weight:700;font-size:11px;white-space:nowrap;color:#333}
+.pfield .v{flex:1;border-bottom:1px solid #333;min-height:16px;font-weight:600;font-size:11.5px;padding:0 2px 1px}
+.pfield .v.mono{font-family:var(--mono);font-size:11px}
+.pfield .v.empty{color:#bbb;font-weight:400;font-style:italic}
+.ptbl{width:100%;border-collapse:collapse;border:1.5px solid #222;margin-bottom:12px}
+.ptbl th{border:1px solid #222;padding:5px 7px;font-size:11px;font-weight:800;text-align:center}
+.ptbl td{border:1px solid #222;padding:7px;vertical-align:top;font-size:11.5px}
+.ptbl td.c{text-align:center;font-weight:700;font-family:var(--mono)}
+.dimpair{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-weight:700;font-size:12px;padding:1px 0}
+.dimpair .n{border-bottom:1px solid #333;min-width:32px;text-align:center;padding:0 3px}
+.dimpair.ghost .n{color:#c4c4c4;border-bottom-color:#ddd}
+.artlist{margin:0;padding:0;list-style:none}
+.artlist li{padding-left:11px;position:relative;margin-bottom:2px;line-height:1.45}
+.artlist li::before{content:"–";position:absolute;left:0;font-weight:700}
+.artlist li.main{font-weight:700}
+.psum{display:flex;justify-content:flex-end;gap:26px;font-size:11.5px;padding-top:6px;border-top:1px solid #ddd}
+.psum div{text-align:right}
+.psum span{display:block;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:#777;font-weight:700;margin-bottom:2px}
+.psum b{font-family:var(--mono);font-size:13px}
+.psign{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px}
+.psign div{border-top:1px solid #333;padding-top:5px;font-size:10px;font-weight:700;text-align:center;color:#444;letter-spacing:.04em}
+
+.cutlist{background:#fff;border-radius:6px;box-shadow:0 12px 34px -14px rgba(38,33,92,.35);padding:20px 22px;color:#111}
+.cutlist h3{margin:0 0 12px;font-size:13.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.cutlist table{width:100%;border-collapse:collapse}
+.cutlist th{text-align:left;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#777;font-weight:700;padding:7px 8px;border-bottom:1.5px solid #222}
+.cutlist td{padding:8px;border-bottom:1px solid #E6E6EE;font-size:12px}
+.cutlist .m{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.ractions{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
+
+@media (max-width:1080px){
+  .split{grid-template-columns:1fr;height:auto}
+  .left{border-right:0;border-bottom:1px solid var(--line)}
+  .pane{overflow:visible}
+  .dbody{grid-template-columns:1fr}
+  .dside{border-left:0;border-top:1px solid var(--line)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="appbar">
+  <button class="back" title="Back">‹</button>
+  <span class="t">Chop &amp; join job order</span>
+  <span class="docno">JORFRM-0000007798</span>
+  <span class="stat"><i></i>Draft</span>
+  <span class="sp"></span>
+  <span class="saved" id="savedat">All changes saved</span>
+  <button class="btn ghost">Save draft</button>
+  <button class="btn">Confirm order</button>
+</div>
+
+<div class="split">
+
+<!-- ======================= LEFT ======================= -->
+<div class="pane left">
+
+  <!-- 1 -->
+  <section class="sec">
+    <div class="sech"><span class="n">1</span><h2>Customer &amp; order</h2><span class="sp"></span><span class="agg" id="agg1"></span></div>
+    <div class="secb">
+      <div class="grid">
+        <div class="f c7">
+          <label for="cust">Customer</label>
+          <div class="cb" id="custcb">
+            <input class="ctl" id="cust" value="BLESSY FRAME SHOP" autocomplete="off" />
+            <div class="cbres" id="custres">
+              <button data-code="00000585" data-name="BLESSY FRAME SHOP" data-addr="Muzon 1, Marciella St., Rosario, Cavite" data-tel="0951 618 0827" data-terms="Cash">
+                <span class="cc">00000585</span><span class="nn">Blessy Frame Shop</span><span class="pp">Cash</span></button>
+              <button data-code="00000612" data-name="ARTVILLE GALLERY" data-addr="Km 4, McArthur Hwy, Digos City" data-tel="0917 233 8890" data-terms="30 days">
+                <span class="cc">00000612</span><span class="nn">Artville Gallery</span><span class="pp">30 days</span></button>
+              <button data-code="00000733" data-name="WALK-IN CUSTOMER" data-addr="—" data-tel="—" data-terms="Cash">
+                <span class="cc">00000733</span><span class="nn">Walk-in customer</span><span class="pp">Cash</span></button>
+            </div>
+          </div>
+          <span class="hint" id="custmeta">00000585 · Cash · 0951 618 0827</span>
+        </div>
+        <div class="f c5">
+          <label for="loc">Location</label>
+          <select class="ctl" id="loc"><option>ACHLERS MAIN</option><option>Achlers Digos</option><option>Achlers Tagum</option></select>
+        </div>
+        <div class="f c12">
+          <label for="addr">Delivery address</label>
+          <textarea class="ctl" id="addr" rows="2">Muzon 1, Marciella St., Rosario, Cavite</textarea>
+        </div>
+        <div class="f c4"><label for="dater">Date received</label><input class="ctl m" id="dater" type="date" value="2026-08-12" /></div>
+        <div class="f c4"><label for="dated">Due date</label><input class="ctl m" id="dated" type="date" value="2026-08-19" /></div>
+        <div class="f c4"><label for="terms">Payment terms</label>
+          <select class="ctl" id="terms"><option>Cash</option><option>30 days</option><option>50% down</option></select></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="sec">
+    <div class="sech"><span class="n">2</span><h2>Frame configuration</h2><span class="sp"></span><span class="agg" id="agg2"></span></div>
+    <div class="secb">
+      <div class="grid" style="margin-bottom:14px">
+        <div class="f c8">
+          <label for="mould">Moulding</label>
+          <div class="cb" id="mouldcb">
+            <input class="ctl" id="mould" value="1001-1-B BLK POLYSTYRENE MOULDING" autocomplete="off" />
+            <div class="cbres" id="mouldres">
+              <button data-code="1001-1-B" data-name="1001-1-B BLK POLYSTYRENE MOULDING" data-fw="1.5" data-price="185">
+                <span class="cc">1001-1-B</span><span class="nn">Blk polystyrene moulding</span><span class="pp">₱185/ft</span></button>
+              <button data-code="2043-2-G" data-name="2043-2-G GOLD ORNATE MOULDING" data-fw="2.25" data-price="340">
+                <span class="cc">2043-2-G</span><span class="nn">Gold ornate moulding</span><span class="pp">₱340/ft</span></button>
+              <button data-code="3310-W" data-name="3310-W WHITE FLAT WOOD MOULDING" data-fw="1" data-price="150">
+                <span class="cc">3310-W</span><span class="nn">White flat wood moulding</span><span class="pp">₱150/ft</span></button>
+            </div>
+          </div>
+        </div>
+        <div class="f c4"><label for="qty">Qty <span class="opt">cuts</span></label><input class="ctl m" id="qty" value="2" inputmode="numeric" /></div>
+
+        <div class="f c12">
+          <label>Artwork size <span class="opt">inches</span></label>
+          <div style="display:flex;align-items:flex-end;gap:9px;flex-wrap:wrap">
+            <div class="f" style="width:92px"><input class="ctl m" id="len" value="8" inputmode="decimal" /></div>
+            <span style="height:var(--h);display:flex;align-items:center;color:var(--faint);font-family:var(--mono)">×</span>
+            <div class="f" style="width:92px"><input class="ctl m" id="wid" value="10" inputmode="decimal" /></div>
+            <div class="f" style="width:104px"><input class="ctl m" id="fw" value="1.5" inputmode="decimal" title="Frame width" /></div>
+            <div class="seg" id="sizemode">
+              <button aria-pressed="true" data-m="art">Artwork size</button>
+              <button aria-pressed="false" data-m="out">Outside size</button>
+            </div>
+          </div>
+          <span class="hint" id="dimhint"></span>
+        </div>
+
+        <div class="f c4"><label>Mat outer <span class="opt">glass size</span></label><div class="readout" id="matouter"></div></div>
+        <div class="f c4"><label>Frame outside</label><div class="readout" id="outsize"></div></div>
+        <div class="f c4"><label>Moulding <span class="opt">+10%</span></label><div class="readout" id="footage"></div></div>
+      </div>
+
+      <!-- component summary → opens dialog -->
+      <div class="compcard" id="compcard"></div>
+      <div class="compbar">
+        <span class="desc" id="compdesc"></span>
+        <button class="btn ghost" id="opencfg">Configure components →</button>
+      </div>
+
+      <div class="f" style="margin-top:14px">
+        <label for="notes">Line remarks <span class="opt">optional — prints on the form</span></label>
+        <input class="ctl" id="notes" placeholder="e.g. rush, handle with care, match previous order" />
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="sec">
+    <div class="sech"><span class="n">3</span><h2>Pricing</h2><span class="sp"></span><span class="agg" id="agg3"></span></div>
+    <div class="secb">
+      <div class="trow"><span>Total sales</span><span class="v" id="t-sales"></span></div>
+      <div class="trow"><span>Negotiated amount</span><input class="ctl m" id="t-nego" placeholder="—" /></div>
+      <div class="trow"><span>Customer deposit</span><input class="ctl m" id="t-dep" placeholder="0.00" /></div>
+      <div class="trow big"><span>Amount due</span><span class="v" id="t-due"></span></div>
+    </div>
+  </section>
+</div>
+
+<!-- ======================= RIGHT ======================= -->
+<div class="pane right">
+  <div class="rhead">
+    <span class="lab">Generated document</span>
+    <span class="live"><i></i>Live</span>
+    <span class="sp"></span>
+    <div class="doctabs" id="doctabs">
+      <button aria-selected="true" data-doc="jor">Job requisition</button>
+      <button aria-selected="false" data-doc="cut">Cut list</button>
+    </div>
+  </div>
+
+  <div id="doc-jor">
+    <div class="paper">
+      <h3>Chop and Join / Job Requisition Form</h3>
+      <p class="shopline">Achlers Main · Glass, Frames &amp; Mouldings</p>
+      <div class="pmeta">
+        <div>
+          <div class="pfield"><span class="k">Customer:</span><span class="v" id="p-cust"></span></div>
+          <div class="pfield"><span class="k">Address:</span><span class="v" id="p-addr"></span></div>
+          <div class="pfield"><span class="k">Contact #:</span><span class="v mono" id="p-tel">0951 618 0827</span></div>
+        </div>
+        <div>
+          <div class="pfield"><span class="k">Transaction No.</span><span class="v mono">JORFRM-0000007798</span></div>
+          <div class="pfield"><span class="k">Date received:</span><span class="v mono" id="p-recv"></span></div>
+          <div class="pfield"><span class="k">Due date:</span><span class="v mono" id="p-due"></span></div>
+        </div>
+      </div>
+      <table class="ptbl">
+        <thead><tr>
+          <th style="width:70px">Actual Qty</th><th style="width:48px">Qty.</th><th style="width:52px">Unit</th>
+          <th colspan="2">Article / Description</th>
+        </tr></thead>
+        <tbody id="p-rows"></tbody>
+      </table>
+      <div class="psum">
+        <div><span>Total cuts</span><b id="p-cuts"></b></div>
+        <div><span>Total sales</span><b id="p-total"></b></div>
+      </div>
+      <div class="psign"><div>Prepared by</div><div>Received by / Date</div></div>
+    </div>
+    <div class="ractions">
+      <button class="btn ghost sm">Print</button>
+      <button class="btn ghost sm">Download PDF</button>
+      <button class="btn ghost sm">Send to production</button>
+    </div>
+  </div>
+
+  <div id="doc-cut" hidden>
+    <div class="cutlist">
+      <h3>Production cut list</h3>
+      <table>
+        <thead><tr><th>Material</th><th>Spec</th><th style="text-align:right">Per cut</th><th style="text-align:right">Total</th></tr></thead>
+        <tbody id="c-rows"></tbody>
+      </table>
+      <div id="c-warn" style="margin-top:12px"></div>
+    </div>
+    <div class="ractions">
+      <button class="btn ghost sm">Print cut list</button>
+      <button class="btn ghost sm">Reserve materials</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ======================= DIALOG ======================= -->
+<div class="scrim" id="scrim" role="dialog" aria-modal="true" aria-labelledby="dlgttl">
+  <div class="dlg">
+    <div class="dh">
+      <h3 id="dlgttl">Frame components</h3>
+      <span class="sub" id="dlgsub"></span>
+      <span class="sp"></span>
+      <button class="x" id="dlgx" aria-label="Close">✕</button>
+    </div>
+    <div class="dbody">
+      <div class="dmain">
+        <div class="acc">
+
+          <div class="accitem open" data-k="mat">
+            <button class="acch"><span class="cv">▶</span><span class="ttl">Matting</span><span class="sum" id="a-mat"></span></button>
+            <div class="accb">
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+                <button class="sw" role="switch" aria-checked="true" data-g="mat"></button>
+                <span style="font-size:13px;font-weight:600">Include matting</span>
+                <span style="flex:1"></span>
+                <div class="seg sm" id="matsrc">
+                  <button aria-pressed="true" data-v="Store">Store</button>
+                  <button aria-pressed="false" data-v="Customer">Customer supplied</button>
+                </div>
+              </div>
+              <div id="layers"></div>
+              <button class="addlayer" id="addlayer">＋ Add mat layer</button>
+              <p class="hint" style="margin:9px 0 0">Layer 1 is the top mat — its border runs from the mat edge to the opening. Each layer beneath shows a reveal; that reveal is the gap you enter.</p>
+            </div>
+          </div>
+
+          <div class="accitem" data-k="glass">
+            <button class="acch"><span class="cv">▶</span><span class="ttl">Glass</span><span class="sum" id="a-glass"></span></button>
+            <div class="accb">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                <button class="sw" role="switch" aria-checked="true" data-g="glass"></button>
+                <span style="font-size:13px;font-weight:600">Include glazing</span>
+              </div>
+              <div class="opts" id="glassopts"></div>
+              <div style="display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px">
+                  <input type="checkbox" id="g-outer" checked style="accent-color:var(--brand);width:15px;height:15px" /> Cut to mat outer size</label>
+                <div class="f" style="width:104px"><label>Sheets</label><input class="ctl sm m" id="g-qty" value="1" /></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="accitem" data-k="back">
+            <button class="acch"><span class="cv">▶</span><span class="ttl">Backing &amp; fitting</span><span class="sum" id="a-back"></span></button>
+            <div class="accb">
+              <p class="hint" style="font-weight:700;color:var(--ink-2);margin:0 0 7px">Board</p>
+              <div class="opts" id="backopts" style="margin-bottom:14px"></div>
+              <p class="hint" style="font-weight:700;color:var(--ink-2);margin:0 0 7px">Fitting hardware</p>
+              <div id="hw"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <aside class="dside">
+        <div class="pvcanvas" id="cv"></div>
+        <div class="legend" id="lg"></div>
+        <div class="spec" id="sp"></div>
+        <div id="ms"></div>
+      </aside>
+    </div>
+    <div class="dfoot">
+      <span class="sumtext" id="dfsum"></span>
+      <button class="btn ghost" id="dlgcancel">Cancel</button>
+      <button class="btn" id="dlgapply">Apply to frame</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= reference data ================= */
+const BOARDS=[
+  {code:'em-1024', name:'March mallow white', size:'30 x 42', hex:'#F4F1E8'},
+  {code:'em-2210', name:'Antique cream',      size:'32 x 40', hex:'#EBDFC6'},
+  {code:'em-3301', name:'Charcoal grey',      size:'30 x 40', hex:'#4E4E56'},
+  {code:'em-4402', name:'Deep navy',          size:'32 x 40', hex:'#2B3A57'},
+  {code:'em-5510', name:'Burgundy',           size:'30 x 40', hex:'#6E2434'}
+];
+const GLASS=[
+  {id:'clear',   nm:'Clear glass',  pr:'₱220/sq.ft', hex:'#DCE9F0', rate:220},
+  {id:'nonglare',nm:'Non-glare',    pr:'₱310/sq.ft', hex:'#E3E9EC', rate:310},
+  {id:'acrylic', nm:'Acrylic 2mm',  pr:'₱260/sq.ft', hex:'#E8F0F4', rate:260},
+  {id:'double',  nm:'Double glass', pr:'₱410/sq.ft', hex:'#CFE2EC', rate:410},
+  {id:'museum',  nm:'Museum glass', pr:'₱980/sq.ft', hex:'#E9F1F5', rate:980},
+  {id:'octagon', nm:'Octagon glass',pr:'₱340/sq.ft', hex:'#DDEAF2', rate:340}
+];
+const BACKS=[
+  {id:'mdf',    nm:'MDF',          pr:'₱90/sq.ft',  hex:'#C9A87C', rate:90},
+  {id:'plywood',nm:'Plywood',      pr:'₱120/sq.ft', hex:'#D6B98F', rate:120},
+  {id:'sintra', nm:'Sintra board', pr:'₱180/sq.ft', hex:'#E4E4E8', rate:180},
+  {id:'foam',   nm:'Foam board',   pr:'₱70/sq.ft',  hex:'#F2F2F5', rate:70}
+];
+const MATRATE=140;
+
+/* ================= state ================= */
+const S={
+  cust:'BLESSY FRAME SHOP', tel:'0951 618 0827',
+  mould:'1001-1-B BLK POLYSTYRENE MOULDING', mouldPrice:185,
+  qty:2, len:8, wid:10, fw:1.5, mode:'art', overlap:0.125, notes:'',
+  comp:{
+    mat:{on:true, src:'Store', layers:[{board:'em-1024', L:2, W:2}]},
+    glass:{on:true, type:'clear', outer:true, qty:1},
+    back:{board:'mdf', flexi:{on:true,qty:8}, multi:{on:false,qty:0}, lsup:{on:false,size:'Small'}}
+  }
+};
+let draft=null;                                   // dialog working copy
+const clone=o=>JSON.parse(JSON.stringify(o));
+const $=id=>document.getElementById(id);
+const n=v=>{const x=parseFloat(String(v).replace(/,/g,''));return isNaN(x)?0:x};
+const inch=v=>Number.isInteger(v)?String(v):String(Math.round(v*1000)/1000);
+const peso=v=>'₱'+(v||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtD=v=>{if(!v)return '';const[y,m,d]=v.split('-');return `${m}/${d}/${y}`};
+const board=c=>BOARDS.find(b=>b.code===c)||BOARDS[0];
+
+/* ================= geometry =================
+   artwork → mat openings (bottom-up) → mat outer → frame outside
+   ============================================ */
+function geom(C=S.comp){
+  const fw=n(S.fw);
+  let art;
+  if(S.mode==='out'){ art={L:n(S.len)-2*fw, W:n(S.wid)-2*fw}; }
+  else { art={L:n(S.len), W:n(S.wid)}; }
+
+  let openings=[], matOuter=null;
+  if(C.mat.on && C.mat.layers.length){
+    const ls=C.mat.layers;
+    let cl=art.L-2*n(S.overlap), cw=art.W-2*n(S.overlap);
+    for(let i=ls.length-1;i>=0;i--){
+      if(i===ls.length-1){ openings[i]={L:cl,W:cw}; }
+      else { cl+=2*n(ls[i+1].L); cw+=2*n(ls[i+1].W); openings[i]={L:cl,W:cw}; }
+    }
+    matOuter={L:openings[0].L+2*n(ls[0].L), W:openings[0].W+2*n(ls[0].W)};
+  }
+  const sight = matOuter || art;                       // what the frame surrounds
+  const out = {L:sight.L+2*fw, W:sight.W+2*fw};
+  return {art, openings, matOuter, sight, out};
+}
+function footage(){const g=geom();return (2*(g.out.L+g.out.W)/12)*1.10}
+function total(C=S.comp){
+  const g=geom(C), q=n(S.qty)||1;
+  const area=(g.sight.L*g.sight.W)/144;
+  let t=footage()*n(S.mouldPrice)*q;
+  if(C.glass.on) t+=area*(GLASS.find(x=>x.id===C.glass.type).rate)*q*n(C.glass.qty||1);
+  if(C.mat.on)   t+=area*MATRATE*q*C.mat.layers.length;
+  const bk=BACKS.find(x=>x.id===C.back.board); if(bk) t+=area*bk.rate*q;
+  if(C.back.flexi.on) t+=3.5*n(C.back.flexi.qty)*q;
+  if(C.back.multi.on) t+=4*n(C.back.multi.qty)*q;
+  if(C.back.lsup.on)  t+=(C.back.lsup.size==='Big'?60:35)*q;
+  return t;
+}
+function fitCheck(C=S.comp){
+  if(!C.mat.on) return null;
+  const g=geom(C); if(!g.matOuter) return null;
+  for(const l of C.mat.layers){
+    const b=board(l.board);
+    const[bl,bw]=b.size.split('x').map(s=>+s.trim());
+    const need=[g.matOuter.L,g.matOuter.W].sort((a,b)=>a-b);
+    const have=[bl,bw].sort((a,b)=>a-b);
+    if(need[0]>have[0]||need[1]>have[1])
+      return `${b.name} sheets are ${b.size}″ — too small for a ${inch(g.matOuter.L)}″ × ${inch(g.matOuter.W)}″ mat. Choose a bigger board or reduce the border.`;
+  }
+  return null;
+}
+
+/* ================= description ================= */
+function artParts(C=S.comp){
+  const p=[];
+  if(C.mat.on){
+    const nm={1:'Single',2:'Double',3:'Triple'}[C.mat.layers.length]||`${C.mat.layers.length}-layer`;
+    p.push(`${nm} Matting`);
+    C.mat.layers.forEach(l=>{const b=board(l.board);p.push(`${b.code} ${b.name.toLowerCase()} ${b.size}`)});
+  }
+  const tail=[];
+  if(C.glass.on) tail.push(`w/ ${GLASS.find(x=>x.id===C.glass.type).nm}`);
+  const bk=BACKS.find(x=>x.id===C.back.board); if(bk) tail.push(`w/ ${bk.nm}`);
+  if(C.back.flexi.on) tail.push(`w/ Flexi ×${C.back.flexi.qty}`);
+  if(C.back.multi.on) tail.push(`w/ Multipoints ×${C.back.multi.qty}`);
+  if(C.back.lsup.on)  tail.push(`w/ L-support ${C.back.lsup.size}`);
+  p.push(`${S.mould} -(${C.mat.src})`+(tail.length?' '+tail.join(' '):''));
+  if(S.notes) p.push(S.notes);
+  return p;
+}
+function specString(C=S.comp){
+  const b=[];
+  if(C.mat.on) b.push(`${{1:'Single',2:'Double',3:'Triple'}[C.mat.layers.length]||C.mat.layers.length+'-layer'} matting`);
+  if(C.glass.on) b.push(GLASS.find(x=>x.id===C.glass.type).nm);
+  const bk=BACKS.find(x=>x.id===C.back.board); if(bk) b.push(bk.nm);
+  if(C.back.flexi.on) b.push(`flexi ×${C.back.flexi.qty}`);
+  return b.join(' · ')||'No components';
+}
+
+/* ================= preview svg ================= */
+function svgFrame(C,size){
+  const g=geom(C);
+  const OL=g.out.L||1, OW=g.out.W||1;
+  const sc=(size-16)/Math.max(OL,OW), px=v=>v*sc;
+  const cx=size/2, cy=size/2;
+  let s=`<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Frame preview">
+    <defs><pattern id="artp" width="7" height="7" patternUnits="userSpaceOnUse">
+      <rect width="7" height="7" fill="#EDEBF5"/><path d="M0 7 L7 0" stroke="#C9C5DE" stroke-width="1"/></pattern></defs>`;
+  const R=(w,h,fill,extra='')=>`<rect x="${cx-px(w)/2}" y="${cy-px(h)/2}" width="${px(w)}" height="${px(h)}" ${extra} fill="${fill}"/>`;
+  s+=R(g.out.L,g.out.W,'#2A2A30','rx="2"');
+  if(C.mat.on&&g.matOuter){
+    C.mat.layers.forEach((l,i)=>{
+      const o = i===0 ? g.matOuter : g.openings[i-1];
+      s+=R(o.L,o.W,board(l.board).hex,'stroke="rgba(0,0,0,.16)" stroke-width=".7"');
+    });
+    const last=g.openings[g.openings.length-1];
+    s+=R(last.L,last.W,'url(#artp)','stroke="rgba(0,0,0,.2)" stroke-width=".7"');
+  } else {
+    s+=R(g.art.L,g.art.W,'url(#artp)','stroke="rgba(0,0,0,.2)" stroke-width=".7"');
+  }
+  return s+`</svg>`;
+}
+
+/* ================= main form render ================= */
+function renderMain(){
+  const g=geom();
+  $('matouter').textContent = g.matOuter?`${inch(g.matOuter.L)}″ × ${inch(g.matOuter.W)}″`:'— no mat —';
+  $('outsize').textContent  = `${inch(g.out.L)}″ × ${inch(g.out.W)}″`;
+  $('footage').textContent  = `${footage().toFixed(1)} ft`;
+  $('dimhint').textContent  = S.mode==='art'
+    ? 'Frame outside = mat outer + 2 × frame width. Rabbet overlap not deducted.'
+    : 'Artwork = outside size − 2 × frame width, less the mat border.';
+  $('agg2').textContent = `${inch(g.art.L)}″ × ${inch(g.art.W)}″ · ${S.qty} cut${S.qty==1?'':'s'}`;
+  $('agg1').textContent = S.cust;
+
+  // component summary card
+  const C=S.comp;
+  const rows=[];
+  if(C.mat.on){
+    const nm={1:'Single',2:'Double',3:'Triple'}[C.mat.layers.length]||`${C.mat.layers.length}-layer`;
+    C.mat.layers.forEach((l,i)=>{
+      const b=board(l.board);
+      rows.push(`<div class="row"><span class="sw-chip" style="background:${b.hex}"></span>
+        <span class="k">${i===0?nm+' mat':(i===1?'2nd mat':'3rd mat')}</span>
+        <span class="v">${b.code} ${b.name.toLowerCase()} ${b.size}</span>
+        <span class="m">${i===0?`border ${inch(n(l.L))}″`:`reveal ${inch(n(l.L))}″`}</span></div>`);
+    });
+  } else rows.push(`<div class="row none"><span class="sw-chip" style="background:#F0EFF7"></span><span class="k">Matting</span><span class="v">Not included</span></div>`);
+  const gl=GLASS.find(x=>x.id===C.glass.type);
+  rows.push(C.glass.on
+    ? `<div class="row"><span class="sw-chip" style="background:${gl.hex}"></span><span class="k">Glass</span><span class="v">${gl.nm}</span><span class="m">${C.glass.qty} sheet${C.glass.qty==1?'':'s'}</span></div>`
+    : `<div class="row none"><span class="sw-chip" style="background:#F0EFF7"></span><span class="k">Glass</span><span class="v">Not included</span></div>`);
+  const bk=BACKS.find(x=>x.id===C.back.board);
+  const hw=[]; if(C.back.flexi.on)hw.push(`flexi ×${C.back.flexi.qty}`); if(C.back.multi.on)hw.push(`multi ×${C.back.multi.qty}`); if(C.back.lsup.on)hw.push(`L-sup ${C.back.lsup.size}`);
+  rows.push(`<div class="row"><span class="sw-chip" style="background:${bk.hex}"></span><span class="k">Backing</span><span class="v">${bk.nm}</span><span class="m">${hw.join(' · ')||'—'}</span></div>`);
+  $('compcard').innerHTML=rows.join('');
+  $('compdesc').textContent=specString();
+
+  // pricing
+  const sales=total(), nego=n($('t-nego').value), dep=n($('t-dep').value);
+  const base = nego>0?nego:sales;
+  $('t-sales').textContent=peso(sales);
+  $('t-due').textContent=peso(Math.max(base-dep,0));
+  $('agg3').textContent=peso(Math.max(base-dep,0));
+
+  renderDoc(base);
+  renderCut();
+  touch();
+}
+
+/* ================= document ================= */
+function renderDoc(base){
+  $('p-cust').textContent=$('cust').value||'—';
+  const a=$('addr').value.trim();
+  $('p-addr').textContent=a||'No address on file';
+  $('p-addr').classList.toggle('empty',!a);
+  $('p-recv').textContent=fmtD($('dater').value);
+  $('p-due').textContent=fmtD($('dated').value);
+  const g=geom();
+  const parts=artParts();
+  const mainIdx = S.comp.mat.on ? S.comp.mat.layers.length+1 : 0;
+  $('p-rows').innerHTML=`<tr>
+    <td></td><td class="c">${S.qty}</td><td class="c">CUT</td>
+    <td style="width:112px;border-right:1px solid #222">
+      <div class="dimpair"><span class="n">${inch(g.art.L)}</span><span>X</span><span class="n">${inch(g.art.W)}</span></div>
+      <div class="dimpair ghost"><span class="n">${inch(g.out.L)}</span><span>X</span><span class="n">${inch(g.out.W)}</span></div>
+    </td>
+    <td><ul class="artlist">${parts.map((p,i)=>`<li class="${i===mainIdx?'main':''}">${p}</li>`).join('')}</ul></td></tr>`;
+  $('p-cuts').textContent=S.qty;
+  $('p-total').textContent=peso(base);
+}
+function renderCut(){
+  const C=S.comp, g=geom(), q=n(S.qty)||1;
+  const cut = C.glass.outer && g.matOuter ? g.matOuter : g.sight;
+  const rows=[];
+  rows.push(`<tr><td>Moulding</td><td>${S.mould}</td><td class="m" style="text-align:right">${footage().toFixed(1)} ft</td><td class="m" style="text-align:right">${(footage()*q).toFixed(1)} ft</td></tr>`);
+  if(C.mat.on) C.mat.layers.forEach((l,i)=>{
+    const b=board(l.board), o = i===0 ? g.matOuter : g.openings[i-1];
+    rows.push(`<tr><td>${i===0?'Top mat':(i===1?'2nd mat':'3rd mat')}</td>
+      <td>${b.code} ${b.name.toLowerCase()} · outer ${inch(g.matOuter.L)}″ × ${inch(g.matOuter.W)}″ · opening ${inch(g.openings[i].L)}″ × ${inch(g.openings[i].W)}″</td>
+      <td class="m" style="text-align:right">1 pc</td><td class="m" style="text-align:right">${q} pcs</td></tr>`);
+  });
+  if(C.glass.on) rows.push(`<tr><td>Glass</td><td>${GLASS.find(x=>x.id===C.glass.type).nm} — cut ${inch(cut.L-0.0625)}″ × ${inch(cut.W-0.0625)}″</td>
+    <td class="m" style="text-align:right">${C.glass.qty} pc</td><td class="m" style="text-align:right">${C.glass.qty*q} pcs</td></tr>`);
+  const bk=BACKS.find(x=>x.id===C.back.board);
+  rows.push(`<tr><td>Backing</td><td>${bk.nm} — cut ${inch(cut.L-0.0625)}″ × ${inch(cut.W-0.0625)}″</td>
+    <td class="m" style="text-align:right">1 pc</td><td class="m" style="text-align:right">${q} pcs</td></tr>`);
+  if(C.back.flexi.on) rows.push(`<tr><td>Flexipoints</td><td>—</td><td class="m" style="text-align:right">${C.back.flexi.qty}</td><td class="m" style="text-align:right">${C.back.flexi.qty*q}</td></tr>`);
+  if(C.back.multi.on) rows.push(`<tr><td>Multipoints</td><td>—</td><td class="m" style="text-align:right">${C.back.multi.qty}</td><td class="m" style="text-align:right">${C.back.multi.qty*q}</td></tr>`);
+  if(C.back.lsup.on)  rows.push(`<tr><td>L-support</td><td>${C.back.lsup.size}</td><td class="m" style="text-align:right">4</td><td class="m" style="text-align:right">${4*q}</td></tr>`);
+  $('c-rows').innerHTML=rows.join('');
+  const w=fitCheck();
+  $('c-warn').innerHTML = w?`<div class="warn"><span>⚠</span><span>${w}</span></div>`:`<div class="okmsg"><span>✓</span><span>All materials clear their sheet sizes.</span></div>`;
+}
+
+/* ================= dialog ================= */
+function openDlg(){
+  draft=clone(S.comp);
+  renderDlg();
+  $('scrim').classList.add('open');
+  $('dlgx').focus();
+}
+function closeDlg(){ $('scrim').classList.remove('open'); draft=null; }
+function applyDlg(){ S.comp=clone(draft); closeDlg(); renderMain(); }
+
+function layerRows(){
+  const host=$('layers'); host.innerHTML='';
+  draft.mat.layers.forEach((l,i)=>{
+    const b=board(l.board), top=i===0;
+    const el=document.createElement('div'); el.className='layer';
+    el.innerHTML=`
+      <div class="lh"><span class="sw-chip" style="background:${b.hex}"></span>
+        <span class="tag">${top?'Top mat':(i===1?'2nd mat':'3rd mat')}</span><span class="sp"></span>
+        ${i>0?'<button class="rm" title="Remove layer">✕</button>':''}</div>
+      <select class="ctl sm" data-b>${BOARDS.map(x=>`<option value="${x.code}" ${x.code===l.board?'selected':''}>${x.code} ${x.name.toLowerCase()} ${x.size}</option>`).join('')}</select>
+      <div class="pair">
+        <div class="f"><label>${top?'Border L':'Reveal L'}</label><input class="ctl sm m" data-l value="${l.L}" /></div>
+        <div class="f"><label>${top?'Border W':'Reveal W'}</label><input class="ctl sm m" data-w value="${l.W}" /></div>
+        <button class="lk" data-lock aria-pressed="${String(l.L)===String(l.W)}" title="Keep L and W equal">🔗</button>
+        <span class="hint" style="flex:1;min-width:120px">${top?'Mat edge to opening.':'Band visible under the mat above.'}</span>
+      </div>`;
+    el.querySelector('[data-b]').addEventListener('change',e=>{l.board=e.target.value;renderDlg()});
+    el.querySelector('[data-l]').addEventListener('input',e=>{
+      l.L=e.target.value;
+      if(el.querySelector('[data-lock]').getAttribute('aria-pressed')==='true') l.W=e.target.value;
+      renderDlgLight();
+    });
+    el.querySelector('[data-w]').addEventListener('input',e=>{l.W=e.target.value;renderDlgLight()});
+    el.querySelector('[data-lock]').addEventListener('click',e=>{
+      const on=e.currentTarget.getAttribute('aria-pressed')==='true';
+      e.currentTarget.setAttribute('aria-pressed',String(!on));
+      if(!on){l.W=l.L;renderDlg()}
+    });
+    el.querySelector('.rm')?.addEventListener('click',()=>{draft.mat.layers.splice(i,1);renderDlg()});
+    host.appendChild(el);
+  });
+  $('addlayer').disabled = draft.mat.layers.length>=3;
+}
+function optCards(hostId,list,current,onPick){
+  const host=$(hostId); host.innerHTML='';
+  list.forEach(o=>{
+    const b=document.createElement('button');
+    b.className='optc'; b.setAttribute('aria-pressed',String(o.id===current));
+    b.innerHTML=`<span class="sw-vis" style="background:${o.hex}"></span><span class="nm">${o.nm}</span><span class="pr">${o.pr}</span>`;
+    b.addEventListener('click',()=>{onPick(o.id);renderDlg()});
+    host.appendChild(b);
+  });
+}
+function hardware(){
+  const H=draft.back;
+  $('hw').innerHTML=`
+    <div class="chk" ${H.flexi.on?'data-on':''}><input type="checkbox" ${H.flexi.on?'checked':''} data-hw="flexi" />
+      <span class="nm">Flexipoints</span><input class="ctl sm m qty" value="${H.flexi.qty}" data-q="flexi" /></div>
+    <div class="chk" ${H.multi.on?'data-on':''}><input type="checkbox" ${H.multi.on?'checked':''} data-hw="multi" />
+      <span class="nm">Multipoints</span><input class="ctl sm m qty" value="${H.multi.qty}" data-q="multi" /></div>
+    <div class="chk" ${H.lsup.on?'data-on':''}><input type="checkbox" ${H.lsup.on?'checked':''} data-hw="lsup" />
+      <span class="nm">L-support</span>
+      <div class="seg sm" data-lsize><button aria-pressed="${H.lsup.size==='Small'}" data-s="Small">Small</button><button aria-pressed="${H.lsup.size==='Big'}" data-s="Big">Big</button></div></div>`;
+  $('hw').querySelectorAll('[data-hw]').forEach(i=>i.addEventListener('change',e=>{draft.back[e.target.dataset.hw].on=e.target.checked;renderDlg()}));
+  $('hw').querySelectorAll('[data-q]').forEach(i=>i.addEventListener('input',e=>{draft.back[e.target.dataset.q].qty=n(e.target.value);renderDlgLight()}));
+  $('hw').querySelectorAll('[data-lsize] button').forEach(b=>b.addEventListener('click',()=>{draft.back.lsup.size=b.dataset.s;renderDlg()}));
+}
+function renderDlgLight(){                      /* geometry-only refresh, keeps focus */
+  const C=draft, g=geom(C);
+  $('cv').innerHTML=svgFrame(C,230);
+  $('sp').innerHTML=`
+    <div><span>Mat outer</span><b>${g.matOuter?`${inch(g.matOuter.L)}″ × ${inch(g.matOuter.W)}″`:'—'}</b></div>
+    <div><span>Top opening</span><b>${g.openings.length?`${inch(g.openings[0].L)}″ × ${inch(g.openings[0].W)}″`:'—'}</b></div>
+    <div><span>Frame outside</span><b>${inch(g.out.L)}″ × ${inch(g.out.W)}″</b></div>
+    <div><span>Line total</span><b>${peso(total(C))}</b></div>`;
+  const w=fitCheck(C);
+  $('ms').innerHTML = w?`<div class="warn"><span>⚠</span><span>${w}</span></div>`:`<div class="okmsg"><span>✓</span><span>All boards clear their sheet sizes.</span></div>`;
+  let lg='';
+  if(C.mat.on) C.mat.layers.forEach((l,i)=>{
+    const b=board(l.board);
+    lg+=`<div><i style="background:${b.hex}"></i>${i===0?'Top mat':(i===1?'2nd mat':'3rd mat')} — ${b.name}
+      <span class="v">${i===0?'border':'reveal'} ${inch(n(l.L))}″/${inch(n(l.W))}″</span></div>`;
+  });
+  const gl=GLASS.find(x=>x.id===C.glass.type);
+  if(C.glass.on) lg+=`<div><i style="background:${gl.hex}"></i>${gl.nm}<span class="v">${C.glass.qty} sheet</span></div>`;
+  const bk=BACKS.find(x=>x.id===C.back.board);
+  lg+=`<div><i style="background:${bk.hex}"></i>${bk.nm} backing<span class="v">${C.back.flexi.on?C.back.flexi.qty+' flexi':'—'}</span></div>`;
+  $('lg').innerHTML=lg;
+  $('dfsum').textContent=specString(C);
+  const nm={1:'Single',2:'Double',3:'Triple'}[C.mat.layers.length]||`${C.mat.layers.length}-layer`;
+  $('a-mat').textContent = C.mat.on?`${nm} · ${C.mat.layers.map(l=>board(l.board).code).join(' / ')}`:'None';
+  $('a-glass').textContent = C.glass.on?`${gl.nm} · ${C.glass.qty} sheet`:'None';
+  const hw=[]; if(C.back.flexi.on)hw.push(`flexi ×${C.back.flexi.qty}`); if(C.back.multi.on)hw.push(`multi ×${C.back.multi.qty}`); if(C.back.lsup.on)hw.push(`L-sup ${C.back.lsup.size}`);
+  $('a-back').textContent = `${bk.nm}${hw.length?' · '+hw.join(', '):''}`;
+  const g0=geom();
+  $('dlgsub').textContent=`Artwork ${inch(g0.art.L)}″ × ${inch(g0.art.W)}″ · ${S.qty} cut${S.qty==1?'':'s'}`;
+}
+function renderDlg(){
+  layerRows();
+  optCards('glassopts',GLASS,draft.glass.type,v=>draft.glass.type=v);
+  optCards('backopts',BACKS,draft.back.board,v=>draft.back.board=v);
+  hardware();
+  document.querySelectorAll('.sw[data-g]').forEach(s=>{
+    const k=s.dataset.g; s.setAttribute('aria-checked',String(draft[k].on));
+  });
+  $('g-outer').checked=draft.glass.outer;
+  $('g-qty').value=draft.glass.qty;
+  document.querySelectorAll('#matsrc button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===draft.mat.src)));
+  renderDlgLight();
+}
+
+/* ================= wiring ================= */
+$('opencfg').addEventListener('click',openDlg);
+$('compcard').addEventListener('click',openDlg);
+$('dlgx').addEventListener('click',closeDlg);
+$('dlgcancel').addEventListener('click',closeDlg);
+$('dlgapply').addEventListener('click',applyDlg);
+$('scrim').addEventListener('click',e=>{if(e.target===$('scrim'))closeDlg()});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&$('scrim').classList.contains('open'))closeDlg();
+  if((e.metaKey||e.ctrlKey)&&e.key==='Enter'&&$('scrim').classList.contains('open'))applyDlg();
+});
+document.querySelectorAll('.accitem .acch').forEach(h=>h.addEventListener('click',()=>h.parentElement.classList.toggle('open')));
+document.querySelectorAll('.sw[data-g]').forEach(s=>s.addEventListener('click',()=>{
+  const k=s.dataset.g; draft[k].on=!draft[k].on; renderDlg();
+}));
+document.querySelectorAll('#matsrc button').forEach(b=>b.addEventListener('click',()=>{draft.mat.src=b.dataset.v;renderDlg()}));
+$('addlayer').addEventListener('click',()=>{
+  if(draft.mat.layers.length>=3)return;
+  const used=draft.mat.layers.map(l=>l.board);
+  const next=BOARDS.find(b=>!used.includes(b.code))||BOARDS[0];
+  draft.mat.layers.push({board:next.code,L:0.25,W:0.25});
+  renderDlg();
+});
+$('g-outer').addEventListener('change',e=>{draft.glass.outer=e.target.checked;renderDlgLight()});
+$('g-qty').addEventListener('input',e=>{draft.glass.qty=n(e.target.value)||1;renderDlgLight()});
+
+/* main form inputs */
+['len','wid','fw','qty','notes'].forEach(id=>$(id).addEventListener('input',e=>{
+  const map={len:'len',wid:'wid',fw:'fw',qty:'qty',notes:'notes'};
+  S[map[id]] = id==='qty' ? (n(e.target.value)||1) : (id==='notes'?e.target.value.trim():e.target.value);
+  renderMain();
+}));
+['cust','addr','dater','dated'].forEach(id=>$(id).addEventListener('input',()=>{S.cust=$('cust').value;renderMain()}));
+['t-nego','t-dep'].forEach(id=>$(id).addEventListener('input',renderMain));
+document.querySelectorAll('#sizemode button').forEach(b=>b.addEventListener('click',()=>{
+  const prev=S.mode; S.mode=b.dataset.m;
+  document.querySelectorAll('#sizemode button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  if(prev!==S.mode){
+    const g=geom(), fw=n(S.fw);
+    if(S.mode==='out'){ S.len=inch(g.out.L); S.wid=inch(g.out.W); }
+    else { S.len=inch(g.art.L); S.wid=inch(g.art.W); }
+    $('len').value=S.len; $('wid').value=S.wid;
+  }
+  renderMain();
+}));
+
+/* comboboxes */
+function combo(w,i,r,pick){
+  const W=$(w),I=$(i),R=$(r);
+  I.addEventListener('focus',()=>W.classList.add('open'));
+  I.addEventListener('input',()=>W.classList.add('open'));
+  I.addEventListener('blur',()=>setTimeout(()=>W.classList.remove('open'),150));
+  R.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{pick(b.dataset);W.classList.remove('open')}));
+}
+combo('custcb','cust','custres',d=>{
+  $('cust').value=d.name; $('addr').value=d.addr; S.cust=d.name; S.tel=d.tel;
+  $('custmeta').textContent=`${d.code} · ${d.terms} · ${d.tel}`;
+  $('p-tel').textContent=d.tel; $('terms').value=d.terms;
+  renderMain();
+});
+combo('mouldcb','mould','mouldres',d=>{
+  $('mould').value=d.name; S.mould=d.name; S.mouldPrice=+d.price; S.fw=d.fw; $('fw').value=d.fw;
+  renderMain();
+});
+
+/* doc tabs */
+document.querySelectorAll('#doctabs button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#doctabs button').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
+  $('doc-jor').hidden=b.dataset.doc!=='jor';
+  $('doc-cut').hidden=b.dataset.doc!=='cut';
+}));
+
+/* saved indicator */
+let tmr;
+function touch(){$('savedat').textContent='Saving…';clearTimeout(tmr);tmr=setTimeout(()=>$('savedat').textContent='All changes saved',700)}
+
+renderMain();
+$('savedat').textContent='All changes saved';
+</script>
+</body>
+</html>

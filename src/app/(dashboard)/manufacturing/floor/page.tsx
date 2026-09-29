@@ -3,16 +3,16 @@
 import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { isManufacturingStartBlocked } from "@/lib/manufacturing/start-eligibility";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   CheckCircle2,
   ChefHat,
-  ClipboardList,
   Clock,
+  FileText,
   Maximize2,
   Minimize2,
-  Package,
   PauseCircle,
   PlayCircle,
 } from "lucide-react";
@@ -20,12 +20,9 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ProductionJobOrderDialog,
+  type ProductionJobOrderPreview,
+} from "@/components/manufacturing/ProductionJobOrderDialog";
 import {
   Select,
   SelectContent,
@@ -33,32 +30,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
 
 type ManufacturingOrder = {
   id: string;
   manufacturingOrderCode: string;
-  salesOrderCode: string;
+  frameJobOrderId: string | null;
+  frameJobOrderCode: string;
   customerName: string;
-  itemSummary: string;
   status: string;
   priority: string;
   dueDate: string | null;
   createdAt: string;
   startedAt: string | null;
-  currentWorkstationId: string | null;
   currentWorkstationName: string;
   activeOperation: { name: string; status: string; type: string } | null;
-  materialCount: number;
-  requiredQuantity: number;
-  issuedQuantity: number;
-  materials: Array<{
-    description: string;
-    requiredQuantity: number;
-    issuedQuantity: number;
-    uomCode: string;
-    status: string;
-  }>;
   hasMaterialShortage: boolean;
 };
 
@@ -116,8 +101,13 @@ const applyFloorAction = async ({ id, action }: { id: string; action: Manufactur
   });
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(body?.error || "Failed to update order");
+    const body = (await response.json().catch(() => null)) as {
+      code?: string;
+      error?: string;
+    } | null;
+    throw new Error(body?.error || "Failed to update order", {
+      cause: { code: body?.code },
+    });
   }
 
   return response.json() as Promise<{ success: boolean }>;
@@ -168,6 +158,9 @@ const isOverdue = (value: string | null) => {
   return dueDate < new Date();
 };
 
+const canHoldOrder = (order: ManufacturingOrder) =>
+  order.status === "in_progress" || order.status === "quality_check";
+
 const getPrimaryAction = (
   order: ManufacturingOrder
 ): { label: string; action: ManufacturingAction } => {
@@ -182,28 +175,47 @@ const getPrimaryAction = (
   return { label: "Start", action: "start" };
 };
 
-const materialStatusLabel = (status: string) => {
-  if (status === "issued") return "Ready";
-  if (status === "short") return "Short";
-  if (status === "reserved") return "Reserved";
-  return labelize(status);
+/**
+ * The one workflow action offered beside the primary, or null.
+ *
+ * The primary button carries the job forward — Start, then Complete Step, and
+ * the order closes itself once the last operation is done. This slot carries
+ * the exception: pause a running job, or close a held one early.
+ *
+ * `complete` finishes EVERY remaining operation at once, so it is offered only
+ * from `on_hold`, where the operator has already stopped to make a decision.
+ * Beside a running job it would let one mis-tap skip the rest of production.
+ */
+const getSecondaryAction = (
+  order: ManufacturingOrder
+): { label: string; action: ManufacturingAction } | null => {
+  if (order.status === "on_hold") return { label: "Complete", action: "complete" };
+  if (canHoldOrder(order)) return { label: "Hold", action: "hold" };
+  return null;
 };
 
-const getStatusColor = (status: string) => {
+/**
+ * Status as a filled chip rather than a card tint.
+ *
+ * A wall monitor is read from several metres away, where a 50%-opacity card
+ * background is indistinguishable from white. A saturated chip with its own
+ * dot survives that distance.
+ */
+const getStatusChipClass = (status: string) => {
   switch (status) {
     case "in_progress":
-      return "border-blue-500 bg-blue-50/50";
+      return "border-blue-300 bg-blue-100 text-blue-800";
     case "ready":
     case "queued":
-      return "border-green-500 bg-green-50/50";
+      return "border-green-300 bg-green-100 text-green-800";
     case "on_hold":
-      return "border-yellow-500 bg-yellow-50/50";
+      return "border-amber-300 bg-amber-100 text-amber-900";
     case "quality_check":
-      return "border-purple-500 bg-purple-50/50";
+      return "border-purple-300 bg-purple-100 text-purple-800";
     case "completed":
-      return "border-gray-400 bg-gray-50/50";
+      return "border-gray-300 bg-gray-100 text-gray-700";
     default:
-      return "";
+      return "border-gray-300 bg-gray-100 text-gray-700";
   }
 };
 
@@ -219,14 +231,6 @@ const getPriorityColor = (priority: string) => {
   }
 };
 
-const calculateMaterialProgress = (order: ManufacturingOrder) => {
-  if (order.requiredQuantity === 0) return 100;
-  return Math.min((order.issuedQuantity / order.requiredQuantity) * 100, 100);
-};
-
-const canHoldOrder = (order: ManufacturingOrder) =>
-  order.status === "in_progress" || order.status === "quality_check";
-
 export default function ManufacturingFloorPage() {
   const t = useTranslations("manufacturingFloorPage");
   const router = useRouter();
@@ -235,7 +239,7 @@ export default function ManufacturingFloorPage() {
   const focusedOrderId = searchParams.get("focus");
   const isFullscreenMode = searchParams.get("fullscreen") === "1";
   const [station, setStation] = useState("all");
-  const [materialsOrder, setMaterialsOrder] = useState<ManufacturingOrder | null>(null);
+  const [previewJobOrder, setPreviewJobOrder] = useState<ProductionJobOrderPreview | null>(null);
   const queryClient = useQueryClient();
 
   const { data: workstationsData } = useQuery({
@@ -269,11 +273,9 @@ export default function ManufacturingFloorPage() {
   const runAction = async (id: string, action: ManufacturingAction) => {
     try {
       await actionMutation.mutateAsync({ id, action });
-      toast.success("Order updated");
+      toast.success(t("updateSuccess"));
     } catch (mutationError) {
-      toast.error(
-        mutationError instanceof Error ? mutationError.message : "Failed to update production order"
-      );
+      toast.error(mutationError instanceof Error ? mutationError.message : t("updateFailed"));
     }
   };
 
@@ -311,6 +313,10 @@ export default function ManufacturingFloorPage() {
           <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex h-12 items-center justify-center gap-2 px-2 text-xs text-muted-foreground">
+            <Clock className="h-3.5 w-3.5" />
+            Auto-refresh: 30s
+          </div>
           <Button
             variant={isFullscreenMode ? "default" : "outline"}
             className="h-12 text-base"
@@ -342,7 +348,7 @@ export default function ManufacturingFloorPage() {
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((item) => (
-            <div key={item} className="min-h-[360px] rounded-lg border bg-card p-6 shadow-sm">
+            <div key={item} className="min-h-72 rounded-lg border bg-card p-6 shadow-sm">
               <div className="mb-6 h-7 w-40 animate-pulse rounded bg-muted" />
               <div className="mb-3 h-5 w-full animate-pulse rounded bg-muted" />
               <div className="mb-4 h-5 w-2/3 animate-pulse rounded bg-muted" />
@@ -370,142 +376,147 @@ export default function ManufacturingFloorPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {orders.map((order) => {
             const primaryAction = getPrimaryAction(order);
+            const secondaryAction = getSecondaryAction(order);
             const overdue = isOverdue(order.dueDate);
             const focused = order.id === focusedOrderId;
-            const statusColor = getStatusColor(order.status);
             const queueWaitLabel = getQueueWaitLabel(order);
+            const frameJobOrderId = order.frameJobOrderId;
+            const blocked = isManufacturingStartBlocked(order);
 
             return (
               <div
                 key={order.id}
                 className={[
-                  "group flex min-h-[380px] flex-col justify-between rounded-lg border-2 bg-card p-6 shadow-sm transition-all hover:shadow-md",
-                  focused
-                    ? "border-green-600 bg-green-50/30 ring-2 ring-green-600/20"
-                    : statusColor,
-                  overdue && !focused ? "border-red-500 bg-red-50/30" : "",
+                  "flex min-h-72 flex-col justify-between rounded-xl border bg-card shadow-sm",
+                  focused ? "border-green-600 ring-2 ring-green-600/25" : "",
+                  blocked && !focused ? "border-red-300" : "",
+                  !focused && !blocked ? "border-border" : "",
                 ].join(" ")}
               >
-                <div className="space-y-4">
+                {/* A blocked job announces itself before anything else, and loses
+                    its Start button below — a shortage must be resolved, not
+                    tapped past. */}
+                {blocked ? (
+                  <div className="flex items-center gap-2 rounded-t-xl bg-red-600 px-5 py-3 text-sm font-bold text-white">
+                    <AlertTriangle className="h-5 w-5 shrink-0" />
+                    <span>{t("materialShortageBlocksStart")}</span>
+                  </div>
+                ) : null}
+
+                <div className="flex flex-1 flex-col p-5">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <div className="text-2xl font-bold tracking-tight">
-                          {order.manufacturingOrderCode}
-                        </div>
-                        {order.priority && (
-                          <Badge variant={getPriorityColor(order.priority)} className="text-xs">
-                            {labelize(order.priority)}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="mt-1 truncate text-sm text-muted-foreground">
-                        {order.salesOrderCode || "No sales order"}
-                      </div>
-                      <div className="text-sm font-medium text-foreground">
-                        {order.customerName || "No customer"}
-                      </div>
-                    </div>
-                    <Badge
-                      variant={overdue ? "destructive" : "outline"}
-                      className="shrink-0 text-sm font-semibold"
+                    <span
+                      className={[
+                        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-bold",
+                        getStatusChipClass(order.status),
+                      ].join(" ")}
                     >
-                      {formatDue(order.dueDate)}
-                    </Badge>
-                  </div>
-
-                  <div className="rounded-lg bg-muted/50 p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-base font-semibold text-foreground">
-                          {order.itemSummary}
-                        </div>
-                        <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-                          <span className="font-medium">
-                            {order.currentWorkstationName || "No station"}
-                          </span>
-                          <span>•</span>
-                          <span>{order.activeOperation?.name || "No active step"}</span>
-                        </div>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          Status
-                        </div>
-                        <div className="mt-1 text-lg font-bold text-foreground">
-                          {labelize(order.status)}
-                        </div>
-                        {queueWaitLabel ? (
-                          <div className="mt-1 text-xs font-medium text-muted-foreground">
-                            {queueWaitLabel}
-                          </div>
-                        ) : null}
-                      </div>
+                      <span className="h-2 w-2 rounded-full bg-current" />
+                      {labelize(order.status)}
+                    </span>
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <Badge
+                        variant={overdue ? "destructive" : "outline"}
+                        className="text-sm font-semibold"
+                      >
+                        {formatDue(order.dueDate)}
+                      </Badge>
+                      {order.priority && order.priority.toLowerCase() !== "normal" ? (
+                        <Badge variant={getPriorityColor(order.priority)} className="text-xs">
+                          {labelize(order.priority)}
+                        </Badge>
+                      ) : null}
                     </div>
                   </div>
 
-                  {order.hasMaterialShortage ? (
-                    <div className="flex items-center gap-2 rounded-lg border-2 border-red-400 bg-red-50 p-3 text-sm font-semibold text-red-700">
+                  {/* The station and its step are what the operator acts on, so
+                      they outrank the job number here. */}
+                  <div className="mt-4 min-w-0">
+                    <div className="truncate text-xl font-bold tracking-tight">
+                      {order.currentWorkstationName || "No station"}
+                    </div>
+                    <div className="mt-0.5 truncate text-base text-muted-foreground">
+                      {order.activeOperation?.name || "No active step"}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-1 border-t pt-4">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="truncate text-base font-bold tabular-nums">
+                        {order.frameJobOrderCode || order.manufacturingOrderCode}
+                      </span>
+                      <span className="truncate text-sm text-muted-foreground">
+                        {order.customerName || "No customer"}
+                      </span>
+                    </div>
+                    {queueWaitLabel ? (
+                      <div className="text-sm text-muted-foreground">{queueWaitLabel}</div>
+                    ) : null}
+                  </div>
+
+                  {order.hasMaterialShortage && !blocked ? (
+                    <div className="mt-4 flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-700">
                       <AlertTriangle className="h-5 w-5 shrink-0" />
-                      <span>Material shortage detected</span>
+                      <span>{order.frameJobOrderId ? t("residualMaterialsNotice") : t("materialShortage")}</span>
                     </div>
                   ) : null}
-                </div>
 
-                <div className="mt-5 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      className="h-14 text-base font-semibold shadow-sm"
-                      variant={primaryAction.action === "start" ? "default" : "default"}
-                      onClick={() => runAction(order.id, primaryAction.action)}
-                      disabled={actionMutation.isPending}
-                    >
-                      {primaryAction.action === "start" ? (
-                        <PlayCircle className="mr-2 h-5 w-5" />
-                      ) : null}
-                      {primaryAction.action === "complete_step" ? (
-                        <CheckCircle2 className="mr-2 h-5 w-5" />
-                      ) : null}
-                      {primaryAction.action === "resume" ? (
-                        <PlayCircle className="mr-2 h-5 w-5" />
-                      ) : null}
-                      {primaryAction.label}
-                    </Button>
-                    {order.status === "on_hold" ? (
+                  {/* The primary action owns a full-width row of its own: on a
+                      touch monitor a mis-tap between adjacent large buttons is
+                      the failure with a real cost on the floor. */}
+                  <div className="mt-auto space-y-2.5 pt-5">
+                    {blocked ? null : (
                       <Button
-                        variant="outline"
-                        className="h-14 border-2 text-base font-semibold shadow-sm hover:bg-green-50"
-                        onClick={() => runAction(order.id, "complete")}
+                        className="h-[76px] w-full text-xl font-bold shadow-sm"
+                        onClick={() => runAction(order.id, primaryAction.action)}
                         disabled={actionMutation.isPending}
                       >
-                        <CheckCircle2 className="mr-2 h-5 w-5" />
-                        Complete
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        className="h-14 border-2 text-base font-semibold shadow-sm hover:bg-yellow-50"
-                        onClick={() => runAction(order.id, "hold")}
-                        disabled={actionMutation.isPending || !canHoldOrder(order)}
-                      >
-                        <PauseCircle className="mr-2 h-5 w-5" />
-                        Hold
+                        {primaryAction.action === "complete_step" ? (
+                          <CheckCircle2 className="mr-2.5 h-6 w-6" />
+                        ) : (
+                          <PlayCircle className="mr-2.5 h-6 w-6" />
+                        )}
+                        {primaryAction.label}
                       </Button>
                     )}
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    className="h-12 w-full border-2 text-base font-medium shadow-sm hover:bg-blue-50"
-                    onClick={() => setMaterialsOrder(order)}
-                  >
-                    <ClipboardList className="mr-2 h-5 w-5" />
-                    View Materials ({order.materialCount})
-                  </Button>
-
-                  <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                    <Clock className="h-3.5 w-3.5" />
-                    Auto-refresh: 30s
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {frameJobOrderId ? (
+                        <Button
+                          variant="outline"
+                          className={[
+                            "h-14 text-base font-semibold",
+                            secondaryAction ? "" : "col-span-2",
+                          ].join(" ")}
+                          onClick={() =>
+                            setPreviewJobOrder({
+                              id: frameJobOrderId,
+                              code: order.frameJobOrderCode,
+                            })
+                          }
+                        >
+                          <FileText className="mr-2 h-5 w-5" />
+                          {t("viewJobOrder")}
+                        </Button>
+                      ) : null}
+                      {secondaryAction ? (
+                        <Button
+                          variant="outline"
+                          className={[
+                            "h-14 text-base font-semibold",
+                            frameJobOrderId ? "" : "col-span-2",
+                          ].join(" ")}
+                          onClick={() => runAction(order.id, secondaryAction.action)}
+                          disabled={actionMutation.isPending}
+                        >
+                          {secondaryAction.action === "hold" ? (
+                            <PauseCircle className="mr-2 h-5 w-5" />
+                          ) : (
+                            <CheckCircle2 className="mr-2 h-5 w-5" />
+                          )}
+                          {secondaryAction.label}
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -514,133 +525,10 @@ export default function ManufacturingFloorPage() {
         </div>
       )}
 
-      <Dialog
-        open={Boolean(materialsOrder)}
-        onOpenChange={(open) => {
-          if (!open) setMaterialsOrder(null);
-        }}
-      >
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">
-              {materialsOrder?.manufacturingOrderCode || "Materials"}
-            </DialogTitle>
-            <DialogDescription className="text-base">
-              {materialsOrder?.itemSummary || "Material requirements for this production order"}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="max-h-[500px] space-y-2 overflow-y-auto pr-2">
-            {materialsOrder?.materials.length ? (
-              <>
-                <div className="sticky top-0 z-10 bg-background pb-2">
-                  <div className="grid grid-cols-12 gap-4 rounded-lg bg-muted/50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    <div className="col-span-5">Material</div>
-                    <div className="col-span-3 text-center">Quantity</div>
-                    <div className="col-span-2 text-center">Progress</div>
-                    <div className="col-span-2 text-right">Status</div>
-                  </div>
-                </div>
-
-                {materialsOrder.materials.map((material, index) => {
-                  const materialProgress =
-                    material.requiredQuantity > 0
-                      ? Math.min((material.issuedQuantity / material.requiredQuantity) * 100, 100)
-                      : 100;
-                  const isShort = material.status === "short";
-                  const isReady = material.status === "issued";
-
-                  return (
-                    <div
-                      key={`${materialsOrder.id}-${material.description}-${index}`}
-                      className={[
-                        "grid grid-cols-12 items-center gap-4 rounded-lg border-2 p-4 transition-colors",
-                        isShort
-                          ? "border-red-200 bg-red-50/50"
-                          : "border-border bg-background hover:bg-muted/30",
-                      ].join(" ")}
-                    >
-                      <div className="col-span-5 min-w-0">
-                        <div className="truncate font-semibold text-foreground">
-                          {material.description}
-                        </div>
-                        <div className="mt-0.5 text-xs text-muted-foreground">
-                          {material.uomCode || "units"}
-                        </div>
-                      </div>
-
-                      <div className="col-span-3 text-center">
-                        <div className="text-lg font-bold text-foreground">
-                          {material.issuedQuantity.toFixed(0)}
-                          <span className="text-sm font-normal text-muted-foreground">
-                            {" "}
-                            / {material.requiredQuantity.toFixed(0)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="col-span-2">
-                        <div className="space-y-1">
-                          <Progress
-                            value={materialProgress}
-                            className={`h-2 ${isShort ? "[&>div]:bg-red-500" : isReady ? "[&>div]:bg-green-500" : "[&>div]:bg-blue-500"}`}
-                          />
-                          <div className="text-center text-xs font-semibold text-muted-foreground">
-                            {materialProgress.toFixed(0)}%
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="col-span-2 flex justify-end">
-                        <Badge
-                          variant={isShort ? "destructive" : isReady ? "default" : "outline"}
-                          className="font-semibold"
-                        >
-                          {isShort && <AlertTriangle className="mr-1 h-3 w-3" />}
-                          {isReady && <CheckCircle2 className="mr-1 h-3 w-3" />}
-                          {materialStatusLabel(material.status)}
-                        </Badge>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                <div className="sticky bottom-0 mt-4 rounded-lg border-2 border-blue-200 bg-blue-50 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-semibold text-blue-900">
-                        Overall Material Status
-                      </div>
-                      <div className="text-xs text-blue-700">
-                        {materialsOrder.materialCount} material
-                        {materialsOrder.materialCount !== 1 ? "s" : ""} required
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-blue-900">
-                        {calculateMaterialProgress(materialsOrder).toFixed(0)}%
-                      </div>
-                      <div className="text-xs font-medium text-blue-700">Complete</div>
-                    </div>
-                  </div>
-                  <Progress
-                    value={calculateMaterialProgress(materialsOrder)}
-                    className="mt-3 h-3 [&>div]:bg-blue-600"
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
-                <Package className="mb-3 h-12 w-12 text-muted-foreground/60" />
-                <p className="font-semibold text-foreground">No materials listed</p>
-                <p className="text-sm text-muted-foreground">
-                  This production order has no material requirements
-                </p>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ProductionJobOrderDialog
+        jobOrder={previewJobOrder}
+        onClose={() => setPreviewJobOrder(null)}
+      />
     </div>
   );
 }
