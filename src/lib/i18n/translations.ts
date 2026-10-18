@@ -3128,7 +3128,6 @@ export type TranslationKeys = {
     maxStockError: string;
     selectWarehouseForMaxStock: string;
     enterValidMaxStock: string;
-    selectWarehouseAndLocations: string;
     selectDifferentLocations: string;
     enterValidQuantity: string;
     stockMoved: string;
@@ -3137,12 +3136,22 @@ export type TranslationKeys = {
     receivedDate: string;
     moveDialogTitle: string;
     moveDialogDescription: string;
-    warehouseLabel: string;
+    sourceWarehouseLabel: string;
+    destinationWarehouseLabel: string;
+    moveQuantityHelp: string;
+    moveUnauthorized: string;
+    moveForbidden: string;
+    moveContextInvalid: string;
+    moveDetailsInvalid: string;
+    moveWarehouseInvalid: string;
+    moveLocationInvalid: string;
+    moveItemUnavailable: string;
+    moveInsufficientStock: string;
+    moveDestinationUnavailable: string;
+    moveBatchConflict: string;
     selectWarehouse: string;
     fromLocationLabel: string;
-    selectSourceLocation: string;
     toLocationLabel: string;
-    selectDestinationLocation: string;
     quantityLabel: string;
     quantityPlaceholder: string;
     maxStockDialogTitle: string;
@@ -3152,7 +3161,6 @@ export type TranslationKeys = {
     maxStockHelp: string;
     saveMaxStock: string;
     unnamed: string;
-    availableShort: string;
     cancel: string;
     saving: string;
     moving: string;
@@ -7079,21 +7087,38 @@ export const translations: Record<Locale, TranslationKeys> = {
       maxStockError: "Failed to update max stock level",
       selectWarehouseForMaxStock: "Select a warehouse to update max stock.",
       enterValidMaxStock: "Enter a valid max stock level.",
-      selectWarehouseAndLocations: "Select warehouse and locations to move stock.",
       selectDifferentLocations: "Select two different locations.",
-      enterValidQuantity: "Enter a valid quantity to move.",
+      enterValidQuantity:
+        "Enter a positive quantity up to 1,000,000,000 with at most two decimal places.",
       stockMoved: "Stock moved successfully",
       moveStockError: "Failed to move stock",
       batchCode: "Batch Code",
       receivedDate: "Received Date",
       moveDialogTitle: "Move Stock",
-      moveDialogDescription: "Transfer stock between locations in the same warehouse.",
-      warehouseLabel: "Warehouse",
+      moveDialogDescription: "Move stock between racks or warehouses in the same business unit.",
+      sourceWarehouseLabel: "Source Warehouse",
+      destinationWarehouseLabel: "Destination Warehouse",
+      moveQuantityHelp:
+        "Quantity is in the base unit ({unit}), with up to two decimal places. Stock moves immediately using available FIFO batches.",
+      moveUnauthorized: "Sign in again before moving stock.",
+      moveForbidden:
+        "You do not have permission to move stock in this business unit. Ask an administrator for access.",
+      moveContextInvalid: "Select a valid business unit before moving stock.",
+      moveDetailsInvalid:
+        "Select different source and destination locations and enter a positive quantity with up to two decimal places.",
+      moveWarehouseInvalid:
+        "Select active source and destination warehouses in the current business unit.",
+      moveLocationInvalid: "Select active storage locations in the chosen warehouses.",
+      moveItemUnavailable: "This item is no longer available. Refresh the item and try again.",
+      moveInsufficientStock:
+        "The source location no longer has enough available stock. Refresh stock levels, reduce the quantity, or select another source.",
+      moveDestinationUnavailable:
+        "The destination stock record is inactive or deleted. Restore it or select another destination.",
+      moveBatchConflict:
+        "The destination has the same batch code with a different receipt date, or a deleted batch. Resolve the batch record or select another warehouse.",
       selectWarehouse: "Select warehouse",
       fromLocationLabel: "From Location",
-      selectSourceLocation: "Select source location",
       toLocationLabel: "To Location",
-      selectDestinationLocation: "Select destination location",
       quantityLabel: "Quantity",
       quantityPlaceholder: "Enter quantity to move",
       maxStockDialogTitle: "Set Max Stock",
@@ -7104,7 +7129,6 @@ export const translations: Record<Locale, TranslationKeys> = {
         "Items are marked as overstock when available stock exceeds this warehouse threshold.",
       saveMaxStock: "Save Max Stock",
       unnamed: "Unnamed",
-      availableShort: "Avail",
       cancel: "Cancel",
       saving: "Saving...",
       moving: "Moving...",
@@ -13655,21 +13679,32 @@ export const translations: Record<Locale, TranslationKeys> = {
       maxStockError: "更新最高库存水平失败",
       selectWarehouseForMaxStock: "请选择要更新最高库存的仓库。",
       enterValidMaxStock: "请输入有效的最高库存水平。",
-      selectWarehouseAndLocations: "请选择仓库和库位以移动库存。",
       selectDifferentLocations: "请选择两个不同的库位。",
-      enterValidQuantity: "请输入有效的移动数量。",
+      enterValidQuantity: "请输入不超过1,000,000,000的正数，最多保留两位小数。",
       stockMoved: "库存移动成功",
       moveStockError: "移动库存失败",
       batchCode: "批次编码",
       receivedDate: "收货日期",
       moveDialogTitle: "移动库存",
-      moveDialogDescription: "在同一仓库内的库位之间转移库存。",
-      warehouseLabel: "仓库",
+      moveDialogDescription: "在同一业务单元内的库位或仓库之间移动库存。",
+      sourceWarehouseLabel: "来源仓库",
+      destinationWarehouseLabel: "目标仓库",
+      moveQuantityHelp:
+        "数量以基本单位（{unit}）计，最多保留两位小数。库存将按可用批次先进先出顺序立即移动。",
+      moveUnauthorized: "请重新登录后再移动库存。",
+      moveForbidden: "您没有在此业务单元移动库存的权限。请联系管理员申请权限。",
+      moveContextInvalid: "请先选择有效的业务单元，再移动库存。",
+      moveDetailsInvalid: "请选择不同的来源和目标库位，并输入最多两位小数的正数数量。",
+      moveWarehouseInvalid: "请选择当前业务单元内启用的来源仓库和目标仓库。",
+      moveLocationInvalid: "请选择所选仓库内启用且可存储的库位。",
+      moveItemUnavailable: "此商品已不可用。请刷新商品后重试。",
+      moveInsufficientStock: "来源库位的可用库存不足。请刷新库存、减少数量或选择其他来源库位。",
+      moveDestinationUnavailable: "目标库存记录已停用或删除。请恢复记录或选择其他目标。",
+      moveBatchConflict:
+        "目标仓库存在相同批次代码但收货日期不同的记录，或已删除的批次。请解决批次记录冲突或选择其他仓库。",
       selectWarehouse: "选择仓库",
       fromLocationLabel: "来源库位",
-      selectSourceLocation: "选择来源库位",
       toLocationLabel: "目标库位",
-      selectDestinationLocation: "选择目标库位",
       quantityLabel: "数量",
       quantityPlaceholder: "输入要移动的数量",
       maxStockDialogTitle: "设置最高库存",
@@ -13679,7 +13714,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       maxStockHelp: "当可用库存超过此仓库阈值时，商品会标记为库存过量。",
       saveMaxStock: "保存最高库存",
       unnamed: "未命名",
-      availableShort: "可用",
       cancel: "取消",
       saving: "保存中...",
       moving: "移动中...",

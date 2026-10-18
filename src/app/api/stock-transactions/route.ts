@@ -1,8 +1,14 @@
-import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
+import {
+  setActivityContextIfAvailable,
+  withActivityLogging,
+} from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
+import { stockMoveSchema } from "@/lib/validations/stock-move";
+import { mapStockMoveRpcError, stockMoveErrorResponse } from "./stock-move-errors";
+import type { StockMoveResponse } from "@/types/stock-move";
 import {
   adjustItemLocation,
   ensureWarehouseDefaultLocation,
@@ -355,7 +361,8 @@ async function GETHandler(request: NextRequest) {
           warehouseName: warehouseRecord?.warehouse_name || "",
           fromLocationId: transaction.from_location_id,
           fromLocationCode:
-            fromLocationRecord?.code || (isPutawayTransfer(transaction) ? PUTAWAY_LOCATION_LABEL : ""),
+            fromLocationRecord?.code ||
+            (isPutawayTransfer(transaction) ? PUTAWAY_LOCATION_LABEL : ""),
           fromLocationName: fromLocationRecord?.name || "",
           toWarehouseId: transaction.to_warehouse_id,
           toWarehouseCode: toWarehouseRecord?.warehouse_code || "",
@@ -402,28 +409,73 @@ async function GETHandler(request: NextRequest) {
 // POST /api/stock-transactions
 async function POSTHandler(request: NextRequest) {
   try {
-    // Require 'stock_transactions' create permission
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSACTIONS, "create");
-    if (unauthorized) return unauthorized;
+    if (unauthorized) {
+      const failure = stockMoveErrorResponse(
+        unauthorized.status === 401 ? "STOCK_MOVE_UNAUTHORIZED" : "STOCK_MOVE_FORBIDDEN"
+      );
+      return NextResponse.json(failure.body, { status: failure.status });
+    }
 
     const context = await requireRequestContext();
-    if ("status" in context) return context;
+    if ("status" in context) {
+      const failure = stockMoveErrorResponse(
+        context.status === 401 ? "STOCK_MOVE_UNAUTHORIZED" : "STOCK_MOVE_CONTEXT_INVALID"
+      );
+      return NextResponse.json(failure.body, { status: failure.status });
+    }
     const { supabase, companyId, currentBusinessUnitId, userId } = context;
-    const body = (await request.json()) as StockTransactionBody;
+    const body = (await request.json().catch(() => null)) as StockTransactionBody | null;
+    if (!body || typeof body !== "object") {
+      const failure = stockMoveErrorResponse("STOCK_MOVE_DETAILS_INVALID");
+      return NextResponse.json(failure.body, { status: failure.status });
+    }
+    if (!currentBusinessUnitId) {
+      const failure = stockMoveErrorResponse("STOCK_MOVE_CONTEXT_INVALID");
+      return NextResponse.json(failure.body, { status: failure.status });
+    }
 
-    if (
-      body.transactionType === "transfer" &&
-      (!body.toWarehouseId || body.toWarehouseId === body.warehouseId)
-    ) {
+    if (body.transactionType === "transfer") {
       const locationUnauthorized = await requirePermission(
         RESOURCES.TRANSFER_BETWEEN_LOCATIONS,
         "create"
       );
-      if (locationUnauthorized) return locationUnauthorized;
+      if (locationUnauthorized) {
+        const failure = stockMoveErrorResponse(
+          locationUnauthorized.status === 401 ? "STOCK_MOVE_UNAUTHORIZED" : "STOCK_MOVE_FORBIDDEN"
+        );
+        return NextResponse.json(failure.body, { status: failure.status });
+      }
+      const parsed = stockMoveSchema.safeParse(body);
+      if (!parsed.success) {
+        const failure = stockMoveErrorResponse("STOCK_MOVE_DETAILS_INVALID");
+        return NextResponse.json(failure.body, { status: failure.status });
+      }
+      const move = parsed.data;
+      const { data, error } = await supabase.rpc("move_stock_transactionally", {
+        p_business_unit_id: currentBusinessUnitId,
+        p_item_id: move.items[0].itemId,
+        p_source_warehouse_id: move.warehouseId,
+        p_destination_warehouse_id: move.toWarehouseId,
+        p_from_location_id: move.fromLocationId,
+        p_to_location_id: move.toLocationId,
+        p_quantity: move.items[0].quantity,
+        p_transaction_date: move.transactionDate,
+      });
+      if (error || !data) {
+        console.error("Error moving stock transactionally", {
+          error,
+          itemId: move.items[0].itemId,
+        });
+        const failure = mapStockMoveRpcError(error?.message ?? "");
+        return NextResponse.json(failure.body, { status: failure.status });
+      }
+      const result = data as StockMoveResponse;
+      setActivityContextIfAvailable({ entityId: result.id, entityCode: result.transactionCode });
+      return NextResponse.json(result, { status: 201 });
     }
-
-    if (!currentBusinessUnitId) {
-      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    if (body.transactionType !== "in" && body.transactionType !== "out") {
+      return NextResponse.json({ error: "Invalid stock transaction type" }, { status: 400 });
     }
 
     // Validate required fields
@@ -476,14 +528,11 @@ async function POSTHandler(request: NextRequest) {
         created_by: userId,
         updated_by: userId,
       })
-      .select()
+      .select("id, transaction_code")
       .single();
 
     if (transactionError) {
-      return NextResponse.json(
-        { error: transactionError.message || "Failed to create stock transaction" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to create stock transaction" }, { status: 500 });
     }
 
     const itemIds = body.items.map((item) => item.itemId);
@@ -539,8 +588,6 @@ async function POSTHandler(request: NextRequest) {
       let actualQty = item.quantity;
       if (body.transactionType === "out") {
         actualQty = -item.quantity;
-      } else if (body.transactionType === "transfer" && body.warehouseId) {
-        actualQty = -item.quantity;
       }
 
       const newBalance = currentBalance + actualQty;
@@ -556,43 +603,36 @@ async function POSTHandler(request: NextRequest) {
       }
 
       // Create stock transaction item
-      const { error: stockTxItemError } = await supabase
-        .from("stock_transaction_items")
-        .insert({
-          company_id: companyId,
-          transaction_id: transaction.id,
-          item_id: item.itemId,
-          // Standard fields
-          quantity: item.quantity,
-          uom_id: item.uomId,
-          unit_cost: item.unitCost,
-          total_cost: item.totalCost,
-          // Audit fields
-          qty_before: currentBalance,
-          qty_after: newBalance,
-          valuation_rate: item.unitCost,
-          stock_value_before: currentBalance * item.unitCost,
-          stock_value_after: newBalance * item.unitCost,
-          posting_date: postingDate,
-          posting_time: postingTime,
-          // Additional fields from original item
-          batch_no: originalItem.batchNo || null,
-          serial_no: originalItem.serialNo || null,
-          expiry_date: originalItem.expiryDate || null,
-          notes: originalItem.notes || null,
-          created_by: userId,
-          updated_by: userId,
-        })
-        .select()
-        .single();
+      const { error: stockTxItemError } = await supabase.from("stock_transaction_items").insert({
+        company_id: companyId,
+        transaction_id: transaction.id,
+        item_id: item.itemId,
+        // Standard fields
+        quantity: item.quantity,
+        uom_id: item.uomId,
+        unit_cost: item.unitCost,
+        total_cost: item.totalCost,
+        // Audit fields
+        qty_before: currentBalance,
+        qty_after: newBalance,
+        valuation_rate: item.unitCost,
+        stock_value_before: currentBalance * item.unitCost,
+        stock_value_after: newBalance * item.unitCost,
+        posting_date: postingDate,
+        posting_time: postingTime,
+        // Additional fields from original item
+        batch_no: originalItem.batchNo || null,
+        serial_no: originalItem.serialNo || null,
+        expiry_date: originalItem.expiryDate || null,
+        notes: originalItem.notes || null,
+        created_by: userId,
+        updated_by: userId,
+      });
 
       if (stockTxItemError) {
         // Rollback: delete the transaction
         await supabase.from("stock_transactions").delete().eq("id", transaction.id);
-        return NextResponse.json(
-          { error: stockTxItemError.message || "Failed to create transaction item" },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: "Failed to create transaction item" }, { status: 500 });
       }
 
       await adjustItemLocation({
@@ -622,57 +662,6 @@ async function POSTHandler(request: NextRequest) {
           { status: 500 }
         );
       }
-
-      // For transfers, update destination warehouse
-      if (body.transactionType === "transfer" && body.toWarehouseId) {
-        const { data: destWarehouseStock } = await supabase
-          .from("item_warehouse")
-          .select("current_stock, default_location_id")
-          .eq("item_id", item.itemId)
-          .eq("warehouse_id", body.toWarehouseId)
-          .single();
-
-        const destCurrentBalance = destWarehouseStock
-          ? parseFloat(String(destWarehouseStock.current_stock))
-          : 0;
-
-        const destNewBalance = destCurrentBalance + item.quantity;
-
-        // Update destination warehouse stock
-        if (destWarehouseStock) {
-          // Update existing record
-          await supabase
-            .from("item_warehouse")
-            .update({
-              current_stock: destNewBalance,
-              updated_by: userId,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("item_id", item.itemId)
-            .eq("warehouse_id", body.toWarehouseId);
-        } else {
-          // Create new item_warehouse record if doesn't exist
-          await supabase.from("item_warehouse").insert({
-            company_id: companyId,
-            item_id: item.itemId,
-            warehouse_id: body.toWarehouseId,
-            current_stock: destNewBalance,
-            default_location_id: defaultToLocationId,
-            created_by: userId,
-            updated_by: userId,
-          });
-        }
-
-        await adjustItemLocation({
-          supabase,
-          companyId,
-          itemId: item.itemId,
-          warehouseId: body.toWarehouseId,
-          locationId: toLocationId || destWarehouseStock?.default_location_id || null,
-          userId,
-          qtyOnHandDelta: item.quantity,
-        });
-      }
     }
 
     return NextResponse.json(
@@ -684,12 +673,9 @@ async function POSTHandler(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Internal server error",
-      },
-      { status: 500 }
-    );
+    console.error("Error creating stock transaction", error);
+    const failure = stockMoveErrorResponse("STOCK_MOVE_FAILED");
+    return NextResponse.json(failure.body, { status: failure.status });
   }
 }
 

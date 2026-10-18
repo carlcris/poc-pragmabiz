@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { Resource } from "@/constants/resources";
+import { RESOURCES, type Resource } from "@/constants/resources";
 import type { PermissionAction } from "@/types/rbac";
 import { getAuthenticatedUser, checkPermission, checkPermissionForUser } from "./checkPermission";
 import { type LookupResource, getAccessorsForLookupData } from "@/config/lookupDataPermissions";
@@ -196,6 +196,16 @@ export async function requireLookupDataAccess(
   const hasDirectPermission = await checkPermission(lookupResource, "view");
   if (hasDirectPermission) {
     return null; // Authorized via direct permission
+  }
+
+  // Move Stock needs warehouse/rack lookup data even when the operator cannot
+  // open warehouse management. Reuse the loaded actor and require both actions.
+  if (lookupResource === RESOURCES.WAREHOUSES && user.businessUnitId) {
+    const [canCreateStockTransaction, canTransferStock] = await Promise.all([
+      checkPermissionForUser(user, RESOURCES.STOCK_TRANSACTIONS, "create"),
+      checkPermissionForUser(user, RESOURCES.TRANSFER_BETWEEN_LOCATIONS, "create"),
+    ]);
+    if (canCreateStockTransaction && canTransferStock) return null;
   }
 
   // Check if user has any transactional feature permission that grants access

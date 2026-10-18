@@ -145,6 +145,52 @@ by warehouses holding the item, and see every mapped rack with positive on-hand 
 on that warehouse's floor plan. The viewer reports missing floor maps and item racks that have not
 yet been mapped without blocking the rest of the item detail workflow.
 
+**Move Stock** on the item's **Locations** tab moves available stock between racks in one warehouse
+or between two warehouses in the current business unit. Users select the source warehouse/rack,
+destination warehouse/rack, and quantity in the item's base unit (up to two decimal places). The
+warehouse and rack selectors search the server and initially return at most five options. The
+destination warehouse need not already hold the item. Both warehouses must be active and belong
+to the current business unit, and both racks must be active storage locations. Submission posts
+immediately; it does not create a Stock Request, Delivery Note, or in-transit receipt workflow.
+
+The UI, API, and `move_stock_transactionally` RPC require `create` access to both
+`stock_transactions` and `transfer_between_locations`. The existing Location Transfers permission
+therefore covers same-business-unit warehouse moves as well as rack moves. Cross-business-unit
+fulfillment continues through Stock Transfers and Delivery Notes.
+Both move permissions also grant read-only warehouse/rack lookup access in an active business-unit
+context, so a stock mover does not need warehouse-management view access to choose the source and
+destination. Warehouse administration remains separately authorized.
+
+The Move Stock request uses `POST /api/stock-transactions` with `transactionType: "transfer"`,
+`warehouseId`, `toWarehouseId`, `fromLocationId`, `toLocationId`, `transactionDate`, and exactly one
+`items` entry containing `itemId` and `quantity`. The transfer contract rejects other fields,
+including client-supplied costs and business-unit identities; the database resolves the base UOM,
+valuation cost, actor, and company. Its successful response keeps `id`, `transactionCode`, and
+`message`. Quantities must be positive, at most 1,000,000,000, and have at most two decimal places.
+
+One database transaction locks the affected item/warehouse balances, consumes only unreserved
+source-rack batches in FIFO order, preserves each batch's code and original receipt timestamp,
+updates destination batches/racks and warehouse totals, and posts the stock movement. A rack move
+within one warehouse leaves warehouse and batch totals unchanged. Reserved and pending-putaway
+quantities remain at their original sources. A warehouse move posts linked `out` and `in` stock
+transactions, each with one line per consumed batch and its own warehouse's running balance. Both
+use `reference_type = stock_move` and the source transaction ID as `reference_id`; the destination
+also uses the source transaction code as `reference_code`. Warehouse movement reports and ledgers
+therefore include the move on both sides. A rack move posts one `transfer` transaction with no
+warehouse balance change. The response identifies the source transaction.
+
+Stock transaction batch codes support the same 150-character limit as the inventory batch record.
+The destination batch-location SKU is database generated for a new placement, or reused when the
+placement already exists.
+
+Known failures return safe `STOCK_MOVE_*` codes and translated inline recovery guidance. An
+insufficient source, inactive/deleted destination stock record, or destination batch with a
+conflicting receipt timestamp returns `409`; invalid warehouse/rack choices return `400`, and
+authorization failures return `401`/`403`. Any failure rolls back all stock, batch, and movement
+records. The dialog stays open for correction, blocks duplicate submission and closing while
+pending, and refreshes affected inventory, allocation, selector, dashboard, and report queries
+after success. Unknown errors stay generic and internal details are logged server-side.
+
 Users with Items view access and the `items.operation.print_batch_qr.view` capability can expand a warehouse location on an item's **Locations** tab and print 1–100 4 × 4-inch (101.6 × 101.6 mm) QR labels for each batch. The user selects an active item unit option, and every label's quantity is that option's `qtyPerUnit`; current batch on-hand is informational and is never divided or changed by printing. Each label and QR payload uses the same item, batch-location SKU, batch, warehouse, and location contract as completed putaway labels.
 
 ```typescript

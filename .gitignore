@@ -94,3 +94,5 @@ next-env.d.ts
 
 # Local Netlify folder
 .netlify
+*.xlsx
+supabase/.temp

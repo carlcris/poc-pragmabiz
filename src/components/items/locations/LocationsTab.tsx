@@ -36,12 +36,13 @@ import { ChevronDown, ChevronRight, Loader2, MapPinned, Printer } from "lucide-r
 import { toast } from "sonner";
 import { useItem } from "@/hooks/useItems";
 import { ITEM_LOCATIONS_QUERY_KEY } from "@/hooks/queryKeys";
-import { useCanView } from "@/hooks/usePermissions";
+import { useCanCreate, useCanView } from "@/hooks/usePermissions";
 import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { RESOURCES } from "@/constants/resources";
 import { ItemLocationMapDialog } from "@/components/items/locations/ItemLocationMapDialog";
-import { WarehouseLocationSelect } from "@/components/warehouses/WarehouseLocationSelect";
+import { MoveStockDialog } from "@/components/items/locations/MoveStockDialog";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import type { BarcodeData } from "@/lib/barcode";
 import type { ItemLocation, ItemLocationBatch } from "@/types/inventory-location";
 
@@ -90,10 +91,6 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   const queryClient = useQueryClient();
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [locationMapDialogOpen, setLocationMapDialogOpen] = useState(false);
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
-  const [fromLocationId, setFromLocationId] = useState<string>("");
-  const [toLocationId, setToLocationId] = useState<string>("");
-  const [moveQty, setMoveQty] = useState<string>("");
   const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());
   const [maxStockDialogOpen, setMaxStockDialogOpen] = useState(false);
   const [selectedMaxStockLocation, setSelectedMaxStockLocation] = useState<ItemLocation | null>(
@@ -104,6 +101,11 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   const [batchToPrint, setBatchToPrint] = useState<ItemLocationBatch | null>(null);
   const [batchLabelCount, setBatchLabelCount] = useState("1");
   const [batchPrintUnitId, setBatchPrintUnitId] = useState("");
+  const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
+  const canCreateStockTransactions = useCanCreate(RESOURCES.STOCK_TRANSACTIONS);
+  const canTransferStock = useCanCreate(RESOURCES.TRANSFER_BETWEEN_LOCATIONS);
+  const canMoveStock =
+    canCreateStockTransactions && canTransferStock && Boolean(currentBusinessUnitId);
   const canViewItems = useCanView(RESOURCES.ITEMS);
   const canViewWarehouses = useCanView(RESOURCES.WAREHOUSES);
   const { data: granularCapabilities = {} } = useGranularCapabilities([
@@ -112,7 +114,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   const canPrintBatchQr =
     canViewItems && granularCapabilities[GRANULAR_CAPABILITIES.ITEM_BATCH_QR_PRINT] === true;
   const { data, isLoading, error } = useQuery<ItemLocationsResponse>({
-    queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId],
+    queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId, currentBusinessUnitId ?? null],
     queryFn: async () => apiClient.get<ItemLocationsResponse>(`/api/items/${itemId}/locations`),
   });
   const { data: itemResponse } = useItem(itemId);
@@ -176,15 +178,6 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
         ),
       }));
   }, [locations]);
-  const warehouses = useMemo(
-    () =>
-      warehouseGroups.map((warehouse) => ({
-        id: warehouse.id,
-        code: warehouse.code,
-        name: warehouse.name,
-      })),
-    [warehouseGroups]
-  );
   const stockedWarehouseGroups = useMemo(
     () =>
       warehouseGroups
@@ -194,11 +187,6 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
         }))
         .filter((warehouse) => warehouse.locations.length > 0),
     [warehouseGroups]
-  );
-
-  const fromLocations = useMemo(
-    () => locations.filter((loc) => loc.warehouseId === selectedWarehouseId),
-    [locations, selectedWarehouseId]
   );
 
   const setDefaultLocation = useMutation({
@@ -214,50 +202,6 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
     onError: (mutationError) => {
       const message =
         mutationError instanceof Error ? mutationError.message : t("updatePreferredRackError");
-      toast.error(message);
-    },
-  });
-
-  const moveStock = useMutation({
-    mutationFn: async () => {
-      const quantity = Number(moveQty);
-      if (!selectedWarehouseId || !fromLocationId || !toLocationId) {
-        throw new Error(t("selectWarehouseAndLocations"));
-      }
-      if (fromLocationId === toLocationId) {
-        throw new Error(t("selectDifferentLocations"));
-      }
-      if (!Number.isFinite(quantity) || quantity <= 0) {
-        throw new Error(t("enterValidQuantity"));
-      }
-
-      return apiClient.post("/api/stock-transactions", {
-        transactionType: "transfer",
-        warehouseId: selectedWarehouseId,
-        toWarehouseId: selectedWarehouseId,
-        fromLocationId,
-        toLocationId,
-        transactionDate: new Date().toISOString().split("T")[0],
-        items: [
-          {
-            itemId,
-            quantity,
-            unitCost: item?.purchasePrice ?? 0,
-          },
-        ],
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId] });
-      toast.success(t("stockMoved"));
-      setMoveDialogOpen(false);
-      setSelectedWarehouseId("");
-      setFromLocationId("");
-      setToLocationId("");
-      setMoveQty("");
-    },
-    onError: (mutationError) => {
-      const message = mutationError instanceof Error ? mutationError.message : t("moveStockError");
       toast.error(message);
     },
   });
@@ -403,9 +347,14 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                 {t("locationMap")}
               </Button>
             ) : null}
-            <Button onClick={() => setMoveDialogOpen(true)} disabled={locations.length === 0}>
-              {t("moveStock")}
-            </Button>
+            {canMoveStock ? (
+              <Button
+                onClick={() => setMoveDialogOpen(true)}
+                disabled={locations.length === 0 || !item}
+              >
+                {t("moveStock")}
+              </Button>
+            ) : null}
           </div>
         </div>
       </CardHeader>
@@ -722,97 +671,14 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog
-        open={moveDialogOpen}
-        onOpenChange={(open) => {
-          setMoveDialogOpen(open);
-          if (!open) {
-            setSelectedWarehouseId("");
-            setFromLocationId("");
-            setToLocationId("");
-            setMoveQty("");
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("moveDialogTitle")}</DialogTitle>
-            <DialogDescription>{t("moveDialogDescription")}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">{t("warehouseLabel")}</label>
-              <Select
-                value={selectedWarehouseId}
-                onValueChange={(warehouseId) => {
-                  setSelectedWarehouseId(warehouseId);
-                  setFromLocationId("");
-                  setToLocationId("");
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t("selectWarehouse")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {warehouses.map((warehouse) => (
-                    <SelectItem key={warehouse.id} value={warehouse.id}>
-                      {warehouse.code} - {warehouse.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">{t("fromLocationLabel")}</label>
-              <Select
-                value={fromLocationId}
-                onValueChange={setFromLocationId}
-                disabled={!selectedWarehouseId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t("selectSourceLocation")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {fromLocations.map((loc) => (
-                    <SelectItem key={loc.locationId} value={loc.locationId}>
-                      {loc.locationCode} - {loc.locationName} ({t("availableShort")}{" "}
-                      {formatQty(loc.qtyAvailable, locale)})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">{t("toLocationLabel")}</label>
-              <WarehouseLocationSelect
-                warehouseId={selectedWarehouseId}
-                value={toLocationId}
-                onValueChange={setToLocationId}
-                storableOnly
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">{t("quantityLabel")}</label>
-              <Input
-                type="number"
-                min="0"
-                step="0.0001"
-                value={moveQty}
-                onChange={(event) => setMoveQty(event.target.value)}
-                placeholder={t("quantityPlaceholder")}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMoveDialogOpen(false)}>
-              {t("cancel")}
-            </Button>
-            <Button onClick={() => moveStock.mutate()} disabled={moveStock.isPending}>
-              {moveStock.isPending ? t("moving") : t("moveStock")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {moveDialogOpen && canMoveStock && item ? (
+        <MoveStockDialog
+          key={`${itemId}:${currentBusinessUnitId}`}
+          itemId={itemId}
+          baseUnit={item.uom}
+          onOpenChange={setMoveDialogOpen}
+        />
+      ) : null}
       <Dialog
         open={maxStockDialogOpen}
         onOpenChange={(open) => {

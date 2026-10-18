@@ -76,7 +76,7 @@ Comprehensive inventory tracking and warehouse management:
 - Creating reorder alerts
 - Building inventory reports
 
-**Key APIs**: `/api/items/*`, `/api/warehouses/*`, `/api/stock-adjustments/*`, `/api/stock-transfers/*`, `/api/reorder/*`
+**Key APIs**: `/api/items/*`, `/api/warehouses/*`, `/api/stock-adjustments/*`, `/api/stock-requests/*`, `/api/stock-transactions/*`, `/api/reorder/*`
 
 **Key Services**: `stockTransactionService.ts`, `locationService.ts`
 

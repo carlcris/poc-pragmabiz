@@ -139,6 +139,41 @@ These are the records everything else in the app is built on. Before testing any
 
 ---
 
+### Move Stock from the Item Locations tab
+
+Open an item's **Locations** tab and click **Move Stock**. Choose source and destination
+warehouses/racks in the current business unit, then enter a positive quantity in the item's base
+unit with at most two decimal places. The move posts immediately. `create` access to both Stock
+Transactions and Location Transfers is required; the button is hidden without either permission.
+
+- Move to another warehouse in the same business unit, including a warehouse that does not yet
+  hold the item. Confirm source decreases, destination increases, and total on-hand is conserved.
+- Move between two racks in the same warehouse and confirm warehouse and batch totals are unchanged.
+- Use multiple source batches and confirm FIFO consumption and original batch codes and receipt
+  dates. A warehouse move posts linked Out and In entries, with one line per consumed batch at each
+  warehouse; confirm both warehouses' ledger totals and closing balances. A rack move posts one
+  Transfer entry with no warehouse balance change. Reservations and pending putaway stay at source.
+- Confirm warehouse and rack pickers initially load at most five server-filtered options and
+  changing a warehouse clears its rack selection. Switching business units clears the open move's
+  selections and loads warehouse options for the new unit.
+- Try the same source/destination rack, a nonpositive quantity, more than two decimal places, and
+  quantities above 1,000,000,000. Submission must remain disabled with applicable validation guidance.
+- Submit more than the available source-rack quantity. Confirm actionable inline guidance, an open
+  dialog, and no partial movement, destination balance, batch, or stock history.
+- Try a destination with the same batch code and a different receipt date. Confirm the move fails
+  without merging those batch identities or changing source inventory.
+- In direct API checks, reject warehouses from another business unit, inactive warehouses,
+  inactive/non-storable racks, racks belonging to the wrong warehouse, client-supplied unit costs,
+  and missing Stock Transactions or Location Transfers create permission.
+- During a pending move, confirm editing, repeat submission, Cancel, and dialog dismissal cannot
+  interrupt or duplicate the request. Confirm balances and movement history refresh after success.
+
+For authenticated database checks and an injected failure after batch writes, run
+`supabase/tests/stock-move.sql` against a coordinated seeded local database after applying migrations.
+The script rolls back all fixtures and changes. Focused API and dialog checks are in
+`src/app/api/stock-transactions/route.test.ts` and
+`src/components/items/locations/MoveStockDialog.test.tsx`.
+
 ## 2. Item Categories
 
 **Purpose**: groups items for filtering/searching and reporting.
@@ -1382,4 +1417,4 @@ These apply across _every_ module above, so check them once per module rather th
    - A Sales Invoice payment can be recorded successfully, and the invoice marked Paid, even if the corresponding accounting-ledger entry silently fails to post — no error is surfaced to the user either way.
 5. **No consistent "in use" protection across master data.** Suppliers and Roles correctly block deletion when something else depends on them; Items, Customers, Warehouses, and Warehouse Locations do not — treat every master-data delete as its own test rather than assuming the app protects itself consistently.
 6. **Several master-data types can't be created from inside the app at all** — Item Categories, Units of Measure, Business Units, and new User accounts all have to be set up ahead of time by whoever administers the test environment. Confirm this setup is done before test cycles start, since there's no in-app fallback if one is missing.
-7. **Newer vs. older modules behave differently on failure.** The newer modules (goods receiving, load lists, deliveries, transformations, job orders, manufacturing, putaway) are built so a failure partway through leaves nothing half-done. Some older modules (legacy purchase-order receiving, invoice sending, stock-transfer confirmation) do their work in several separate steps — these are worth extra stress-testing for partial-failure states, e.g. what happens if the connection drops mid-action.
+7. **Newer vs. older modules behave differently on failure.** The newer modules (goods receiving, load lists, deliveries, transformations, job orders, manufacturing, putaway) are built so a failure partway through leaves nothing half-done. Some older modules (legacy purchase-order receiving and invoice sending) do their work in several separate steps — these are worth extra stress-testing for partial-failure states, e.g. what happens if the connection drops mid-action.

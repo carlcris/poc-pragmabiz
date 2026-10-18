@@ -13140,6 +13140,19 @@ export type Database = {
         };
         Returns: undefined;
       };
+      move_stock_transactionally: {
+        Args: {
+          p_business_unit_id: string;
+          p_destination_warehouse_id: string;
+          p_from_location_id: string;
+          p_item_id: string;
+          p_quantity: number;
+          p_source_warehouse_id: string;
+          p_to_location_id: string;
+          p_transaction_date?: string;
+        };
+        Returns: Json;
+      };
       notify_business_units: {
         Args: {
           p_actor_user_id: string;
