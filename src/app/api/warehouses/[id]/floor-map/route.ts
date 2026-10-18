@@ -5,7 +5,9 @@ import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { requireAllPermissions, requirePermission } from "@/lib/auth";
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { getScopedWarehouse } from "@/services/warehouse-floor-map-service";
+import { parseFloorNumber } from "@/lib/validations/warehouse-floor-map";
+import { mapFloorMapSaveError } from "./floor-map-errors";
 import { isCompleteRackRectangle } from "@/lib/warehouse-floor-map-geometry";
 import { canAccessCapability } from "@/services/permissions/permissionResolver";
 
@@ -36,7 +38,7 @@ const safeError = (error: string, code: string, status: number) =>
 const parsePositiveInteger = (value: FormDataEntryValue | null) => {
   if (typeof value !== "string" || !/^\d+$/.test(value)) return null;
   const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+  return Number.isSafeInteger(parsed) && parsed > 0 && parsed <= 2_147_483_647 ? parsed : null;
 };
 
 const parseRackInputs = (value: FormDataEntryValue | null): RackInput[] | null => {
@@ -59,7 +61,9 @@ const parseRackInputs = (value: FormDataEntryValue | null): RackInput[] | null =
       ];
       if (
         typeof warehouseLocationId !== "string" ||
-        !warehouseLocationId.trim() ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          warehouseLocationId
+        ) ||
         coordinates.some((coordinate) => !Number.isSafeInteger(coordinate))
       ) {
         return null;
@@ -93,13 +97,14 @@ const parseRackInputs = (value: FormDataEntryValue | null): RackInput[] | null =
   }
 };
 
-const loadFloorMap = async (warehouseId: string, companyId: string) => {
+const loadFloorMap = async (warehouseId: string, companyId: string, floorNumber: number) => {
   const admin = createAdminClient();
   const { data: map, error: mapError } = await admin
     .from("warehouse_floor_maps")
-    .select("id, warehouse_id, name, image_path, image_width, image_height, version")
+    .select("id, warehouse_id, floor_number, name, image_path, image_width, image_height, version")
     .eq("company_id", companyId)
     .eq("warehouse_id", warehouseId)
+    .eq("floor_number", floorNumber)
     .maybeSingle();
 
   if (mapError) {
@@ -129,7 +134,8 @@ const loadFloorMap = async (warehouseId: string, companyId: string) => {
         )
         .eq("company_id", companyId)
         .eq("floor_map_id", map.id)
-        .order("created_at", { ascending: true }),
+        .order("id", { ascending: true })
+        .limit(500),
     ]);
 
   if (signedUrlError || racksError || !signedUrl?.signedUrl) {
@@ -143,6 +149,7 @@ const loadFloorMap = async (warehouseId: string, companyId: string) => {
   return {
     id: map.id,
     warehouseId: map.warehouse_id,
+    floorNumber: map.floor_number,
     name: map.name,
     imageUrl: signedUrl.signedUrl,
     imageWidth: map.image_width,
@@ -166,37 +173,7 @@ const loadFloorMap = async (warehouseId: string, companyId: string) => {
   };
 };
 
-const getScopedWarehouse = async (warehouseId: string) => {
-  const context = await createServerClientWithBU();
-  if (!context.userId || !context.companyId || !context.currentBusinessUnitId) return null;
-
-  const { data: warehouse, error } = await context.supabase
-    .from("warehouses")
-    .select("id, company_id, business_unit_id, warehouse_name")
-    .eq("id", warehouseId)
-    .eq("company_id", context.companyId)
-    .eq("business_unit_id", context.currentBusinessUnitId)
-    .eq("is_active", true)
-    .is("deleted_at", null)
-    .maybeSingle();
-
-  if (error) {
-    console.error("Failed to validate warehouse floor map scope", error);
-    return null;
-  }
-
-  return warehouse
-    ? {
-        ...context,
-        userId: context.userId,
-        companyId: context.companyId,
-        currentBusinessUnitId: context.currentBusinessUnitId,
-        warehouse,
-      }
-    : null;
-};
-
-async function GETHandler(_request: NextRequest, context: RouteContext) {
+async function GETHandler(request: NextRequest, context: RouteContext) {
   const unauthorized = await requirePermission(RESOURCES.WAREHOUSES, "view");
   if (unauthorized) {
     if (unauthorized.status === 401) return unauthorized;
@@ -207,6 +184,10 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
     );
   }
 
+  const floorNumber = parseFloorNumber(request.nextUrl.searchParams.get("floorNumber"));
+  if (floorNumber === null)
+    return safeError("Choose a positive whole floor number", "INVALID_FLOOR_NUMBER", 400);
+
   const { id } = await context.params;
   const scoped = await getScopedWarehouse(id);
   if (!scoped) {
@@ -214,7 +195,7 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
   }
 
   try {
-    return NextResponse.json({ data: await loadFloorMap(id, scoped.companyId) });
+    return NextResponse.json({ data: await loadFloorMap(id, scoped.companyId, floorNumber) });
   } catch (error) {
     console.error("Warehouse floor map GET failed", error);
     return safeError("Failed to load warehouse floor map", "FLOOR_MAP_LOAD_FAILED", 500);
@@ -222,153 +203,165 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
 }
 
 async function PUTHandler(request: NextRequest, context: RouteContext) {
-  const parentPermissionDenied = await requireAllPermissions([
-    [RESOURCES.WAREHOUSES, "view"],
-    [RESOURCES.WAREHOUSES, "edit"],
-  ]);
-  if (parentPermissionDenied) {
-    if (parentPermissionDenied.status === 401) return parentPermissionDenied;
-    return safeError(
-      "You do not have permission to change this warehouse floor map",
-      "FLOOR_MAP_PERMISSION_DENIED",
-      403
-    );
-  }
-
-  const { id } = await context.params;
-  const scoped = await getScopedWarehouse(id);
-  if (!scoped) {
-    return safeError("Warehouse not found", "WAREHOUSE_NOT_FOUND", 404);
-  }
-
-  const canManageFloorMap = await canAccessCapability(
-    scoped.userId,
-    GRANULAR_CAPABILITIES.WAREHOUSE_FLOOR_MAP_MANAGE,
-    "edit",
-    scoped.currentBusinessUnitId
-  );
-  if (!canManageFloorMap) {
-    return safeError(
-      "You do not have permission to change this warehouse floor map",
-      "FLOOR_MAP_PERMISSION_DENIED",
-      403
-    );
-  }
-
-  const formData = await request.formData();
-  const name = typeof formData.get("name") === "string" ? String(formData.get("name")).trim() : "";
-  const imageWidth = parsePositiveInteger(formData.get("imageWidth"));
-  const imageHeight = parsePositiveInteger(formData.get("imageHeight"));
-  const racks = parseRackInputs(formData.get("racks"));
-  const fileEntry = formData.get("file");
-  const file = fileEntry instanceof File && fileEntry.size > 0 ? fileEntry : null;
-
-  if (!name || name.length > 120 || !imageWidth || !imageHeight || !racks) {
-    return safeError("Floor map details are invalid", "INVALID_FLOOR_MAP", 400);
-  }
-  if (racks.some((rack) => !isCompleteRackRectangle(rack))) {
-    return safeError(
-      "Draw a rectangle over the complete rack before saving",
-      "RACK_MAPPING_TOO_SMALL",
-      400
-    );
-  }
-  if (file && (!ALLOWED_MIME_TYPES.has(file.type) || file.size > MAX_FILE_SIZE)) {
-    return safeError("Use a PNG, JPEG, or WebP image up to 10 MB", "INVALID_FLOOR_MAP_IMAGE", 400);
-  }
-
-  const admin = createAdminClient();
-  const { data: existing, error: existingError } = await admin
-    .from("warehouse_floor_maps")
-    .select("id, image_path")
-    .eq("company_id", scoped.companyId)
-    .eq("warehouse_id", id)
-    .maybeSingle();
-
-  if (existingError) {
-    console.error("Failed to inspect existing warehouse floor map", existingError);
-    return safeError("Failed to save warehouse floor map", "FLOOR_MAP_SAVE_FAILED", 500);
-  }
-  if (!file && !existing?.image_path) {
-    return safeError("Floor map image is required", "FLOOR_MAP_IMAGE_REQUIRED", 400);
-  }
-
-  let imagePath = existing?.image_path || "";
-  let uploadedPath: string | null = null;
-  if (file) {
-    const fileExtension = FILE_EXTENSION_BY_MIME_TYPE[file.type];
-    uploadedPath = `${scoped.companyId}/${id}/${randomUUID()}${fileExtension}`;
-    const { error: uploadError } = await admin.storage
-      .from(BUCKET)
-      .upload(uploadedPath, Buffer.from(await file.arrayBuffer()), {
-        contentType: file.type,
-        upsert: false,
-      });
-
-    if (uploadError) {
-      console.error("Failed to upload warehouse floor map", uploadError);
-      return safeError("Failed to upload floor map image", "FLOOR_MAP_UPLOAD_FAILED", 500);
-    }
-    imagePath = uploadedPath;
-  }
-
-  const { error: saveError } = await scoped.supabase.rpc("save_warehouse_floor_map", {
-    p_actor_user_id: scoped.userId,
-    p_company_id: scoped.companyId,
-    p_image_height: imageHeight,
-    p_image_path: imagePath,
-    p_image_width: imageWidth,
-    p_name: name,
-    p_racks: racks.map((rack) => ({
-      warehouse_location_id: rack.warehouseLocationId,
-      x_basis_points: rack.xBasisPoints,
-      y_basis_points: rack.yBasisPoints,
-      width_basis_points: rack.widthBasisPoints,
-      height_basis_points: rack.heightBasisPoints,
-    })),
-    p_warehouse_id: id,
-  });
-
-  if (saveError) {
-    console.error("Failed to save warehouse floor map", saveError);
-    if (uploadedPath) {
-      const { error: cleanupError } = await admin.storage.from(BUCKET).remove([uploadedPath]);
-      if (cleanupError) {
-        console.error("Failed to clean up uncommitted floor map image", cleanupError);
-      }
-    }
-    if (saveError.message.includes("RACK_MAPPING_TOO_SMALL")) {
-      return safeError(
-        "Draw a rectangle over the complete rack before saving",
-        "RACK_MAPPING_TOO_SMALL",
-        400
-      );
-    }
-    if (saveError.message.includes("FLOOR_MAP_PERMISSION_DENIED")) {
+  try {
+    const parentPermissionDenied = await requireAllPermissions([
+      [RESOURCES.WAREHOUSES, "view"],
+      [RESOURCES.WAREHOUSES, "edit"],
+    ]);
+    if (parentPermissionDenied) {
+      if (parentPermissionDenied.status === 401) return parentPermissionDenied;
       return safeError(
         "You do not have permission to change this warehouse floor map",
         "FLOOR_MAP_PERMISSION_DENIED",
         403
       );
     }
-    return safeError("Failed to save warehouse floor map", "FLOOR_MAP_SAVE_FAILED", 500);
-  }
 
-  if (uploadedPath && existing?.image_path && existing.image_path !== uploadedPath) {
-    const { error: cleanupError } = await admin.storage.from(BUCKET).remove([existing.image_path]);
-    if (cleanupError) {
-      console.error("Failed to remove replaced warehouse floor map image", cleanupError);
+    const { id } = await context.params;
+    const scoped = await getScopedWarehouse(id);
+    if (!scoped) {
+      return safeError("Warehouse not found", "WAREHOUSE_NOT_FOUND", 404);
     }
-  }
 
-  try {
-    return NextResponse.json({ data: await loadFloorMap(id, scoped.companyId) });
+    const canManageFloorMap = await canAccessCapability(
+      scoped.userId,
+      GRANULAR_CAPABILITIES.WAREHOUSE_FLOOR_MAP_MANAGE,
+      "edit",
+      scoped.currentBusinessUnitId
+    );
+    if (!canManageFloorMap) {
+      return safeError(
+        "You do not have permission to change this warehouse floor map",
+        "FLOOR_MAP_PERMISSION_DENIED",
+        403
+      );
+    }
+
+    const formData = await request.formData();
+    const floorNumber = parseFloorNumber(formData.get("floorNumber"));
+    if (floorNumber === null)
+      return safeError("Choose a positive whole floor number", "INVALID_FLOOR_NUMBER", 400);
+    const versionEntry = formData.get("expectedVersion");
+    const expectedVersion = versionEntry === "0" ? 0 : parsePositiveInteger(versionEntry);
+    if (expectedVersion === null)
+      return safeError("Floor map version is invalid", "INVALID_FLOOR_MAP", 400);
+    const name =
+      typeof formData.get("name") === "string" ? String(formData.get("name")).trim() : "";
+    const imageWidth = parsePositiveInteger(formData.get("imageWidth"));
+    const imageHeight = parsePositiveInteger(formData.get("imageHeight"));
+    const racks = parseRackInputs(formData.get("racks"));
+    const fileEntry = formData.get("file");
+    const file = fileEntry instanceof File && fileEntry.size > 0 ? fileEntry : null;
+
+    if (!name || name.length > 120 || !imageWidth || !imageHeight || !racks) {
+      return safeError("Floor map details are invalid", "INVALID_FLOOR_MAP", 400);
+    }
+    if (racks.some((rack) => !isCompleteRackRectangle(rack))) {
+      return safeError(
+        "Draw a rectangle over the complete rack before saving",
+        "RACK_MAPPING_TOO_SMALL",
+        400
+      );
+    }
+    if (file && (!ALLOWED_MIME_TYPES.has(file.type) || file.size > MAX_FILE_SIZE)) {
+      return safeError(
+        "Use a PNG, JPEG, or WebP image up to 10 MB",
+        "INVALID_FLOOR_MAP_IMAGE",
+        400
+      );
+    }
+
+    const admin = createAdminClient();
+    const { data: existing, error: existingError } = await admin
+      .from("warehouse_floor_maps")
+      .select("image_path")
+      .eq("company_id", scoped.companyId)
+      .eq("warehouse_id", id)
+      .eq("floor_number", floorNumber)
+      .maybeSingle();
+
+    if (existingError) {
+      console.error("Failed to inspect existing warehouse floor map", existingError);
+      return safeError("Failed to save warehouse floor map", "FLOOR_MAP_SAVE_FAILED", 500);
+    }
+    if (!file && !existing?.image_path) {
+      return safeError("Floor map image is required", "FLOOR_MAP_IMAGE_REQUIRED", 400);
+    }
+
+    let imagePath = existing?.image_path || "";
+    let uploadedPath: string | null = null;
+    if (file) {
+      const fileExtension = FILE_EXTENSION_BY_MIME_TYPE[file.type];
+      uploadedPath = `${scoped.companyId}/${id}/${randomUUID()}${fileExtension}`;
+      const { error: uploadError } = await admin.storage
+        .from(BUCKET)
+        .upload(uploadedPath, Buffer.from(await file.arrayBuffer()), {
+          contentType: file.type,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error("Failed to upload warehouse floor map", uploadError);
+        return safeError("Failed to upload floor map image", "FLOOR_MAP_UPLOAD_FAILED", 500);
+      }
+      imagePath = uploadedPath;
+    }
+
+    const { error: saveError } = await scoped.supabase.rpc("save_warehouse_floor_map", {
+      p_actor_user_id: scoped.userId,
+      p_floor_number: floorNumber,
+      p_expected_version: expectedVersion,
+      p_company_id: scoped.companyId,
+      p_image_height: imageHeight,
+      p_image_path: imagePath,
+      p_image_width: imageWidth,
+      p_name: name,
+      p_racks: racks.map((rack) => ({
+        warehouse_location_id: rack.warehouseLocationId,
+        x_basis_points: rack.xBasisPoints,
+        y_basis_points: rack.yBasisPoints,
+        width_basis_points: rack.widthBasisPoints,
+        height_basis_points: rack.heightBasisPoints,
+      })),
+      p_warehouse_id: id,
+    });
+
+    if (saveError) {
+      console.error("Failed to save warehouse floor map", saveError);
+      if (uploadedPath) {
+        const { error: cleanupError } = await admin.storage.from(BUCKET).remove([uploadedPath]);
+        if (cleanupError) {
+          console.error("Failed to clean up uncommitted floor map image", cleanupError);
+        }
+      }
+      const mappedError = mapFloorMapSaveError(saveError.message);
+      return safeError(mappedError.error, mappedError.code, mappedError.status);
+    }
+
+    if (uploadedPath && existing?.image_path && existing.image_path !== uploadedPath) {
+      const { error: cleanupError } = await admin.storage
+        .from(BUCKET)
+        .remove([existing.image_path]);
+      if (cleanupError) {
+        console.error("Failed to remove replaced warehouse floor map image", cleanupError);
+      }
+    }
+
+    try {
+      return NextResponse.json({ data: await loadFloorMap(id, scoped.companyId, floorNumber) });
+    } catch (error) {
+      console.error("Warehouse floor map saved but could not be reloaded", error);
+      return safeError(
+        "Floor map was saved but could not be reloaded",
+        "FLOOR_MAP_RELOAD_FAILED",
+        500
+      );
+    }
   } catch (error) {
-    console.error("Warehouse floor map saved but could not be reloaded", error);
-    return safeError(
-      "Floor map was saved but could not be reloaded",
-      "FLOOR_MAP_RELOAD_FAILED",
-      500
+    console.error("Unexpected warehouse floor request failure", error);
+    return NextResponse.json(
+      { error: "Warehouse floor request failed", code: "FLOOR_MAP_SAVE_FAILED" },
+      { status: 500 }
     );
   }
 }

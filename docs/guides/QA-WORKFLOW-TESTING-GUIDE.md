@@ -732,6 +732,25 @@ multiple warehouse-specific delivery notes from one action.
   horizontal/vertical navigation still works, and the image and highlight remain aligned. Rotate
   through all four 90-degree orientations and confirm the quarter-turn canvas is not clipped and
   opening a different map resets zoom to 100% and orientation to 90 degrees clockwise.
+- Configure **Floor 1** and **Floor 2** in the same warehouse with different images and racks.
+  Existing map and rack IDs must remain intact on Floor 1. Edit and save Floor 2, then return to
+  Floor 1 and confirm its image and mappings are unchanged. Search floors by number and name;
+  initial selector requests must use `limit=5`, and invalid or excessive list limits must return 400.
+  Add/open an existing floor number and confirm its current map loads. A blank new floor is saved
+  only after uploading its image and saving. Unsaved edits must survive a cancelled floor switch
+  and background refetch; confirming discard must reset the editor for the selected floor.
+  With a save pending, floor selection, image replacement, and map editing must be disabled.
+  Open the item Location Map and switch floors; only racks on that floor should be highlighted.
+  Confirm the warehouse and floor dropdowns share one row on wider screens and stack on narrow screens.
+  The off-floor rack message must suggest selecting another floor rather than implying all such
+  racks are unmapped. A mobile pick assigned to a Floor 2 rack must open Floor 2 automatically and
+  display its floor number and map name.
+  Attempt to map the same rack on another floor: expect safe HTTP 409
+  `RACK_ALREADY_MAPPED_ON_ANOTHER_FLOOR` and translated instructions, with no committed changes.
+  Save the same map from two editors: the second stale save must return HTTP 409
+  `FLOOR_MAP_VERSION_CONFLICT` and offer reload without overwriting the first editor's changes.
+  Run `supabase/tests/warehouse-floors.sql` against the seeded local DB for authenticated multi-floor
+  success, isolation, conflict, and forced post-write rollback coverage; its fixtures are rolled back.
 - Close and reopen the same rack map within five minutes, then open another rack on the same map.
   Confirm the cached map appears without a blocking metadata reload and the shared image does not
   flash blank while the API continues enforcing the same picker and business-unit scope.

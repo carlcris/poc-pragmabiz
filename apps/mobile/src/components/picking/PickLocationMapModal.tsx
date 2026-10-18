@@ -232,7 +232,7 @@ export const PickLocationMapModal = ({ visible, pickListId, pickListItemId, onCl
                   {data.location.name ? ` · ${data.location.name}` : ""}
                 </Text>
               </View>
-              <Text style={styles.mapName}>{data.map.name}</Text>
+              <Text style={styles.mapName}>{`${data.map.floorNumber} · ${data.map.name}`}</Text>
             </View>
 
             <View style={styles.mapRegion} {...pinchResponderRef.current.panHandlers}>

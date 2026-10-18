@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getWarehouseFloorMap, saveWarehouseFloorMap } from "@/lib/api/warehouse-floor-maps";
+import {
+  getWarehouseFloorMap,
+  getWarehouseFloors,
+  saveWarehouseFloorMap,
+} from "@/lib/api/warehouse-floor-maps";
 import { getApiErrorCode } from "@/lib/api";
 
 const TERMINAL_FLOOR_MAP_QUERY_ERROR_CODES = [
@@ -7,18 +11,32 @@ const TERMINAL_FLOOR_MAP_QUERY_ERROR_CODES = [
   "FLOOR_MAP_PERMISSION_DENIED",
 ] as const;
 
-export const warehouseFloorMapQueryKey = (businessUnitId: string, warehouseId: string) =>
-  ["business-unit", businessUnitId, "warehouse-floor-map", warehouseId] as const;
+export const warehouseFloorMapQueryKey = (
+  businessUnitId: string,
+  warehouseId: string,
+  floorNumber: number
+) => ["business-unit", businessUnitId, "warehouse-floor-map", warehouseId, floorNumber] as const;
 
-export const useWarehouseFloorMap = (businessUnitId: string, warehouseId: string) =>
+export const useWarehouseFloorMap = (
+  businessUnitId: string,
+  warehouseId: string,
+  floorNumber: number
+) =>
   useQuery({
-    queryKey: warehouseFloorMapQueryKey(businessUnitId, warehouseId),
-    queryFn: () => getWarehouseFloorMap(warehouseId),
-    enabled: Boolean(businessUnitId && warehouseId),
+    queryKey: warehouseFloorMapQueryKey(businessUnitId, warehouseId, floorNumber),
+    queryFn: () => getWarehouseFloorMap(warehouseId, floorNumber),
+    enabled: Boolean(businessUnitId && warehouseId && floorNumber),
     retry: (failureCount, error) => {
       const terminalCode = getApiErrorCode(error, TERMINAL_FLOOR_MAP_QUERY_ERROR_CODES);
       return terminalCode === null && failureCount < 1;
     },
+  });
+
+export const useWarehouseFloors = (businessUnitId: string, warehouseId: string, search: string) =>
+  useQuery({
+    queryKey: ["business-unit", businessUnitId, "warehouse-floors", warehouseId, search],
+    queryFn: () => getWarehouseFloors(warehouseId, search),
+    enabled: Boolean(businessUnitId && warehouseId),
   });
 
 export const useSaveWarehouseFloorMap = (businessUnitId: string) => {
@@ -28,9 +46,12 @@ export const useSaveWarehouseFloorMap = (businessUnitId: string) => {
     mutationFn: saveWarehouseFloorMap,
     onSuccess: (response, input) => {
       queryClient.setQueryData(
-        warehouseFloorMapQueryKey(businessUnitId, input.warehouseId),
+        warehouseFloorMapQueryKey(businessUnitId, input.warehouseId, input.floorNumber),
         response
       );
+      queryClient.invalidateQueries({
+        queryKey: ["business-unit", businessUnitId, "warehouse-floors", input.warehouseId],
+      });
     },
   });
 };

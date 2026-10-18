@@ -50,6 +50,7 @@ export type PickLocationMap = {
   };
   map: {
     id: string;
+    floorNumber: number;
     name: string;
     imageUrl: string;
     imageWidth: number;
@@ -433,6 +434,7 @@ export const getPickLocationMap = async (
     },
     map: {
       id: str(map.id),
+      floorNumber: num(map.floorNumber),
       name: str(map.name),
       imageUrl: str(map.imageUrl || map.image_url),
       imageWidth: num(map.imageWidth || map.image_width),

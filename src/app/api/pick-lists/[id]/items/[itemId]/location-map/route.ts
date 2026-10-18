@@ -106,48 +106,67 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
     }
 
     const admin = createAdminClient();
-    const [{ data: location, error: locationError }, { data: map, error: mapError }] =
-      await Promise.all([
-        admin
-          .from("warehouse_locations")
-          .select("id, warehouse_id, code, name")
-          .eq("company_id", auth.companyId)
-          .eq("warehouse_id", deliveryNote.fulfilling_warehouse_id)
-          .eq("id", pickItem.suggested_pick_location_id)
-          .is("deleted_at", null)
-          .maybeSingle(),
-        admin
-          .from("warehouse_floor_maps")
-          .select(
-            `
-              id,
-              warehouse_id,
-              name,
-              image_path,
-              image_width,
-              image_height,
-              version,
-              warehouse:warehouses!warehouse_floor_maps_warehouse_id_fkey(
-                id,
-                warehouse_name,
-                deleted_at
-              )
-            `
-          )
-          .eq("company_id", auth.companyId)
-          .eq("warehouse_id", deliveryNote.fulfilling_warehouse_id)
-          .maybeSingle(),
-      ]);
-
-    if (locationError || mapError) {
-      console.error("Failed to resolve warehouse floor map", {
-        locationError,
-        mapError,
-      });
+    const { data: location, error: locationError } = await admin
+      .from("warehouse_locations")
+      .select("id, warehouse_id, code, name")
+      .eq("company_id", auth.companyId)
+      .eq("warehouse_id", deliveryNote.fulfilling_warehouse_id)
+      .eq("id", pickItem.suggested_pick_location_id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    const { data: rackMap, error: rackMapError } = await admin
+      .from("warehouse_floor_map_racks")
+      .select("floor_map_id")
+      .eq("company_id", auth.companyId)
+      .eq("warehouse_location_id", pickItem.suggested_pick_location_id)
+      .maybeSingle();
+    if (rackMapError) {
+      console.error("Failed to resolve rack floor", rackMapError);
       return safeError("Failed to load pick location", "PICK_LOCATION_LOAD_FAILED", 500);
     }
-    if (!location) {
-      return safeError("Pick location not found", "PICK_LOCATION_NOT_FOUND", 404);
+    if (locationError) {
+      console.error("Failed to load pick location", locationError);
+      return safeError("Failed to load pick location", "PICK_LOCATION_LOAD_FAILED", 500);
+    }
+    if (!location) return safeError("Pick location not found", "PICK_LOCATION_NOT_FOUND", 404);
+    if (!rackMap) {
+      const { data: configuredFloor, error: configuredFloorError } = await admin
+        .from("warehouse_floor_maps")
+        .select("id")
+        .eq("company_id", auth.companyId)
+        .eq("warehouse_id", deliveryNote.fulfilling_warehouse_id)
+        .limit(1)
+        .maybeSingle();
+      if (configuredFloorError) {
+        console.error("Failed to check configured warehouse floors", configuredFloorError);
+        return safeError("Failed to load pick location", "PICK_LOCATION_LOAD_FAILED", 500);
+      }
+      return configuredFloor
+        ? safeError(
+            "This rack is not marked on a warehouse floor map",
+            "WAREHOUSE_RACK_NOT_MAPPED",
+            404
+          )
+        : safeError(
+            "No floor map is configured for this warehouse",
+            "WAREHOUSE_FLOOR_MAP_NOT_CONFIGURED",
+            404
+          );
+    }
+    const { data: map, error: mapError } = await admin
+      .from("warehouse_floor_maps")
+      .select(
+        `id, warehouse_id, floor_number, name, image_path, image_width, image_height, version,
+        warehouse:warehouses!warehouse_floor_maps_warehouse_id_fkey(id, warehouse_name, deleted_at)`
+      )
+      .eq("company_id", auth.companyId)
+      .eq("warehouse_id", deliveryNote.fulfilling_warehouse_id)
+      .eq("id", rackMap.floor_map_id)
+      .maybeSingle();
+
+    if (mapError) {
+      console.error("Failed to resolve warehouse floor map", mapError);
+      return safeError("Failed to load pick location", "PICK_LOCATION_LOAD_FAILED", 500);
     }
     if (!map) {
       return safeError(
@@ -257,6 +276,7 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
         },
         map: {
           id: map.id,
+          floorNumber: map.floor_number,
           name: map.name,
           imageUrl: signedUrl.signedUrl,
           imageWidth: map.image_width,

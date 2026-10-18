@@ -104,7 +104,8 @@ apps/mobile/
   warehouse code > rack code > batch code. The location SKU is omitted, and the separate progress
   row remains the single place showing picked quantity versus total quantity.
 - Each pick-list line with an assigned rack exposes **View Map**. The full-screen viewer loads only
-  that pick list's fulfilling warehouse and mapped racks, labels every rack by name within its
+  the floor containing the assigned rack in the pick list's fulfilling warehouse, displays its
+  floor number and map name, and labels every mapped rack on that floor by name within its
   normalized rectangle, highlights the suggested rack with a blinking red overlay, and supports
   button or pinch-to-zoom from 100–500%, two-axis scrolling, and 90-degree rotation. Labels follow
   each rack's long axis and scale to remain inside its mapped area. The API signs a transformed map

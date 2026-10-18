@@ -140,6 +140,14 @@ If no seed users exist, create one via Supabase Studio:
 3. Set email and password
 4. Confirm the user
 
+For the seeded Achlers company, [create-dave-super-admin.sql](../../scripts/create-dave-super-admin.sql)
+provisions Dave with the same Super Admin role and access to every active
+business unit as the existing Rosie account. It copies Rosie's default and
+current business-unit selection. Run it once as a database administrator in the
+Supabase SQL editor or with `psql`. It creates the Auth identity, app profile,
+business-unit access, and role assignments together; rerunning it leaves the
+existing account unchanged and reports a duplicate-account error.
+
 ## Day 2: Codebase Familiarization
 
 ### 1. Read Core Documentation

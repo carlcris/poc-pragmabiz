@@ -608,10 +608,30 @@ export type TranslationKeys = {
     capacityNotStorable: string;
   };
   warehouseFloorMap: {
+    floor: string;
+    floorLabel: string;
+    floorNumber: string;
+    selectFloor: string;
+    searchFloors: string;
+    loadingFloors: string;
+    noFloors: string;
+    addFloor: string;
+    openFloor: string;
+    invalidFloorNumber: string;
+    discardTitle: string;
+    discardDescription: string;
+    keepEditing: string;
+    discardChanges: string;
+    versionConflict: string;
+    rackFloorConflict: string;
+    invalidMap: string;
+    reloadError: string;
+    reloadMap: string;
+    warehouseUnavailable: string;
+    signInAgain: string;
     title: string;
     subtitle: string;
     mapName: string;
-    mapNamePlaceholder: string;
     image: string;
     uploadImage: string;
     replaceImage: string;
@@ -4426,10 +4446,36 @@ export const translations: Record<Locale, TranslationKeys> = {
       capacityNotStorable: "Not storable",
     },
     warehouseFloorMap: {
+      floor: "Floor",
+      floorLabel: "Floor {number}",
+      floorNumber: "Floor number",
+      selectFloor: "Select a floor",
+      searchFloors: "Search by floor number or name...",
+      loadingFloors: "Loading floors...",
+      noFloors: "No configured floors found.",
+      addFloor: "Add floor",
+      openFloor: "Open floor",
+      invalidFloorNumber: "Enter a positive whole floor number.",
+      discardTitle: "Discard unsaved changes?",
+      discardDescription: "Switching floors will discard the changes to this map.",
+      keepEditing: "Keep editing",
+      discardChanges: "Discard changes",
+      versionConflict:
+        "This floor was changed by another editor. Reload the map and apply your changes again.",
+      rackFloorConflict:
+        "A rack is already mapped on another floor. Remove and save its mapping on that floor before mapping it here.",
+      invalidMap:
+        "Check the map details. Racks must be active, belong to this warehouse, and be mapped only once.",
+      reloadError:
+        "The map was saved, but could not be reloaded. Reload it before making more changes.",
+      reloadMap: "Reload map",
+      warehouseUnavailable:
+        "This warehouse is unavailable. Return to the warehouse list and choose an active warehouse.",
+      signInAgain: "Your session has expired. Sign in again before saving.",
       title: "Warehouse Floor Map",
-      subtitle: "Upload a floor plan and mark each rack used during mobile picking.",
+      subtitle:
+        "Select or add a floor, upload its plan, and mark the racks used during mobile picking.",
       mapName: "Map name",
-      mapNamePlaceholder: "Ground floor",
       image: "Floor-plan image",
       uploadImage: "Upload image",
       replaceImage: "Replace image",
@@ -4458,7 +4504,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       locationsLink: "Manage racks",
       readOnlyTitle: "Read-only floor map",
       readOnlyDescription: "You can view this map, but you do not have permission to change it.",
-      noMapConfigured: "No floor map has been configured for this warehouse.",
+      noMapConfigured: "No map has been configured for this floor.",
     },
     warehouseForm: {
       createTitle: "Create New Warehouse",
@@ -7047,7 +7093,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       locationMapNotConfigured: "No floor map configured",
       locationMapNotConfiguredDescription:
         "Configure a floor map for this warehouse before viewing item locations.",
-      locationMapNoMappedLocations: "Stocked racks not mapped on this floor plan: {locations}.",
+      locationMapNoMappedLocations:
+        "These racks are not shown on this floor. Select another floor or configure their mappings: {locations}",
       locationMapItemRack: "Rack holding this item",
       locationMapImageError: "The floor-plan image could not be displayed.",
       loadError: "Failed to load item locations.",
@@ -11088,10 +11135,30 @@ export const translations: Record<Locale, TranslationKeys> = {
       capacityNotStorable: "不可存储",
     },
     warehouseFloorMap: {
+      floor: "楼层",
+      floorLabel: "{number} 楼",
+      floorNumber: "楼层编号",
+      selectFloor: "选择楼层",
+      searchFloors: "按楼层编号或名称搜索...",
+      loadingFloors: "正在加载楼层...",
+      noFloors: "未找到已配置的楼层。",
+      addFloor: "添加楼层",
+      openFloor: "打开楼层",
+      invalidFloorNumber: "请输入正整数楼层编号。",
+      discardTitle: "放弃未保存的更改？",
+      discardDescription: "切换楼层将放弃此平面图的未保存更改。",
+      keepEditing: "继续编辑",
+      discardChanges: "放弃更改",
+      versionConflict: "其他用户已更改此楼层。请重新加载平面图后再次应用您的更改。",
+      rackFloorConflict: "此货架已标记在其他楼层。请先在该楼层移除并保存其标记，再在此处标记。",
+      invalidMap: "请检查平面图信息。货架必须已启用、属于此仓库，且只能标记一次。",
+      reloadError: "平面图已保存，但重新加载失败。请重新加载后再进行更改。",
+      reloadMap: "重新加载平面图",
+      warehouseUnavailable: "此仓库不可用。请返回仓库列表并选择启用的仓库。",
+      signInAgain: "您的会话已过期。请重新登录后保存。",
       title: "仓库平面图",
-      subtitle: "上传平面图，并标记移动拣货中使用的每个货架。",
+      subtitle: "选择或添加楼层，上传该楼层平面图，并标记移动拣货中使用的货架。",
       mapName: "地图名称",
-      mapNamePlaceholder: "一楼",
       image: "平面图图片",
       uploadImage: "上传图片",
       replaceImage: "替换图片",
@@ -11118,7 +11185,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       locationsLink: "管理货架",
       readOnlyTitle: "只读仓库平面图",
       readOnlyDescription: "您可以查看此平面图，但没有权限进行更改。",
-      noMapConfigured: "此仓库尚未配置平面图。",
+      noMapConfigured: "此楼层尚未配置平面图。",
     },
     warehouseForm: {
       createTitle: "创建新仓库",
@@ -13641,7 +13708,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       locationMapRetry: "重试",
       locationMapNotConfigured: "尚未配置楼层地图",
       locationMapNotConfiguredDescription: "请先为此仓库配置楼层地图，再查看商品库位。",
-      locationMapNoMappedLocations: "以下有库存的货架尚未映射到此楼层平面图：{locations}。",
+      locationMapNoMappedLocations:
+        "这些货架未显示在此楼层。请选择其他楼层或配置其标记：{locations}",
       locationMapItemRack: "存放此商品的货架",
       locationMapImageError: "无法显示楼层平面图。",
       loadError: "加载商品库位失败。",

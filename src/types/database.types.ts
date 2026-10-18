@@ -11410,7 +11410,7 @@ export type Database = {
           {
             foreignKeyName: "warehouse_floor_map_racks_warehouse_location_id_fkey";
             columns: ["warehouse_location_id"];
-            isOneToOne: false;
+            isOneToOne: true;
             referencedRelation: "warehouse_locations";
             referencedColumns: ["id"];
           },
@@ -11421,6 +11421,7 @@ export type Database = {
           company_id: string;
           created_at: string;
           created_by: string;
+          floor_number: number;
           id: string;
           image_height: number;
           image_path: string;
@@ -11435,6 +11436,7 @@ export type Database = {
           company_id: string;
           created_at?: string;
           created_by: string;
+          floor_number: number;
           id?: string;
           image_height: number;
           image_path: string;
@@ -11449,6 +11451,7 @@ export type Database = {
           company_id?: string;
           created_at?: string;
           created_by?: string;
+          floor_number?: number;
           id?: string;
           image_height?: number;
           image_path?: string;
@@ -11484,7 +11487,7 @@ export type Database = {
           {
             foreignKeyName: "warehouse_floor_maps_warehouse_id_fkey";
             columns: ["warehouse_id"];
-            isOneToOne: true;
+            isOneToOne: false;
             referencedRelation: "warehouses";
             referencedColumns: ["id"];
           },
@@ -13519,6 +13522,8 @@ export type Database = {
         Args: {
           p_actor_user_id: string;
           p_company_id: string;
+          p_expected_version: number;
+          p_floor_number: number;
           p_image_height: number;
           p_image_path: string;
           p_image_width: number;

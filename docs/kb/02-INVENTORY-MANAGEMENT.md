@@ -114,6 +114,20 @@ empty, partially occupied, full, or over capacity. Locations without a maximum a
 configured and excluded from aggregate utilization. This simple model assumes stored quantities
 are comparable.
 
+Warehouses support multiple numbered building floors, each with its own private floor-plan image,
+name, version, and rack rectangles. Existing maps become **Floor 1** without changing their map or
+rack IDs. In **Floor Map**, select an existing floor or use **Add floor**, enter a positive whole
+floor number, upload its image, map its racks, and save. Opening an already configured number loads
+that floor for editing. A new floor is persisted only when its image and mappings are saved. Floor
+numbers are stable identifiers; names and images can be edited. Switching floors asks before
+discarding unsaved changes, and controls are disabled while a save is pending. Floor selectors show
+only the floor name, load five initial options, and search floor numbers or names on the server.
+The floor list API supports bounded pages up to 50 records ordered by floor number. The detail and save contracts require
+`floorNumber`; saves also require `expectedVersion` (0 for a new map). Each active rack can be mapped
+on only one floor. Move a rack mapping by removing and saving it on the old floor before drawing it
+on the new floor. Stale saves return `FLOOR_MAP_VERSION_CONFLICT`; duplicate cross-floor mappings
+return `RACK_ALREADY_MAPPED_ON_ANOTHER_FLOOR`, both as safe HTTP 409 errors with translated guidance.
+
 Users with `warehouses:view` access can open an active warehouse's **Floor Map** in read-only mode.
 Uploading or replacing the private PNG/JPEG/WebP floor-plan image, changing rack mappings, and
 saving require both `warehouses:edit` and the child capability
@@ -125,7 +139,8 @@ warehouse list without requesting the previous unit's warehouse under the new sc
 drags a rectangle across the complete footprint of each active rack; the editor shows the rectangle
 while drawing, labels the rack by name along its long axis, and rejects click-sized marker mappings. Overlay
 coordinates are stored as normalized basis points, so the same full-rack highlights remain aligned
-across desktop and mobile screen sizes. The mobile picking viewer labels all mapped racks by rack
+across desktop and mobile screen sizes. The mobile picking viewer automatically opens the floor containing the suggested rack and displays
+its floor number and map name. It labels all mapped racks on that floor by rack
 name along their long axis and scales each label to its rectangle. Replacement-image dimensions are
 cleared until the browser successfully decodes the new file; malformed images cannot be saved with
 dimensions from the prior map. Saving the map and replacing all rack mappings is one transactional
@@ -141,9 +156,9 @@ on-hand quantity, warehouse-level maximum stock, and maximum-stock action, while
 selection and batch expansion remain available on individual rack rows. Supplier shipment transit
 and estimated-arrival information is intentionally not attached to a warehouse before putaway.
 Users with Warehouse view access can open **Location Map** beside **Move Stock**, filter the viewer
-by warehouses holding the item, and see every mapped rack with positive on-hand stock highlighted
-on that warehouse's floor plan. The viewer reports missing floor maps and item racks that have not
-yet been mapped without blocking the rest of the item detail workflow.
+by warehouses holding the item and by floor, and see mapped racks with positive on-hand stock
+highlighted on the selected floor plan. The viewer reports missing floor maps and item racks not shown on the selected floor
+(including racks on other floors) without blocking the rest of the item detail workflow.
 
 **Move Stock** on the item's **Locations** tab moves available stock between racks in one warehouse
 or between two warehouses in the current business unit. Users select the source warehouse/rack,

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ImageUp, Loader2, Map as MapIcon, Trash2 } from "lucide-react";
+import { ImageUp, Loader2, Map as MapIcon, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
@@ -12,6 +12,30 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { WarehouseFloorSelect } from "@/components/warehouses/WarehouseFloorSelect";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import { parseFloorNumber } from "@/lib/validations/warehouse-floor-map";
+import {
+  WAREHOUSE_FLOOR_MAP_ERROR_CODES,
+  type WarehouseFloorSummary,
+} from "@/types/warehouse-floor-map";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useLookupWarehouseLocations } from "@/hooks/useLookups";
@@ -36,8 +60,6 @@ type RackOption = {
   code: string;
   name: string | null;
 };
-
-const FLOOR_MAP_PERMISSION_ERROR_CODES = ["FLOOR_MAP_PERMISSION_DENIED"] as const;
 
 export const WarehouseFloorMapEditorSkeleton = ({ canEdit = true }: { canEdit?: boolean }) => (
   <div className={canEdit ? "grid gap-6 xl:grid-cols-3" : "space-y-4"}>
@@ -121,12 +143,146 @@ const toRackRectangle = (
   };
 };
 
-export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }: Props) => {
+export const WarehouseFloorMapEditor = (props: Props) => {
   const t = useTranslations("warehouseFloorMap");
-  const mapQuery = useWarehouseFloorMap(businessUnitId, warehouseId);
+  const [floor, setFloor] = useState<WarehouseFloorSummary | null>(null);
+  const [pendingFloor, setPendingFloor] = useState<WarehouseFloorSummary | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [newFloorNumber, setNewFloorNumber] = useState("");
+  const [floorError, setFloorError] = useState(false);
+  const changeFloor = (next: WarehouseFloorSummary) => {
+    if (next.floorNumber === (floor?.floorNumber ?? 1)) {
+      setFloor(next);
+    } else if (isDirty) {
+      setPendingFloor(next);
+    } else {
+      setFloor(next);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="w-full sm:max-w-sm">
+          <WarehouseFloorSelect
+            businessUnitId={props.businessUnitId}
+            warehouseId={props.warehouseId}
+            value={floor}
+            onChange={changeFloor}
+            disabled={isSaving}
+          />
+        </div>
+        {props.canEdit ? (
+          <Button
+            variant="outline"
+            disabled={isSaving}
+            onClick={() => {
+              setNewFloorNumber("");
+              setFloorError(false);
+              setAddOpen(true);
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            {t("addFloor")}
+          </Button>
+        ) : null}
+      </div>
+      <FloorMapEditorContent
+        key={`${props.businessUnitId}:${props.warehouseId}:${floor?.floorNumber ?? 1}`}
+        {...props}
+        floorNumber={floor?.floorNumber ?? 1}
+        onDirtyChange={setIsDirty}
+        onSavingChange={setIsSaving}
+      />
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("addFloor")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="warehouse-new-floor">{t("floorNumber")}</Label>
+            <Input
+              id="warehouse-new-floor"
+              type="number"
+              min={1}
+              max={2147483647}
+              step={1}
+              value={newFloorNumber}
+              onChange={(event) => {
+                setNewFloorNumber(event.target.value);
+                setFloorError(false);
+              }}
+            />
+            {floorError ? (
+              <p className="text-sm text-destructive">{t("invalidFloorNumber")}</p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                const number = parseFloorNumber(newFloorNumber);
+                if (number === null) {
+                  setFloorError(true);
+                  return;
+                }
+                changeFloor({ id: "", floorNumber: number, name: "" });
+                setAddOpen(false);
+              }}
+            >
+              {t("openFloor")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog
+        open={pendingFloor !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingFloor(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("discardTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("discardDescription")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("keepEditing")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setFloor(pendingFloor);
+                setIsDirty(false);
+                setPendingFloor(null);
+              }}
+            >
+              {t("discardChanges")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+};
+
+const FloorMapEditorContent = ({
+  businessUnitId,
+  warehouseId,
+  canEdit,
+  floorNumber,
+  onDirtyChange,
+  onSavingChange,
+}: Props & {
+  floorNumber: number;
+  onDirtyChange: (dirty: boolean) => void;
+  onSavingChange: (saving: boolean) => void;
+}) => {
+  const t = useTranslations("warehouseFloorMap");
+  const mapQuery = useWarehouseFloorMap(businessUnitId, warehouseId, floorNumber);
   const saveMap = useSaveWarehouseFloorMap(businessUnitId);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
+  const previewUrlRef = useRef("");
   const drawStartRef = useRef<DrawPoint | null>(null);
   const [name, setName] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -139,6 +295,21 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
   const [selectedRackId, setSelectedRackId] = useState("");
   const [selectedRackOption, setSelectedRackOption] = useState<RackOption | null>(null);
   const [rackSearch, setRackSearch] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
+  const [expectedVersion, setExpectedVersion] = useState(0);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const isDirtyRef = useRef(false);
+  const markDirty = () => {
+    isDirtyRef.current = true;
+    setIsDirty(true);
+    setSaveError(null);
+  };
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
+  useEffect(() => {
+    onSavingChange(saveMap.isPending);
+  }, [saveMap.isPending, onSavingChange]);
   const [racks, setRacks] = useState<WarehouseFloorMapRackInput[]>([]);
   const [mappedRackMetadata, setMappedRackMetadata] = useState<Record<string, RackOption>>({});
   const [draftRack, setDraftRack] = useState<WarehouseFloorMapRackInput | null>(null);
@@ -181,10 +352,12 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
 
   useEffect(() => {
     const floorMap = mapQuery.data?.data;
-    if (file || !mapQuery.isSuccess) return;
+    if (isDirtyRef.current || file || !mapQuery.isSuccess) return;
+    setExpectedVersion(floorMap?.version ?? 0);
     if (!floorMap) {
       setName("");
       setPreviewUrl("");
+      previewUrlRef.current = "";
       setImageWidth(0);
       setImageHeight(0);
       setImageDecodeFailed(false);
@@ -198,8 +371,11 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
     setName(floorMap.name);
     setPreviewUrl(floorMap.imageUrl);
     setImageDecodeFailed(false);
-    setIsRenderedImageReady(false);
-    setRenderedImageFailed(false);
+    if (previewUrlRef.current !== floorMap.imageUrl) {
+      setIsRenderedImageReady(false);
+      setRenderedImageFailed(false);
+    }
+    previewUrlRef.current = floorMap.imageUrl;
     setImageWidth(floorMap.imageWidth);
     setImageHeight(floorMap.imageHeight);
     setRacks(
@@ -223,7 +399,7 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
         ])
       )
     );
-  }, [file, mapQuery.data?.data, mapQuery.isSuccess]);
+  }, [file, isDirty, mapQuery.data?.data, mapQuery.isSuccess]);
 
   useEffect(
     () => () => {
@@ -236,6 +412,7 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
 
   const handleFile = (nextFile: File | null) => {
     if (!nextFile) return;
+    markDirty();
     if (previewObjectUrlRef.current) {
       URL.revokeObjectURL(previewObjectUrlRef.current);
     }
@@ -243,6 +420,7 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
     previewObjectUrlRef.current = objectUrl;
     setFile(nextFile);
     setPreviewUrl(objectUrl);
+    previewUrlRef.current = objectUrl;
     setImageWidth(0);
     setImageHeight(0);
     setImageDecodeFailed(false);
@@ -266,7 +444,7 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
   };
 
   const handleDrawStart = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!canEdit) return;
+    if (!canEdit || saveMap.isPending) return;
     if (!selectedRackId) {
       toast.error(t("rackRequired"));
       return;
@@ -298,6 +476,7 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
       return;
     }
 
+    markDirty();
     setRacks((current) => [
       ...current.filter((rack) => rack.warehouseLocationId !== selectedRackId),
       mapping,
@@ -323,7 +502,7 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
   };
 
   const handleSave = async () => {
-    if (!canEdit) return;
+    if (!canEdit || saveMap.isPending) return;
     if (imageDecodeFailed) {
       toast.error(t("imageDecodeError"));
       return;
@@ -337,27 +516,66 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
       return;
     }
 
+    setSaveError(null);
     try {
       await saveMap.mutateAsync({
         warehouseId,
-        name: name.trim() || t("mapNamePlaceholder"),
+        floorNumber,
+        expectedVersion,
+        name: name.trim() || t("floorLabel", { number: floorNumber }),
         imageWidth,
         imageHeight,
         racks,
         file,
       });
+      isDirtyRef.current = false;
+      setIsDirty(false);
       setFile(null);
       toast.success(t("saveSuccess"));
     } catch (error: unknown) {
-      const code = getApiErrorCode(error, FLOOR_MAP_PERMISSION_ERROR_CODES);
-      toast.error(
-        code === "FLOOR_MAP_PERMISSION_DENIED" ? t("savePermissionError") : t("saveError")
-      );
+      const code = getApiErrorCode(error, WAREHOUSE_FLOOR_MAP_ERROR_CODES);
+      let message = t("saveError");
+      switch (code) {
+        case "FLOOR_MAP_PERMISSION_DENIED":
+          message = t("savePermissionError");
+          break;
+        case "FLOOR_MAP_VERSION_CONFLICT":
+          message = t("versionConflict");
+          break;
+        case "RACK_ALREADY_MAPPED_ON_ANOTHER_FLOOR":
+          message = t("rackFloorConflict");
+          break;
+        case "RACK_MAPPING_TOO_SMALL":
+          message = t("mappingTooSmall");
+          break;
+        case "FLOOR_MAP_IMAGE_REQUIRED":
+          message = t("imageRequired");
+          break;
+        case "INVALID_FLOOR_MAP_IMAGE":
+          message = t("imageHelp");
+          break;
+        case "INVALID_FLOOR_NUMBER":
+          message = t("invalidFloorNumber");
+          break;
+        case "INVALID_FLOOR_MAP":
+          message = t("invalidMap");
+          break;
+        case "FLOOR_MAP_RELOAD_FAILED":
+          message = t("reloadError");
+          break;
+        case "WAREHOUSE_NOT_FOUND":
+          message = t("warehouseUnavailable");
+          break;
+        case "UNAUTHORIZED":
+          message = t("signInAgain");
+          break;
+      }
+      setSaveError(message);
     }
   };
 
   const isMapStateHydrating = Boolean(
-    mapQuery.data?.data && !file && previewUrl !== mapQuery.data.data.imageUrl
+    mapQuery.data?.data && !isDirty && !file && previewUrl !== mapQuery.data.data.imageUrl
   );
 
   if (mapQuery.isLoading || isMapStateHydrating) {
@@ -376,7 +594,10 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
   }
 
   return (
-    <div className={canEdit ? "grid gap-6 xl:grid-cols-3" : "space-y-4"}>
+    <fieldset
+      disabled={saveMap.isPending}
+      className={canEdit ? "grid gap-6 xl:grid-cols-3" : "space-y-4"}
+    >
       {!canEdit ? (
         <div className="rounded-md border bg-muted/30 p-4">
           <p className="font-medium">{t("readOnlyTitle")}</p>
@@ -397,8 +618,11 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
                     id="floor-map-name"
                     value={name}
                     maxLength={120}
-                    placeholder={t("mapNamePlaceholder")}
-                    onChange={(event) => setName(event.target.value)}
+                    placeholder={t("floorLabel", { number: floorNumber })}
+                    onChange={(event) => {
+                      markDirty();
+                      setName(event.target.value);
+                    }}
                   />
                 </div>
                 <input
@@ -594,6 +818,7 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
                         variant="ghost"
                         aria-label={t("removeMapping")}
                         onClick={() => {
+                          markDirty();
                           setRacks((current) =>
                             current.filter(
                               (candidate) =>
@@ -616,6 +841,25 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
             </CardContent>
           </Card>
 
+          {saveError ? (
+            <Alert variant="destructive">
+              <AlertDescription>{saveError}</AlertDescription>
+              <Button
+                variant="outline"
+                className="mt-2"
+                disabled={saveMap.isPending}
+                onClick={() => {
+                  isDirtyRef.current = false;
+                  setIsDirty(false);
+                  setFile(null);
+                  setSaveError(null);
+                  void mapQuery.refetch();
+                }}
+              >
+                {t("reloadMap")}
+              </Button>
+            </Alert>
+          ) : null}
           <Button
             className="w-full"
             disabled={
@@ -638,6 +882,6 @@ export const WarehouseFloorMapEditor = ({ businessUnitId, warehouseId, canEdit }
           </Button>
         </div>
       ) : null}
-    </div>
+    </fieldset>
   );
 };
