@@ -612,6 +612,10 @@ multiple warehouse-specific delivery notes from one action.
 - Confirm the delivery-note detail shows the fulfilling business unit as the source business unit
   and the requesting business unit as the destination business unit, without displaying either
   warehouse.
+- After creating a delivery note, open its detail from the fulfilling business unit. Once receiving
+  scans and unexpected-item exceptions exist, switch to the requesting business unit and verify
+  those rows appear only there; a user without requesting-unit membership cannot read them through
+  the Data API.
 - Create a delivery note for one request line, then reopen the creation dialog and confirm that the
   fully allocated request line is no longer offered. For a partially allocated request, confirm the
   Allocatable value is capped by both its remaining request quantity and current usable inventory,

@@ -9,6 +9,8 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // GET /api/delivery-notes/[id]
 async function GETHandler(request: NextRequest, context: RouteContext) {
   try {
@@ -22,6 +24,9 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
     if (auth instanceof NextResponse) return auth;
 
     const { id } = await context.params;
+    if (!UUID_PATTERN.test(id)) {
+      return NextResponse.json({ error: "Delivery note not found" }, { status: 404 });
+    }
     const dn = await fetchDeliveryNote(
       auth.supabase,
       auth.companyId,
@@ -35,8 +40,8 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json(dn);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Unexpected error loading delivery note:", error);
+    return NextResponse.json({ error: "Failed to load delivery note" }, { status: 500 });
   }
 }
 

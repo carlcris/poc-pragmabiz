@@ -800,7 +800,7 @@ export default function DeliveryNoteDetailPage() {
           <EmptyStatePanel
             icon={AlertCircle}
             title={t("loadError")}
-            description={t("loading")}
+            description={t("loadErrorDescription")}
             className="min-h-[180px]"
           />
         </div>

@@ -947,6 +947,12 @@ creates warehouse-specific pick lists. Capacity is calculated independently for 
 another source to form one requested unit. Insufficient total capacity rolls the operation back
 without delivery notes or partial reservations.
 
+The delivery-note detail API reads receiving scans and unexpected-item exceptions through the
+authenticated Data API. Those tables grant read access only; row-level security limits their rows
+to the note's requesting (receiving) business unit when the user belongs to that unit and company.
+The fulfilling unit can still open the note, but receives no scan or exception rows. Recording and
+reviewing receiving results remains owned by the transactional database functions.
+
 When a request line specifies a batch, availability, delivery-note creation, and pick-list source
 suggestions are restricted to that batch and its warehouse/racks. If that batch can no longer supply
 the complete requested quantity, the transaction fails with actionable guidance; it never falls

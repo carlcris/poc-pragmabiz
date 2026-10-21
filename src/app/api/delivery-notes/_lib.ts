@@ -371,9 +371,13 @@ export const fetchDeliveryNote = async (
     .eq("id", id)
     .eq("company_id", companyId)
     .is("deleted_at", null)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) return null;
+  if (error) {
+    console.error("Failed to load delivery note details:", { id, error });
+    throw new Error("Failed to load delivery note");
+  }
+  if (!data) return null;
   const record = data as DeliveryNoteWithRelations;
   if (currentBusinessUnitId) {
     if (
