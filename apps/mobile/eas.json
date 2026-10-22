@@ -7,7 +7,7 @@
     "development": {
       "env": {
         "NODE_ENV": "production",
-        "EXPO_PUBLIC_API_BASE_URL": "https://achlers.onrender.com"
+        "EXPO_PUBLIC_API_BASE_URL": "https://stagingachlers.netlify.app"
       },
       "developmentClient": true,
       "distribution": "internal"
@@ -21,14 +21,14 @@
     "preview": {
       "env": {
         "NODE_ENV": "production",
-        "EXPO_PUBLIC_API_BASE_URL": "https://achlers.onrender.com"
+        "EXPO_PUBLIC_API_BASE_URL": "https://stagingachlers.netlify.app"
       },
       "distribution": "internal"
     },
     "apk": {
       "env": {
         "NODE_ENV": "production",
-        "EXPO_PUBLIC_API_BASE_URL": "https://achlers.onrender.com"
+        "EXPO_PUBLIC_API_BASE_URL": "https://stagingachlers.netlify.app"
       },
       "android": {
         "buildType": "apk"
@@ -37,7 +37,7 @@
     "production": {
       "env": {
         "NODE_ENV": "production",
-        "EXPO_PUBLIC_API_BASE_URL": "https://achlers.onrender.com"
+        "EXPO_PUBLIC_API_BASE_URL": "https://stagingachlers.netlify.app"
       },
       "autoIncrement": true
     }
