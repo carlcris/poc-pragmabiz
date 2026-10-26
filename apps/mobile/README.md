@@ -31,6 +31,17 @@ and the API server must listen on a non-loopback interface.
 All other EAS profiles use the public HTTPS API at `https://achlers.onrender.com` and retain
 Android's default cleartext-traffic restriction.
 
+### Launcher Icon
+
+`app.json` sets `expo.icon` to the existing 1024×1024 `assets/achlers_logo.png`. Expo generates
+the Android launcher resources from this complete square image. Use this standard icon configuration
+to keep the logo within the launcher bounds. A custom `android.adaptiveIcon` requires separate
+artwork padded for Android's adaptive-icon safe area.
+
+After changing the icon configuration or image, rebuild using `npm run build:android:apk:local`
+and install the resulting APK. Metro reloads and JavaScript updates do not replace the native
+launcher resources. Check the installed app's home-screen and app-drawer icons on the target device.
+
 ## SUNMI Hardware Scanner
 
 Android builds include a local Expo module that receives scans from the integrated SUNMI scan

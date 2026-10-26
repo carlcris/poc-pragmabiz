@@ -653,6 +653,17 @@ Search items for mobile (autocomplete).
 
 ## Troubleshooting
 
+### Issue: Installed Android app shows a generic icon
+
+The native launcher icon is configured by `expo.icon` in `apps/mobile/app.json`, which references
+the 1024×1024 `assets/achlers_logo.png`. A logo displayed inside the app does not configure its
+launcher icon. The complete square artwork uses the standard icon configuration; custom adaptive
+icons require separate artwork padded for Android's adaptive-icon safe area.
+
+From `apps/mobile`, run `npm run build:android:apk:local`, install the rebuilt APK, and verify the
+home-screen and app-drawer icons. A Metro reload or JavaScript update cannot replace the icon
+resources embedded in an existing installation. See `apps/mobile/README.md` for build profiles.
+
 ### Issue: Mobile barcode scanner not working
 
 **Symptoms**: Camera not opening, SUNMI scan key has no effect, or barcodes are typed into an input

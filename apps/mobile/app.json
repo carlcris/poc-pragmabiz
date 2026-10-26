@@ -3,6 +3,7 @@
     "name": "Pragmabiz Warehouse",
     "slug": "pragmabiz-warehouse-mobile",
     "version": "0.1.0",
+    "icon": "./assets/achlers_logo.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "pragmabiz-warehouse",
@@ -11,13 +12,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.pragmatica.pragmabiz.warehouse"
+      "bundleIdentifier": "com.pragmatica.pragmabiz.warehouse"
     },
     "android": {
-      "package": "app.pragmatica.pragmabiz.warehouse",
-      "adaptiveIcon": {
-        "backgroundColor": "#8d73cf"
-      },
+      "package": "com.pragmatica.pragmabiz.warehouse",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
