@@ -69,7 +69,12 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { cn } from "@/lib/utils";
-import { createLoadListFormSchema, type LoadListFormValues } from "@/lib/validations/load-list";
+import {
+  createLoadListFormSchema,
+  isValidLoadListQuantity,
+  type LoadListDateField,
+  type LoadListFormValues,
+} from "@/lib/validations/load-list";
 import type { CreateLoadListRequest, LoadList, UpdateLoadListRequest } from "@/types/load-list";
 
 type LoadListCostSource = {
@@ -191,6 +196,8 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
   const unitTriggerRef = useRef<HTMLButtonElement>(null);
   const quantityRef = useRef<HTMLInputElement>(null);
   const unitCostRef = useRef<HTMLInputElement>(null);
+  // Incomplete native dates have an empty value, so validate their controls directly.
+  const dateInputRefs = useRef<Partial<Record<LoadListDateField, HTMLInputElement | null>>>({});
   const [itemOpen, setItemOpen] = useState(false);
   const [itemSearchInput, setItemSearchInput] = useState("");
   const [debouncedItemSearch, setDebouncedItemSearch] = useState("");
@@ -208,7 +215,10 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     () => (isSearchingItems ? searchedItemsData?.data || [] : preloadItemsData?.data || []),
     [isSearchingItems, preloadItemsData?.data, searchedItemsData?.data]
   );
-  const llFormSchema = createLoadListFormSchema((key) => tValidation(key));
+  const llFormSchema = createLoadListFormSchema(
+    (key) => tValidation(key),
+    (field) => dateInputRefs.current[field]?.validity.badInput === true
+  );
   const { data: selectedItemResponse } = useItem(selectedItemId);
   const selectedItemDetail = selectedItemResponse?.data;
   const unitOptions = (selectedItemDetail?.unitOptions || []).filter((option) => option.isActive);
@@ -261,6 +271,12 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     defaultValues,
     shouldFocusError: false,
   });
+
+  const revalidateDateInput = (field: LoadListDateField) => {
+    if (form.getFieldState(field).error) {
+      void form.trigger(field);
+    }
+  };
 
   useEffect(() => {
     if (!open || !validationFocus || activeTab !== validationFocus.tab) return;
@@ -400,7 +416,8 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
 
   const handleAddItem = () => {
     setItemValidationError(null);
-    const parsedQuantity = Number(quantity);
+    const quantityInput = quantityRef.current?.value ?? quantity;
+    const parsedQuantity = Number(quantityInput);
     const parsedUnitCost = Number.parseFloat(unitCost);
 
     if (!selectedItemId) {
@@ -411,12 +428,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       showItemValidationError(t("unitRequired"), "unit");
       return;
     }
-    if (
-      !quantity ||
-      !Number.isFinite(parsedQuantity) ||
-      parsedQuantity <= 0 ||
-      quantityRef.current?.validity.stepMismatch
-    ) {
+    if (!isValidLoadListQuantity(quantityInput)) {
       showItemValidationError(t("quantityRequired"), "quantity");
       return;
     }
@@ -615,6 +627,8 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
 
               <TabsContent
                 value="general"
+                forceMount
+                hidden={activeTab !== "general"}
                 className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-3"
               >
                 {/* Primary Information */}
@@ -728,7 +742,16 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                         <FormItem>
                           <FormLabel className="text-xs font-medium">{t("loadDate")}</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} className="h-9 text-sm" />
+                            <Input
+                              type="date"
+                              {...field}
+                              ref={(input) => {
+                                field.ref(input);
+                                dateInputRefs.current.loadDate = input;
+                              }}
+                              onKeyUp={() => revalidateDateInput("loadDate")}
+                              className="h-9 text-sm"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -811,7 +834,16 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                             {t("estimatedArrivalDate")}
                           </FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} className="h-9 text-sm" />
+                            <Input
+                              type="date"
+                              {...field}
+                              ref={(input) => {
+                                field.ref(input);
+                                dateInputRefs.current.estimatedArrivalDate = input;
+                              }}
+                              onKeyUp={() => revalidateDateInput("estimatedArrivalDate")}
+                              className="h-9 text-sm"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

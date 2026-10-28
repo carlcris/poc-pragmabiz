@@ -9991,6 +9991,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     loadListValidation: {
       supplierRequired: "Supplier is required",
       destinationBusinessUnitRequired: "Destination business unit is required",
+      dateInvalid: "Enter a complete, valid date or clear every part of this date.",
     },
     grnsPage: {
       title: "Goods Receipt Notes",
@@ -16508,6 +16509,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     loadListValidation: {
       supplierRequired: "供应商为必填项",
       destinationBusinessUnitRequired: "目标业务单元为必填项",
+      dateInvalid: "请输入完整有效的日期，或清空该日期的所有部分。",
     },
     grnsPage: {
       title: "收货单",

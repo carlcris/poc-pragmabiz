@@ -535,6 +535,8 @@ Reject requisition.
 
 ### Load List Management
 
+Load Date and Estimated Arrival Date are optional, but partially entered dates block saving with an inline message and focus the affected field on General, including when saving from Items. Complete the date or clear every part of that date before retrying. Quantity precision is checked directly from the entered text, so values with more than two decimal places cannot be added.
+
 Load list unit price and total amount fields are display-controlled by granular permissions. Create and edit forms hide item costs, unit price inputs, line totals, and total amount when the user lacks `load_lists.field.unit_price.view`, while mutation payloads still preserve the stored prices.
 
 Create and edit validation opens the tab containing the error and focuses the first invalid field. Validation messages remain inline, with an invalid-field indicator, until the relevant value changes or validation is retried. General messages appear beside the affected control; Add Items messages use a full-width row below the inputs so they are not constrained by narrow field columns. Missing supplier or destination business unit returns to General; saving without line items opens Items and shows the message below its inputs. Add Item validation checks the item, active unit, positive quantity with up to two decimal places, and visible nonnegative unit cost. If a unit selector is disabled because no units are available, focus returns to the item selector so another item can be chosen. Save failures remain visible inside the dialog above its footer; retrying, editing, or closing the dialog clears stale errors. Error messages use the form rather than transient notifications or browser validation bubbles.
