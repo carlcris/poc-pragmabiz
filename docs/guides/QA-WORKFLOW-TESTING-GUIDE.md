@@ -879,6 +879,9 @@ For each line, choose either **Existing Batch** or **Create New Batch**. Creatin
 
 - Confirm Mark Arrived actually creates a receipt and that its number matches what appears in the receipts list.
 - Create a Load List for a business unit with multiple warehouses and confirm creation asks only for the destination business unit.
+- From Items, save with the supplier or destination business unit missing: General should open and the first invalid selector should receive keyboard focus. With both filled and no line items, save from General: Items should open and the item selector should receive focus.
+- Click Add Item with required values missing and confirm focus moves to the first missing item, unit, quantity, or visible unit cost. When no active unit is available, confirm focus returns to the item selector instead of the disabled unit selector. Repeat validation on the active tab and after closing/reopening the dialog; no stale focus should remain.
+- Confirm Add Items validation messages stay visible in a full-width row below the inputs, retain the affected field's invalid indicator, and clear when that value changes. Check long English and Chinese messages at desktop and mobile widths: text should use the available row width and wrap only when needed, without overflowing. Test zero/negative quantities, quantities with more than two decimal places, and a negative visible unit cost: each should show an inline message without a toast or browser validation bubble. A failed save should leave the dialog open with an error above its footer; a retry or edit should clear that message.
 - Confirm the destination business unit can see the inbound Load List while an unrelated business unit cannot.
 - Try to cancel an Arrived Load List directly — should be refused with guidance to reverse first.
 - Test Reverse Arrival and confirm it doesn't leave a duplicate/orphaned receipt behind.

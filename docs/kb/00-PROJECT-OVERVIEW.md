@@ -115,6 +115,12 @@ Real-time dashboards, inventory reports, sales analytics, purchasing analytics, 
 Mobile app for warehouse operations and POS transactions.
 **See**: `docs/kb/08-POS-MOBILE.md`
 
+## Sidebar Navigation
+
+The sidebar orders its sections as Dashboard, Inventory, Purchasing, Manufacturing, Sales, Reports,
+and Admin, with Purchasing immediately after Inventory. Expanded desktop, collapsed desktop, and
+mobile menus share this order; each user sees only the entries allowed by their permissions.
+
 ## Desktop Quick Actions
 
 The protected desktop dashboard shell includes a compact quick-action rail on the right side of the

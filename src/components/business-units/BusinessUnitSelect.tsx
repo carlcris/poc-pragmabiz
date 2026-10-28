@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type Ref, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -14,6 +14,7 @@ type BusinessUnitSelectProps = {
   excludeId?: string;
   disabled?: boolean;
   buttonClassName?: string;
+  triggerRef?: Ref<HTMLButtonElement>;
 };
 
 export function BusinessUnitSelect({
@@ -24,6 +25,7 @@ export function BusinessUnitSelect({
   excludeId,
   disabled = false,
   buttonClassName,
+  triggerRef,
 }: BusinessUnitSelectProps) {
   const t = useTranslations("businessUnitSelect");
   const [search, setSearch] = useState("");
@@ -75,6 +77,7 @@ export function BusinessUnitSelect({
       isLoading={isLoading}
       disabled={disabled}
       buttonClassName={buttonClassName}
+      triggerRef={triggerRef}
     />
   );
 }

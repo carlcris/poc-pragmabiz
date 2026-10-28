@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -21,6 +21,7 @@ import { useSuppliers } from "@/hooks/useSuppliers";
 import { useItem, useItems } from "@/hooks/useItems";
 import { BusinessUnitSelect } from "@/components/business-units/BusinessUnitSelect";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -136,6 +137,17 @@ type LoadListFormDialogProps = {
   loadList?: LoadList | null;
 };
 
+type LoadListItemField = "item" | "unit" | "quantity" | "unitCost";
+
+type LoadListItemValidationError = {
+  field: LoadListItemField;
+  message: string;
+};
+
+type LoadListValidationFocus =
+  | { tab: "general"; field: keyof LoadListFormValues }
+  | { tab: "items"; field: LoadListItemField };
+
 const LOAD_LIST_COST_CAPABILITY_KEYS = [
   GRANULAR_CAPABILITIES.LOAD_LISTS_TOTAL_AMOUNT,
   GRANULAR_CAPABILITIES.LOAD_LISTS_UNIT_PRICE,
@@ -144,6 +156,7 @@ const LOAD_LIST_COST_CAPABILITY_KEYS = [
 export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFormDialogProps) {
   const t = useTranslations("loadListForm");
   const tValidation = useTranslations("loadListValidation");
+  const itemFormId = useId();
   const locale = useLocale();
   const isEditMode = !!loadList;
   const { currentCurrency } = useCurrency();
@@ -170,6 +183,14 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
   const [quantity, setQuantity] = useState("");
   const [unitCost, setUnitCost] = useState("");
   const [activeTab, setActiveTab] = useState("general");
+  const [validationFocus, setValidationFocus] = useState<LoadListValidationFocus | null>(null);
+  const [itemValidationError, setItemValidationError] =
+    useState<LoadListItemValidationError | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const itemTriggerRef = useRef<HTMLButtonElement>(null);
+  const unitTriggerRef = useRef<HTMLButtonElement>(null);
+  const quantityRef = useRef<HTMLInputElement>(null);
+  const unitCostRef = useRef<HTMLInputElement>(null);
   const [itemOpen, setItemOpen] = useState(false);
   const [itemSearchInput, setItemSearchInput] = useState("");
   const [debouncedItemSearch, setDebouncedItemSearch] = useState("");
@@ -238,7 +259,35 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
   const form = useForm<LoadListFormValues>({
     resolver: zodResolver(llFormSchema),
     defaultValues,
+    shouldFocusError: false,
   });
+
+  useEffect(() => {
+    if (!open || !validationFocus || activeTab !== validationFocus.tab) return;
+
+    // Inactive tab controls must mount before their refs can receive focus.
+    const frameId = window.requestAnimationFrame(() => {
+      if (validationFocus.tab === "general") {
+        form.setFocus(validationFocus.field);
+      } else {
+        const control = {
+          item: itemTriggerRef.current,
+          unit: unitTriggerRef.current,
+          quantity: quantityRef.current,
+          unitCost: unitCostRef.current,
+        }[validationFocus.field];
+        (control?.disabled ? itemTriggerRef.current : control)?.focus();
+      }
+      setValidationFocus(null);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [activeTab, form, open, validationFocus]);
+
+  const focusValidationError = (target: LoadListValidationFocus) => {
+    setActiveTab(target.tab);
+    setValidationFocus(target);
+  };
 
   // Calculate total
   const totalAmount = useMemo(() => {
@@ -255,6 +304,9 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
 
   // Reset form when dialog opens/closes or LL changes
   useEffect(() => {
+    setValidationFocus(null);
+    setItemValidationError(null);
+    setSaveError(null);
     if (open && resolvedLoadList) {
       form.reset({
         supplierId: resolvedLoadList.supplierId,
@@ -331,27 +383,56 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     return () => window.clearTimeout(timeoutId);
   }, [itemSearchInput]);
 
+  const showItemValidationError = (message: string, field: LoadListItemField) => {
+    setItemValidationError({ field, message });
+    focusValidationError({ tab: "items", field });
+  };
+
+  const clearItemValidationError = (field: LoadListItemField) => {
+    setItemValidationError((error) => (error?.field === field ? null : error));
+  };
+
+  useEffect(() => {
+    if (selectedUnitOptionId) {
+      setItemValidationError((error) => (error?.field === "unit" ? null : error));
+    }
+  }, [selectedUnitOptionId]);
+
   const handleAddItem = () => {
+    setItemValidationError(null);
+    const parsedQuantity = Number(quantity);
     const parsedUnitCost = Number.parseFloat(unitCost);
 
+    if (!selectedItemId) {
+      showItemValidationError(t("itemRequired"), "item");
+      return;
+    }
+    if (!selectedUnitOptionId) {
+      showItemValidationError(t("unitRequired"), "unit");
+      return;
+    }
     if (
-      !selectedItemId ||
-      !selectedUnitOptionId ||
       !quantity ||
-      (canViewUnitPrice && !Number.isFinite(parsedUnitCost))
+      !Number.isFinite(parsedQuantity) ||
+      parsedQuantity <= 0 ||
+      quantityRef.current?.validity.stepMismatch
     ) {
-      toast.error(t("addItemError"));
+      showItemValidationError(t("quantityRequired"), "quantity");
+      return;
+    }
+    if (canViewUnitPrice && (!Number.isFinite(parsedUnitCost) || parsedUnitCost < 0)) {
+      showItemValidationError(t("unitCostRequired"), "unitCost");
       return;
     }
 
     const selectedItem = selectedItemRecord;
     if (!selectedItem) {
-      toast.error(t("itemNotFound"));
+      showItemValidationError(t("itemNotFound"), "item");
       return;
     }
 
     if (!selectedUnitOption) {
-      toast.error(t("unitNotFound"));
+      showItemValidationError(t("unitNotFound"), "unit");
       return;
     }
 
@@ -359,7 +440,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     const existingCurrency = lineItems[0]?.unitPriceCurrency;
 
     if (existingCurrency && existingCurrency !== unitPriceCurrency) {
-      toast.error(t("mixedCurrencyNotAllowed"));
+      showItemValidationError(t("mixedCurrencyNotAllowed"), "item");
       return;
     }
     const unitPrice = canViewUnitPrice
@@ -374,12 +455,13 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       uomId: selectedUnitOption.uomId,
       uomLabel: selectedUomLabel,
       qtyPerUnit: selectedQtyPerUnit,
-      loadListQty: parseFloat(quantity),
+      loadListQty: parsedQuantity,
       unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
       unitPriceCurrency,
     };
 
     setLineItems([...lineItems, newItem]);
+    setSaveError(null);
     setSelectedItemId("");
     setSelectedUnitOptionId("");
     setItemSearchInput("");
@@ -389,12 +471,14 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
   };
 
   const handleRemoveItem = (index: number) => {
+    setSaveError(null);
     setLineItems(lineItems.filter((_, i) => i !== index));
   };
 
   async function onSubmit(values: LoadListFormValues) {
+    setSaveError(null);
     if (lineItems.length === 0) {
-      toast.error(t("lineItemsRequired"));
+      showItemValidationError(t("lineItemsRequired"), "item");
       return;
     }
 
@@ -442,9 +526,37 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       form.reset();
       setLineItems([]);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("saveError"));
+      const apiError = error instanceof Error ? error.cause : null;
+      setSaveError(
+        typeof apiError === "object" &&
+          apiError !== null &&
+          "error" in apiError &&
+          typeof apiError.error === "string"
+          ? apiError.error
+          : t("saveError")
+      );
     }
   }
+
+  const handleInvalidSubmit = (errors: FieldErrors<LoadListFormValues>) => {
+    setSaveError(null);
+    const generalFields: (keyof LoadListFormValues)[] = [
+      "supplierId",
+      "destinationBusinessUnitId",
+      "supplierLlNumber",
+      "loadDate",
+      "containerNumber",
+      "sealNumber",
+      "batchNumber",
+      "estimatedArrivalDate",
+      "linerName",
+      "notes",
+    ];
+    const firstInvalidField = generalFields.find((field) => errors[field]);
+    if (firstInvalidField) {
+      focusValidationError({ tab: "general", field: firstInvalidField });
+    }
+  };
 
   useEffect(() => {
     if (!selectedItemId) return;
@@ -452,6 +564,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     if (!selectedItem) return;
     const cost = getDefaultLoadListUnitCost(selectedItem);
     setUnitCost(Number(cost).toFixed(2));
+    setItemValidationError((error) => (error?.field === "unitCost" ? null : error));
   }, [selectedItemId, selectedItemRecord]);
 
   return (
@@ -471,7 +584,12 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+          <form
+            noValidate
+            onSubmit={form.handleSubmit(onSubmit, handleInvalidSubmit)}
+            onChangeCapture={() => setSaveError(null)}
+            className="flex min-h-0 flex-1 flex-col"
+          >
             <Tabs
               value={activeTab}
               onValueChange={setActiveTab}
@@ -518,9 +636,19 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                           <FormLabel className="text-xs font-medium">
                             {t("supplierLabel")}
                           </FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              setSaveError(null);
+                            }}
+                            value={field.value}
+                          >
                             <FormControl>
-                              <SelectTrigger className="h-9 text-sm">
+                              <SelectTrigger
+                                ref={field.ref}
+                                onBlur={field.onBlur}
+                                className="h-9 text-sm"
+                              >
                                 <SelectValue placeholder={t("selectSupplier")} />
                               </SelectTrigger>
                             </FormControl>
@@ -547,8 +675,12 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                           </FormLabel>
                           <FormControl>
                             <BusinessUnitSelect
+                              triggerRef={field.ref}
                               value={field.value}
-                              onValueChange={field.onChange}
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                setSaveError(null);
+                              }}
                               selectedOption={
                                 resolvedLoadList?.destinationBusinessUnit
                                   ? {
@@ -739,7 +871,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                 className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden px-5 py-3"
               >
                 {/* Add Item Section */}
-                <div className="rounded-lg border border-purple-200 bg-gradient-to-br from-purple-50 to-violet-50 p-3 shadow-sm">
+                <div className="shrink-0 rounded-lg border border-purple-200 bg-gradient-to-br from-purple-50 to-violet-50 p-3 shadow-sm">
                   <div className="mb-2 flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded-md bg-purple-100">
                       <Plus className="h-3.5 w-3.5 text-purple-600" />
@@ -754,7 +886,10 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                     }
                   >
                     <div className="min-w-0">
-                      <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                      <label
+                        htmlFor={`${itemFormId}-item`}
+                        className="mb-2 block text-xs font-semibold tracking-wide text-gray-700"
+                      >
                         {t("itemLabel")}
                       </label>
                       <Popover
@@ -769,12 +904,21 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       >
                         <PopoverTrigger asChild>
                           <Button
+                            ref={itemTriggerRef}
+                            id={`${itemFormId}-item`}
                             variant="outline"
                             role="combobox"
                             aria-expanded={itemOpen}
+                            aria-invalid={itemValidationError?.field === "item"}
+                            aria-describedby={
+                              itemValidationError?.field === "item"
+                                ? `${itemFormId}-item-error`
+                                : undefined
+                            }
                             className={cn(
                               "h-10 w-full min-w-0 justify-between border-gray-300 bg-white text-sm hover:border-purple-400",
-                              !selectedItemId && "text-muted-foreground"
+                              !selectedItemId && "text-muted-foreground",
+                              itemValidationError?.field === "item" && "border-destructive"
                             )}
                           >
                             <span className="min-w-0 truncate text-left">{selectedItemLabel}</span>
@@ -800,6 +944,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                                       onSelect={() => {
                                         const cost = getDefaultLoadListUnitCost(item);
                                         setSelectedItemId(item.id);
+                                        setItemValidationError(null);
                                         setSelectedUnitOptionId("");
                                         setUnitCost(Number(cost).toFixed(2));
                                         setItemSearchInput("");
@@ -841,7 +986,10 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       </Popover>
                     </div>
                     <div className="min-w-0">
-                      <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                      <label
+                        htmlFor={`${itemFormId}-unit`}
+                        className="mb-2 block text-xs font-semibold tracking-wide text-gray-700"
+                      >
                         {t("unitLabel")}
                       </label>
                       <Select
@@ -849,7 +997,20 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                         onValueChange={setSelectedUnitOptionId}
                         disabled={!selectedItemId || unitOptions.length === 0}
                       >
-                        <SelectTrigger className="h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500">
+                        <SelectTrigger
+                          ref={unitTriggerRef}
+                          id={`${itemFormId}-unit`}
+                          aria-invalid={itemValidationError?.field === "unit"}
+                          aria-describedby={
+                            itemValidationError?.field === "unit"
+                              ? `${itemFormId}-unit-error`
+                              : undefined
+                          }
+                          className={cn(
+                            "h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500",
+                            itemValidationError?.field === "unit" && "border-destructive"
+                          )}
+                        >
                           <SelectValue
                             placeholder={selectedItemId ? t("selectUnit") : t("selectItemFirst")}
                           />
@@ -881,16 +1042,33 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                      <label
+                        htmlFor={`${itemFormId}-quantity`}
+                        className="mb-2 block text-xs font-semibold tracking-wide text-gray-700"
+                      >
                         {t("quantityLabel")}
                       </label>
                       <Input
+                        ref={quantityRef}
+                        id={`${itemFormId}-quantity`}
+                        aria-invalid={itemValidationError?.field === "quantity"}
+                        aria-describedby={
+                          itemValidationError?.field === "quantity"
+                            ? `${itemFormId}-quantity-error`
+                            : undefined
+                        }
                         type="number"
                         placeholder={t("quantityPlaceholder")}
                         value={quantity}
-                        onChange={(e) => setQuantity(e.target.value)}
+                        onChange={(e) => {
+                          setQuantity(e.target.value);
+                          clearItemValidationError("quantity");
+                        }}
                         step="0.01"
-                        className="h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500"
+                        className={cn(
+                          "h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500",
+                          itemValidationError?.field === "quantity" && "border-destructive"
+                        )}
                       />
                     </div>
                     <div>
@@ -912,7 +1090,10 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                     </div>
                     {canViewUnitPrice && (
                       <div>
-                        <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                        <label
+                          htmlFor={`${itemFormId}-unitCost`}
+                          className="mb-2 block text-xs font-semibold tracking-wide text-gray-700"
+                        >
                           {t("unitCostLabel")}
                         </label>
                         <div className="relative">
@@ -920,19 +1101,30 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                             {selectedUnitCostSymbol}
                           </span>
                           <Input
+                            ref={unitCostRef}
+                            id={`${itemFormId}-unitCost`}
+                            aria-invalid={itemValidationError?.field === "unitCost"}
+                            aria-describedby={
+                              itemValidationError?.field === "unitCost"
+                                ? `${itemFormId}-unitCost-error`
+                                : undefined
+                            }
                             key={`unit-cost-${selectedItemId}`}
                             type="text"
                             inputMode="decimal"
-                            pattern="^-?\\d*(\\.\\d{0,2})?$"
                             placeholder={t("unitCostPlaceholder")}
                             value={unitCost}
                             onChange={(e) => {
                               const next = e.target.value;
                               if (next === "" || /^-?\d*(\.\d{0,2})?$/.test(next)) {
                                 setUnitCost(next);
+                                clearItemValidationError("unitCost");
                               }
                             }}
-                            className="h-10 border-gray-300 bg-white pl-8 text-sm focus:border-purple-500 focus:ring-purple-500"
+                            className={cn(
+                              "h-10 border-gray-300 bg-white pl-8 text-sm focus:border-purple-500 focus:ring-purple-500",
+                              itemValidationError?.field === "unitCost" && "border-destructive"
+                            )}
                           />
                         </div>
                       </div>
@@ -948,6 +1140,15 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       </Button>
                     </div>
                   </div>
+                  {itemValidationError && (
+                    <p
+                      id={`${itemFormId}-${itemValidationError.field}-error`}
+                      role="alert"
+                      className="mt-2 text-sm font-medium text-destructive"
+                    >
+                      {itemValidationError.message}
+                    </p>
+                  )}
                 </div>
 
                 {/* Line Items Table */}
@@ -1095,6 +1296,12 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                 </div>
               </TabsContent>
             </Tabs>
+
+            {saveError && (
+              <Alert variant="destructive" className="shrink-0 rounded-none border-x-0 px-5 py-3">
+                <AlertDescription>{saveError}</AlertDescription>
+              </Alert>
+            )}
 
             <DialogFooter className="mt-auto flex-shrink-0 border-t bg-gray-50 px-5 py-3">
               <div className="flex w-full justify-end gap-2">

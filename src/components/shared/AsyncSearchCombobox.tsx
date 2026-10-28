@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, type Ref, useMemo, useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +32,7 @@ type AsyncSearchComboboxProps<T> = {
   isLoading?: boolean;
   disabled?: boolean;
   buttonClassName?: string;
+  triggerRef?: Ref<HTMLButtonElement>;
   popoverClassName?: string;
 };
 
@@ -53,6 +54,7 @@ export function AsyncSearchCombobox<T>({
   isLoading = false,
   disabled = false,
   buttonClassName,
+  triggerRef,
   popoverClassName,
 }: AsyncSearchComboboxProps<T>) {
   const [open, setOpen] = useState(false);
@@ -107,6 +109,7 @@ export function AsyncSearchCombobox<T>({
     >
       <PopoverTrigger asChild>
         <Button
+          ref={triggerRef}
           variant="outline"
           role="combobox"
           aria-expanded={open}

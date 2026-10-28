@@ -121,80 +121,6 @@ const menuItems = [
     ],
   },
   {
-    title: "Sales",
-    icon: ShoppingCart,
-    href: "/sales",
-    children: [
-      {
-        title: "Point of Sale",
-        href: "/sales/pos",
-        resource: RESOURCES.POS as Resource,
-        icon: ShoppingCart,
-      },
-      {
-        title: "POS Transactions",
-        href: "/sales/pos/transactions",
-        resource: RESOURCES.POS as Resource,
-        icon: FileText,
-      },
-      {
-        title: "Customers",
-        href: "/sales/customers",
-        resource: RESOURCES.CUSTOMERS as Resource,
-        icon: Users,
-      },
-      {
-        title: "Quotations",
-        href: "/sales/quotations",
-        resource: RESOURCES.SALES_QUOTATIONS as Resource,
-        icon: FileText,
-      },
-      {
-        title: "Sales Orders",
-        href: "/sales/orders",
-        resource: RESOURCES.SALES_ORDERS as Resource,
-        icon: ClipboardList,
-      },
-      {
-        title: "Invoices",
-        href: "/sales/invoices",
-        resource: RESOURCES.SALES_INVOICES as Resource,
-        icon: FileText,
-      },
-      {
-        title: "Job Orders",
-        href: "/sales/frame-job-orders",
-        resource: RESOURCES.SALES_QUOTATIONS as Resource,
-        icon: ClipboardList,
-      },
-    ],
-  },
-  {
-    title: "Manufacturing",
-    icon: Factory,
-    href: "/manufacturing/orders",
-    children: [
-      {
-        title: "Orders",
-        href: "/manufacturing/orders",
-        resource: RESOURCES.STOCK_TRANSFORMATIONS as Resource,
-        icon: Factory,
-      },
-      {
-        title: "Production",
-        href: "/manufacturing/floor",
-        resource: RESOURCES.STOCK_TRANSFORMATIONS as Resource,
-        icon: ChefHat,
-      },
-      {
-        title: "Stock Transformations",
-        href: "/manufacturing/transformations",
-        resource: RESOURCES.STOCK_TRANSFORMATIONS as Resource,
-        icon: Repeat,
-      },
-    ],
-  },
-  {
     title: "Purchasing",
     icon: ShoppingBag,
     href: "/purchasing",
@@ -250,6 +176,80 @@ const menuItems = [
       //   href: "/purchasing/receipts",
       //   resource: RESOURCES.PURCHASE_RECEIPTS as Resource,
       // },
+    ],
+  },
+  {
+    title: "Manufacturing",
+    icon: Factory,
+    href: "/manufacturing/orders",
+    children: [
+      {
+        title: "Orders",
+        href: "/manufacturing/orders",
+        resource: RESOURCES.STOCK_TRANSFORMATIONS as Resource,
+        icon: Factory,
+      },
+      {
+        title: "Production",
+        href: "/manufacturing/floor",
+        resource: RESOURCES.STOCK_TRANSFORMATIONS as Resource,
+        icon: ChefHat,
+      },
+      {
+        title: "Stock Transformations",
+        href: "/manufacturing/transformations",
+        resource: RESOURCES.STOCK_TRANSFORMATIONS as Resource,
+        icon: Repeat,
+      },
+    ],
+  },
+  {
+    title: "Sales",
+    icon: ShoppingCart,
+    href: "/sales",
+    children: [
+      {
+        title: "Point of Sale",
+        href: "/sales/pos",
+        resource: RESOURCES.POS as Resource,
+        icon: ShoppingCart,
+      },
+      {
+        title: "POS Transactions",
+        href: "/sales/pos/transactions",
+        resource: RESOURCES.POS as Resource,
+        icon: FileText,
+      },
+      {
+        title: "Customers",
+        href: "/sales/customers",
+        resource: RESOURCES.CUSTOMERS as Resource,
+        icon: Users,
+      },
+      {
+        title: "Quotations",
+        href: "/sales/quotations",
+        resource: RESOURCES.SALES_QUOTATIONS as Resource,
+        icon: FileText,
+      },
+      {
+        title: "Sales Orders",
+        href: "/sales/orders",
+        resource: RESOURCES.SALES_ORDERS as Resource,
+        icon: ClipboardList,
+      },
+      {
+        title: "Invoices",
+        href: "/sales/invoices",
+        resource: RESOURCES.SALES_INVOICES as Resource,
+        icon: FileText,
+      },
+      {
+        title: "Job Orders",
+        href: "/sales/frame-job-orders",
+        resource: RESOURCES.SALES_QUOTATIONS as Resource,
+        icon: ClipboardList,
+      },
     ],
   },
   // {
