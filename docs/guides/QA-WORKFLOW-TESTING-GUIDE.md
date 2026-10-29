@@ -608,6 +608,7 @@ multiple warehouse-specific delivery notes from one action.
 - Switch between two warehouses in the same business unit with an empty cart and confirm item
   availability reflects only the selected location.
 - Try to dispatch more than what was actually picked — should be blocked.
+- Allocate 10 units, dispatch 6, and scan all 6 in mobile receiving. Confirm both the inbox and detail show `6 / 6`, not `6 / 10`. Run `supabase/tests/receiving-inbox-progress.sql` against seeded local Supabase to verify partial, full, fractional, and zero-dispatch totals with authenticated reads; its fixture changes are rolled back.
 - Confirm a user cannot Start Receiving on a delivery that isn't Dispatched yet.
 - Confirm the delivery-note detail shows the fulfilling business unit as the source business unit
   and the requesting business unit as the destination business unit, without displaying either
@@ -616,6 +617,20 @@ multiple warehouse-specific delivery notes from one action.
   scans and unexpected-item exceptions exist, switch to the requesting business unit and verify
   those rows appear only there; a user without requesting-unit membership cannot read them through
   the Data API.
+- Confirm the detail page's Unexpected Items table shows Item, Unit, Qty, Status, Scanned At, and
+  Reviewed At, with no Box / Batch column or internal box identifiers.
+- In Receiving Overages and Unexpected Items, confirm review timestamps appear under Reviewed At,
+  with `--` before review. Actions appears only while at least one row is pending review: pending
+  rows show Accept/Reject, and reviewed rows show `--` rather than a date. Check all-pending, mixed,
+  and fully reviewed tables, including English and Chinese headings.
+- Confirm unexpected-item statuses use colored text without badge backgrounds: Pending Review
+  (amber), Accepted (green), Rejected (red), and Resolved (blue). Verify proper capitalization in
+  English, translated labels in Chinese, and readable colors in light and dark themes.
+- Confirm the delivery-note summary status, item line states, and receiving-overage review statuses
+  also use colored text with translated, properly capitalized labels and no status badge backgrounds.
+  Check all delivery-note statuses, plus Voided Line, Pending Picking, Dispatched, and Dispatch Ready
+  line states. Receiving overage reviews use the same Pending Review, Accepted, and Rejected colors
+  as unexpected-item reviews.
 - Create a delivery note for one request line, then reopen the creation dialog and confirm that the
   fully allocated request line is no longer offered. For a partially allocated request, confirm the
   Allocatable value is capped by both its remaining request quantity and current usable inventory,
@@ -624,6 +639,20 @@ multiple warehouse-specific delivery notes from one action.
   rejects a warehouse from any other business unit.
 - Confirm the mobile scan and submit controls remain unavailable until Start Receiving succeeds,
   then verify a user in the requesting business unit can scan without a false receiving-unit 403.
+- On mobile, enter a box ID that cannot identify a system item. Verify the app asks for the full QR
+  code, shows no unexpected-item confirmation, and saves no scan or receiving exception. Scan the
+  full QR for an identified item absent from the DN: Cancel must save nothing; Confirm must record
+  a pending review exception with a valid item and unit association. A full QR with an unavailable
+  item must show corrective guidance and save nothing.
+- Scan a system barcode for an item outside the DN and verify identification happens before
+  unexpected-item confirmation. Scan a QR that identifies an expected DN item and verify normal
+  counting or overage confirmation applies. Other scans and submission must remain disabled while
+  item identification is pending.
+- Force a scan request to fail and verify its error appears inside the confirmation dialog. Retry
+  must remain available, Cancel must clear the error, and repeated taps must not send parallel scans.
+- Run `supabase/tests/delivery-note-receiving-scans.sql` against seeded local Supabase to check
+  rejection of unidentified items, identified unexpected-item review, expected scan counts, and
+  rollback after injected exception-insert and quantity-reconciliation failures.
 - Confirm the mobile app automatically selects the receiving warehouse when only one active
   warehouse is available, hides the redundant warehouse field, and enables Start Receiving without
   an extra selection tap.

@@ -34,6 +34,7 @@ export const Screen = ({
   subtitle,
   back,
   children,
+  footer,
   onRefresh,
   refreshing
 }: {
@@ -41,6 +42,7 @@ export const Screen = ({
   subtitle?: string;
   back?: boolean;
   children: React.ReactNode;
+  footer?: React.ReactNode;
   onRefresh?: () => Promise<void> | void;
   refreshing?: boolean;
 }) => {
@@ -110,6 +112,7 @@ export const Screen = ({
         <BusinessDateBar />
         {children}
       </ScrollView>
+      {footer}
     </SafeAreaView>
   );
 };

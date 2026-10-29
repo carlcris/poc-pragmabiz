@@ -309,6 +309,18 @@ export type ReceiveDirectPickupDeliveryNotePayload = Omit<ReceiveDeliveryNotePay
   }>;
 };
 
+export type DeliveryNoteReceivingScanErrorCode =
+  | "DELIVERY_NOTE_RECEIVING_INVALID_SCAN"
+  | "DELIVERY_NOTE_NOT_FOUND"
+  | "DELIVERY_NOTE_RECEIVING_INVALID_STATUS"
+  | "DELIVERY_NOTE_RECEIVING_FORBIDDEN"
+  | "DELIVERY_NOTE_RECEIVING_NOT_STARTED"
+  | "DELIVERY_NOTE_RECEIVING_FULL_QR_REQUIRED"
+  | "DELIVERY_NOTE_RECEIVING_ITEM_NOT_FOUND"
+  | "DELIVERY_NOTE_RECEIVING_LOOKUP_FAILED"
+  | "DELIVERY_NOTE_RECEIVING_AMBIGUOUS_ITEM"
+  | "DELIVERY_NOTE_RECEIVING_SCAN_FAILED";
+
 export type RecordDeliveryNoteReceivingScanPayload = {
   qrCode: string;
   boxId: string;
@@ -320,6 +332,13 @@ export type RecordDeliveryNoteReceivingScanPayload = {
   notes?: string | null;
   batchNumber?: string | null;
   locationId?: string | null;
+};
+
+export type ResolvedDeliveryNoteReceivingItem = {
+  itemId: string;
+  itemUnitOptionId: string | null;
+  batchNumber: string | null;
+  locationId: string | null;
 };
 
 export type RecordDeliveryNoteReceivingScanResponse = {

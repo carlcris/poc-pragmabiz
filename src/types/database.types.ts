@@ -1133,6 +1133,9 @@ export type Database = {
           status: string;
           uom_id: string;
           updated_at: string;
+          void_reason: string | null;
+          voided_at: string | null;
+          voided_by: string | null;
         };
         Insert: {
           accepted_qty: number;
@@ -1157,6 +1160,9 @@ export type Database = {
           status?: string;
           uom_id: string;
           updated_at?: string;
+          void_reason?: string | null;
+          voided_at?: string | null;
+          voided_by?: string | null;
         };
         Update: {
           accepted_qty?: number;
@@ -1181,6 +1187,9 @@ export type Database = {
           status?: string;
           uom_id?: string;
           updated_at?: string;
+          void_reason?: string | null;
+          voided_at?: string | null;
+          voided_by?: string | null;
         };
         Relationships: [
           {
@@ -1244,6 +1253,13 @@ export type Database = {
             columns: ["uom_id"];
             isOneToOne: false;
             referencedRelation: "units_of_measure";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "delivery_note_receiving_exceptions_voided_by_fkey";
+            columns: ["voided_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
             referencedColumns: ["id"];
           },
         ];
@@ -13067,6 +13083,20 @@ export type Database = {
           total_count: number;
         }[];
       };
+      list_receiving_inbox: {
+        Args: {
+          p_business_unit_id: string;
+          p_company_id: string;
+          p_include_delivery_notes: boolean;
+          p_include_load_lists: boolean;
+          p_kind: string;
+          p_limit: number;
+          p_offset: number;
+          p_search: string;
+          p_stage: string;
+        };
+        Returns: Json;
+      };
       list_transformation_additional_output_items: {
         Args: {
           p_excluded_item_ids?: string[];
@@ -13819,6 +13849,16 @@ export type Database = {
           p_dn_id: string;
           p_reason?: string;
           p_user_id: string;
+        };
+        Returns: undefined;
+      };
+      void_delivery_note_receiving_exception: {
+        Args: {
+          p_business_unit_id: string;
+          p_company_id: string;
+          p_dn_id: string;
+          p_exception_id: string;
+          p_reason?: string;
         };
         Returns: undefined;
       };

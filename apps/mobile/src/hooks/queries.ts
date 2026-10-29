@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import {
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -17,6 +18,8 @@ import { getRealtimeClient } from "@/lib/supabase";
 import type { PickListDetail, PickListSummary } from "@/contracts/picking";
 import type {
   LoadListReceivingDetail,
+  ReceivingInboxKindFilter,
+  ReceivingInboxStageFilter,
   RecordDeliveryNoteReceivingScanPayload,
   SubmitGrnReceivingPayload,
   SubmitDeliveryNoteReceivingPayload,
@@ -29,18 +32,18 @@ export const queryKeys = {
   businessUnitScope: (businessUnitId: string) => ["business-unit-scope", businessUnitId] as const,
   dashboard: (businessUnitId: string) =>
     [...queryKeys.businessUnitScope(businessUnitId), "dashboard"] as const,
-  loadListsScope: (businessUnitId: string) =>
-    [...queryKeys.businessUnitScope(businessUnitId), "load-lists"] as const,
-  loadLists: (businessUnitId: string, status: string, search: string) =>
-    [...queryKeys.loadListsScope(businessUnitId), status, search] as const,
+  receivingInboxScope: (businessUnitId: string) =>
+    [...queryKeys.businessUnitScope(businessUnitId), "receiving-inbox"] as const,
+  receivingInbox: (
+    businessUnitId: string,
+    stage: ReceivingInboxStageFilter,
+    kind: ReceivingInboxKindFilter,
+    search: string
+  ) => [...queryKeys.receivingInboxScope(businessUnitId), stage, kind, search] as const,
   loadListReceivingScope: (businessUnitId: string, id: string) =>
     [...queryKeys.businessUnitScope(businessUnitId), "load-list-receiving", id] as const,
   loadListReceiving: (businessUnitId: string, id: string, includeGrn: boolean) =>
     [...queryKeys.loadListReceivingScope(businessUnitId, id), includeGrn] as const,
-  deliveryNotesScope: (businessUnitId: string) =>
-    [...queryKeys.businessUnitScope(businessUnitId), "delivery-notes"] as const,
-  deliveryNotes: (businessUnitId: string, status: string, search: string) =>
-    [...queryKeys.deliveryNotesScope(businessUnitId), status, search] as const,
   deliveryNote: (businessUnitId: string, id: string) =>
     [...queryKeys.businessUnitScope(businessUnitId), "delivery-note", id] as const,
   receivingWarehouses: (businessUnitId: string) =>
@@ -87,15 +90,9 @@ const markQueriesStaleWithoutRefetch = (client: QueryClient, queryKeysToInvalida
 const useCurrentBusinessUnitId = () =>
   useAuthStore((state) => state.session?.currentBusinessUnit?.id || "");
 
-const markGrnReceivingSummariesStale = (client: QueryClient, businessUnitId: string) =>
+const markReceivingSummariesStale = (client: QueryClient, businessUnitId: string) =>
   markQueriesStaleWithoutRefetch(client, [
-    queryKeys.loadListsScope(businessUnitId),
-    queryKeys.dashboard(businessUnitId),
-  ]);
-
-const markDeliveryNoteReceivingSummariesStale = (client: QueryClient, businessUnitId: string) =>
-  markQueriesStaleWithoutRefetch(client, [
-    queryKeys.deliveryNotesScope(businessUnitId),
+    queryKeys.receivingInboxScope(businessUnitId),
     queryKeys.dashboard(businessUnitId),
   ]);
 
@@ -238,11 +235,20 @@ export const usePickLocationMap = (
   });
 };
 
-export const useLoadLists = (status: string, search: string, enabled = true) => {
+export const useReceivingInbox = (
+  stage: ReceivingInboxStageFilter,
+  kind: ReceivingInboxKindFilter,
+  search: string,
+  enabled = true
+) => {
   const businessUnitId = useCurrentBusinessUnitId();
-  return useQuery({
-    queryKey: queryKeys.loadLists(businessUnitId, status, search),
-    queryFn: () => receivingApi.listLoadLists(status, search),
+  return useInfiniteQuery({
+    queryKey: queryKeys.receivingInbox(businessUnitId, stage, kind, search),
+    queryFn: ({ pageParam }) =>
+      receivingApi.listReceivingInbox({ stage, kind, search, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined,
     enabled: enabled && Boolean(businessUnitId),
   });
 };
@@ -277,7 +283,7 @@ export const useUpdateGrnReceiving = (loadListId: string, grnId: string) => {
           };
         }
       );
-      markGrnReceivingSummariesStale(client, businessUnitId);
+      markReceivingSummariesStale(client, businessUnitId);
     },
   });
 };
@@ -291,7 +297,7 @@ export const useStartGrnReceiving = (loadListId: string, grnId: string) => {
       await client.invalidateQueries({
         queryKey: queryKeys.loadListReceivingScope(businessUnitId, loadListId),
       });
-      markGrnReceivingSummariesStale(client, businessUnitId);
+      markReceivingSummariesStale(client, businessUnitId);
     },
   });
 };
@@ -305,7 +311,7 @@ export const usePauseGrnReceiving = (loadListId: string, grnId: string) => {
       await client.invalidateQueries({
         queryKey: queryKeys.loadListReceivingScope(businessUnitId, loadListId),
       });
-      markGrnReceivingSummariesStale(client, businessUnitId);
+      markReceivingSummariesStale(client, businessUnitId);
     },
   });
 };
@@ -326,17 +332,8 @@ export const useSubmitGrnReceiving = (loadListId: string, grnId: string) => {
           };
         }
       );
-      markGrnReceivingSummariesStale(client, businessUnitId);
+      markReceivingSummariesStale(client, businessUnitId);
     },
-  });
-};
-
-export const useDeliveryNotes = (status: string, search: string, enabled = true) => {
-  const businessUnitId = useCurrentBusinessUnitId();
-  return useQuery({
-    queryKey: queryKeys.deliveryNotes(businessUnitId, status, search),
-    queryFn: () => receivingApi.listDeliveryNotes(status, search),
-    enabled: enabled && Boolean(businessUnitId),
   });
 };
 
@@ -379,6 +376,12 @@ export const useStartReceiving = (id: string) => {
   });
 };
 
+export const useResolveDeliveryNoteReceivingItem = (id: string) =>
+  useMutation({
+    mutationFn: (data: RecordDeliveryNoteReceivingScanPayload) =>
+      receivingApi.resolveDeliveryNoteReceivingItem(id, data),
+  });
+
 export const useRecordDeliveryNoteReceivingScan = (id: string) => {
   const client = useQueryClient();
   const businessUnitId = useCurrentBusinessUnitId();
@@ -387,7 +390,7 @@ export const useRecordDeliveryNoteReceivingScan = (id: string) => {
       receivingApi.recordDeliveryNoteReceivingScan(id, data),
     onSuccess: (response) => {
       client.setQueryData(queryKeys.deliveryNote(businessUnitId, id), response.deliveryNote);
-      markDeliveryNoteReceivingSummariesStale(client, businessUnitId);
+      markReceivingSummariesStale(client, businessUnitId);
     },
   });
 };
@@ -399,7 +402,20 @@ export const useVoidDeliveryNoteReceivingScan = (id: string) => {
     mutationFn: (scanId: string) => receivingApi.voidDeliveryNoteReceivingScan(id, scanId),
     onSuccess: (updated) => {
       client.setQueryData(queryKeys.deliveryNote(businessUnitId, id), updated);
-      markDeliveryNoteReceivingSummariesStale(client, businessUnitId);
+      markReceivingSummariesStale(client, businessUnitId);
+    },
+  });
+};
+
+export const useVoidDeliveryNoteReceivingException = (id: string) => {
+  const client = useQueryClient();
+  const businessUnitId = useCurrentBusinessUnitId();
+  return useMutation({
+    mutationFn: (exceptionId: string) =>
+      receivingApi.voidDeliveryNoteReceivingException(id, exceptionId),
+    // Unexpected items are not part of the inbox progress, so only the detail changes.
+    onSuccess: (updated) => {
+      client.setQueryData(queryKeys.deliveryNote(businessUnitId, id), updated);
     },
   });
 };
@@ -412,7 +428,7 @@ export const useSubmitReceiving = (id: string) => {
       receivingApi.submitReceiving(id, data),
     onSuccess: (updated) => {
       client.setQueryData(queryKeys.deliveryNote(businessUnitId, id), updated);
-      markDeliveryNoteReceivingSummariesStale(client, businessUnitId);
+      markReceivingSummariesStale(client, businessUnitId);
     },
   });
 };

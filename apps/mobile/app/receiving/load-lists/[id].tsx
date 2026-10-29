@@ -2,7 +2,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { Card, ErrorState, LoadingState, Screen, StatusBadge } from "@/components/ui";
+import { ReceivingDetailFooter } from "@/components/receiving/ReceivingDetailFooter";
+import { ReceivingFooterButton } from "@/components/receiving/ReceivingFooterButton";
+import { ReceivingProgressSummary } from "@/components/receiving/ReceivingProgressSummary";
+import { getLoadListStage } from "@/components/receiving/receiving-stages";
+import { Card, ErrorState, LoadingState, Screen } from "@/components/ui";
 import {
   useLoadListReceiving,
   usePauseGrnReceiving,
@@ -14,7 +18,7 @@ import { useScreenFocusState } from "@/hooks/useScreenFocusState";
 import { useAuthStore } from "@/stores/authStore";
 import type { GrnLine, UpdateGrnLinePayload } from "@/contracts/receiving";
 import { colors } from "@/theme/colors";
-import { borderRadius, sizes, spacing } from "@/theme/spacing";
+import { borderRadius, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
 import { formatDate } from "@/utils/format";
 import {
@@ -26,6 +30,8 @@ import {
 } from "@/utils/permissions";
 
 type GrnLineDraft = Omit<UpdateGrnLinePayload, "id" | "numBoxes">;
+
+type LineTab = "to_count" | "counted" | "variance";
 
 const todayIsoDate = () => new Date().toISOString().split("T")[0];
 
@@ -40,6 +46,25 @@ const getInitialDraft = (item: GrnLine): GrnLineDraft => ({
   notes: item.notes || "",
 });
 
+const describeLineDraft = (item: GrnLine, draft: GrnLineDraft) => {
+  const hasEntry = draft.receivedQty > 0 || draft.damagedQty > 0;
+  const variance = hasEntry ? draft.receivedQty + draft.damagedQty - item.expectedQty : null;
+  const hasIssue = draft.damagedQty > 0 || (variance !== null && variance !== 0);
+  const issues = [
+    variance !== null && variance < 0 ? `Short ${Math.abs(variance)}` : null,
+    variance !== null && variance > 0 ? `Over ${variance}` : null,
+    draft.damagedQty > 0 ? `${draft.damagedQty} damaged` : null,
+  ].filter((issue): issue is string => issue !== null);
+
+  return { hasEntry, hasIssue, issueText: issues.join(" · ") };
+};
+
+const LINE_TABS: { value: LineTab; label: string }[] = [
+  { value: "to_count", label: "To count" },
+  { value: "counted", label: "Counted" },
+  { value: "variance", label: "Variance" },
+];
+
 export default function LoadListReceivingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const isFocused = useScreenFocusState();
@@ -52,6 +77,8 @@ export default function LoadListReceivingDetailScreen() {
   const [lineEdits, setLineEdits] = useState<Record<string, GrnLineDraft>>({});
   const [actionMessage, setActionMessage] = useState("");
   const [actionError, setActionError] = useState("");
+  const [lineTab, setLineTab] = useState<LineTab | null>(null);
+  const [expandedLineId, setExpandedLineId] = useState<string | null>(null);
   const detail = useLoadListReceiving(id, {
     enabled: canViewReceiving && isFocused,
     includeGrn: canViewGrn,
@@ -80,18 +107,32 @@ export default function LoadListReceivingDetailScreen() {
     setLineEdits({});
     setActionError("");
     setActionMessage("");
+    setExpandedLineId(null);
   }, [grn?.id]);
 
   const getLineDraft = (item: GrnLine) => lineEdits[item.id] || getInitialDraft(item);
 
-  const checkedItems =
-    grn?.items.filter((item) => {
-      const draft = getLineDraft(item);
-      return draft.receivedQty > 0 || draft.damagedQty > 0;
-    }).length || 0;
-  const totalItems = grn?.items.length || 0;
-  const progress = totalItems > 0 ? checkedItems / totalItems : 0;
-  const hasReceivedQty = Boolean(grn?.items.some((item) => getLineDraft(item).receivedQty > 0));
+  const lines = (grn?.items || []).map((item) => {
+    const draft = getLineDraft(item);
+    return { item, draft, ...describeLineDraft(item, draft) };
+  });
+  const checkedItems = lines.filter((line) => line.hasEntry).length;
+  const totalItems = lines.length;
+  const remainingItems = totalItems - checkedItems;
+  const varianceItems = lines.filter((line) => line.hasIssue).length;
+  const hasReceivedQty = lines.some((line) => line.draft.receivedQty > 0);
+  const activeTab: LineTab = lineTab ?? (remainingItems > 0 ? "to_count" : "counted");
+  const tabCounts: Record<LineTab, number> = {
+    to_count: remainingItems,
+    counted: checkedItems,
+    variance: varianceItems,
+  };
+  const visibleLines = lines.filter((line) => {
+    if (line.item.id === expandedLineId) return true;
+    if (activeTab === "to_count") return !line.hasEntry;
+    if (activeTab === "counted") return line.hasEntry;
+    return line.hasIssue;
+  });
 
   const handleLineChange = (item: GrnLine, field: keyof GrnLineDraft, value: number | string) => {
     setActionError("");
@@ -169,6 +210,7 @@ export default function LoadListReceivingDetailScreen() {
           : undefined,
       });
       setLineEdits({});
+      setExpandedLineId(null);
       setActionMessage("GRN submitted to putaway.");
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Failed to submit GRN.");
@@ -208,6 +250,7 @@ export default function LoadListReceivingDetailScreen() {
     try {
       await pauseGrn.mutateAsync();
       setLineEdits({});
+      setExpandedLineId(null);
       setActionMessage("Receiving paused.");
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Failed to pause receiving.");
@@ -217,8 +260,8 @@ export default function LoadListReceivingDetailScreen() {
   if (!canViewReceiving) {
     return (
       <Screen
-        title="Load List"
-        subtitle="Goods Receipt Note"
+        title="Load list"
+        subtitle="Goods receipt"
         back
         onRefresh={handleRefresh}
         refreshing={detail.isRefetching}
@@ -228,239 +271,169 @@ export default function LoadListReceivingDetailScreen() {
     );
   }
 
+  const unsavedCount = Object.keys(lineEdits).length;
+  const footerNote = actionError
+    ? { text: actionError, tone: "error" as const }
+    : actionMessage
+      ? { text: actionMessage, tone: "success" as const }
+      : canStart
+        ? { text: "Start receiving before entering quantities.", tone: "neutral" as const }
+        : hasUnsavedChanges
+          ? {
+              text: `Unsaved changes on ${unsavedCount} ${unsavedCount === 1 ? "line" : "lines"}`,
+              tone: "warning" as const,
+            }
+          : !hasReceivedQty
+            ? { text: "Enter a received quantity to submit.", tone: "neutral" as const }
+            : null;
+
+  const footer =
+    grn && canStart ? (
+      <ReceivingDetailFooter note={footerNote?.text} noteTone={footerNote?.tone}>
+        <ReceivingFooterButton
+          label={startGrn.isPending ? "Starting..." : "Start receiving"}
+          disabled={busy}
+          onPress={() => void handleStartReceiving()}
+        />
+      </ReceivingDetailFooter>
+    ) : grn && canEdit ? (
+      <ReceivingDetailFooter note={footerNote?.text} noteTone={footerNote?.tone}>
+        <ReceivingFooterButton
+          label={updateGrn.isPending ? "Saving..." : "Save"}
+          variant="secondary"
+          disabled={!hasUnsavedChanges || busy}
+          onPress={() => void saveChanges()}
+        />
+        {canSubmitReceiving ? (
+          <ReceivingFooterButton
+            label={
+              submitGrn.isPending
+                ? "Submitting..."
+                : remainingItems > 0
+                  ? `Submit · ${remainingItems} left`
+                  : "Submit"
+            }
+            grow={1.4}
+            disabled={busy || !hasReceivedQty}
+            onPress={() => void handleSubmit()}
+          />
+        ) : null}
+      </ReceivingDetailFooter>
+    ) : null;
+
+  const facts = loadList
+    ? [
+        grn?.grnNumber ?? null,
+        loadList.containerNumber ? `Container ${loadList.containerNumber}` : null,
+        loadList.sealNumber ? `Seal ${loadList.sealNumber}` : null,
+        loadList.actualArrivalDate
+          ? `Arrived ${formatDate(loadList.actualArrivalDate)}`
+          : `ETA ${formatDate(loadList.estimatedArrivalDate)}`,
+      ].filter((fact): fact is string => fact !== null)
+    : [];
+
   return (
     <Screen
-      title={loadList?.llNumber || "Load List"}
-      subtitle="Goods Receipt Note"
+      title={loadList?.llNumber || "Load list"}
+      subtitle={loadList ? `Load list · ${loadList.supplierName}` : "Goods receipt"}
       back
       onRefresh={handleRefresh}
       refreshing={detail.isRefetching}
+      footer={footer}
     >
       {detail.isLoading ? <LoadingState /> : null}
       {detail.error ? <ErrorState message="Unable to load load list receiving details." /> : null}
 
       {loadList ? (
         <>
-          <Card style={styles.summaryCard}>
-            <View style={styles.summaryHeader}>
-              <View style={styles.summaryIcon}>
-                <Ionicons name="cube-outline" size={24} color="#fff" />
-              </View>
-              <View style={styles.summaryTitleBlock}>
-                <Text style={styles.summaryEyebrow}>Load List</Text>
-                <Text style={styles.summaryTitle}>{loadList.llNumber}</Text>
-              </View>
-              <StatusBadge status={loadList.status} />
-            </View>
-            <View style={styles.detailGrid}>
-              <DetailItem label="Supplier" value={loadList.supplierName} />
-              <DetailItem
-                label="Destination BU"
-                value={loadList.destinationBusinessUnitName || "-"}
-              />
-              <DetailItem label="Arrived" value={formatDate(loadList.actualArrivalDate)} />
-              <DetailItem label="ETA" value={formatDate(loadList.estimatedArrivalDate)} />
-              {loadList.containerNumber ? (
-                <DetailItem label="Container" value={loadList.containerNumber} />
-              ) : null}
-              {loadList.sealNumber ? <DetailItem label="Seal" value={loadList.sealNumber} /> : null}
-            </View>
-          </Card>
+          <ReceivingProgressSummary
+            stage={getLoadListStage(loadList.status)}
+            done={checkedItems}
+            total={totalItems}
+            unitLabel="lines counted"
+            facts={facts}
+            action={
+              canPause ? (
+                <Pressable
+                  onPress={() => void handlePauseReceiving()}
+                  disabled={busy}
+                  accessibilityRole="button"
+                  style={styles.pauseButton}
+                >
+                  <Ionicons name="pause-outline" size={16} color={colors.primaryDark} />
+                  <Text style={styles.pauseText}>
+                    {pauseGrn.isPending ? "Pausing..." : "Pause receiving"}
+                  </Text>
+                </Pressable>
+              ) : null
+            }
+          />
+
+          {!footer && (actionMessage || actionError) ? (
+            <Text style={actionError ? styles.errorText : styles.successText}>
+              {actionError || actionMessage}
+            </Text>
+          ) : null}
 
           {grn ? (
             <>
-              <Card style={styles.progressCard}>
-                <View style={styles.progressHeader}>
-                  <View>
-                    <Text style={styles.sectionTitle}>Receiving Checklist</Text>
-                    <Text style={styles.sectionSubtitle}>{grn.grnNumber}</Text>
-                  </View>
-                  <View style={styles.progressCount}>
-                    <Text style={styles.progressCountText}>
-                      {checkedItems}/{totalItems}
-                    </Text>
-                    <Text style={styles.progressCountLabel}>Items</Text>
-                  </View>
-                </View>
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-                </View>
-                <StatusBadge status={grn.status} />
-              </Card>
-
-              {canStart || canPause || canEdit ? (
-                <Card style={styles.actionCard}>
-                  <View style={styles.actionHeader}>
-                    <View style={styles.actionTitleBlock}>
-                      <Text style={styles.actionTitle}>
-                        {canStart ? "Ready to receive" : "Receive items"}
-                      </Text>
-                      {canStart || canEdit ? (
-                        <Text style={styles.actionSubtitle}>
-                          {canStart
-                            ? "Start receiving before entering quantities."
-                            : "Save quantities, then submit to create putaway tasks."}
-                        </Text>
-                      ) : null}
-                    </View>
-                    {hasUnsavedChanges ? <Text style={styles.unsavedText}>Unsaved</Text> : null}
-                  </View>
-                  {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
-                  {actionMessage ? <Text style={styles.successText}>{actionMessage}</Text> : null}
-                  {canStart ? (
+              <View style={styles.tabs} accessibilityRole="tablist">
+                {LINE_TABS.map((tab) => {
+                  const active = tab.value === activeTab;
+                  return (
                     <Pressable
-                      onPress={() => void handleStartReceiving()}
-                      disabled={busy}
-                      style={({ pressed }) => [
-                        styles.primaryButton,
-                        busy && styles.buttonDisabled,
-                        pressed && !busy ? styles.primaryButtonPressed : null,
-                      ]}
+                      key={tab.value}
+                      onPress={() => {
+                        setLineTab(tab.value);
+                        setExpandedLineId(null);
+                      }}
+                      accessibilityRole="tab"
+                      accessibilityState={{ selected: active }}
+                      style={[styles.tab, active ? styles.tabActive : null]}
                     >
-                      <Ionicons name="play-outline" size={18} color="#fff" />
-                      <Text style={styles.primaryButtonText}>
-                        {startGrn.isPending ? "Starting..." : "Start Receiving"}
+                      <Text style={[styles.tabText, active ? styles.tabTextActive : null]}>
+                        {tab.label} · {tabCounts[tab.value]}
                       </Text>
                     </Pressable>
-                  ) : (
-                    <View style={styles.actionButtons}>
-                      {canPause ? (
-                        <Pressable
-                          onPress={() => void handlePauseReceiving()}
-                          disabled={busy}
-                          style={({ pressed }) => [
-                            styles.secondaryButton,
-                            busy && styles.buttonDisabled,
-                            pressed && !busy ? styles.secondaryButtonPressed : null,
-                          ]}
-                        >
-                          <Ionicons name="pause-outline" size={18} color={colors.text} />
-                          <Text style={styles.secondaryButtonText}>
-                            {pauseGrn.isPending ? "Pausing..." : "Pause"}
-                          </Text>
-                        </Pressable>
-                      ) : null}
-                      {canEdit ? (
-                        <Pressable
-                          onPress={() => void saveChanges()}
-                          disabled={!hasUnsavedChanges || busy}
-                          style={({ pressed }) => [
-                            styles.secondaryButton,
-                            (!hasUnsavedChanges || busy) && styles.buttonDisabled,
-                            pressed && hasUnsavedChanges && !busy
-                              ? styles.secondaryButtonPressed
-                              : null,
-                          ]}
-                        >
-                          <Ionicons name="save-outline" size={18} color={colors.text} />
-                          <Text style={styles.secondaryButtonText}>
-                            {updateGrn.isPending ? "Saving..." : "Save"}
-                          </Text>
-                        </Pressable>
-                      ) : null}
-                      {canSubmitReceiving ? (
-                        <Pressable
-                          onPress={() => void handleSubmit()}
-                          disabled={busy || !hasReceivedQty}
-                          style={({ pressed }) => [
-                            styles.primaryButton,
-                            (busy || !hasReceivedQty) && styles.buttonDisabled,
-                            pressed && !busy && hasReceivedQty ? styles.primaryButtonPressed : null,
-                          ]}
-                        >
-                          <Ionicons name="paper-plane-outline" size={18} color="#fff" />
-                          <Text style={styles.primaryButtonText}>
-                            {submitGrn.isPending ? "Submitting..." : "Submit"}
-                          </Text>
-                        </Pressable>
-                      ) : null}
-                    </View>
-                  )}
-                </Card>
-              ) : null}
-
-              <View style={styles.itemsSection}>
-                {grn.items.map((item) => {
-                  const draft = getLineDraft(item);
-                  const hasEntry = draft.receivedQty > 0 || draft.damagedQty > 0;
-                  const variance = hasEntry
-                    ? draft.receivedQty + draft.damagedQty - item.expectedQty
-                    : null;
-                  const hasIssue = draft.damagedQty > 0 || (variance !== null && variance < 0);
-
-                  return (
-                    <Card
-                      key={item.id}
-                      style={[
-                        styles.itemCard,
-                        hasEntry && !hasIssue ? styles.itemCardReceived : null,
-                        hasIssue ? styles.itemCardIssue : null,
-                      ]}
-                    >
-                      <View style={styles.itemHeader}>
-                        <Ionicons
-                          name={hasEntry ? "checkmark-circle-outline" : "ellipse-outline"}
-                          size={24}
-                          color={hasEntry ? colors.greenDark : colors.muted}
-                        />
-                        <View style={styles.itemTitleBlock}>
-                          <Text style={styles.itemName} numberOfLines={2}>
-                            {item.itemName}
-                          </Text>
-                          <Text style={styles.itemMeta}>{item.itemCode}</Text>
-                          <Text style={styles.itemUnit}>{item.unitLabel}</Text>
-                        </View>
-                        <View style={styles.itemExpected}>
-                          <Text style={styles.itemExpectedLabel}>Expected</Text>
-                          <Text style={styles.itemExpectedValue}>{item.expectedQty}</Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.quantityGrid}>
-                        {canEdit ? (
-                          <>
-                            <QuantityInput
-                              label="Received"
-                              value={draft.receivedQty}
-                              tone="green"
-                              disabled={busy}
-                              onChange={(value) =>
-                                handleLineChange(item, "receivedQty", parseQuantity(value))
-                              }
-                            />
-                            <QuantityInput
-                              label="Damaged"
-                              value={draft.damagedQty}
-                              tone="red"
-                              disabled={busy}
-                              onChange={(value) =>
-                                handleLineChange(item, "damagedQty", parseQuantity(value))
-                              }
-                            />
-                          </>
-                        ) : (
-                          <>
-                            <QuantityBox label="Received" value={draft.receivedQty} tone="green" />
-                            <QuantityBox label="Damaged" value={draft.damagedQty} tone="red" />
-                          </>
-                        )}
-                      </View>
-
-                      {variance !== null && variance !== 0 ? (
-                        <Text style={[styles.variance, variance < 0 ? styles.varianceShort : null]}>
-                          Variance {variance > 0 ? "+" : ""}
-                          {variance}
-                        </Text>
-                      ) : null}
-                    </Card>
                   );
                 })}
               </View>
+
+              {visibleLines.length === 0 ? (
+                <Text style={styles.emptyLines}>
+                  {activeTab === "to_count"
+                    ? "Every line has been counted."
+                    : activeTab === "counted"
+                      ? "No lines counted yet."
+                      : "No variances."}
+                </Text>
+              ) : (
+                <View style={styles.lines}>
+                  {visibleLines.map((line) => (
+                    <LoadListLineRow
+                      key={line.item.id}
+                      item={line.item}
+                      draft={line.draft}
+                      hasEntry={line.hasEntry}
+                      issueText={line.issueText}
+                      expanded={line.item.id === expandedLineId}
+                      canEdit={canEdit}
+                      busy={busy}
+                      onToggle={() =>
+                        setExpandedLineId((current) =>
+                          current === line.item.id ? null : line.item.id
+                        )
+                      }
+                      onChange={(field, value) => handleLineChange(line.item, field, value)}
+                    />
+                  ))}
+                </View>
+              )}
             </>
           ) : canViewGrn ? (
             <Card style={styles.emptyCard}>
-              <Ionicons name="document-text-outline" size={48} color={colors.muted} />
-              <Text style={styles.emptyTitle}>No GRN Found</Text>
+              <Ionicons name="document-text-outline" size={40} color={colors.textSecondary} />
+              <Text style={styles.emptyTitle}>No GRN found</Text>
               <Text style={styles.emptyText}>
                 A goods receipt note has not been created for this load list yet.
               </Text>
@@ -472,366 +445,328 @@ export default function LoadListReceivingDetailScreen() {
   );
 }
 
-const DetailItem = ({ label, value }: { label: string; value: string }) => (
-  <View style={styles.detailItem}>
-    <Text style={styles.detailLabel}>{label}</Text>
-    <Text style={styles.detailValue}>{value}</Text>
-  </View>
-);
-
-const QuantityBox = ({
-  label,
-  value,
-  tone,
+const LoadListLineRow = ({
+  item,
+  draft,
+  hasEntry,
+  issueText,
+  expanded,
+  canEdit,
+  busy,
+  onToggle,
+  onChange,
 }: {
-  label: string;
-  value: number;
-  tone: "green" | "red" | "blue";
+  item: GrnLine;
+  draft: GrnLineDraft;
+  hasEntry: boolean;
+  issueText: string;
+  expanded: boolean;
+  canEdit: boolean;
+  busy: boolean;
+  onToggle: () => void;
+  onChange: (field: "receivedQty" | "damagedQty", value: number) => void;
 }) => (
-  <View style={styles.quantityBox}>
-    <Text
-      style={[
-        styles.quantityLabel,
-        tone === "green" ? styles.quantityGreen : null,
-        tone === "red" ? styles.quantityRed : null,
-        tone === "blue" ? styles.quantityBlue : null,
-      ]}
-    >
-      {label}
-    </Text>
-    <Text style={styles.quantityValue}>{value}</Text>
+  <View style={[styles.line, expanded ? styles.lineExpanded : null]}>
+    <View style={styles.lineHeader}>
+      <View style={styles.lineTitleBlock}>
+        <Text style={styles.lineName} numberOfLines={2}>
+          {item.itemName}
+        </Text>
+        <Text style={styles.lineMeta}>
+          {item.itemCode} · {item.unitLabel}
+        </Text>
+      </View>
+      <View style={styles.lineValueBlock}>
+        <Text style={styles.lineValueLabel}>EXPECTED</Text>
+        <Text style={styles.lineValue}>{item.expectedQty}</Text>
+      </View>
+    </View>
+
+    {expanded && canEdit ? (
+      <>
+        <View style={styles.stepperGrid}>
+          <QuantityStepper
+            label="Received"
+            value={draft.receivedQty}
+            disabled={busy}
+            onChange={(value) => onChange("receivedQty", value)}
+          />
+          <QuantityStepper
+            label="Damaged"
+            value={draft.damagedQty}
+            disabled={busy}
+            onChange={(value) => onChange("damagedQty", value)}
+          />
+        </View>
+        <View style={styles.lineFooter}>
+          <Text style={issueText ? styles.issueText : styles.matchText}>
+            {issueText || (hasEntry ? "Matches expected" : "Not counted yet")}
+          </Text>
+          <Pressable onPress={onToggle} accessibilityRole="button" style={styles.lineAction}>
+            <Text style={styles.lineActionText}>Done</Text>
+          </Pressable>
+        </View>
+      </>
+    ) : (
+      <View style={styles.lineFooter}>
+        <Text
+          style={issueText ? styles.issueText : hasEntry ? styles.matchText : styles.pendingText}
+        >
+          {hasEntry
+            ? `${draft.receivedQty} received${issueText ? ` · ${issueText}` : ""}`
+            : "Not counted yet"}
+        </Text>
+        {canEdit ? (
+          <Pressable onPress={onToggle} accessibilityRole="button" style={styles.lineAction}>
+            <Text style={styles.lineActionText}>{hasEntry ? "Edit" : "Count"}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    )}
   </View>
 );
 
-const QuantityInput = ({
+const QuantityStepper = ({
   label,
   value,
-  tone,
   disabled,
   onChange,
 }: {
   label: string;
   value: number;
-  tone: "green" | "red" | "blue";
   disabled: boolean;
-  onChange: (value: string) => void;
-}) => {
-  const [isFocused, setIsFocused] = useState(false);
-
-  return (
-    <View style={[styles.quantityBox, disabled ? styles.quantityBoxDisabled : null]}>
-      <Text
-        style={[
-          styles.quantityLabel,
-          tone === "green" ? styles.quantityGreen : null,
-          tone === "red" ? styles.quantityRed : null,
-          tone === "blue" ? styles.quantityBlue : null,
-        ]}
+  onChange: (value: number) => void;
+}) => (
+  <View style={styles.stepperField}>
+    <Text style={styles.stepperLabel}>{label}</Text>
+    <View style={[styles.stepper, disabled ? styles.stepperDisabled : null]}>
+      <Pressable
+        onPress={() => onChange(Math.max(value - 1, 0))}
+        disabled={disabled || value <= 0}
+        accessibilityRole="button"
+        accessibilityLabel={`Decrease ${label.toLowerCase()}`}
+        style={styles.stepperButton}
       >
-        {label}
-      </Text>
+        <Ionicons name="remove" size={20} color={colors.text} />
+      </Pressable>
       <TextInput
         value={String(value)}
         editable={!disabled}
         keyboardType="decimal-pad"
         selectTextOnFocus
-        onChangeText={onChange}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        style={[styles.quantityInput, isFocused ? styles.quantityInputFocused : null]}
+        accessibilityLabel={label}
+        onChangeText={(text) => onChange(parseQuantity(text))}
+        style={styles.stepperInput}
       />
+      <Pressable
+        onPress={() => onChange(value + 1)}
+        disabled={disabled}
+        accessibilityRole="button"
+        accessibilityLabel={`Increase ${label.toLowerCase()}`}
+        style={styles.stepperButton}
+      >
+        <Ionicons name="add" size={20} color={colors.text} />
+      </Pressable>
     </View>
-  );
-};
+  </View>
+);
 
 const styles = StyleSheet.create({
-  summaryCard: {
-    gap: spacing.base,
-  },
-  summaryHeader: {
+  pauseButton: {
+    alignSelf: "flex-start",
+    minHeight: 44,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
-  },
-  summaryIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  summaryTitleBlock: {
-    flex: 1,
-  },
-  summaryEyebrow: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-  },
-  summaryTitle: {
-    ...typography.title,
-    color: colors.text,
-  },
-  detailGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
-  },
-  detailItem: {
-    width: "47%",
     gap: spacing.xs,
   },
-  detailLabel: {
-    ...typography.caption,
+  pauseText: {
+    fontSize: 14,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.primaryDark,
+  },
+  errorText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.dangerDark,
+  },
+  successText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.statusSuccess,
+  },
+  tabs: {
+    flexDirection: "row",
+    gap: 3,
+    padding: 3,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.border,
+  },
+  tab: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+  },
+  tabActive: {
+    backgroundColor: colors.surface,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: typography.fontWeights.semibold,
     color: colors.textSecondary,
   },
-  detailValue: {
-    ...typography.bodySmall,
-    fontWeight: typography.fontWeights.semibold,
+  tabTextActive: {
     color: colors.text,
   },
-  progressCard: {
+  emptyLines: {
+    paddingVertical: spacing.lg,
+    textAlign: "center",
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  lines: {
+    gap: spacing.sm,
+  },
+  line: {
+    gap: spacing.md,
+    padding: spacing.base,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  lineExpanded: {
+    borderWidth: 2,
+    borderColor: colors.primaryDark,
+  },
+  lineHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: spacing.md,
   },
-  progressHeader: {
+  lineTitleBlock: {
+    flex: 1,
+    gap: 2,
+  },
+  lineName: {
+    ...typography.titleSmall,
+    fontSize: 15,
+    color: colors.text,
+  },
+  lineMeta: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.textSecondary,
+  },
+  lineValueBlock: {
+    alignItems: "flex-end",
+  },
+  lineValueLabel: {
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.textSecondary,
+  },
+  lineValue: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
+    fontVariant: ["tabular-nums"],
+  },
+  lineFooter: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.md,
   },
-  sectionTitle: {
-    ...typography.title,
-    color: colors.text,
-  },
-  sectionSubtitle: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  progressCount: {
-    alignItems: "flex-end",
-  },
-  progressCountText: {
-    fontSize: 22,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.primary,
-  },
-  progressCountLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  progressTrack: {
-    height: 8,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.border,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary,
-  },
-  actionCard: {
-    gap: spacing.md,
-  },
-  actionHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.md,
-  },
-  actionTitleBlock: {
+  issueText: {
     flex: 1,
+    fontSize: 13,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.statusWarning,
   },
-  actionTitle: {
-    ...typography.body,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.text,
-  },
-  actionSubtitle: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  unsavedText: {
-    ...typography.caption,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.amberDark,
-  },
-  actionButtons: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  primaryButton: {
+  matchText: {
     flex: 1,
-    minHeight: 48,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary,
+    fontSize: 13,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.statusSuccess,
+  },
+  pendingText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  lineAction: {
+    minHeight: 44,
+    paddingHorizontal: spacing.base,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  primaryButtonPressed: {
-    backgroundColor: colors.primaryDark,
-  },
-  primaryButtonText: {
-    ...typography.bodySmall,
-    fontWeight: typography.fontWeights.bold,
-    color: "#fff",
-  },
-  secondaryButton: {
-    flex: 1,
-    minHeight: 48,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  lineActionText: {
+    fontSize: 14,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.primaryDark,
+  },
+  stepperGrid: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  stepperField: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  stepperLabel: {
+    fontSize: 12,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.statusNeutral,
+  },
+  stepper: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: 48,
+    borderRadius: borderRadius.base,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
+  },
+  stepperDisabled: {
+    opacity: 0.5,
+  },
+  stepperButton: {
+    width: 44,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
+    backgroundColor: colors.backgroundSecondary,
   },
-  secondaryButtonPressed: {
-    backgroundColor: colors.faint,
-  },
-  secondaryButtonText: {
-    ...typography.bodySmall,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.text,
-  },
-  buttonDisabled: {
-    opacity: 0.45,
-  },
-  errorText: {
-    ...typography.bodySmall,
-    color: colors.dangerDark,
-    fontWeight: typography.fontWeights.semibold,
-  },
-  successText: {
-    ...typography.bodySmall,
-    color: colors.greenDark,
-    fontWeight: typography.fontWeights.semibold,
-  },
-  itemsSection: {
-    gap: spacing.md,
-  },
-  itemCard: {
-    gap: spacing.md,
-  },
-  itemCardReceived: {
-    borderColor: colors.green,
-    backgroundColor: colors.greenSoft,
-  },
-  itemCardIssue: {
-    borderColor: colors.amber,
-    backgroundColor: colors.amberSoft,
-  },
-  itemHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.sm,
-  },
-  itemTitleBlock: {
+  stepperInput: {
     flex: 1,
-  },
-  itemName: {
-    ...typography.body,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.text,
-  },
-  itemMeta: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  itemUnit: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  itemExpected: {
-    alignItems: "flex-end",
-    minWidth: 72,
-  },
-  itemExpectedLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  itemExpectedValue: {
-    fontSize: 20,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.text,
-  },
-  quantityGrid: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  quantityBox: {
-    flex: 1,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.faint,
-    padding: spacing.sm,
-    alignItems: "center",
-  },
-  quantityBoxDisabled: {
-    opacity: 0.6,
-  },
-  quantityLabel: {
-    ...typography.caption,
-    fontWeight: typography.fontWeights.semibold,
-  },
-  quantityGreen: {
-    color: colors.greenDark,
-  },
-  quantityRed: {
-    color: colors.dangerDark,
-  },
-  quantityBlue: {
-    color: colors.blueDark,
-  },
-  quantityValue: {
-    marginTop: spacing.xs,
+    minWidth: 0,
+    height: 48,
+    textAlign: "center",
     fontSize: 18,
     fontWeight: typography.fontWeights.bold,
     color: colors.text,
   },
-  quantityInput: {
-    marginTop: spacing.sm,
-    width: "100%",
-    minHeight: sizes.input.base,
-    borderRadius: borderRadius.base,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.sm,
-    textAlign: "center",
-    fontSize: 20,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.text,
-  },
-  quantityInputFocused: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primarySoft,
-  },
-  variance: {
-    ...typography.bodySmall,
-    color: colors.blueDark,
-    fontWeight: typography.fontWeights.semibold,
-  },
-  varianceShort: {
-    color: colors.dangerDark,
-  },
   emptyCard: {
-    minHeight: 240,
     alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.md,
+    gap: spacing.sm,
+    paddingVertical: spacing.xl,
   },
   emptyTitle: {
-    ...typography.title,
+    ...typography.titleSmall,
     color: colors.text,
   },
   emptyText: {
-    ...typography.bodySmall,
+    fontSize: 14,
+    lineHeight: 20,
     color: colors.textSecondary,
     textAlign: "center",
   },

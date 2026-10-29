@@ -371,6 +371,8 @@ export const fetchDeliveryNote = async (
     .eq("id", id)
     .eq("company_id", companyId)
     .is("deleted_at", null)
+    // Voided exceptions are undone scans kept only for audit.
+    .neq("delivery_note_receiving_exceptions.status", "voided")
     .maybeSingle();
 
   if (error) {

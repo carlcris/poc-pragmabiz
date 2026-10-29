@@ -3490,6 +3490,19 @@ export type TranslationKeys = {
     batchAvailabilityCheckFailed: string;
   };
   deliveryNotesPage: Record<string, string>;
+  deliveryNoteReceivingScan: {
+    invalidScan: string;
+    scanFullQr: string;
+    itemNotFound: string;
+    lookupFailed: string;
+    ambiguousUnit: string;
+    ambiguousItem: string;
+    deliveryNoteNotFound: string;
+    unexpectedItemNotFound: string;
+    unexpectedItemReviewed: string;
+    unexpectedItemReceivingClosed: string;
+    unexpectedItemVoidFailed: string;
+  };
   deliveryNoteDetailPage: Record<string, string>;
   pickListsPage: Record<string, string>;
   reorderManagementPage: Record<string, string>;
@@ -7629,6 +7642,24 @@ export const translations: Record<Locale, TranslationKeys> = {
       receiveDescription: "Select the destination warehouse to begin receiving this delivery note.",
       voidDescription: "Review the details and confirm void.",
     },
+    deliveryNoteReceivingScan: {
+      invalidScan: "Check the scanned code and quantity.",
+      scanFullQr:
+        "This box ID could not be matched to an item. Scan the full QR code on the box to read its item details.",
+      itemNotFound:
+        "The QR code does not identify an available item. Check the label and scan again.",
+      lookupFailed: "Could not identify the item. Try scanning again.",
+      ambiguousUnit: "This code matches multiple item units. Scan the full QR code on the box.",
+      ambiguousItem: "This code matches multiple items. Scan the full QR code on the box.",
+      deliveryNoteNotFound: "The delivery note could not be found.",
+      unexpectedItemNotFound:
+        "This unexpected item scan could not be found. Refresh and try again.",
+      unexpectedItemReviewed:
+        "This unexpected item has already been reviewed and can't be removed.",
+      unexpectedItemReceivingClosed:
+        "Unexpected items can only be removed while receiving is in progress.",
+      unexpectedItemVoidFailed: "Could not remove the unexpected item. Refresh and try again.",
+    },
     deliveryNoteDetailPage: {
       itemsAddedSuccess: "Delivery note items added and queued for picking",
       itemsAddFailed: "Failed to add delivery note items. Refresh and try again.",
@@ -7723,8 +7754,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       voided: "Voided",
       draft: "Draft",
       confirmedStatus: "Confirmed",
-      queuedForPicking: "Queued for Picking",
-      pickingInProgress: "Picking in Progress",
+      queuedForPicking: "Queued For Picking",
+      pickingInProgress: "Picking In Progress",
       dispatchReady: "Dispatch Ready",
       dispatchedStatus: "Dispatched",
       receivedStatus: "Received",
@@ -7754,6 +7785,11 @@ export const translations: Record<Locale, TranslationKeys> = {
       creatingReplacementPickList: "Creating pick list...",
       unknownSourceBusinessUnit: "Unknown source business unit",
       unknownDestinationBusinessUnit: "Unknown destination business unit",
+      receivingReviewPendingReview: "Pending Review",
+      receivingReviewAccepted: "Accepted",
+      receivingReviewRejected: "Rejected",
+      receivingReviewResolved: "Resolved",
+      reviewedAt: "Reviewed At",
       unknownItem: "Unknown item",
       unknownUnit: "Unknown unit",
       unknownStockRequest: "Unknown stock transfer",
@@ -14222,6 +14258,19 @@ export const translations: Record<Locale, TranslationKeys> = {
       receiveDescription: "选择目标仓库以开始接收此送货单。",
       voidDescription: "查看详情并确认作废。",
     },
+    deliveryNoteReceivingScan: {
+      invalidScan: "请检查扫描的代码和数量。",
+      scanFullQr: "无法通过此箱号匹配商品。请扫描箱子上的完整二维码以读取商品详情。",
+      itemNotFound: "此二维码无法识别可用商品。请检查标签并重新扫描。",
+      lookupFailed: "无法识别商品。请重新扫描。",
+      ambiguousUnit: "此代码匹配多个商品单位。请扫描箱子上的完整二维码。",
+      ambiguousItem: "此代码匹配多个商品。请扫描箱子上的完整二维码。",
+      deliveryNoteNotFound: "找不到该送货单。",
+      unexpectedItemNotFound: "找不到此意外商品扫描记录。请刷新后重试。",
+      unexpectedItemReviewed: "此意外商品已审核，无法移除。",
+      unexpectedItemReceivingClosed: "只能在收货进行中时移除意外商品。",
+      unexpectedItemVoidFailed: "无法移除意外商品。请刷新后重试。",
+    },
     deliveryNoteDetailPage: {
       itemsAddedSuccess: "送货单项目已添加并加入拣货队列",
       itemsAddFailed: "添加送货单项目失败。请刷新后重试。",
@@ -14341,6 +14390,11 @@ export const translations: Record<Locale, TranslationKeys> = {
       creatingReplacementPickList: "正在创建拣货单...",
       unknownSourceBusinessUnit: "未知来源业务单元",
       unknownDestinationBusinessUnit: "未知目标业务单元",
+      receivingReviewPendingReview: "待审核",
+      receivingReviewAccepted: "已接受",
+      receivingReviewRejected: "已拒绝",
+      receivingReviewResolved: "已解决",
+      reviewedAt: "审核时间",
       unknownItem: "未知商品",
       unknownUnit: "未知单位",
       unknownStockRequest: "未知库存调拨",

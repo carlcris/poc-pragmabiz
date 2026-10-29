@@ -90,9 +90,25 @@ export type ReceivingLine = {
   latestActiveScanId: string | null;
 };
 
+export type ReceivingUnexpectedItemStatus = "pending_review" | "accepted" | "resolved";
+
+export type ReceivingUnexpectedItem = {
+  itemId: string;
+  itemUnitOptionId: string | null;
+  name: string;
+  code: string;
+  uom: string;
+  status: ReceivingUnexpectedItemStatus;
+  scannedQty: number;
+  exceptionIds: string[];
+  latestExceptionId: string;
+};
+
 export type DeliveryNoteDetail = DeliveryNoteSummary & {
+  sourceBusinessUnitName: string | null;
   notes: string | null;
   items: ReceivingLine[];
+  unexpectedItems: ReceivingUnexpectedItem[];
 };
 
 export type ReceivingWarehouseOption = {
@@ -111,6 +127,13 @@ export type RecordDeliveryNoteReceivingScanPayload = {
   locationId?: string | null;
 };
 
+export type ResolvedDeliveryNoteReceivingItem = {
+  itemId: string;
+  itemUnitOptionId: string | null;
+  batchNumber: string | null;
+  locationId: string | null;
+};
+
 export type RecordDeliveryNoteReceivingScanResult = {
   type: string;
   scanId: string | null;
@@ -125,4 +148,49 @@ export type SubmitDeliveryNoteReceivingPayload = {
   notes?: string;
   acknowledgeDiscrepancy?: boolean;
   discrepancyNotes?: string;
+};
+
+export type ReceivingInboxStage =
+  | "ready"
+  | "in_progress"
+  | "expected"
+  | "awaiting_approval"
+  | "completed";
+
+export type ReceivingInboxStageFilter = ReceivingInboxStage | "to_receive" | "all";
+
+export type ReceivingInboxDocumentKind = "load_list" | "delivery_note";
+
+export type ReceivingInboxKindFilter = ReceivingInboxDocumentKind | "all";
+
+export type ReceivingInboxRow = {
+  kind: ReceivingInboxDocumentKind;
+  id: string;
+  code: string;
+  counterpartyName: string | null;
+  status: string;
+  stage: ReceivingInboxStage;
+  expectedAt: string | null;
+  completedAt: string | null;
+  lineCount: number;
+  doneQty: number | null;
+  totalQty: number | null;
+};
+
+export type ReceivingInboxStageCount = {
+  stage: ReceivingInboxStage;
+  kind: ReceivingInboxDocumentKind;
+  count: number;
+};
+
+export type ReceivingInboxPage = {
+  rows: ReceivingInboxRow[];
+  stageCounts: ReceivingInboxStageCount[];
+  access: {
+    loadLists: boolean;
+    deliveryNotes: boolean;
+  };
+  page: number;
+  totalPages: number;
+  total: number;
 };

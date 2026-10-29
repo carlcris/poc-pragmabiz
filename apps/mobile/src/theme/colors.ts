@@ -47,6 +47,15 @@ export const colors = {
   dangerSoft: "#FEF2F2",
   dangerAlpha: "rgba(239, 68, 68, 0.08)",
 
+  // Status text - meet 4.5:1 contrast on white for status values shown as text
+  statusInfo: "#1D4ED8",
+  statusSuccess: "#047857",
+  statusWarning: "#B45309",
+  statusReview: "#6D28D9",
+  statusNeutral: "#3F3F46",
+  statusError: "#B91C1C",
+  warningTrack: "#F3EEE6",
+
   // Shadow and overlay
   shadow: "#111827",
   overlay: "rgba(0, 0, 0, 0.5)",

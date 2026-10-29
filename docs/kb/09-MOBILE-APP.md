@@ -181,13 +181,18 @@ apps/mobile/
 **Mobile Features**:
 
 - Load-list based GRN receiving
-- Load-list receiving queue fetches load lists whose destination is the current business unit
-- `GET /api/mobile/warehouse-dashboard` returns a bounded Pending Receipts aggregate containing destination-business-unit load lists in `arrived` or `receiving`, plus dispatched delivery notes awaiting receipt by the current business unit; the dashboard action opens the first non-empty receiving tab with the load-list `pending_receipts` filter or delivery-note `dispatched` filter already applied
+- One receiving inbox lists load lists (destination is the current business unit) and delivery notes (requested by the current business unit) together, using shared stages: Expected (load list `confirmed`/`in_transit`), Ready to receive (load list `arrived`; delivery note `dispatched`, receiving not started), In progress (load list `receiving`; delivery note `dispatched` with receiving started), Awaiting approval (load list `pending_approval`) and Completed (`received`). Delivery notes appear only once dispatched.
+- The inbox opens on To receive (Ready + In progress), grouped In progress first. Chips switch between To receive and Expected; the Filters sheet offers document type (when the user can receive both kinds) and every stage, each with server-provided counts. Search covers document code, supplier, supplier LL number, container number and source branch, and is debounced. Results page 20 at a time with Show more.
+- Rows open the existing detail screens: load lists in Ready or In progress, delivery notes in Ready, In progress or Completed. Expected rows show the ETA and do not open.
+- `GET /api/mobile/warehouse-dashboard` returns a bounded Pending Receipts aggregate containing destination-business-unit load lists in `arrived` or `receiving`, plus dispatched delivery notes awaiting receipt by the current business unit; the dashboard action opens the receiving inbox on To receive
+- Load-list and delivery-note detail screens share one layout: a header with the document code and its supplier or source branch, a progress summary (shared stage, counted or scanned progress, key facts), and a sticky footer holding the primary actions and the current status or error message
+- Load-list detail splits GRN lines into To count, Counted and Variance tabs; a line opens into Received and Damaged steppers with the resulting shortage, overage or damage shown as text. Start receiving sits in the footer; Pause receiving sits in the progress summary, away from Submit. Submit still requires at least one received quantity, and its label shows how many lines are not yet counted
+- Delivery-note detail shows a scan field with camera button; every scan adds one unit, as enforced by the database. The latest scan is confirmed inline with Undo, which voids that scan; each line also keeps its remove-one control. Lines are ordered in progress, over, not scanned, then complete, and the footer summarizes short and over lines before Submit receiving opens the discrepancy notes. Confirmed unexpected items appear below the lines under "Not on this delivery note", grouped per item and unit with their scanned count and review status (rejected and voided exceptions are hidden), and the footer counts them too. Their units are included in the summary's units scanned, measured against the dispatched quantity, so the summary matches the inbox row. Undo on an unexpected-item scan, or the remove-one control on a pending unexpected row, voids the most recent exception for that item
 - Start and pause controls for user-triggered receiving sessions
 - Per-line received and damaged quantity entry
 - Save draft receiving quantities without changing workflow status
 - Submit to the shared GRN confirmation and putaway-staging workflow, atomically including any unsaved line changes
-- Save and submit update the active receiving detail from their responses; load-list and dashboard summaries are marked stale without hidden-screen requests, then refreshed when their screens regain focus
+- Save and submit update the active receiving detail from their responses; receiving inbox and dashboard summaries are marked stale without hidden-screen requests, then refreshed when their screens regain focus
 - Real-time quantity tracking
 - Variance highlighting
 
@@ -428,9 +433,46 @@ Complete picking.
 - Locks picking (no more changes)
 - Notifies dispatch team
 
+#### GET /api/mobile/receiving/inbox
+
+Fetch the unified mobile receiving inbox for the current business unit. Backed by the `SECURITY INVOKER` database function `list_receiving_inbox`, which unions load lists and delivery notes, maps them to shared stages, filters, sorts (stage, then completion date for completed rows, then expected date) and paginates in one round trip. Line counts and progress are computed only for the returned page.
+
+Delivery-note progress measures scanned units against dispatched units, including partial dispatches. Allocating 10 units but dispatching and scanning 6 shows `6 / 6` in both the inbox and detail. Unshipped allocations do not increase the expected total; pending, accepted, and resolved unexpected-item quantities remain included in scanned units.
+
+**Query**: `stage` (`to_receive` default, `ready`, `in_progress`, `expected`, `awaiting_approval`, `completed`, `all`), `kind` (`all` default, `load_list`, `delivery_note`), `search` (max 100 characters, matched literally), `page` (default 1), `limit` (default 20, max 50).
+
+**Permissions**: Load lists are included with `view` on Load Lists or Goods Receipt Notes; delivery notes with `view` on Delivery Notes plus capability `delivery_notes.operation.receive_delivery_notes.edit`. With neither, the route returns 403. The function also rejects business units the caller has no access to.
+
+**Response**:
+
+```json
+{
+  "data": [
+    {
+      "kind": "load_list",
+      "id": "uuid",
+      "code": "LL-000000001",
+      "counterpartyName": "Supplier or source branch name",
+      "status": "receiving",
+      "stage": "in_progress",
+      "expectedAt": "2026-10-19T00:00:00+00:00",
+      "completedAt": null,
+      "lineCount": 12,
+      "doneQty": 4,
+      "totalQty": 12
+    }
+  ],
+  "stageCounts": [{ "stage": "in_progress", "kind": "load_list", "count": 1 }],
+  "access": { "loadLists": true, "deliveryNotes": true },
+  "pagination": { "page": 1, "limit": 20, "total": 1, "totalPages": 1 }
+}
+```
+
+`stageCounts` covers every permitted kind and stage with the search applied, independent of the `stage` and `kind` filters, so filter controls can show counts for every choice. For load lists in progress, `doneQty`/`totalQty` are GRN lines with an entry over all lines on the latest GRN; for delivery notes `doneQty` is scanned units, including confirmed unexpected items that were not rejected or voided, and `totalQty` is allocated units. Other load-list rows return `null` progress.
+
 #### GET /api/load-lists?receivingOnly=true
 
-Fetch native mobile load-list receiving candidates whose destination is the current business unit.
+Fetch native mobile load-list receiving candidates whose destination is the current business unit. Used by app builds released before the receiving inbox; current builds use `GET /api/mobile/receiving/inbox`.
 
 **Permissions**: `view` on either Load Lists or Goods Receipt Notes. Goods Receipt Notes access grants only the business-unit-scoped load-list context required by the receiving workflow; ordinary load-list APIs still require Load Lists access.
 
@@ -499,6 +541,7 @@ The following operations require `edit` on Delivery Notes and granular capabilit
 - `POST /api/delivery-notes/[id]/start-receiving`
 - `POST /api/delivery-notes/[id]/receiving-scans`
 - `POST /api/delivery-notes/[id]/receiving-scans/[scanId]/void`
+- `POST /api/delivery-notes/[id]/receiving-exceptions/[exceptionId]/void`
 - `POST /api/delivery-notes/[id]/receiving-exceptions/[exceptionId]/accept`
 - `POST /api/delivery-notes/[id]/receiving-exceptions/[exceptionId]/reject`
 - `POST /api/delivery-notes/[id]/receiving-overages/[itemId]/accept`
@@ -518,6 +561,35 @@ overage. Each delivery-note item with an active receiving scan shows a minus act
 voids the most recent active scan for that item and uses the server-recalculated delivery note to
 reduce the displayed received quantity by one. Scan controls and final submission remain disabled
 while a scan is being recorded or voided.
+
+Voiding a receiving exception undoes a mistaken unexpected-item scan. The
+`void_delivery_note_receiving_exception` function locks the delivery note, takes the caller from
+`auth.uid()`, requires the caller's current business unit to be the note's requesting business unit
+with an access grant, and requires receiving to be in progress. Only `pending_review` exceptions
+can be voided; voiding an already voided exception is a no-op. The row is kept for audit with
+status `voided`, `voided_at`, `voided_by`, and an optional `void_reason` (the body accepts
+`{ "reason"?: string }`, max 200 characters). Voided exceptions cannot be accepted or rejected and
+are excluded from delivery-note detail responses. The route returns the updated delivery note, or
+a translated error with code `DELIVERY_NOTE_NOT_FOUND` (404),
+`DELIVERY_NOTE_RECEIVING_EXCEPTION_NOT_FOUND` (404), `DELIVERY_NOTE_RECEIVING_EXCEPTION_REVIEWED`
+(409), `DELIVERY_NOTE_RECEIVING_CLOSED` (409), or `DELIVERY_NOTE_RECEIVING_EXCEPTION_VOID_FAILED`
+(500).
+
+When a scan does not match a loaded delivery-note line, mobile first calls
+`POST /api/delivery-notes/[id]/resolve-receiving-item` with the scan payload. This lookup requires
+receiving access in the requesting business unit and an active receiving session. It resolves
+company-scoped item IDs, item codes, and unit barcodes using bounded queries and returns the item
+identity without writing receiving records. If a box ID cannot identify an item, the API returns
+HTTP 400 with `DELIVERY_NOTE_RECEIVING_FULL_QR_REQUIRED` and asks the user to scan the full QR code
+on the box, which contains the item details. A full QR referring to an unavailable catalog item
+returns `DELIVERY_NOTE_RECEIVING_ITEM_NOT_FOUND`; no unidentified exception is saved.
+
+An identified item absent from the delivery note still opens the unexpected-item confirmation.
+Cancel saves nothing; Confirm records it through the existing transactional receiving-scans
+operation as a pending review exception with a required item and unit association. Expected items
+and overages retain their existing scan-count behavior. Scans already matched to a loaded line
+skip the lookup. Scan controls and submission stay blocked during identification or recording.
+Errors remain visible inside an open confirmation dialog, which stays available for retry.
 
 The native mobile app stores the permission and capability maps returned by login and business-unit
 switching. Bottom navigation keeps Receiving and Picking visible in fixed positions but disables

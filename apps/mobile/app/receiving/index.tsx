@@ -1,141 +1,109 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Card, ErrorState, LoadingState, Screen, SearchInput, StatusBadge } from "@/components/ui";
-import { queryKeys, useDeliveryNotes, useLoadLists } from "@/hooks/queries";
+import { ReceivingInboxFiltersSheet } from "@/components/receiving/ReceivingInboxFiltersSheet";
+import { ReceivingInboxListItem } from "@/components/receiving/ReceivingInboxListItem";
+import {
+  RECEIVING_INBOX_STAGE_COLORS,
+  RECEIVING_INBOX_STAGE_LABELS,
+  canOpenReceivingInboxRow,
+  countReceivingInbox,
+} from "@/components/receiving/receiving-stages";
+import { Card, ErrorState, LoadingState, Screen, SearchInput } from "@/components/ui";
+import type {
+  ReceivingInboxKindFilter,
+  ReceivingInboxRow,
+  ReceivingInboxStage,
+  ReceivingInboxStageFilter,
+} from "@/contracts/receiving";
+import { queryKeys, useReceivingInbox } from "@/hooks/queries";
 import { useScreenFocusState } from "@/hooks/useScreenFocusState";
 import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
-import { borderRadius, shadows, spacing } from "@/theme/spacing";
+import { borderRadius, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
-import { formatDate } from "@/utils/format";
 import {
   canAccessDeliveryNoteReceiving,
   canAccessLoadListReceiving,
   canAccessReceiving,
 } from "@/utils/permissions";
 
-const statusFilters = [
-  {
-    value: "pending_receipts",
-    label: "Pending Receipts",
-    emptyTitle: "No load lists found",
-  },
-  { value: "in_transit", label: "In Transit", emptyTitle: "No load lists in transit" },
-  { value: "arrived", label: "Arrived", emptyTitle: "No arrived load lists" },
-  { value: "receiving", label: "Receiving", emptyTitle: "No load lists in receiving" },
-  { value: "all", label: "All", emptyTitle: "No load lists found" },
-];
+const SEARCH_DEBOUNCE_MS = 300;
 
-const deliveryNoteStatusFilters = [
-  { value: "all", label: "All", emptyTitle: "No delivery notes found" },
-  { value: "dispatched", label: "Dispatched", emptyTitle: "No dispatched delivery notes" },
-  { value: "received", label: "Received", emptyTitle: "No received delivery notes" },
-];
+type InboxSection = {
+  stage: ReceivingInboxStage;
+  rows: ReceivingInboxRow[];
+};
+
+const groupRowsByStage = (rows: ReceivingInboxRow[]) =>
+  rows.reduce<InboxSection[]>((sections, row) => {
+    const last = sections[sections.length - 1];
+    if (last && last.stage === row.stage) {
+      last.rows.push(row);
+    } else {
+      sections.push({ stage: row.stage, rows: [row] });
+    }
+    return sections;
+  }, []);
+
+const openRow = (row: ReceivingInboxRow) => {
+  if (row.kind === "load_list") {
+    router.push(`/receiving/load-lists/${row.id}`);
+  } else {
+    router.push(`/receiving/${row.id}`);
+  }
+};
 
 export default function ReceivingScreen() {
-  const params = useLocalSearchParams<{
-    tab?: string;
-    loadListStatus?: string;
-    deliveryNoteStatus?: string;
-  }>();
   const hasFocusedOnce = useRef(false);
   const refreshOnFocusRef = useRef<() => void>(() => undefined);
   const queryClient = useQueryClient();
   const isFocused = useScreenFocusState();
   const session = useAuthStore((state) => state.session);
-  const currentBusinessUnit = session?.currentBusinessUnit;
+  const currentBusinessUnitId = session?.currentBusinessUnit?.id || "";
+  const currentBusinessUnitName = session?.currentBusinessUnit?.name || "";
   const isSwitchingBusinessUnit = useAuthStore((state) => state.isSwitchingBusinessUnit);
-  const [tab, setTab] = useState(params.tab === "delivery-notes" ? "delivery-notes" : "load-lists");
-  const [status, setStatus] = useState(
-    params.loadListStatus === "pending_receipts" ? "pending_receipts" : "in_transit"
-  );
-  const [deliveryNoteStatus, setDeliveryNoteStatus] = useState("dispatched");
-  const [search, setSearch] = useState("");
-  const canViewLoadListReceiving = canAccessLoadListReceiving(session);
-  const canViewDeliveryNoteReceiving = canAccessDeliveryNoteReceiving(session);
   const canViewReceiving = canAccessReceiving(session);
-  const canLoadLoadLists = Boolean(
-    isFocused && currentBusinessUnit?.id && canViewLoadListReceiving
-  );
-  const loadLists = useLoadLists(status, search, canLoadLoadLists);
-  const deliveryNotes = useDeliveryNotes(
-    deliveryNoteStatus,
-    search,
-    isFocused && canViewDeliveryNoteReceiving
-  );
-  const isLoadListTab = tab === "load-lists";
-  const isLoadListsInitialLoading = canLoadLoadLists && !loadLists.data && loadLists.isFetching;
-  const isLoadListsLoading = isSwitchingBusinessUnit || isLoadListsInitialLoading;
+  const showKindFilter =
+    canAccessLoadListReceiving(session) && canAccessDeliveryNoteReceiving(session);
 
-  const loading = isLoadListTab ? isLoadListsLoading : deliveryNotes.isLoading;
-  const error = isLoadListTab ? loadLists.error : deliveryNotes.error;
-  const isRefreshing = isLoadListTab ? loadLists.isRefetching : deliveryNotes.isRefetching;
-  const selectedStatus = statusFilters.find((item) => item.value === status) || statusFilters[0];
-  const selectedDeliveryNoteStatus =
-    deliveryNoteStatusFilters.find((item) => item.value === deliveryNoteStatus) ||
-    deliveryNoteStatusFilters[0];
+  const [stage, setStage] = useState<ReceivingInboxStageFilter>("to_receive");
+  const [kind, setKind] = useState<ReceivingInboxKindFilter>("all");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setSearch(searchInput.trim()), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timeout);
+  }, [searchInput]);
+
+  const canLoad = Boolean(isFocused && currentBusinessUnitId && canViewReceiving);
+  const inbox = useReceivingInbox(stage, kind, search, canLoad);
+  const rows = useMemo(() => inbox.data?.pages.flatMap((page) => page.rows) ?? [], [inbox.data]);
+  const stageCounts = inbox.data?.pages[0]?.stageCounts ?? [];
+  const sections = useMemo(() => groupRowsByStage(rows), [rows]);
+  const toReceiveCount = countReceivingInbox(stageCounts, "to_receive", kind);
+  const expectedCount = countReceivingInbox(stageCounts, "expected", kind);
+  const isDefaultView = stage === "to_receive" && kind === "all" && !search;
+  const activeFilterCount =
+    (stage === "to_receive" || stage === "expected" ? 0 : 1) + (kind === "all" ? 0 : 1);
+  const isInitialLoading = isSwitchingBusinessUnit || (canLoad && !inbox.data && inbox.isFetching);
 
   const handleRefresh = useCallback(async () => {
-    if (tab === "load-lists") {
-      if (canLoadLoadLists) {
-        await loadLists.refetch();
-      }
-      return;
+    if (canLoad) {
+      await inbox.refetch();
     }
-
-    if (canViewDeliveryNoteReceiving) {
-      await deliveryNotes.refetch();
-    }
-  }, [
-    canLoadLoadLists,
-    canViewDeliveryNoteReceiving,
-    deliveryNotes,
-    loadLists,
-    tab
-  ]);
+  }, [canLoad, inbox]);
 
   refreshOnFocusRef.current = () => {
-    if (tab === "load-lists") {
-      const queryKey = queryKeys.loadLists(currentBusinessUnit?.id || "", status, search);
-      if (canLoadLoadLists && queryClient.getQueryState(queryKey)?.isInvalidated) {
-        void loadLists.refetch();
-      }
-      return;
-    }
-
-    const queryKey = queryKeys.deliveryNotes(
-      currentBusinessUnit?.id || "",
-      deliveryNoteStatus,
-      search
-    );
-    if (canViewDeliveryNoteReceiving && queryClient.getQueryState(queryKey)?.isInvalidated) {
-      void deliveryNotes.refetch();
+    const queryKey = queryKeys.receivingInbox(currentBusinessUnitId, stage, kind, search);
+    if (canLoad && queryClient.getQueryState(queryKey)?.isInvalidated) {
+      void inbox.refetch();
     }
   };
-
-  useEffect(() => {
-    if (params.tab === "load-lists" || params.tab === "delivery-notes") {
-      setTab(params.tab);
-    }
-    if (params.loadListStatus === "pending_receipts") {
-      setStatus("pending_receipts");
-    }
-    if (params.deliveryNoteStatus === "dispatched") {
-      setDeliveryNoteStatus("dispatched");
-    }
-  }, [params.deliveryNoteStatus, params.loadListStatus, params.tab]);
-
-  useEffect(() => {
-    if (tab === "load-lists" && !canViewLoadListReceiving && canViewDeliveryNoteReceiving) {
-      setTab("delivery-notes");
-    }
-    if (tab === "delivery-notes" && !canViewDeliveryNoteReceiving && canViewLoadListReceiving) {
-      setTab("load-lists");
-    }
-  }, [canViewDeliveryNoteReceiving, canViewLoadListReceiving, tab]);
 
   useFocusEffect(
     useCallback(() => {
@@ -148,14 +116,16 @@ export default function ReceivingScreen() {
     }, [])
   );
 
+  const clearFilters = () => {
+    setStage("to_receive");
+    setKind("all");
+    setSearchInput("");
+    setSearch("");
+  };
+
   if (!canViewReceiving) {
     return (
-      <Screen
-        title="Receiving"
-        subtitle="Manage incoming deliveries"
-        onRefresh={handleRefresh}
-        refreshing={isRefreshing}
-      >
+      <Screen title="Receiving" subtitle="Manage incoming deliveries">
         <ErrorState message="You do not have permission to access receiving." />
       </Screen>
     );
@@ -166,392 +136,310 @@ export default function ReceivingScreen() {
       title="Receiving"
       subtitle="Manage incoming deliveries"
       onRefresh={handleRefresh}
-      refreshing={isRefreshing}
+      refreshing={inbox.isRefetching && !inbox.isFetchingNextPage}
     >
-      <TopTabs
-        value={tab}
-        onChange={setTab}
-        showLoadLists={canViewLoadListReceiving}
-        showDeliveryNotes={canViewDeliveryNoteReceiving}
+      <SearchInput
+        value={searchInput}
+        onChangeText={setSearchInput}
+        placeholder="Search code, supplier or branch"
       />
 
-      <View style={styles.statusRow}>
-        {(tab === "load-lists" ? statusFilters : deliveryNoteStatusFilters).map((filter) => {
-          const active =
-            tab === "load-lists" ? status === filter.value : deliveryNoteStatus === filter.value;
-
-          return (
-            <Pressable
-              key={filter.value}
-              onPress={() => {
-                if (tab === "load-lists") {
-                  setStatus(filter.value);
-                } else {
-                  setDeliveryNoteStatus(filter.value);
-                }
-              }}
-              style={[styles.statusButton, active ? styles.statusButtonActive : null]}
-            >
-              <Text style={[styles.statusText, active ? styles.statusTextActive : null]}>
-                {filter.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+      <View style={styles.filterRow}>
+        <FilterChip
+          label={`To receive · ${toReceiveCount}`}
+          active={stage === "to_receive"}
+          onPress={() => setStage("to_receive")}
+        />
+        <FilterChip
+          label={`Expected · ${expectedCount}`}
+          active={stage === "expected"}
+          onPress={() => setStage("expected")}
+        />
+        <Pressable
+          onPress={() => setFiltersOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={
+            activeFilterCount > 0 ? `Filters, ${activeFilterCount} applied` : "Filters"
+          }
+          style={[styles.filtersButton, activeFilterCount > 0 ? styles.filtersButtonActive : null]}
+        >
+          <Ionicons
+            name="options-outline"
+            size={18}
+            color={activeFilterCount > 0 ? colors.primaryDark : colors.statusNeutral}
+          />
+          <Text
+            style={[styles.filtersText, activeFilterCount > 0 ? styles.filtersTextActive : null]}
+          >
+            {activeFilterCount > 0 ? `Filters · ${activeFilterCount}` : "Filters"}
+          </Text>
+        </Pressable>
       </View>
 
-      <SearchInput
-        value={search}
-        onChangeText={setSearch}
-        placeholder={tab === "load-lists" ? "Search by LL number..." : "Search by DN number..."}
-      />
-
-      {loading ? <LoadingState /> : null}
-      {isLoadListTab && !currentBusinessUnit?.id && !isSwitchingBusinessUnit ? (
+      {isInitialLoading ? <LoadingState /> : null}
+      {!currentBusinessUnitId && !isSwitchingBusinessUnit ? (
         <ErrorState message="Business unit context is syncing. Select a business unit from the header." />
       ) : null}
-      {error ? <ErrorState message="Unable to load receiving records." /> : null}
-
-      {isLoadListTab && canLoadLoadLists && loadLists.data && !loading ? (
-        <>
-          <Text style={styles.resultText}>{loadLists.data.length} LOAD LISTS FOUND</Text>
-          {loadLists.data.length === 0 ? (
-            <>
-              <ReceivingEmptyState
-                title={selectedStatus.emptyTitle}
-                subtitle={`There are no loads currently ${selectedStatus.label.toLowerCase()} for ${currentBusinessUnit?.name || "this business unit"}.`}
-                onRefresh={() => {
-                  void loadLists.refetch();
-                }}
-                onShowAll={() => setStatus("all")}
-              />
-              <TipCard />
-            </>
-          ) : (
-            loadLists.data.map((item) => {
-              const canOpen = item.status === "arrived" || item.status === "receiving";
-              const content = (
-                <Card style={styles.rowCard}>
-                  <View style={styles.rowHeader}>
-                    <Ionicons name="bus-outline" size={24} color={colors.textSecondary} />
-                    <Text style={styles.rowTitle}>{item.llNumber}</Text>
-                    <StatusBadge status={item.status} />
-                    {canOpen ? (
-                      <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-                    ) : null}
-                  </View>
-                  <Text style={styles.rowMeta}>{item.supplierName}</Text>
-                  <Text style={styles.rowMeta}>ETA: {formatDate(item.estimatedArrivalDate)}</Text>
-                  <Text style={styles.rowMeta}>{item.itemCount} lines</Text>
-                </Card>
-              );
-
-              return canOpen ? (
-                <Pressable
-                  key={item.id}
-                  onPress={() => router.push(`/receiving/load-lists/${item.id}`)}
-                >
-                  {content}
-                </Pressable>
-              ) : (
-                <View key={item.id}>{content}</View>
-              );
-            })
-          )}
-        </>
+      {inbox.error && !inbox.data ? (
+        <ErrorState message="Unable to load receiving records." />
       ) : null}
 
-      {tab === "delivery-notes" && deliveryNotes.data ? (
-        <>
-          <Text style={styles.resultText}>{deliveryNotes.data.length} DELIVERY NOTES FOUND</Text>
-          {deliveryNotes.data.length === 0 ? (
-            <ReceivingEmptyState
-              title={selectedDeliveryNoteStatus.emptyTitle}
-              subtitle={`There are no ${selectedDeliveryNoteStatus.label.toLowerCase()} delivery notes at this branch.`}
-              onRefresh={() => void deliveryNotes.refetch()}
-              onShowAll={() => setDeliveryNoteStatus("all")}
-              secondaryLabel="Show all"
+      {inbox.data && !isInitialLoading ? (
+        rows.length === 0 ? (
+          isDefaultView && expectedCount > 0 ? (
+            <InboxEmptyState
+              title="Nothing to receive right now"
+              subtitle={`${expectedCount} ${expectedCount === 1 ? "load list is" : "load lists are"} on the way.`}
+              actionLabel="View expected"
+              onAction={() => setStage("expected")}
+            />
+          ) : isDefaultView ? (
+            <InboxEmptyState
+              title="Nothing to receive right now"
+              subtitle={`Nothing is on the way to ${currentBusinessUnitName || "this business unit"}. Pull down to refresh.`}
             />
           ) : (
-            deliveryNotes.data.map((item) => {
-              const canOpen = item.status === "dispatched" || item.status === "received";
-              const content = (
-                <Card style={styles.rowCard}>
-                  <View style={styles.rowHeader}>
-                    <Ionicons name="document-text-outline" size={24} color={colors.textSecondary} />
-                    <Text style={styles.rowTitle}>{item.code}</Text>
-                    <StatusBadge status={item.status} />
-                    {canOpen ? (
-                      <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-                    ) : null}
-                  </View>
-                  <Text style={styles.rowMeta}>{item.fulfillmentMode}</Text>
-                  <Text style={styles.rowMeta}>Dispatched: {formatDate(item.dispatchedAt)}</Text>
-                  <Text style={styles.rowFooter}>
-                    {item.receivedQty} / {item.totalQty} units
+            <InboxEmptyState
+              title="No results"
+              subtitle="Try a different search or filter."
+              actionLabel="Clear filters"
+              onAction={clearFilters}
+            />
+          )
+        ) : (
+          <>
+            {sections.map((section) => (
+              <View key={section.stage} style={styles.section}>
+                <View style={styles.sectionHeader} accessibilityRole="header">
+                  <View
+                    style={[
+                      styles.sectionDot,
+                      { backgroundColor: RECEIVING_INBOX_STAGE_COLORS[section.stage] },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.sectionTitle,
+                      { color: RECEIVING_INBOX_STAGE_COLORS[section.stage] },
+                    ]}
+                  >
+                    {RECEIVING_INBOX_STAGE_LABELS[section.stage]} ·{" "}
+                    {countReceivingInbox(stageCounts, section.stage, kind)}
                   </Text>
-                </Card>
-              );
-
-              return canOpen ? (
-                <Pressable key={item.id} onPress={() => router.push(`/receiving/${item.id}`)}>
-                  {content}
-                </Pressable>
-              ) : (
-                <View key={item.id}>{content}</View>
-              );
-            })
-          )}
-        </>
+                </View>
+                <View style={styles.sectionList}>
+                  {section.rows.map((row, index) => (
+                    <ReceivingInboxListItem
+                      key={`${row.kind}-${row.id}`}
+                      row={row}
+                      isFirst={index === 0}
+                      onPress={
+                        canOpenReceivingInboxRow(row.kind, row.stage)
+                          ? () => openRow(row)
+                          : undefined
+                      }
+                    />
+                  ))}
+                </View>
+              </View>
+            ))}
+            {inbox.hasNextPage ? (
+              <Pressable
+                onPress={() => void inbox.fetchNextPage()}
+                disabled={inbox.isFetchingNextPage}
+                accessibilityRole="button"
+                style={styles.moreButton}
+              >
+                <Text style={styles.moreText}>
+                  {inbox.isFetchingNextPage ? "Loading..." : "Show more"}
+                </Text>
+              </Pressable>
+            ) : null}
+          </>
+        )
       ) : null}
+
+      <ReceivingInboxFiltersSheet
+        visible={filtersOpen}
+        stage={stage}
+        kind={kind}
+        stageCounts={stageCounts}
+        showKindFilter={showKindFilter}
+        onApply={(nextStage, nextKind) => {
+          setStage(nextStage);
+          setKind(nextKind);
+          setFiltersOpen(false);
+        }}
+        onClose={() => setFiltersOpen(false)}
+      />
     </Screen>
   );
 }
 
-const TopTabs = ({
-  value,
-  onChange,
-  showLoadLists,
-  showDeliveryNotes,
+const FilterChip = ({
+  label,
+  active,
+  onPress,
 }: {
-  value: string;
-  onChange: (value: string) => void;
-  showLoadLists: boolean;
-  showDeliveryNotes: boolean;
+  label: string;
+  active: boolean;
+  onPress: () => void;
 }) => (
-  <View style={styles.topTabs}>
-    {showLoadLists ? (
-      <Pressable
-        onPress={() => onChange("load-lists")}
-        style={[styles.topTab, value === "load-lists" ? styles.topTabActive : null]}
-      >
-        <Ionicons
-          name="bus-outline"
-          size={20}
-          color={value === "load-lists" ? colors.primary : colors.textSecondary}
-        />
-        <Text style={[styles.topTabText, value === "load-lists" ? styles.topTabTextActive : null]}>
-          Load Lists
-        </Text>
-      </Pressable>
-    ) : null}
-    {showDeliveryNotes ? (
-      <Pressable
-        onPress={() => onChange("delivery-notes")}
-        style={[styles.topTab, value === "delivery-notes" ? styles.topTabActive : null]}
-      >
-        <Ionicons
-          name="clipboard-outline"
-          size={20}
-          color={value === "delivery-notes" ? colors.primary : colors.textSecondary}
-        />
-        <Text
-          style={[styles.topTabText, value === "delivery-notes" ? styles.topTabTextActive : null]}
-        >
-          Delivery Notes
-        </Text>
-      </Pressable>
-    ) : null}
-  </View>
+  <Pressable
+    onPress={onPress}
+    accessibilityRole="button"
+    accessibilityState={{ selected: active }}
+    style={[styles.chip, active ? styles.chipActive : null]}
+  >
+    <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{label}</Text>
+  </Pressable>
 );
 
-const ReceivingEmptyState = ({
+const InboxEmptyState = ({
   title,
   subtitle,
-  onRefresh,
-  onShowAll,
-  secondaryLabel = "Change filters",
+  actionLabel,
+  onAction,
 }: {
   title: string;
   subtitle: string;
-  onRefresh: () => void;
-  onShowAll: () => void;
-  secondaryLabel?: string;
+  actionLabel?: string;
+  onAction?: () => void;
 }) => (
-  <Card style={styles.emptyPanel}>
-    <View style={styles.emptyIconBubble}>
-      <Ionicons name="cube-outline" size={40} color={colors.primary} />
-    </View>
+  <Card style={styles.emptyCard}>
     <Text style={styles.emptyTitle}>{title}</Text>
     <Text style={styles.emptySubtitle}>{subtitle}</Text>
-    <View style={styles.emptyActions}>
-      <Pressable onPress={onRefresh} style={styles.emptyActionButton}>
-        <Ionicons name="refresh-outline" size={16} color={colors.primary} />
-        <Text style={styles.emptyActionText}>Refresh</Text>
+    {actionLabel && onAction ? (
+      <Pressable onPress={onAction} accessibilityRole="button" style={styles.emptyAction}>
+        <Text style={styles.emptyActionText}>{actionLabel}</Text>
       </Pressable>
-      <Pressable onPress={onShowAll} style={styles.emptyActionButton}>
-        <Ionicons name="options-outline" size={16} color={colors.primary} />
-        <Text style={styles.emptyActionText}>{secondaryLabel}</Text>
-      </Pressable>
-    </View>
-  </Card>
-);
-
-const TipCard = () => (
-  <Card style={styles.tipCard}>
-    <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
-    <Text style={styles.tipText}>
-      <Text style={styles.tipStrong}>Tip: </Text>
-      Switch to <Text style={styles.tipStrong}>All</Text> to see loads across all statuses, or
-      change the branch and date above.
-    </Text>
+    ) : null}
   </Card>
 );
 
 const styles = StyleSheet.create({
-  topTabs: {
-    marginHorizontal: -spacing.lg,
-    marginTop: -spacing.base,
+  filterRow: {
     flexDirection: "row",
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
+    alignItems: "center",
+    gap: spacing.sm,
   },
-  topTab: {
-    flex: 1,
-    minHeight: 56,
+  chip: {
+    minHeight: 44,
+    paddingHorizontal: spacing.base,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  topTabActive: {
-    borderBottomColor: colors.primary,
+  chipActive: {
+    borderColor: colors.primaryDark,
+    backgroundColor: colors.primaryDark,
   },
-  topTabText: {
-    ...typography.body,
+  chipText: {
+    fontSize: 14,
+    fontWeight: typography.fontWeights.medium,
+    color: colors.statusNeutral,
+  },
+  chipTextActive: {
     fontWeight: typography.fontWeights.semibold,
-    color: colors.textSecondary,
+    color: colors.surface,
   },
-  topTabTextActive: {
-    color: colors.primary,
-  },
-  statusRow: {
-    flexDirection: "row",
-    gap: spacing.xs,
-    flexWrap: "wrap",
-  },
-  statusButton: {
-    flex: 1,
-    minWidth: 80,
+  filtersButton: {
+    marginLeft: "auto",
     minHeight: 44,
+    paddingHorizontal: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  filtersButtonActive: {
+    borderColor: colors.primaryDark,
+    backgroundColor: colors.primarySoft,
+  },
+  filtersText: {
+    fontSize: 14,
+    fontWeight: typography.fontWeights.medium,
+    color: colors.statusNeutral,
+  },
+  filtersTextActive: {
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.primaryDark,
+  },
+  section: {
+    gap: spacing.sm,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  sectionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: typography.fontWeights.semibold,
+  },
+  sectionList: {
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    overflow: "hidden",
+  },
+  moreButton: {
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: spacing.sm,
-    alignItems: "center",
-    justifyContent: "center",
     backgroundColor: colors.surface,
   },
-  statusButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  statusText: {
-    fontSize: 13,
-    color: colors.primary,
+  moreText: {
+    fontSize: 15,
     fontWeight: typography.fontWeights.semibold,
-    textAlign: "center",
+    color: colors.primaryDark,
   },
-  statusTextActive: {
-    color: "#fff",
-  },
-  resultText: {
-    fontSize: 11,
-    color: "#9B8FC4",
-    fontWeight: typography.fontWeights.semibold,
-    letterSpacing: 0.8,
-  },
-  emptyPanel: {
-    minHeight: 320,
+  emptyCard: {
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.xl,
-    gap: spacing.md,
-  },
-  emptyIconBubble: {
-    width: 80,
-    height: 80,
-    borderRadius: borderRadius.xl,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.primarySoft,
+    gap: spacing.sm,
+    paddingVertical: spacing.xl,
   },
   emptyTitle: {
-    ...typography.title,
+    ...typography.titleSmall,
     color: colors.text,
     textAlign: "center",
   },
   emptySubtitle: {
-    ...typography.bodySmall,
+    fontSize: 14,
+    lineHeight: 20,
     color: colors.textSecondary,
     textAlign: "center",
-    lineHeight: 20,
   },
-  emptyActions: {
-    flexDirection: "row",
-    gap: spacing.md,
-    marginTop: spacing.sm,
-  },
-  emptyActionButton: {
+  emptyAction: {
+    marginTop: spacing.xs,
     minHeight: 44,
-    minWidth: 110,
+    paddingHorizontal: spacing.base,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
   },
   emptyActionText: {
     fontSize: 14,
-    color: colors.text,
     fontWeight: typography.fontWeights.semibold,
-  },
-  tipCard: {
-    minHeight: 80,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    borderColor: colors.border,
-    ...shadows.none,
-  },
-  tipText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    flex: 1,
-    lineHeight: 18,
-  },
-  tipStrong: {
-    color: colors.primary,
-    fontWeight: typography.fontWeights.semibold,
-  },
-  rowCard: {
-    gap: spacing.sm,
-  },
-  rowHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  rowTitle: {
-    flex: 1,
-    ...typography.title,
-    color: colors.text,
-  },
-  rowMeta: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-  rowFooter: {
-    ...typography.title,
-    color: colors.text,
-    textAlign: "right",
+    color: colors.primaryDark,
   },
 });

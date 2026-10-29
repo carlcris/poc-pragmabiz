@@ -7,9 +7,19 @@ import type {
   LoadListDetail,
   LoadListReceivingDetail,
   LoadListSummary,
+  ReceivingInboxDocumentKind,
+  ReceivingInboxKindFilter,
+  ReceivingInboxPage,
+  ReceivingInboxRow,
+  ReceivingInboxStage,
+  ReceivingInboxStageCount,
+  ReceivingInboxStageFilter,
   ReceivingLine,
+  ReceivingUnexpectedItem,
+  ReceivingUnexpectedItemStatus,
   RecordDeliveryNoteReceivingScanResult,
   RecordDeliveryNoteReceivingScanPayload,
+  ResolvedDeliveryNoteReceivingItem,
   SubmitGrnReceivingPayload,
   SubmitDeliveryNoteReceivingPayload,
   UpdateGrnReceivingPayload,
@@ -113,9 +123,7 @@ const normalizeReceivingLine = (value: unknown): ReceivingLine => {
     const voidedAt = maybeStr(scan.voidedAt || scan.voided_at);
     if (!id || voidedAt) return latest;
 
-    const timestamp = str(
-      scan.scannedAt || scan.scanned_at || scan.createdAt || scan.created_at
-    );
+    const timestamp = str(scan.scannedAt || scan.scanned_at || scan.createdAt || scan.created_at);
     if (
       !latest ||
       timestamp > latest.timestamp ||
@@ -203,13 +211,74 @@ const normalizeDeliveryNote = (value: unknown): DeliveryNoteSummary => {
   };
 };
 
+const UNEXPECTED_ITEM_STATUSES = new Set<string>(["pending_review", "accepted", "resolved"]);
+
+const isUnexpectedItemStatus = (value: string): value is ReceivingUnexpectedItemStatus =>
+  UNEXPECTED_ITEM_STATUSES.has(value);
+
+// Each unexpected scan is its own exception row; group them per item, unit and review status.
+// Rejected exceptions were not received, so they are left out.
+const normalizeUnexpectedItems = (value: unknown): ReceivingUnexpectedItem[] => {
+  const groups = new Map<string, ReceivingUnexpectedItem>();
+  const latestScannedAtByKey = new Map<string, string>();
+  for (const entry of asArray(value)) {
+    const record = asRecord(entry);
+    const status = str(record.status);
+    if (!isUnexpectedItemStatus(status)) continue;
+
+    const itemId = str(record.item_id);
+    const itemUnitOptionId = maybeStr(record.item_unit_option_id);
+    const key = `${itemId}:${itemUnitOptionId ?? ""}:${status}`;
+    const exceptionId = str(record.id);
+    const scannedQty = num(record.accepted_qty);
+    const scannedAt = str(record.scanned_at);
+    const existing = groups.get(key);
+    if (existing) {
+      existing.scannedQty += scannedQty;
+      existing.exceptionIds.push(exceptionId);
+      const latestScannedAt = latestScannedAtByKey.get(key) ?? "";
+      if (
+        scannedAt > latestScannedAt ||
+        (scannedAt === latestScannedAt && exceptionId > existing.latestExceptionId)
+      ) {
+        existing.latestExceptionId = exceptionId;
+        latestScannedAtByKey.set(key, scannedAt);
+      }
+      continue;
+    }
+
+    const item = firstRecord(record.items);
+    const unitOption = firstRecord(record.item_unit_options);
+    const unitOptionUnit = firstRecord(unitOption.units_of_measure);
+    const unit = firstRecord(record.units_of_measure);
+    groups.set(key, {
+      itemId,
+      itemUnitOptionId,
+      name: str(item.item_name, "Unnamed item"),
+      code: str(item.item_code),
+      uom: str(
+        unitOption.option_label || unitOptionUnit.symbol || unit.symbol || unit.name,
+        "unit"
+      ),
+      status,
+      scannedQty,
+      exceptionIds: [exceptionId],
+      latestExceptionId: exceptionId,
+    });
+    latestScannedAtByKey.set(key, scannedAt);
+  }
+  return Array.from(groups.values());
+};
+
 const normalizeDeliveryDetail = (value: unknown): DeliveryNoteDetail => {
   const record = asRecord(value);
   const summary = normalizeDeliveryNote(record);
   return {
     ...summary,
+    sourceBusinessUnitName: maybeStr(asRecord(record.fulfilling_business_unit).name),
     notes: maybeStr(record.notes),
     items: extractDeliveryItems(record),
+    unexpectedItems: normalizeUnexpectedItems(record.delivery_note_receiving_exceptions),
   };
 };
 
@@ -225,17 +294,89 @@ const normalizeReceivingScanResult = (value: unknown): RecordDeliveryNoteReceivi
   };
 };
 
-export const listLoadLists = async (status: string, search: string) => {
-  const response = await apiRequest<ListResponse>("/api/load-lists", {
-    query: {
-      status,
-      search,
-      receivingOnly: true,
-      page: 1,
-      limit: 20,
+export const RECEIVING_INBOX_PAGE_SIZE = 20;
+
+const RECEIVING_INBOX_STAGES: ReceivingInboxStage[] = [
+  "ready",
+  "in_progress",
+  "expected",
+  "awaiting_approval",
+  "completed",
+];
+
+const asInboxStage = (value: unknown): ReceivingInboxStage | null =>
+  RECEIVING_INBOX_STAGES.find((stage) => stage === value) ?? null;
+
+const asInboxKind = (value: unknown): ReceivingInboxDocumentKind | null =>
+  value === "load_list" || value === "delivery_note" ? value : null;
+
+const maybeNum = (value: unknown): number | null =>
+  value === null || value === undefined ? null : num(value);
+
+const normalizeInboxRow = (value: unknown): ReceivingInboxRow | null => {
+  const record = asRecord(value);
+  const kind = asInboxKind(record.kind);
+  const stage = asInboxStage(record.stage);
+  const id = str(record.id);
+  if (!kind || !stage || !id) return null;
+
+  return {
+    kind,
+    id,
+    code: str(record.code, "-"),
+    counterpartyName: maybeStr(record.counterpartyName),
+    status: str(record.status, "unknown"),
+    stage,
+    expectedAt: maybeStr(record.expectedAt),
+    completedAt: maybeStr(record.completedAt),
+    lineCount: num(record.lineCount),
+    doneQty: maybeNum(record.doneQty),
+    totalQty: maybeNum(record.totalQty),
+  };
+};
+
+const normalizeInboxStageCount = (value: unknown): ReceivingInboxStageCount | null => {
+  const record = asRecord(value);
+  const kind = asInboxKind(record.kind);
+  const stage = asInboxStage(record.stage);
+  if (!kind || !stage) return null;
+  return { kind, stage, count: num(record.count) };
+};
+
+export const listReceivingInbox = async ({
+  stage,
+  kind,
+  search,
+  page,
+}: {
+  stage: ReceivingInboxStageFilter;
+  kind: ReceivingInboxKindFilter;
+  search: string;
+  page: number;
+}): Promise<ReceivingInboxPage> => {
+  const response = asRecord(
+    await apiRequest<unknown>("/api/mobile/receiving/inbox", {
+      query: { stage, kind, search, page, limit: RECEIVING_INBOX_PAGE_SIZE },
+    })
+  );
+  const access = asRecord(response.access);
+  const pagination = asRecord(response.pagination);
+
+  return {
+    rows: asArray(response.data)
+      .map(normalizeInboxRow)
+      .filter((row): row is ReceivingInboxRow => row !== null),
+    stageCounts: asArray(response.stageCounts)
+      .map(normalizeInboxStageCount)
+      .filter((count): count is ReceivingInboxStageCount => count !== null),
+    access: {
+      loadLists: access.loadLists === true,
+      deliveryNotes: access.deliveryNotes === true,
     },
-  });
-  return asArray(response.data).map(normalizeLoadList);
+    page: num(pagination.page, page),
+    totalPages: num(pagination.totalPages),
+    total: num(pagination.total),
+  };
 };
 
 export const getLoadListReceiving = async (
@@ -290,19 +431,6 @@ export const submitGrnReceiving = async (
   return normalizeGrn(response.grn);
 };
 
-export const listDeliveryNotes = async (status: string, search: string) => {
-  const response = await apiRequest<ListResponse>("/api/delivery-notes", {
-    query: {
-      status: status === "all" ? undefined : status,
-      search,
-      receivingOnly: true,
-      page: 1,
-      limit: 50,
-    },
-  });
-  return asArray(response.data).map(normalizeDeliveryNote);
-};
-
 export const getDeliveryNote = async (id: string) => {
   const response = await apiRequest<ListResponse | unknown>(`/api/delivery-notes/${id}`, {
     query: { receivingOnly: true },
@@ -352,9 +480,32 @@ export const recordDeliveryNoteReceivingScan = async (
   };
 };
 
+export const resolveDeliveryNoteReceivingItem = async (
+  id: string,
+  data: RecordDeliveryNoteReceivingScanPayload
+): Promise<ResolvedDeliveryNoteReceivingItem> => {
+  const response = await apiRequest<{ data: ResolvedDeliveryNoteReceivingItem }>(
+    `/api/delivery-notes/${id}/resolve-receiving-item`,
+    { method: "POST", body: data }
+  );
+  return response.data;
+};
+
 export const voidDeliveryNoteReceivingScan = async (id: string, scanId: string) => {
   const response = await apiRequest<unknown>(
     `/api/delivery-notes/${id}/receiving-scans/${scanId}/void`,
+    {
+      method: "POST",
+      body: { reason: "Removed from mobile receiving count" },
+    }
+  );
+
+  return normalizeDeliveryDetail(asRecord(response).data || response);
+};
+
+export const voidDeliveryNoteReceivingException = async (id: string, exceptionId: string) => {
+  const response = await apiRequest<unknown>(
+    `/api/delivery-notes/${id}/receiving-exceptions/${exceptionId}/void`,
     {
       method: "POST",
       body: { reason: "Removed from mobile receiving count" },

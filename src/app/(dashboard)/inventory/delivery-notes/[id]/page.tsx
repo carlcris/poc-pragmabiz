@@ -30,6 +30,7 @@ import {
   useVoidDeliveryNote,
 } from "@/hooks/useDeliveryNotes";
 import type { ItemUnitOption } from "@/types/item";
+import type { DeliveryNoteStatus } from "@/types/delivery-note";
 import { useCreatePickList } from "@/hooks/usePickLists";
 import { useUsers } from "@/hooks/useUsers";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
@@ -59,9 +60,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toProperCase } from "@/lib/string";
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 import type { CreatePickListPayload } from "@/types/pick-list";
+
+const DELIVERY_NOTE_STATUS_TEXT_CLASSES = {
+  draft: "text-muted-foreground",
+  confirmed: "text-blue-700 dark:text-blue-400",
+  queued_for_picking: "text-amber-700 dark:text-amber-400",
+  picking_in_progress: "text-amber-700 dark:text-amber-400",
+  dispatch_ready: "text-teal-700 dark:text-teal-400",
+  dispatched: "text-blue-700 dark:text-blue-400",
+  received: "text-emerald-700 dark:text-emerald-400",
+  voided: "text-red-700 dark:text-red-400",
+} satisfies Record<DeliveryNoteStatus, string>;
 
 const formatDate = (value: string | null | undefined, locale: string) => {
   if (!value) return "--";
@@ -299,7 +310,7 @@ export default function DeliveryNoteDetailPage() {
     !!dn.requesting_warehouse_id &&
     (!currentBusinessUnit?.id || dn.requesting_business_unit_id === currentBusinessUnit.id);
 
-  const statusLabel = (status: string) => {
+  const statusLabel = (status: DeliveryNoteStatus) => {
     switch (status) {
       case "draft":
         return t("draft");
@@ -317,8 +328,6 @@ export default function DeliveryNoteDetailPage() {
         return t("receivedStatus");
       case "voided":
         return t("voidedStatus");
-      default:
-        return toProperCase(status);
     }
   };
 
@@ -363,6 +372,33 @@ export default function DeliveryNoteDetailPage() {
     return ref?.item_code || exception.item_id || t("unknownItem");
   };
 
+  const receivingReviewStatusPresentation = (
+    status: (typeof receivingExceptions)[number]["status"]
+  ) => {
+    switch (status) {
+      case "pending_review":
+        return {
+          label: t("receivingReviewPendingReview"),
+          className: "text-amber-700 dark:text-amber-400",
+        };
+      case "accepted":
+        return {
+          label: t("receivingReviewAccepted"),
+          className: "text-emerald-700 dark:text-emerald-400",
+        };
+      case "rejected":
+        return {
+          label: t("receivingReviewRejected"),
+          className: "text-red-700 dark:text-red-400",
+        };
+      case "resolved":
+        return {
+          label: t("receivingReviewResolved"),
+          className: "text-blue-700 dark:text-blue-400",
+        };
+    }
+  };
+
   const exceptionUomLabel = (exception: (typeof receivingExceptions)[number]) => {
     const row = exception as typeof exception & {
       item_unit_options?: EmbeddedUnitOptionRef | null;
@@ -386,11 +422,26 @@ export default function DeliveryNoteDetailPage() {
     return ref?.request_code || t("unknownStockRequest");
   };
 
-  const lineStateLabel = (item: (typeof items)[number]) => {
-    if (item.is_voided || toNumber(item.allocated_qty) === 0) return t("lineVoided");
-    if (toNumber(item.allocated_qty) > toNumber(item.picked_qty)) return t("pendingPicking");
-    if (toNumber(item.dispatched_qty) > 0) return t("dispatchedStatus");
-    return t("dispatchReady");
+  const lineStatePresentation = (item: (typeof items)[number]) => {
+    if (item.is_voided || toNumber(item.allocated_qty) === 0) {
+      return { label: t("lineVoided"), className: DELIVERY_NOTE_STATUS_TEXT_CLASSES.voided };
+    }
+    if (toNumber(item.allocated_qty) > toNumber(item.picked_qty)) {
+      return {
+        label: t("pendingPicking"),
+        className: DELIVERY_NOTE_STATUS_TEXT_CLASSES.picking_in_progress,
+      };
+    }
+    if (toNumber(item.dispatched_qty) > 0) {
+      return {
+        label: t("dispatchedStatus"),
+        className: DELIVERY_NOTE_STATUS_TEXT_CLASSES.dispatched,
+      };
+    }
+    return {
+      label: t("dispatchReady"),
+      className: DELIVERY_NOTE_STATUS_TEXT_CLASSES.dispatch_ready,
+    };
   };
 
   const getReceivedQty = (itemId: string, fallback: number) =>
@@ -707,7 +758,13 @@ export default function DeliveryNoteDetailPage() {
         <div className="rounded-lg border bg-card p-4">
           <div className="text-xs text-muted-foreground">{t("status")}</div>
           <div className="mt-1 text-sm font-semibold">
-            {dn ? statusLabel(dn.status) : <Skeleton className="h-5 w-28" />}
+            {dn ? (
+              <span className={DELIVERY_NOTE_STATUS_TEXT_CLASSES[dn.status]}>
+                {statusLabel(dn.status)}
+              </span>
+            ) : (
+              <Skeleton className="h-5 w-28" />
+            )}
           </div>
         </div>
         <div className="rounded-lg border bg-card p-4">
@@ -934,6 +991,7 @@ export default function DeliveryNoteDetailPage() {
                       </TableRow>
                     ))
                   : items.map((item) => {
+                      const lineState = lineStatePresentation(item);
                       const allocatedQty = toNumber(item.allocated_qty);
                       const pickedQty = toNumber(item.picked_qty);
                       const shortQty = toNumber(item.short_qty);
@@ -945,7 +1003,7 @@ export default function DeliveryNoteDetailPage() {
 
                       return (
                         <TableRow key={item.id}>
-                          <TableCell className="tabular-nums text-xs text-muted-foreground">
+                          <TableCell className="text-xs tabular-nums text-muted-foreground">
                             {requestLabel(item)}
                           </TableCell>
                           <TableCell>
@@ -1017,8 +1075,8 @@ export default function DeliveryNoteDetailPage() {
                             </>
                           )}
                           <TableCell>
-                            <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">
-                              {lineStateLabel(item)}
+                            <span className={`text-sm font-medium ${lineState.className}`}>
+                              {lineState.label}
                             </span>
                           </TableCell>
                           {showItemActions && (
@@ -1093,7 +1151,10 @@ export default function DeliveryNoteDetailPage() {
                     <TableHead className="text-right">Received</TableHead>
                     <TableHead className="text-right">Overage</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("reviewedAt")}</TableHead>
+                    {pendingOverageItems.length > 0 && (
+                      <TableHead className="text-right">{t("actions")}</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1102,6 +1163,9 @@ export default function DeliveryNoteDetailPage() {
                     const receivedQty = getLineReceivedQty(item);
                     const overageQty = Math.max(0, receivedQty - expectedQty);
                     const isPending = item.receiving_overage_review_status === "pending_review";
+                    const statusPresentation = receivingReviewStatusPresentation(
+                      item.receiving_overage_review_status ?? "pending_review"
+                    );
                     const isBusy =
                       acceptOverageMutation.isPending || rejectOverageMutation.isPending;
 
@@ -1127,19 +1191,8 @@ export default function DeliveryNoteDetailPage() {
                           +{formatQty(overageQty)}
                         </TableCell>
                         <TableCell>
-                          <span
-                            className={`rounded-md px-2 py-1 text-xs font-medium ${
-                              isPending
-                                ? "bg-amber-100 text-amber-900"
-                                : item.receiving_overage_review_status === "accepted"
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : "bg-muted text-muted-foreground"
-                            }`}
-                          >
-                            {(item.receiving_overage_review_status || "pending_review").replace(
-                              "_",
-                              " "
-                            )}
+                          <span className={`text-sm font-medium ${statusPresentation.className}`}>
+                            {statusPresentation.label}
                           </span>
                           {item.receiving_overage_posted_qty ? (
                             <div className="mt-1 text-xs text-muted-foreground">
@@ -1147,35 +1200,36 @@ export default function DeliveryNoteDetailPage() {
                             </div>
                           ) : null}
                         </TableCell>
-                        <TableCell className="text-right">
-                          {isPending ? (
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={isBusy}
-                                onClick={() => rejectReceivingOverage(item.id)}
-                              >
-                                <XCircle className="mr-2 h-3.5 w-3.5" />
-                                Reject
-                              </Button>
-                              <Button
-                                size="sm"
-                                disabled={isBusy}
-                                onClick={() => acceptReceivingOverage(item.id)}
-                              >
-                                <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
-                                Accept
-                              </Button>
-                            </div>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">
-                              {item.receiving_overage_reviewed_at
-                                ? formatDate(item.receiving_overage_reviewed_at, locale)
-                                : "--"}
-                            </span>
-                          )}
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(item.receiving_overage_reviewed_at, locale)}
                         </TableCell>
+                        {pendingOverageItems.length > 0 && (
+                          <TableCell className="text-right">
+                            {isPending ? (
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={isBusy}
+                                  onClick={() => rejectReceivingOverage(item.id)}
+                                >
+                                  <XCircle className="mr-2 h-3.5 w-3.5" />
+                                  Reject
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  disabled={isBusy}
+                                  onClick={() => acceptReceivingOverage(item.id)}
+                                >
+                                  <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+                                  Accept
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">{t("noValue")}</span>
+                            )}
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
@@ -1212,16 +1266,19 @@ export default function DeliveryNoteDetailPage() {
                   <TableRow>
                     <TableHead>Item</TableHead>
                     <TableHead>Unit</TableHead>
-                    <TableHead>Box</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Scanned At</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("reviewedAt")}</TableHead>
+                    {pendingReceivingExceptions.length > 0 && (
+                      <TableHead className="text-right">{t("actions")}</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {receivingExceptions.map((exception) => {
                     const isPending = exception.status === "pending_review";
+                    const statusPresentation = receivingReviewStatusPresentation(exception.status);
                     const isBusy =
                       acceptExceptionMutation.isPending || rejectExceptionMutation.isPending;
                     return (
@@ -1240,53 +1297,45 @@ export default function DeliveryNoteDetailPage() {
                             {exceptionUomLabel(exception)}
                           </span>
                         </TableCell>
-                        <TableCell className="tabular-nums text-xs">{exception.box_id}</TableCell>
                         <TableCell className="text-right font-medium">
                           {formatQty(toNumber(exception.accepted_qty))}
                         </TableCell>
                         <TableCell>
-                          <span
-                            className={`rounded-md px-2 py-1 text-xs font-medium ${
-                              isPending
-                                ? "bg-amber-100 text-amber-900"
-                                : exception.status === "accepted"
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : "bg-muted text-muted-foreground"
-                            }`}
-                          >
-                            {exception.status.replace("_", " ")}
+                          <span className={`text-sm font-medium ${statusPresentation.className}`}>
+                            {statusPresentation.label}
                           </span>
                         </TableCell>
                         <TableCell>{formatDate(exception.scanned_at, locale)}</TableCell>
-                        <TableCell className="text-right">
-                          {isPending ? (
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={isBusy}
-                                onClick={() => rejectReceivingException(exception.id)}
-                              >
-                                <XCircle className="mr-2 h-3.5 w-3.5" />
-                                Reject
-                              </Button>
-                              <Button
-                                size="sm"
-                                disabled={isBusy}
-                                onClick={() => acceptReceivingException(exception.id)}
-                              >
-                                <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
-                                Accept
-                              </Button>
-                            </div>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">
-                              {exception.reviewed_at
-                                ? formatDate(exception.reviewed_at, locale)
-                                : "--"}
-                            </span>
-                          )}
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(exception.reviewed_at, locale)}
                         </TableCell>
+                        {pendingReceivingExceptions.length > 0 && (
+                          <TableCell className="text-right">
+                            {isPending ? (
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={isBusy}
+                                  onClick={() => rejectReceivingException(exception.id)}
+                                >
+                                  <XCircle className="mr-2 h-3.5 w-3.5" />
+                                  Reject
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  disabled={isBusy}
+                                  onClick={() => acceptReceivingException(exception.id)}
+                                >
+                                  <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+                                  Accept
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">{t("noValue")}</span>
+                            )}
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
@@ -1752,7 +1801,7 @@ export default function DeliveryNoteDetailPage() {
                   )}
                   {filteredAllocatableItems.map((item) => (
                     <TableRow key={item.srItemId}>
-                      <TableCell className="tabular-nums text-xs">{item.requestCode}</TableCell>
+                      <TableCell className="text-xs tabular-nums">{item.requestCode}</TableCell>
                       <TableCell>
                         <div className="font-medium">
                           {item.itemName || item.itemCode || t("unknownItem")}

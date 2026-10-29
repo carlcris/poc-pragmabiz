@@ -40,17 +40,7 @@ export default function DashboardScreen() {
   const showPicking = canAccessPicking(session);
   const showQuickActions = showReceiving || showPicking;
   const openPendingReceipts = () => {
-    const tab =
-      (dashboard.data?.summary.pending_load_lists ?? 0) > 0 ? "load-lists" : "delivery-notes";
-
-    router.push({
-      pathname: "/receiving",
-      params: {
-        tab,
-        loadListStatus: "pending_receipts",
-        deliveryNoteStatus: "dispatched",
-      },
-    });
+    router.push("/receiving");
   };
 
   refreshOnFocusRef.current = () => {
