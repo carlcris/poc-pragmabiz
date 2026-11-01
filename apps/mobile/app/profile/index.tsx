@@ -30,7 +30,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <Screen title="Profile" subtitle="Account Settings">
+    <Screen title="Profile">
       <Card style={styles.profileCard}>
         <View style={styles.avatarContainer}>
           <View style={styles.avatar}>

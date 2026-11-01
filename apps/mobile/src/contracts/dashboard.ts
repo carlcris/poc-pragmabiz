@@ -1,8 +1,22 @@
+export type DashboardPickList = {
+  id: string;
+  code: string;
+  status: "pending" | "in_progress" | "paused";
+  deliveryNoteCode: string | null;
+  warehouseName: string | null;
+  lineCount: number;
+  pickedLineCount: number;
+};
+
 export type DashboardData = {
-  summary: {
-    pending_receipts: number;
-    pending_load_lists: number;
-    pick_list_to_pick: number;
-    urgent_stock_requests: number;
+  receiving: {
+    ready: number;
+    inProgress: number;
   };
+  picking: {
+    pending: number;
+    inProgress: number;
+    assignedPickList: DashboardPickList | null;
+  };
+  urgentStockRequests: number;
 };

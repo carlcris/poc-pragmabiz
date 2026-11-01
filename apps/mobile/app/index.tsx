@@ -1,29 +1,40 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useRef } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { createTranslator } from "use-intl/core";
 import { Card, ErrorState, LoadingState, Screen } from "@/components/ui";
-import type { MobileUser } from "@/contracts/auth";
+import type { DashboardPickList } from "@/contracts/dashboard";
 import { queryKeys, useDashboard } from "@/hooks/queries";
 import { useScreenFocusState } from "@/hooks/useScreenFocusState";
 import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
-import { spacing, borderRadius } from "@/theme/spacing";
+import { spacing, borderRadius, sizes } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
+import { formatTimeOfDay, formatWeekdayDate } from "@/utils/format";
 import { canAccessPicking, canAccessReceiving } from "@/utils/permissions";
+import { translations } from "../../../src/lib/i18n/translations";
 
-const getGreeting = (date = new Date()) => {
-  const hour = date.getHours();
-  if (hour < 12) return "Good morning";
-  if (hour === 12) return "Good noon";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
+// The native app currently uses English; reuse the web source of truth for dashboard copy.
+const tDashboard = createTranslator({ locale: "en", messages: translations.en.mobileDashboard });
+
+const receivingDetail = (ready: number, inProgress: number) => {
+  if (ready > 0 && inProgress > 0) {
+    return tDashboard("receivingReadyAndInProgress", { ready, inProgress });
+  }
+  if (ready > 0) return tDashboard("receivingReady", { count: ready });
+  if (inProgress > 0) return tDashboard("receivingInProgress", { count: inProgress });
+  return tDashboard("receivingEmpty");
 };
 
-const getDisplayName = (user: MobileUser | null) => {
-  if (!user) return "there";
-  return user.firstName || user.username || user.name || user.email.split("@")[0] || "there";
+const pickingDetail = (pending: number, inProgress: number) => {
+  if (pending > 0 && inProgress > 0) {
+    return tDashboard("pickingInProgressAndPending", { inProgress, pending });
+  }
+  if (pending > 0) return tDashboard("pickingPending", { count: pending });
+  if (inProgress > 0) return tDashboard("pickingInProgress", { count: inProgress });
+  return tDashboard("pickingEmpty");
 };
 
 export default function DashboardScreen() {
@@ -34,14 +45,16 @@ export default function DashboardScreen() {
   const dashboard = useDashboard(isFocused);
   const session = useAuthStore((state) => state.session);
   const businessUnitId = session?.currentBusinessUnit?.id || "";
-  const user = session?.user ?? null;
-  const displayName = getDisplayName(user);
   const showReceiving = canAccessReceiving(session);
   const showPicking = canAccessPicking(session);
-  const showQuickActions = showReceiving || showPicking;
-  const openPendingReceipts = () => {
-    router.push("/receiving");
-  };
+  const showTodaysWork = showReceiving || showPicking;
+  const today = formatWeekdayDate(new Date());
+  const headerTitle = dashboard.dataUpdatedAt
+    ? tDashboard("updatedAt", {
+        date: today,
+        time: formatTimeOfDay(new Date(dashboard.dataUpdatedAt)),
+      })
+    : today;
 
   refreshOnFocusRef.current = () => {
     if (
@@ -63,239 +76,352 @@ export default function DashboardScreen() {
     }, [])
   );
 
+  const data = dashboard.data;
+  const assignedPickList = showPicking ? (data?.picking.assignedPickList ?? null) : null;
+  const receivingTotal = data ? data.receiving.ready + data.receiving.inProgress : 0;
+  const pickingTotal = data ? data.picking.pending + data.picking.inProgress : 0;
+  const hasNoWork =
+    (!showReceiving || receivingTotal === 0) && (!showPicking || pickingTotal === 0);
+
   return (
     <Screen
-      title={`Hi ${displayName}`}
-      subtitle={`${getGreeting()}!`}
+      title={headerTitle}
       onRefresh={async () => {
         await dashboard.refetch();
       }}
       refreshing={dashboard.isRefetching}
     >
       {dashboard.isLoading ? <LoadingState /> : null}
-      {dashboard.error ? <ErrorState message="Unable to load the warehouse dashboard." /> : null}
-      {dashboard.data ? (
+      {dashboard.error ? <ErrorState message={tDashboard("loadError")} /> : null}
+      {data ? (
         <>
-          <View style={styles.metricsStrip}>
-            <MetricCard label="Receipts" value={dashboard.data.summary.pending_receipts} labelColor="#6366F1" />
-            <View style={styles.metricDivider} />
-            <MetricCard label="To pick" value={dashboard.data.summary.pick_list_to_pick} labelColor="#10B981" />
-            <View style={styles.metricDivider} />
-            <MetricCard label="In transit" value={0} labelColor="#F59E0B" />
-            <View style={styles.metricDivider} />
-            <MetricCard label="Urgent" value={dashboard.data.summary.urgent_stock_requests} labelColor="#EF4444" />
-          </View>
+          {assignedPickList ? (
+            <AssignedPickListCard
+              pickList={assignedPickList}
+              onPress={() => router.push(`/picking/${assignedPickList.id}`)}
+            />
+          ) : null}
 
-          {showQuickActions ? (
-            <>
-              <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
-
-              <Card style={styles.actionsCard}>
+          {showTodaysWork ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle} accessibilityRole="header">
+                {tDashboard("todaysWork")}
+              </Text>
+              <Card style={styles.workCard}>
                 {showReceiving ? (
-                  <ActionRow
-                    title="Receiving"
-                    subtitle="Receive incoming shipments"
+                  <WorkRow
+                    title={tDashboard("receiving")}
+                    detail={receivingDetail(data.receiving.ready, data.receiving.inProgress)}
                     icon="package-variant-closed"
-                    count={dashboard.data.summary.pending_receipts}
-                    tone="blue"
-                    onPress={openPendingReceipts}
+                    count={receivingTotal}
+                    tone="indigo"
+                    onPress={() => router.push("/receiving")}
                   />
                 ) : null}
                 {showReceiving && showPicking ? <View style={styles.divider} /> : null}
                 {showPicking ? (
-                  <ActionRow
-                    title="Picking"
-                    subtitle="Pick from assigned lists"
+                  <WorkRow
+                    title={tDashboard("picking")}
+                    detail={pickingDetail(data.picking.pending, data.picking.inProgress)}
                     icon="package-variant-plus"
-                    count={dashboard.data.summary.pick_list_to_pick}
+                    count={pickingTotal}
                     tone="green"
                     onPress={() => router.push("/picking")}
                   />
                 ) : null}
               </Card>
-            </>
+              {hasNoWork ? <Text style={styles.noWorkHint}>{tDashboard("noWorkHint")}</Text> : null}
+            </View>
           ) : null}
 
-          <Card style={styles.statusCard}>
-            <MaterialCommunityIcons
-              name={
-                dashboard.data.summary.urgent_stock_requests > 0
-                  ? "alert-circle-outline"
-                  : "check-circle-outline"
-              }
-              size={24}
-              color={dashboard.data.summary.urgent_stock_requests > 0 ? colors.amber : colors.green}
-            />
-            <Text style={styles.statusText}>
-              {dashboard.data.summary.urgent_stock_requests > 0
-                ? `${dashboard.data.summary.urgent_stock_requests} urgent stock requests need review.`
-                : "All clear — no urgent stock requests."}
-            </Text>
-          </Card>
+          {data.urgentStockRequests > 0 ? (
+            <Card style={styles.attentionCard}>
+              <Ionicons name="alert-circle-outline" size={24} color={colors.statusWarning} />
+              <View style={styles.attentionContent}>
+                <Text style={styles.attentionTitle}>
+                  {tDashboard("urgentStockRequests", { count: data.urgentStockRequests })}
+                </Text>
+                <Text style={styles.attentionDetail}>{tDashboard("urgentStockRequestsHint")}</Text>
+              </View>
+            </Card>
+          ) : (
+            <Card style={[styles.attentionCard, styles.allClearCard]}>
+              <Ionicons name="checkmark-circle-outline" size={24} color={colors.statusSuccess} />
+              <View style={styles.attentionContent}>
+                <Text style={[styles.attentionTitle, styles.allClearTitle]}>
+                  {tDashboard("noUrgentTasks")}
+                </Text>
+                <Text style={styles.attentionDetail}>{tDashboard("noUrgentTasksHint")}</Text>
+              </View>
+            </Card>
+          )}
         </>
       ) : null}
     </Screen>
   );
 }
 
-const MetricCard = ({
-  label,
-  value,
-  labelColor,
+const AssignedPickListCard = ({
+  pickList,
+  onPress,
 }: {
-  label: string;
-  value: number;
-  labelColor: string;
-}) => (
-  <View style={styles.metricCard}>
-    <Text style={styles.metricValue}>{value}</Text>
-    <Text style={[styles.metricLabel, { color: labelColor }]}>{label}</Text>
-  </View>
-);
+  pickList: DashboardPickList;
+  onPress: () => void;
+}) => {
+  const isStarted = pickList.status !== "pending";
+  const context = [pickList.warehouseName, pickList.deliveryNoteCode].filter(Boolean).join(" · ");
+  const progress = pickList.lineCount > 0 ? pickList.pickedLineCount / pickList.lineCount : 0;
 
-const ActionRow = ({
+  return (
+    <Card style={styles.pickCard}>
+      <Text style={styles.sectionTitle} accessibilityRole="header">
+        {tDashboard(isStarted ? "continuePicking" : "nextUp")}
+      </Text>
+      <View style={styles.pickIdentity}>
+        <Text style={styles.pickCode}>{pickList.code}</Text>
+        <Text style={styles.pickContext}>
+          {[context, isStarted ? null : tDashboard("lineCount", { count: pickList.lineCount })]
+            .filter(Boolean)
+            .join(" · ")}
+        </Text>
+      </View>
+      {isStarted ? (
+        <View style={styles.progressBlock}>
+          <View
+            style={styles.progressTrack}
+            accessibilityRole="progressbar"
+            accessibilityValue={{ min: 0, max: pickList.lineCount, now: pickList.pickedLineCount }}
+          >
+            <View style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
+          </View>
+          <Text style={styles.progressText}>
+            {tDashboard("linesPicked", {
+              picked: pickList.pickedLineCount,
+              total: pickList.lineCount,
+            })}
+          </Text>
+        </View>
+      ) : null}
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.pickButton, pressed && styles.pickButtonPressed]}
+      >
+        <Text style={styles.pickButtonText}>
+          {tDashboard(isStarted ? "resumePicking" : "startPicking")}
+        </Text>
+        <Ionicons name="arrow-forward" size={18} color={colors.surface} />
+      </Pressable>
+    </Card>
+  );
+};
+
+const WorkRow = ({
   title,
-  subtitle,
+  detail,
   icon,
   count,
   tone,
   onPress,
 }: {
   title: string;
-  subtitle: string;
+  detail: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   count: number;
-  tone: "blue" | "green";
+  tone: "indigo" | "green";
   onPress: () => void;
-}) => (
-  <Pressable onPress={onPress} style={styles.actionRow}>
-    <View style={[styles.actionIcon, tone === "green" ? styles.greenBubble : styles.blueBubble]}>
-      <MaterialCommunityIcons
-        name={icon}
-        size={24}
-        color={tone === "green" ? "#10B981" : "#6366F1"}
-      />
-    </View>
-    <View style={styles.actionContent}>
-      <Text style={styles.actionTitle}>{title}</Text>
-      <Text style={styles.actionSubtitle}>{subtitle}</Text>
-    </View>
-    <View style={styles.actionRight}>
-      <Text style={styles.countText}>{count}</Text>
-      <MaterialCommunityIcons name="chevron-right" size={20} color="#C4BFD6" />
-    </View>
-  </Pressable>
-);
+}) => {
+  const isEmpty = count === 0;
+  const iconColor = isEmpty
+    ? colors.textSecondary
+    : tone === "green"
+      ? colors.statusSuccess
+      : colors.primaryDark;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={tDashboard("workRowAccessibilityLabel", { title, count, detail })}
+      style={({ pressed }) => [styles.workRow, pressed && styles.workRowPressed]}
+    >
+      <View
+        style={[
+          styles.workIcon,
+          isEmpty ? styles.workIconEmpty : tone === "green" ? styles.workIconGreen : styles.workIconIndigo,
+        ]}
+      >
+        <MaterialCommunityIcons name={icon} size={24} color={iconColor} />
+      </View>
+      <View style={styles.workContent}>
+        <Text style={styles.workTitle}>{title}</Text>
+        <Text style={styles.workDetail}>{detail}</Text>
+      </View>
+      <Text style={[styles.workCount, isEmpty && styles.workCountEmpty]}>{count}</Text>
+      <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
+    </Pressable>
+  );
+};
 
 const styles = StyleSheet.create({
-  metricsStrip: {
-    flexDirection: "row",
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    borderWidth: 0,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xs,
-    marginBottom: spacing.sm,
-    alignItems: "center",
-  },
-  metricCard: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-  },
-  metricDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: "#F0EDF7",
-  },
-  metricValue: {
-    fontSize: 32,
-    fontWeight: typography.fontWeights.bold,
-    color: colors.text,
-    lineHeight: 32,
-  },
-  metricLabel: {
-    fontSize: 11,
-    textAlign: "center",
-    lineHeight: 14,
-    fontWeight: typography.fontWeights.medium,
+  section: {
+    gap: spacing.sm,
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: typography.fontWeights.semibold,
-    color: "#9B8FC4",
-    letterSpacing: 1,
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
+    color: colors.statusNeutral,
+    marginHorizontal: spacing.xs,
   },
-  actionsCard: {
-    padding: 0,
-    overflow: "hidden",
-    borderRadius: borderRadius.lg,
+  pickCard: {
+    gap: spacing.md,
+    padding: spacing.base,
     borderWidth: 0,
   },
-  actionRow: {
+  pickIdentity: {
+    gap: 2,
+  },
+  pickCode: {
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
+  },
+  pickContext: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textSecondary,
+  },
+  progressBlock: {
+    gap: 6,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.border,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: 8,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.primaryDark,
+  },
+  progressText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textSecondary,
+  },
+  pickButton: {
+    minHeight: sizes.button.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primaryDark,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+  },
+  pickButtonPressed: {
+    opacity: 0.85,
+  },
+  pickButtonText: {
+    fontSize: 15,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.surface,
+  },
+  workCard: {
+    padding: 0,
+    overflow: "hidden",
+    borderWidth: 0,
+  },
+  workRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
     padding: spacing.base,
-    minHeight: 68,
+    minHeight: 80,
   },
-  actionIcon: {
+  workRowPressed: {
+    backgroundColor: colors.backgroundSecondary,
+  },
+  workIcon: {
     width: 48,
     height: 48,
     borderRadius: borderRadius.md,
     alignItems: "center",
     justifyContent: "center",
   },
-  blueBubble: {
-    backgroundColor: "#E8E5FF",
+  workIconIndigo: {
+    backgroundColor: colors.primarySoft,
   },
-  greenBubble: {
-    backgroundColor: "#D4F4E2",
+  workIconGreen: {
+    backgroundColor: colors.greenSoft,
   },
-  actionContent: {
+  workIconEmpty: {
+    backgroundColor: colors.backgroundSecondary,
+  },
+  workContent: {
     flex: 1,
+    gap: 2,
   },
-  actionTitle: {
+  workTitle: {
     fontSize: 16,
+    lineHeight: 22,
     fontWeight: typography.fontWeights.semibold,
     color: colors.text,
-    marginBottom: 2,
   },
-  actionSubtitle: {
-    fontSize: 13,
-    color: "#9B8FC4",
+  workDetail: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textSecondary,
   },
-  actionRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  countText: {
-    fontSize: 24,
+  workCount: {
+    fontSize: 28,
+    lineHeight: 34,
     fontWeight: typography.fontWeights.bold,
-    color: colors.primary,
+    color: colors.text,
+    fontVariant: ["tabular-nums"],
+  },
+  workCountEmpty: {
+    color: colors.textSecondary,
   },
   divider: {
     height: 1,
-    backgroundColor: "#F0EDF7",
-    marginHorizontal: 0,
+    marginLeft: 76,
+    backgroundColor: colors.backgroundSecondary,
   },
-  statusCard: {
+  noWorkHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textSecondary,
+    marginHorizontal: spacing.xs,
+  },
+  attentionCard: {
     flexDirection: "row",
+    alignItems: "flex-start",
     gap: spacing.md,
-    alignItems: "center",
-    backgroundColor: "#E8F5EE",
-    borderColor: "transparent",
-    borderWidth: 0,
-    borderRadius: borderRadius.lg,
     padding: spacing.base,
+    borderColor: colors.amber,
   },
-  statusText: {
-    fontSize: 14,
-    color: colors.text,
+  attentionContent: {
     flex: 1,
+    gap: 2,
+  },
+  attentionTitle: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.statusWarning,
+  },
+  attentionDetail: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textSecondary,
+  },
+  allClearCard: {
+    borderColor: colors.green,
+  },
+  allClearTitle: {
+    color: colors.statusSuccess,
   },
 });

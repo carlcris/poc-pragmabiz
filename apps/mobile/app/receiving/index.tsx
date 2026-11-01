@@ -125,7 +125,7 @@ export default function ReceivingScreen() {
 
   if (!canViewReceiving) {
     return (
-      <Screen title="Receiving" subtitle="Manage incoming deliveries">
+      <Screen title="Receiving">
         <ErrorState message="You do not have permission to access receiving." />
       </Screen>
     );
@@ -134,7 +134,6 @@ export default function ReceivingScreen() {
   return (
     <Screen
       title="Receiving"
-      subtitle="Manage incoming deliveries"
       onRefresh={handleRefresh}
       refreshing={inbox.isRefetching && !inbox.isFetchingNextPage}
     >

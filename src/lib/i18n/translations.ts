@@ -18,6 +18,36 @@ export type TranslationKeys = {
     timeout: string;
     vanNotAssigned: string;
   };
+  mobileShell: {
+    switchBusinessUnit: string;
+  };
+  mobileDashboard: {
+    updatedAt: string;
+    continuePicking: string;
+    nextUp: string;
+    linesPicked: string;
+    lineCount: string;
+    resumePicking: string;
+    startPicking: string;
+    todaysWork: string;
+    receiving: string;
+    picking: string;
+    receivingReady: string;
+    receivingInProgress: string;
+    receivingReadyAndInProgress: string;
+    receivingEmpty: string;
+    pickingPending: string;
+    pickingInProgress: string;
+    pickingInProgressAndPending: string;
+    pickingEmpty: string;
+    noWorkHint: string;
+    workRowAccessibilityLabel: string;
+    urgentStockRequests: string;
+    urgentStockRequestsHint: string;
+    noUrgentTasks: string;
+    noUrgentTasksHint: string;
+    loadError: string;
+  };
   common: {
     loading: string;
     error: string;
@@ -3828,6 +3858,37 @@ export const translations: Record<Locale, TranslationKeys> = {
       timeout: "We couldn't connect to the sign-in service. Please try again later.",
       vanNotAssigned:
         "Your account doesn't have a van warehouse assigned. Contact your supervisor to set one up, then try again.",
+    },
+    mobileShell: {
+      switchBusinessUnit: "Switch business unit. Current: {name}",
+    },
+    mobileDashboard: {
+      updatedAt: "{date} · Updated {time}",
+      continuePicking: "Continue picking",
+      nextUp: "Next up",
+      linesPicked: "{picked} of {total} lines picked",
+      lineCount: "{count, plural, one {# line} other {# lines}}",
+      resumePicking: "Resume picking",
+      startPicking: "Start picking",
+      todaysWork: "Today's work",
+      receiving: "Receiving",
+      picking: "Picking",
+      receivingReady: "{count} ready to receive",
+      receivingInProgress: "{count} in progress",
+      receivingReadyAndInProgress: "{ready} ready · {inProgress} in progress",
+      receivingEmpty: "Nothing to receive right now",
+      pickingPending: "{count} waiting to start",
+      pickingInProgress: "{count} in progress",
+      pickingInProgressAndPending: "{inProgress} in progress · {pending} pending",
+      pickingEmpty: "No pick lists waiting",
+      noWorkHint: "New work shows up here as soon as it's assigned. Pull down to refresh.",
+      workRowAccessibilityLabel: "{title}: {count}. {detail}",
+      urgentStockRequests:
+        "{count, plural, one {# urgent stock request} other {# urgent stock requests}}",
+      urgentStockRequestsHint: "Waiting for review in the web app.",
+      noUrgentTasks: "No urgent tasks",
+      noUrgentTasksHint: "Nothing needs your attention right now.",
+      loadError: "Unable to load the warehouse dashboard.",
     },
     common: {
       loading: "Loading...",
@@ -10582,6 +10643,36 @@ export const translations: Record<Locale, TranslationKeys> = {
       networkError: "暂时无法连接到登录服务。请稍后重试。",
       timeout: "暂时无法连接到登录服务。请稍后重试。",
       vanNotAssigned: "您的账户尚未分配车载仓库。请联系主管完成设置后重试。",
+    },
+    mobileShell: {
+      switchBusinessUnit: "切换业务单元。当前：{name}",
+    },
+    mobileDashboard: {
+      updatedAt: "{date} · 更新于 {time}",
+      continuePicking: "继续拣货",
+      nextUp: "下一个",
+      linesPicked: "已拣 {picked}/{total} 行",
+      lineCount: "{count} 行",
+      resumePicking: "继续拣货",
+      startPicking: "开始拣货",
+      todaysWork: "今日工作",
+      receiving: "收货",
+      picking: "拣货",
+      receivingReady: "{count} 个待收货",
+      receivingInProgress: "{count} 个进行中",
+      receivingReadyAndInProgress: "{ready} 个待收货 · {inProgress} 个进行中",
+      receivingEmpty: "目前没有待收货",
+      pickingPending: "{count} 个待开始",
+      pickingInProgress: "{count} 个进行中",
+      pickingInProgressAndPending: "{inProgress} 个进行中 · {pending} 个待开始",
+      pickingEmpty: "没有待处理的拣货单",
+      noWorkHint: "分配新工作后会立即显示在这里。下拉即可刷新。",
+      workRowAccessibilityLabel: "{title}：{count}。{detail}",
+      urgentStockRequests: "{count} 个紧急库存申请",
+      urgentStockRequestsHint: "等待在网页端审核。",
+      noUrgentTasks: "没有紧急任务",
+      noUrgentTasksHint: "目前没有需要您处理的事项。",
+      loadError: "无法加载仓库仪表板。",
     },
     common: {
       loading: "加载中...",

@@ -9,9 +9,15 @@ export const formatDate = (value: string | null | undefined): string => {
   }).format(date);
 };
 
-export const todayLabel = (): string =>
+export const formatWeekdayDate = (date: Date): string =>
   new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric"
-  }).format(new Date());
+    weekday: "short",
+    month: "short",
+    day: "numeric"
+  }).format(date);
+
+export const formatTimeOfDay = (date: Date): string =>
+  new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(date);

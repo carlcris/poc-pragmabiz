@@ -25,9 +25,25 @@ import { useBusinessUnits, useSetBusinessUnit } from "@/hooks/queries";
 import { useAuthStore } from "@/stores/authStore";
 import { spacing, borderRadius, shadows, sizes } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
-import { todayLabel } from "@/utils/format";
 import { canAccessPicking, canAccessReceiving } from "@/utils/permissions";
 import { titleCaseStatus } from "@/utils/record";
+import { createTranslator } from "use-intl/core";
+import { translations } from "../../../../src/lib/i18n/translations";
+
+// The native app currently uses English; reuse the web source of truth for shell copy.
+const tShell = createTranslator({ locale: "en", messages: translations.en.mobileShell });
+
+type ScreenProps = {
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  onRefresh?: () => Promise<void> | void;
+  refreshing?: boolean;
+} & (
+  // Detail screens keep their record title and context subtitle.
+  | { back: true; title: string; subtitle?: string }
+  // Main screens show the business unit switcher as the title and the screen title beneath it.
+  | { back?: false; title: string; subtitle?: never }
+);
 
 export const Screen = ({
   title,
@@ -37,15 +53,7 @@ export const Screen = ({
   footer,
   onRefresh,
   refreshing
-}: {
-  title: string;
-  subtitle?: string;
-  back?: boolean;
-  children: React.ReactNode;
-  footer?: React.ReactNode;
-  onRefresh?: () => Promise<void> | void;
-  refreshing?: boolean;
-}) => {
+}: ScreenProps) => {
   const [internalRefreshing, setInternalRefreshing] = useState(false);
   const isRefreshing = refreshing ?? internalRefreshing;
 
@@ -76,25 +84,25 @@ export const Screen = ({
             </Pressable>
           ) : null}
           <View style={styles.headerTitleBlock}>
-            <Text style={styles.headerTitle} numberOfLines={1}>
-              {title}
-            </Text>
-            {subtitle ? (
+            {back ? (
+              <Text style={styles.headerTitle} numberOfLines={1}>
+                {title}
+              </Text>
+            ) : (
+              <BusinessUnitSwitcher />
+            )}
+            {back && subtitle ? (
               <Text style={styles.headerSubtitle} numberOfLines={1}>
                 {subtitle}
               </Text>
             ) : null}
+            {!back ? (
+              <Text style={styles.headerSubtitle} numberOfLines={1}>
+                {title}
+              </Text>
+            ) : null}
           </View>
         </View>
-        <Pressable
-          style={({ pressed }) => [
-            styles.notificationButton,
-            pressed && styles.notificationButtonPressed
-          ]}
-        >
-          <Ionicons name="notifications-outline" size={22} color={colors.text} />
-          <View style={styles.notificationBadge} />
-        </Pressable>
       </View>
       <ScrollView
         style={styles.scroll}
@@ -110,7 +118,6 @@ export const Screen = ({
           />
         ) : undefined}
       >
-        <BusinessDateBar />
         {children}
       </ScrollView>
       {footer}
@@ -118,7 +125,7 @@ export const Screen = ({
   );
 };
 
-export const BusinessDateBar = () => {
+const BusinessUnitSwitcher = () => {
   const [open, setOpen] = useState(false);
   const session = useAuthStore((state) => state.session);
   const businessUnits = useBusinessUnits();
@@ -152,23 +159,25 @@ export const BusinessDateBar = () => {
     });
   };
 
+  const businessUnitLabel = businessUnits.isLoading
+    ? "Loading business units..."
+    : currentBusinessUnit?.name || "Select business unit";
+
   return (
-    <View style={styles.contextBar}>
+    <>
       <Pressable
-        style={[styles.contextPill, { flex: 1 }]}
+        style={styles.businessUnitSwitcher}
+        hitSlop={{ top: spacing.md, bottom: spacing.xs, left: spacing.sm, right: spacing.sm }}
         onPress={() => setOpen(true)}
         disabled={businessUnits.isLoading || setBusinessUnit.isPending}
+        accessibilityRole="button"
+        accessibilityLabel={tShell("switchBusinessUnit", { name: businessUnitLabel })}
       >
-        <MaterialCommunityIcons name="warehouse" size={18} color={colors.primary} />
-        <Text style={styles.contextText} numberOfLines={1}>
-          {businessUnits.isLoading ? "Loading business units..." : currentBusinessUnit?.name || "Select business unit"}
+        <Text style={[styles.headerTitle, styles.businessUnitSwitcherText]} numberOfLines={1}>
+          {businessUnitLabel}
         </Text>
-        <Ionicons name="chevron-expand" size={16} color={colors.muted} style={{ marginLeft: "auto" }} />
+        <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
       </Pressable>
-      <View style={styles.contextPill}>
-        <Text style={styles.dateIcon}>📅</Text>
-        <Text style={styles.contextText}>{todayLabel()}</Text>
-      </View>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={styles.switcherBackdrop} onPress={() => setOpen(false)}>
@@ -213,11 +222,11 @@ export const BusinessDateBar = () => {
           </Pressable>
         </Pressable>
       </Modal>
-    </View>
+    </>
   );
 };
 
-export const Card = ({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) => (
+export const Card =({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) => (
   <View style={[styles.card, style]}>{children}</View>
 );
 
@@ -619,54 +628,16 @@ export const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.medium,
     color: colors.textSecondary
   },
-  notificationButton: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.lg,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.backgroundSecondary,
-    position: "relative"
-  },
-  notificationButtonPressed: {
-    backgroundColor: colors.border,
-    opacity: 0.8
-  },
-  notificationBadge: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.danger,
-    borderWidth: 2,
-    borderColor: colors.surface
-  },
-  contextBar: {
-    flexDirection: "row",
-    gap: spacing.md,
-    marginBottom: spacing.base
-  },
-  contextPill: {
-    minHeight: 40,
+  businessUnitSwitcher: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.sm
+    alignSelf: "flex-start",
+    maxWidth: "100%",
+    gap: spacing.xs
   },
-  contextText: {
-    fontSize: 12,
-    fontWeight: typography.fontWeights.semibold,
-    color: colors.text,
+  businessUnitSwitcherText: {
     flexShrink: 1
   },
-  dateIcon: { fontSize: 14 },
   switcherBackdrop: {
     flex: 1,
     backgroundColor: colors.overlay,

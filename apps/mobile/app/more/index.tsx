@@ -8,7 +8,7 @@ import { typography } from "@/theme/typography";
 
 export default function MoreScreen() {
   return (
-    <Screen title="More" subtitle="Additional features">
+    <Screen title="More">
       <Card style={styles.menuCard}>
         <FeatureItem
           icon="scan-outline"

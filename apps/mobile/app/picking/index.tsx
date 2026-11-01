@@ -57,7 +57,7 @@ export default function PickingScreen() {
 
   if (!canViewPicking) {
     return (
-      <Screen title="Picking" subtitle="Process orders and pack items">
+      <Screen title="Picking">
         <ErrorState message="You do not have permission to access picking." />
       </Screen>
     );
@@ -66,7 +66,6 @@ export default function PickingScreen() {
   return (
     <Screen
       title="Picking"
-      subtitle="Process orders and pack items"
       onRefresh={handleRefresh}
       refreshing={pickListsQuery.isRefetching || kpiQuery.isRefetching}
     >

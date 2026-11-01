@@ -186,7 +186,7 @@ apps/mobile/
 - One receiving inbox lists load lists (destination is the current business unit) and delivery notes (requested by the current business unit) together, using shared stages: Expected (load list `confirmed`/`in_transit`), Ready to receive (load list `arrived`; delivery note `dispatched`, receiving not started), In progress (load list `receiving`; delivery note `dispatched` with receiving started), Awaiting approval (load list `pending_approval`) and Completed (`received`). Delivery notes appear only once dispatched.
 - The inbox opens on To receive (Ready + In progress), grouped In progress first. Chips switch between To receive and Expected; the Filters sheet offers document type (when the user can receive both kinds) and every stage, each with server-provided counts. Search covers document code, supplier, supplier LL number, container number and source branch, and is debounced. Results page 20 at a time with Show more.
 - Rows open the existing detail screens: load lists in Ready or In progress, delivery notes in Ready, In progress or Completed. Expected rows show the ETA and do not open.
-- `GET /api/mobile/warehouse-dashboard` returns a bounded Pending Receipts aggregate containing destination-business-unit load lists in `arrived` or `receiving`, plus dispatched delivery notes awaiting receipt by the current business unit; the dashboard action opens the receiving inbox on To receive
+- `GET /api/mobile/warehouse-dashboard` returns `receiving.ready` / `receiving.inProgress` counts using the receiving inbox stages (load lists `arrived` / `receiving`; dispatched delivery notes before / after receiving starts), `picking.pending` / `picking.inProgress` counts (`pending`; `in_progress` + `paused`) for the current business unit, `picking.assignedPickList` (the current user's oldest assigned started pick list, else their oldest assigned pending one, with delivery note code, source warehouse and line progress, or `null`), and `urgentStockRequests`. Receiving counts require the incoming-shipments dashboard capability and picking data the pick-list dashboard capability. All reads are head counts or a single `limit 1` row; the Receiving row opens the receiving inbox on To receive
 - Load-list and delivery-note detail screens share one layout: a header with the document code and its supplier or source branch, a progress summary (shared stage, counted or scanned progress, key facts), and a sticky footer holding the primary actions and the current status or error message
 - Load-list detail splits GRN lines into To count, Counted and Variance tabs; a line opens into Received and Damaged steppers with the resulting shortage, overage or damage shown as text. Start receiving sits in the footer; Pause receiving sits in the progress summary, away from Submit. Submit still requires at least one received quantity, and its label shows how many lines are not yet counted
 - Delivery-note detail shows a scan field with camera button; every scan adds one unit, as enforced by the database. The latest scan is confirmed inline with Undo, which voids that scan; each line also keeps its remove-one control. Lines are ordered in progress, over, not scanned, then complete, and the footer summarizes short and over lines before Submit receiving opens the discrepancy notes. Confirmed unexpected items appear below the lines under "Not on this delivery note", grouped per item and unit with their scanned count and review status (rejected and voided exceptions are hidden), and the footer counts them too. Their units are included in the summary's units scanned, measured against the dispatched quantity, so the summary matches the inbox row. Undo on an unexpected-item scan, or the remove-one control on a pending unexpected row, voids the most recent exception for that item
@@ -626,6 +626,16 @@ granular permissions do not call the protected APIs. Picking requires Pick Lists
 list, detail, and mutation access to current-user assignments. With the toggle disabled, results
 remain restricted to the selected business unit. Picking rights alone do not grant delivery-note
 receiving access.
+
+Main screens (Home, Receiving, Picking, Profile, More) share a header whose title is the current
+business unit, which opens the business-unit switcher, with the screen name beneath it. Detail
+screens (with Back) keep their record title and context subtitle and do not offer the switcher. The
+header has no notification button. The Home screen shows, in order: a Continue picking card for the
+user's assigned started pick list, or a Next up card for their oldest assigned pending one (hidden
+when nothing is assigned); a Today's work card with Receiving and Picking rows showing total counts
+and their stage breakdown, with neutral empty copy when a count is zero; and either the urgent stock
+request count (review happens in the web app) or a matching "No urgent tasks" card. The header
+subtitle shows the date and the time the dashboard data was last fetched.
 
 #### GET /api/mobile/items/search
 
