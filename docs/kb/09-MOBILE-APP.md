@@ -147,6 +147,8 @@ apps/mobile/
 - Before confirmation, mobile stores the pending payload, business-unit scope, and operation ID locally, renews the claim, and suppresses lease-heartbeat cleanup until the result is resolved. A manual retry, app restart, or foreground resume retries the same operation first; if the original request did not commit and the lease expired, it reacquires the line and retries without changing the operation ID
 - Delivery-note picked totals are reconciled from execution rows across all non-deleted pick lists, preserving prior progress when a later pick list is created for the same delivery-note line
 - Complete Picking finalizes the already-persisted pick rows instead of replaying mobile-only quantity changes
+- When any line is not fully picked, Complete first asks for confirmation and lists the short lines (picked / required, up to five, then a remaining count); a fully picked list completes directly. A failed completion shows the API's safe error message in the picking footer
+- The verified-item pick location shows the recorded location, batch, and batch-location SKU only; a missing value is shown as "Not recorded" in warning color rather than a substituted default
 - Quantity validation
 - Real-time progress updates
 - Exception handling (short picks, wrong location)
@@ -216,8 +218,12 @@ Receiving confirmation and discrepancy dialogs remain open until the user choose
 visible dialog actions. The scan confirmation is rendered in the receiving screen rather than an
 Android native modal, and hardware back-key events are consumed while that confirmation is active.
 
-SUNMI devices must be configured with broadcast output enabled and simulated-keyboard/direct-fill
-output disabled. This broadcast-only setup prevents the scan head from typing into a focused
+SUNMI devices must be configured with broadcast output enabled, simulated-keyboard/direct-fill
+output disabled, and both **Send Enter key** and **Send TAB key** disabled. Key suffixes can still
+change focus or activate navigation independently of the broadcast payload. The shared screen
+header provides a neutral initial keyboard-focus target so repeated Enter suffixes do not focus
+and activate Back; touch navigation, Android Back, and focused manual-entry submission remain
+available. This broadcast-only setup prevents the scan head from typing into a focused
 manual-entry field. Because the receiver is native Android code, physical scanner testing requires
 a development, APK, preview, or production build; Expo Go continues to support only the camera
 fallback.
@@ -696,10 +702,12 @@ Search items for mobile (autocomplete).
 
 **Location**: `apps/mobile/app/picking/[id].tsx`
 
-- Show items to pick
-- Barcode scanning interface
-- Item-by-item progress
-- Complete button
+- Scan-first layout: status text and line progress ("7 of 12 lines") replace unit totals, because units differ per line
+- A scanner bar shows whether the Sunmi hardware scanner is ready (blue with a spinner while a scan is being checked), with icon-only camera and keypad buttons as fallbacks (keypad opens 10-digit entry on a number pad); scan errors stay in a banner until the next scan
+- A Next pick card shows the first remaining unreserved line in location-code order (natural sort of zone/aisle/bay codes as a walking-path proxy), with its location code as the largest text; Up next lists the rest in the same order, and picked lines collapse behind "N picked"
+- After a valid scan the screen shows a match banner (or an amber different-batch banner with assigned vs scanned values), the scanned location, and a quantity stepper; Cancel and Confirm are pinned in the footer above the keyboard
+- Scan results vibrate: one short pulse for a match, two pulses for a different batch, one long pulse for an error. Re-scanning the verified QR code confirms an exact-match pick at the shown quantity; a different-batch pick must be confirmed with the button
+- Pause and Finish (or Start/Resume picking) sit in the pinned footer, whose note shows open lines, who holds a blocking reservation, or the last status/completion error
 
 #### ScannerScreen
 
@@ -738,7 +746,8 @@ resources embedded in an existing installation. See `apps/mobile/README.md` for 
 
 ### Issue: Mobile barcode scanner not working
 
-**Symptoms**: Camera not opening, SUNMI scan key has no effect, or barcodes are typed into an input
+**Symptoms**: Camera not opening, SUNMI scan key has no effect, barcodes are typed into an input,
+or scanning returns an open pick list to the overview
 **Solution**:
 
 1. Check camera permissions granted in app settings
@@ -749,7 +758,9 @@ resources embedded in an existing installation. See `apps/mobile/README.md` for 
 6. Clear app cache and restart
 7. On SUNMI hardware, verify ScannerHead broadcast output is enabled
 8. Disable SUNMI simulated-keyboard/direct-fill output to keep hardware scans silent
-9. Install a native Android build instead of Expo Go when testing the SUNMI scan head
+9. Disable **Send Enter key** and **Send TAB key** in ScannerHead; an Enter suffix can otherwise
+   activate a focused Back button and return to the overview
+10. Install a native Android build instead of Expo Go when testing the SUNMI scan head
 
 ### Issue: Mobile app offline mode issues
 

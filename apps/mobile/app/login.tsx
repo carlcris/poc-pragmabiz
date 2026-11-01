@@ -30,10 +30,16 @@ export default function LoginScreen() {
   const passwordInputRef = useRef<TextInput>(null);
   const canSubmit = !submitting && Boolean(email.trim()) && Boolean(password);
 
-  useEffect(() => {
-    const keyboardSubscription = Keyboard.addListener("keyboardDidShow", () => {
+  const scrollFormAboveKeyboard = () => {
+    if (Keyboard.isVisible()) {
       scrollViewRef.current?.scrollToEnd({ animated: true });
-    });
+    }
+  };
+
+  // iOS shrinks the scroll viewport before keyboardDidShow; Android shrinks it after,
+  // so the viewport layout change must also bring the form above the keyboard.
+  useEffect(() => {
+    const keyboardSubscription = Keyboard.addListener("keyboardDidShow", scrollFormAboveKeyboard);
 
     return () => keyboardSubscription.remove();
   }, []);
@@ -56,13 +62,11 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.shell}
-      >
+      <KeyboardAvoidingView behavior="padding" style={styles.shell}>
         <ScrollView
           ref={scrollViewRef}
           contentContainerStyle={styles.scrollContent}
+          onLayout={scrollFormAboveKeyboard}
           keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}

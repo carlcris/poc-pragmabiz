@@ -14,8 +14,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ReceivingDetailFooter } from "@/components/receiving/ReceivingDetailFooter";
-import { ReceivingFooterButton } from "@/components/receiving/ReceivingFooterButton";
+import { ActionFooter } from "@/components/ActionFooter";
+import { ActionFooterButton } from "@/components/ActionFooterButton";
 import { ReceivingProgressSummary } from "@/components/receiving/ReceivingProgressSummary";
 import { getDeliveryNoteStage } from "@/components/receiving/receiving-stages";
 import { Card, ErrorState, LoadingState, ScannerModal, Screen } from "@/components/ui";
@@ -712,7 +712,7 @@ export default function ReceivingDetailScreen() {
   const footer =
     data && isReceiving && canManageReceiving ? (
       !isReceivingStarted ? (
-        <ReceivingDetailFooter
+        <ActionFooter
           note={
             startReceiving.error
               ? "Could not start receiving. Try again."
@@ -722,14 +722,14 @@ export default function ReceivingDetailScreen() {
           }
           noteTone={startReceiving.error ? "error" : "neutral"}
         >
-          <ReceivingFooterButton
+          <ActionFooterButton
             label={startReceiving.isPending ? "Starting..." : "Start receiving"}
             disabled={!effectiveReceivingWarehouseId || startReceiving.isPending}
             onPress={() => startReceiving.mutate(effectiveReceivingWarehouseId)}
           />
-        </ReceivingDetailFooter>
+        </ActionFooter>
       ) : (
-        <ReceivingDetailFooter
+        <ActionFooter
           note={
             submitError
               ? submitError
@@ -752,12 +752,12 @@ export default function ReceivingDetailScreen() {
                   : "success"
           }
         >
-          <ReceivingFooterButton
+          <ActionFooterButton
             label={submitReceiving.isPending ? "Submitting..." : "Submit receiving"}
             disabled={isReceivingMutationPending}
             onPress={handleSubmitReceiving}
           />
-        </ReceivingDetailFooter>
+        </ActionFooter>
       )
     ) : null;
 

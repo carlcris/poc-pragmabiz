@@ -3,22 +3,22 @@ import { colors } from "@/theme/colors";
 import { spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
 
-export type ReceivingFooterNoteTone = "neutral" | "warning" | "error" | "success";
+export type ActionFooterNoteTone = "neutral" | "warning" | "error" | "success";
 
-const NOTE_COLORS: Record<ReceivingFooterNoteTone, string> = {
+const NOTE_COLORS: Record<ActionFooterNoteTone, string> = {
   neutral: colors.textSecondary,
   warning: colors.statusWarning,
   error: colors.dangerDark,
   success: colors.statusSuccess,
 };
 
-export const ReceivingDetailFooter = ({
+export const ActionFooter = ({
   note,
   noteTone = "neutral",
   children,
 }: {
   note?: string;
-  noteTone?: ReceivingFooterNoteTone;
+  noteTone?: ActionFooterNoteTone;
   children: React.ReactNode;
 }) => (
   <View style={styles.footer}>

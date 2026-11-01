@@ -1,16 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AppState, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import {
-  ActionButton,
-  Card,
-  EmptyState,
-  ErrorState,
-  LoadingState,
-  ScannerModal,
-  Screen,
-} from "@/components/ui";
+  ActivityIndicator,
+  Alert,
+  AppState,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  Vibration,
+  View,
+} from "react-native";
+import { Card, ErrorState, LoadingState, ScannerModal, Screen } from "@/components/ui";
+import { ActionFooter, type ActionFooterNoteTone } from "@/components/ActionFooter";
+import { ActionFooterButton } from "@/components/ActionFooterButton";
 import { PickLocationMapModal } from "@/components/picking/PickLocationMapModal";
 import { ApiError } from "@/api/client";
 import {
@@ -29,6 +33,7 @@ import {
 } from "@/hooks/queries";
 import { useScreenFocusState } from "@/hooks/useScreenFocusState";
 import { useSunmiScanner } from "@/hooks/useSunmiScanner";
+import { sunmiScannerModule } from "@/native/sunmi-scanner";
 import { useAuthStore } from "@/stores/authStore";
 import {
   clearPendingPickConfirmation,
@@ -37,21 +42,23 @@ import {
   type PendingPickConfirmation,
 } from "@/storage/pending-pick-confirmation-storage";
 import { colors } from "@/theme/colors";
+import { borderRadius, spacing } from "@/theme/spacing";
+import { typography } from "@/theme/typography";
 import { canAccessPicking } from "@/utils/permissions";
 
 const getStatusMeta = (status: string) => {
   switch (status) {
     case "in_progress":
-      return { label: "In progress", hint: "Ready to scan items", dotColor: colors.primary };
+      return { label: "In progress", color: colors.statusInfo };
     case "paused":
-      return { label: "Paused", hint: "Tap Resume Picking to continue", dotColor: "#F59E0B" };
+      return { label: "Paused", color: colors.statusWarning };
     case "done":
-      return { label: "Completed", hint: "Picking completed", dotColor: colors.green };
+      return { label: "Completed", color: colors.statusSuccess };
     case "cancelled":
-      return { label: "Cancelled", hint: "This pick list is cancelled", dotColor: colors.danger };
+      return { label: "Cancelled", color: colors.statusError };
     case "pending":
     default:
-      return { label: "Not started", hint: "Tap Start Picking to begin", dotColor: "#F59E0B" };
+      return { label: "Not started", color: colors.statusWarning };
   }
 };
 
@@ -70,6 +77,22 @@ type PickSource = {
   batchReceivedAt: string | null;
   isMismatch: boolean;
 };
+
+type ScanFeedback = "match" | "mismatch" | "error";
+
+// Android vibration patterns alternate wait/vibrate durations in milliseconds.
+const SCAN_FEEDBACK_VIBRATION: Record<ScanFeedback, number | number[]> = {
+  match: 60,
+  mismatch: [0, 80, 120, 80],
+  error: 400,
+};
+
+const signalScanFeedback = (feedback: ScanFeedback) => {
+  Vibration.vibrate(SCAN_FEEDBACK_VIBRATION[feedback]);
+};
+
+const BATCH_LOCATION_SKU_PATTERN = /^\d{10}$/;
+const HAS_HARDWARE_SCANNER = sunmiScannerModule !== null;
 
 const parseBatchLocationQrPayload = (rawScan: string): ParsedBatchLocationQr | null => {
   const candidates = [rawScan.trim()];
@@ -105,6 +128,21 @@ const parseBatchLocationQrPayload = (rawScan: string): ParsedBatchLocationQr | n
   return null;
 };
 
+const extractScannedSource = (rawScan: string) => {
+  const raw = rawScan.trim();
+  const parsedQr = parseBatchLocationQrPayload(raw);
+  const batchLocationSku =
+    parsedQr?.batchLocationSku && BATCH_LOCATION_SKU_PATTERN.test(parsedQr.batchLocationSku)
+      ? parsedQr.batchLocationSku
+      : BATCH_LOCATION_SKU_PATTERN.test(raw)
+        ? raw
+        : null;
+  const hasSourceMetadata = Boolean(
+    parsedQr?.batchLocationSku || parsedQr?.locationId || parsedQr?.batchCode
+  );
+  return { parsedQr, batchLocationSku, hasSourceMetadata };
+};
+
 const defaultPickSource = (item: PickListItem): PickSource => ({
   batchLocationSku: item.sourceSku,
   locationId: item.sourceLocationId,
@@ -114,10 +152,32 @@ const defaultPickSource = (item: PickListItem): PickSource => ({
   isMismatch: false,
 });
 
-const getPickSourcePath = (item: PickListItem) =>
-  [item.sourceWarehouseCode, item.sourceLocationCode || item.locationName, item.batchNumber]
-    .filter((segment): segment is string => Boolean(segment?.trim()))
-    .join(" > ");
+const getAssignedLocationCode = (item: PickListItem) =>
+  item.sourceLocationCode || item.locationName;
+
+// Location codes encode zone, aisle and bay, so natural ordering approximates the walking path.
+const compareByPickLocation = (left: PickListItem, right: PickListItem) => {
+  const leftCode = getAssignedLocationCode(left);
+  const rightCode = getAssignedLocationCode(right);
+  if (leftCode && rightCode) {
+    const byLocation = leftCode.localeCompare(rightCode, undefined, { numeric: true });
+    if (byLocation !== 0) return byLocation;
+  } else if (leftCode || rightCode) {
+    return leftCode ? -1 : 1;
+  }
+  return left.name.localeCompare(right.name);
+};
+
+const getRemainingQty = (item: PickListItem) => Math.max(0, item.requiredQty - item.pickedQty);
+
+const roundQuantity = (value: number) => Math.round(value * 100) / 100;
+
+const formatReceivedDate = (value: string | null) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
 
 const createOperationId = () => {
   if (typeof globalThis.crypto?.randomUUID === "function") {
@@ -131,6 +191,16 @@ const createOperationId = () => {
 };
 
 const CLAIM_REQUIRED_MESSAGE = "This item is no longer reserved for you";
+const SHORT_PICK_SUMMARY_LIMIT = 5;
+
+const formatShortPickSummary = (shortItems: PickListItem[]) => {
+  const lines = shortItems
+    .slice(0, SHORT_PICK_SUMMARY_LIMIT)
+    .map((item) => `• ${item.name}: ${item.pickedQty} / ${item.requiredQty} ${item.uom}`);
+  const hiddenCount = shortItems.length - SHORT_PICK_SUMMARY_LIMIT;
+  if (hiddenCount > 0) lines.push(`and ${hiddenCount} more`);
+  return lines.join("\n");
+};
 
 const isAmbiguousConfirmationError = (error: unknown) =>
   error instanceof ApiError && (error.status === 0 || error.status === 408 || error.status >= 500);
@@ -151,6 +221,8 @@ export default function PickingDetailScreen() {
   const completePickList = useCompletePickList(id);
   const [barcode, setBarcode] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [manualEntryOpen, setManualEntryOpen] = useState(false);
+  const [pickedItemsExpanded, setPickedItemsExpanded] = useState(false);
   const [verifiedItemId, setVerifiedItemId] = useState<string | null>(null);
   const [currentPickSource, setCurrentPickSource] = useState<PickSource | null>(null);
   const [pickedQtyText, setPickedQtyText] = useState("");
@@ -172,21 +244,18 @@ export default function PickingDetailScreen() {
       : (pickList.data?.status ?? "pending");
   const statusMeta = getStatusMeta(effectiveStatus);
   const pickingActive = effectiveStatus === "in_progress";
+  const canStartPicking = effectiveStatus === "pending" || effectiveStatus === "paused";
 
-  const totals = useMemo(() => {
-    const items = pickList.data?.items || [];
-    const pickedTotal = items.reduce((sum, item) => sum + item.pickedQty, 0);
-    const requiredTotal = items.reduce((sum, item) => sum + item.requiredQty, 0);
-    return { pickedTotal, requiredTotal };
-  }, [pickList.data?.items]);
-
-  const remaining = (pickList.data?.items || []).filter(
-    (item) => item.pickedQty < item.requiredQty
+  const items = useMemo(() => pickList.data?.items || [], [pickList.data?.items]);
+  const remaining = useMemo(
+    () => items.filter((item) => item.pickedQty < item.requiredQty).sort(compareByPickLocation),
+    [items]
   );
-  const completed = (pickList.data?.items || []).filter(
-    (item) => item.pickedQty >= item.requiredQty
+  const completed = useMemo(
+    () => items.filter((item) => item.pickedQty >= item.requiredQty),
+    [items]
   );
-  const verifiedItem = pickList.data?.items.find((item) => item.id === verifiedItemId) || null;
+  const verifiedItem = items.find((item) => item.id === verifiedItemId) || null;
   const claims = pickList.data?.claims;
   const activeClaims = useMemo(
     () => (claims || []).filter((claim) => new Date(claim.expiresAt).getTime() > claimClockMs),
@@ -194,14 +263,14 @@ export default function PickingDetailScreen() {
   );
   const claimFor = (pickListItemId: string) =>
     activeClaims.find((claim) => claim.pickListItemId === pickListItemId);
-  const isClaimedByOther = (pickListItemId: string) => {
+  const claimedByOther = (pickListItemId: string) => {
     const claim = claimFor(pickListItemId);
-    return !!claim && claim.claimedBy !== session?.user.id;
+    return claim && claim.claimedBy !== userId ? claim : null;
   };
-  const verifiedAlreadyPicked = verifiedItem?.pickedQty || 0;
-  const verifiedRemainingQty = verifiedItem
-    ? Math.max(0, verifiedItem.requiredQty - verifiedAlreadyPicked)
-    : 0;
+  const nextPick = remaining.find((item) => !claimedByOther(item.pickListItemId)) || null;
+  const upNext = remaining.filter((item) => item !== nextPick);
+  const otherPickerClaim = activeClaims.find((claim) => claim.claimedBy !== userId) || null;
+  const verifiedRemainingQty = verifiedItem ? getRemainingQty(verifiedItem) : 0;
   const pickedQtyValue = Number(pickedQtyText);
   const canConfirmPick =
     !!verifiedItem &&
@@ -366,14 +435,19 @@ export default function PickingDetailScreen() {
     };
   }, [id, verifiedItemId]);
 
+  const rejectScan = (message: string) => {
+    setVerifyError(message);
+    signalScanFeedback("error");
+  };
+
   const verifyBarcode = async (value = barcode) => {
     if (!pickingActive) {
-      setVerifyError("Start picking before verifying items.");
+      rejectScan("Start picking before scanning items.");
       return;
     }
 
     if (!value.trim() || !pickList.data) {
-      setVerifyError("Enter or scan a batch-location SKU.");
+      rejectScan("Scan the QR code or enter its 10-digit code.");
       return;
     }
 
@@ -385,48 +459,41 @@ export default function PickingDetailScreen() {
         await claimPickListItem(pickList.data.id, match.pickListItemId);
         setVerifiedItemId(match.id);
         setCurrentPickSource(source);
-        setPickedQtyText(String(Math.max(0, match.requiredQty - match.pickedQty)));
+        setPickedQtyText(String(getRemainingQty(match)));
         setOperationId(createOperationId());
         setBarcode("");
+        setManualEntryOpen(false);
+        signalScanFeedback(source.isMismatch ? "mismatch" : "match");
       };
-      const rawScanned = value.trim();
-      const parsedQr = parseBatchLocationQrPayload(rawScanned);
-      const scannedBatchLocationSku =
-        parsedQr?.batchLocationSku && /^\d{10}$/.test(parsedQr.batchLocationSku)
-          ? parsedQr.batchLocationSku
-          : /^\d{10}$/.test(rawScanned)
-            ? rawScanned
-            : null;
-      const hasSourceMetadata = Boolean(
-        parsedQr?.batchLocationSku || parsedQr?.locationId || parsedQr?.batchCode
-      );
+      const { parsedQr, batchLocationSku, hasSourceMetadata } = extractScannedSource(value);
 
-      if (hasSourceMetadata && !scannedBatchLocationSku) {
-        setVerifyError("Scanned source QR is incomplete or invalid.");
+      if (hasSourceMetadata && !batchLocationSku) {
+        rejectScan("Scanned QR code is incomplete or invalid.");
         return;
       }
 
-      if (scannedBatchLocationSku) {
+      if (batchLocationSku) {
         const resolved = await resolvePickSource(pickList.data.id, {
-          batchLocationSku: scannedBatchLocationSku,
+          batchLocationSku,
           itemId: parsedQr?.itemId,
           locationId: parsedQr?.locationId,
           batchCode: parsedQr?.batchCode,
         });
 
         if (!resolved.line) {
-          setVerifyError("Scanned source is not valid for this pick list.");
+          rejectScan("Scanned QR code is not on this pick list.");
           return;
         }
 
         const match =
           pickList.data.items.find((item) => item.id === resolved.line?.pickListItemId) || null;
         if (!match || match.pickedQty >= match.requiredQty) {
-          setVerifyError("Item is already picked in this pick list.");
+          rejectScan("This item is already fully picked.");
           return;
         }
-        if (isClaimedByOther(match.pickListItemId)) {
-          setVerifyError("This item is reserved by another picker.");
+        const otherClaim = claimedByOther(match.pickListItemId);
+        if (otherClaim) {
+          rejectScan(`${otherClaim.claimedByName} is picking this item.`);
           return;
         }
 
@@ -441,33 +508,13 @@ export default function PickingDetailScreen() {
         return;
       }
 
-      setVerifyError("Enter or scan the 10-digit batch-location SKU.");
+      rejectScan("Scan the QR code or enter its 10-digit code.");
     } catch (error) {
-      setVerifyError(error instanceof Error ? error.message : "Failed to verify scanned item.");
+      rejectScan(error instanceof Error ? error.message : "Failed to verify scanned item.");
     } finally {
       setIsVerifying(false);
     }
   };
-
-  useSunmiScanner({
-    enabled:
-      canViewPicking &&
-      isFocused &&
-      pickingActive &&
-      !scannerOpen &&
-      !isVerifying &&
-      !pendingConfirmation &&
-      !verifiedItemId,
-    onScan: verifyBarcode,
-  });
-
-  if (!canViewPicking) {
-    return (
-      <Screen title="Picking" subtitle="Pick list detail" back>
-        <ErrorState message="You do not have permission to access picking." />
-      </Screen>
-    );
-  }
 
   const confirmPick = async () => {
     if (!verifiedItem || !userId || !businessUnitId) return;
@@ -517,210 +564,273 @@ export default function PickingDetailScreen() {
     await executePendingConfirmation(pending, true);
   };
 
-  const complete = () => {
-    completePickList.mutate();
+  // Re-scanning the verified QR code confirms the pick at the shown quantity.
+  const confirmFromRescan = (value: string) => {
+    if (!verifiedItem || pendingConfirmationRef.current) return;
+    const source = currentPickSource || defaultPickSource(verifiedItem);
+    const { batchLocationSku } = extractScannedSource(value);
+
+    if (!batchLocationSku || batchLocationSku !== source.batchLocationSku) {
+      rejectScan("This QR code is for a different pick. Cancel to switch items.");
+      return;
+    }
+    if (source.isMismatch) {
+      rejectScan("Use the button below to confirm picking from a different batch.");
+      return;
+    }
+    if (!canConfirmPick) {
+      rejectScan("Check the quantity before confirming.");
+      return;
+    }
+    void confirmPick();
   };
+
+  useSunmiScanner({
+    enabled:
+      canViewPicking &&
+      isFocused &&
+      pickingActive &&
+      !scannerOpen &&
+      !isVerifying &&
+      !pendingConfirmation &&
+      mapPickListItemId === null,
+    onScan: (value) => (verifiedItem ? confirmFromRescan(value) : verifyBarcode(value)),
+  });
+
+  const complete = () => {
+    if (remaining.length === 0) {
+      completePickList.mutate();
+      return;
+    }
+
+    const lineLabel = remaining.length === 1 ? "line is" : "lines are";
+    Alert.alert(
+      "Complete with short picks?",
+      `${remaining.length} ${lineLabel} not fully picked:\n\n${formatShortPickSummary(remaining)}\n\nCompleting closes this pick list with these lines short.`,
+      [
+        { text: "Keep picking", style: "cancel" },
+        {
+          text: "Complete anyway",
+          style: "destructive",
+          onPress: () => completePickList.mutate(),
+        },
+      ]
+    );
+  };
+
+  const cancelVerifiedPick = () => {
+    if (pendingConfirmationRef.current) return;
+    setVerifiedItemId(null);
+    setCurrentPickSource(null);
+    setPickedQtyText("");
+    setVerifyError("");
+    setOperationId(null);
+  };
+
+  const adjustPickedQty = (delta: number) => {
+    const current = Number(pickedQtyText);
+    const next = roundQuantity((Number.isFinite(current) ? current : 0) + delta);
+    setPickedQtyText(String(Math.min(verifiedRemainingQty, Math.max(0, next))));
+  };
+
+  if (!canViewPicking) {
+    return (
+      <Screen title="Picking" subtitle="Pick list detail" back>
+        <ErrorState message="You do not have permission to access picking." />
+      </Screen>
+    );
+  }
+
+  const verifiedSource = verifiedItem ? currentPickSource || defaultPickSource(verifiedItem) : null;
+  const statusErrorMessage = setStatus.error
+    ? "Could not update the pick list status. Try again."
+    : null;
+  const completeErrorMessage = completePickList.error
+    ? completePickList.error instanceof Error
+      ? completePickList.error.message
+      : "Unable to complete pick list."
+    : null;
+  const otherPickerItemName = otherPickerClaim
+    ? items.find((item) => item.pickListItemId === otherPickerClaim.pickListItemId)?.name
+    : undefined;
+  const lineProgressPercent = items.length > 0 ? (completed.length / items.length) * 100 : 0;
+
+  const activeFooterNote: { note: string; tone: ActionFooterNoteTone } = completeErrorMessage
+    ? { note: completeErrorMessage, tone: "error" }
+    : statusErrorMessage
+      ? { note: statusErrorMessage, tone: "error" }
+      : otherPickerClaim
+        ? {
+            note: `${otherPickerClaim.claimedByName} is picking ${otherPickerItemName ?? "an item"}. Pause and Finish unlock when they are done.`,
+            tone: "neutral",
+          }
+        : remaining.length > 0
+          ? {
+              note: `${remaining.length} ${remaining.length === 1 ? "line" : "lines"} open`,
+              tone: "warning",
+            }
+          : { note: "All lines picked", tone: "success" };
+
+  const footer = !pickList.data ? null : verifiedItem && verifiedSource ? (
+    <ActionFooter note={verifyError || undefined} noteTone="error">
+      <ActionFooterButton
+        label="Cancel"
+        variant="secondary"
+        disabled={!!pendingConfirmation}
+        onPress={cancelVerifiedPick}
+      />
+      <ActionFooterButton
+        label={
+          recordPickProgress.isPending
+            ? "Saving..."
+            : pendingConfirmation
+              ? "Retry confirm"
+              : verifiedSource.isMismatch
+                ? `Pick from ${verifiedSource.batchCode ?? "this batch"} instead`
+                : `Confirm ${pickedQtyText || "0"} ${verifiedItem.uom}`
+        }
+        variant={verifiedSource.isMismatch ? "warning" : "success"}
+        grow={2}
+        disabled={!canConfirmPick}
+        onPress={() => void confirmPick()}
+      />
+    </ActionFooter>
+  ) : pickingActive ? (
+    <ActionFooter note={activeFooterNote.note} noteTone={activeFooterNote.tone}>
+      <ActionFooterButton
+        label="Pause"
+        variant="secondary"
+        disabled={setStatus.isPending || activeClaims.length > 0 || !!pendingConfirmation}
+        onPress={() => setStatus.mutate("paused")}
+      />
+      <ActionFooterButton
+        label={completePickList.isPending ? "Finishing..." : "Finish"}
+        variant={remaining.length === 0 ? "success" : "secondary"}
+        disabled={
+          completePickList.isPending ||
+          setStatus.isPending ||
+          recordPickProgress.isPending ||
+          activeClaims.length > 0 ||
+          !!pendingConfirmation
+        }
+        onPress={complete}
+      />
+    </ActionFooter>
+  ) : canStartPicking ? (
+    <ActionFooter note={statusErrorMessage ?? undefined} noteTone="error">
+      <ActionFooterButton
+        label={
+          setStatus.isPending
+            ? "Starting..."
+            : effectiveStatus === "paused"
+              ? "Resume picking"
+              : "Start picking"
+        }
+        disabled={setStatus.isPending}
+        onPress={() => setStatus.mutate("in_progress")}
+      />
+    </ActionFooter>
+  ) : null;
 
   return (
     <Screen
       title={pickList.data?.code || "Pick List"}
-      subtitle="Pick and verify items"
+      subtitle={
+        pickList.data?.deliveryNoteCode
+          ? `Delivery note ${pickList.data.deliveryNoteCode}`
+          : "Pick list"
+      }
+      back
       onRefresh={async () => {
         await pickList.refetch();
       }}
       refreshing={pickList.isRefetching}
+      footer={footer}
     >
       {pickList.isLoading ? <LoadingState /> : null}
       {pickList.error ? <ErrorState message="Unable to load the pick list." /> : null}
       {pickList.data ? (
         <>
-          <View style={styles.progressContainer}>
-            <View style={styles.headerRow}>
-              <Text style={styles.pickListCode}>
-                {pickList.data.deliveryNoteCode || pickList.data.code}
+          <View style={styles.progressBlock}>
+            <View style={styles.progressRow}>
+              <Text style={[styles.statusText, { color: statusMeta.color }]}>
+                {statusMeta.label}
+              </Text>
+              <Text style={styles.lineProgressText}>
+                <Text style={styles.lineProgressCount}>{completed.length}</Text> of {items.length}{" "}
+                lines
               </Text>
             </View>
-
-            <View style={styles.dividerLine} />
-
-            <View style={styles.statsRow}>
-              <View style={styles.statColumnWrapper}>
-                <View style={styles.statColumn}>
-                  <Text style={styles.statValue}>{totals.pickedTotal}</Text>
-                  <Text style={styles.statLabel}>PICKED</Text>
-                </View>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statColumnWrapper}>
-                <View style={styles.statColumn}>
-                  <Text style={styles.statValue}>{totals.requiredTotal}</Text>
-                  <Text style={styles.statLabel}>TOTAL</Text>
-                </View>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statColumnWrapper}>
-                <View style={styles.statColumn}>
-                  <Text style={styles.statValue}>
-                    {totals.requiredTotal > 0
-                      ? Math.round((totals.pickedTotal / totals.requiredTotal) * 100)
-                      : 0}
-                    %
-                  </Text>
-                  <Text style={styles.statLabel}>PROGRESS</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.dividerLine} />
-
-            <View style={styles.statusRow}>
-              <View style={styles.statusLeft}>
-                <View style={[styles.statusDot, { backgroundColor: statusMeta.dotColor }]} />
-                <Text style={styles.statusText}>{statusMeta.label}</Text>
-              </View>
-              <Text style={styles.statusHint}>{statusMeta.hint}</Text>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${lineProgressPercent}%` }]} />
             </View>
           </View>
 
-          {!pickingActive && effectiveStatus !== "done" && effectiveStatus !== "cancelled" ? (
-            <ActionButton
-              label={effectiveStatus === "paused" ? "Resume Picking" : "Start Picking"}
-              icon="play-outline"
-              disabled={setStatus.isPending}
-              onPress={() => setStatus.mutate("in_progress")}
-            />
-          ) : null}
-
-          {pickingActive ? (
-            <View style={styles.actionRow}>
-              <ActionButton
-                label="Pause"
-                icon="pause-outline"
-                variant="secondary"
-                onPress={() => setStatus.mutate("paused")}
-                disabled={setStatus.isPending || activeClaims.length > 0 || !!pendingConfirmation}
-                style={{ flex: 1 }}
-              />
-              <ActionButton
-                label="Complete"
-                icon="checkmark-circle-outline"
-                variant="success"
-                onPress={complete}
-                disabled={
-                  completePickList.isPending ||
-                  setStatus.isPending ||
-                  recordPickProgress.isPending ||
-                  activeClaims.length > 0 ||
-                  !!pendingConfirmation
-                }
-                style={{ flex: 1 }}
-              />
-            </View>
-          ) : null}
-
-          {verifiedItem ? (
-            <VerifiedPanel
+          {verifiedItem && verifiedSource ? (
+            <PickConfirmationPanel
               item={verifiedItem}
-              source={currentPickSource || defaultPickSource(verifiedItem)}
-              error={verifyError}
+              source={verifiedSource}
               pickedQtyText={pickedQtyText}
               remainingQty={verifiedRemainingQty}
-              canConfirm={canConfirmPick}
               confirmationPending={!!pendingConfirmation}
               onPickedQtyChange={setPickedQtyText}
-              onCancel={() => {
-                if (pendingConfirmationRef.current) return;
-                setVerifiedItemId(null);
-                setCurrentPickSource(null);
-                setPickedQtyText("");
-                setVerifyError("");
-                setOperationId(null);
-              }}
-              onConfirm={confirmPick}
+              onAdjustPickedQty={adjustPickedQty}
               onViewLocation={() => setMapPickListItemId(verifiedItem.pickListItemId)}
             />
           ) : (
-            <Card style={styles.scanCard}>
-              <View style={styles.scanHeader}>
-                <Text style={styles.sectionTitle}>Scan item</Text>
-                <Text style={styles.scanSubtitle}>Batch-location SKU</Text>
-              </View>
-              {!pickingActive ? (
-                <View style={styles.disabledNotice}>
-                  <Ionicons name="scan-outline" size={16} color={colors.textSecondary} />
-                  <Text style={styles.notice}>
-                    Start picking to enable scanning. Items will appear here once active.
-                  </Text>
-                </View>
+            <>
+              {pickingActive ? (
+                <ScannerStatusBar
+                  isVerifying={isVerifying}
+                  manualEntryOpen={manualEntryOpen}
+                  disabled={!!pendingConfirmation}
+                  onOpenCamera={() => setScannerOpen(true)}
+                  onToggleManualEntry={() => setManualEntryOpen((open) => !open)}
+                />
               ) : null}
-              <View style={styles.scanInputCombo}>
-                <Ionicons
-                  name="barcode-outline"
-                  size={22}
-                  color={pickingActive ? colors.primary : colors.textSecondary}
-                />
-                <TextInput
+              {pickingActive && verifyError ? <ScanErrorBanner message={verifyError} /> : null}
+              {pickingActive && manualEntryOpen ? (
+                <ManualLabelEntry
                   value={barcode}
-                  onChangeText={setBarcode}
-                  editable={pickingActive && !pendingConfirmation}
-                  placeholder="Enter 10-digit location SKU..."
-                  placeholderTextColor={colors.textSecondary}
-                  style={styles.comboInput}
-                  onSubmitEditing={() => {
-                    if (barcode.trim()) void verifyBarcode();
-                  }}
-                  returnKeyType="search"
+                  isVerifying={isVerifying}
+                  disabled={!!pendingConfirmation}
+                  onChange={setBarcode}
+                  onSubmit={() => void verifyBarcode()}
                 />
-                <Pressable
-                  onPress={() => void verifyBarcode()}
-                  disabled={
-                    !pickingActive || !barcode.trim() || isVerifying || !!pendingConfirmation
-                  }
-                  style={[
-                    styles.verifyButton,
-                    (!pickingActive || !barcode.trim() || isVerifying || !!pendingConfirmation) &&
-                      styles.verifyButtonDisabled,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.verifyButtonText,
-                      (!pickingActive || !barcode.trim() || isVerifying || !!pendingConfirmation) &&
-                        styles.verifyButtonTextDisabled,
-                    ]}
-                  >
-                    {isVerifying ? "Checking..." : "Verify"}
+              ) : null}
+              {nextPick ? (
+                <NextPickCard
+                  item={nextPick}
+                  remainingLineCount={remaining.length}
+                  onViewLocation={() => setMapPickListItemId(nextPick.pickListItemId)}
+                />
+              ) : remaining.length === 0 ? (
+                <Card style={styles.allPickedCard}>
+                  <Ionicons name="checkmark-circle" size={28} color={colors.statusSuccess} />
+                  <Text style={styles.allPickedText}>
+                    {effectiveStatus === "done"
+                      ? "Picking completed."
+                      : "All lines picked. Finish to close this pick list."}
                   </Text>
-                </Pressable>
-              </View>
-              {verifyError ? <Text style={styles.scanErrorText}>{verifyError}</Text> : null}
-              <ActionButton
-                label="Use Camera"
-                icon="camera-outline"
-                disabled={!pickingActive || !!pendingConfirmation}
-                onPress={() => setScannerOpen(true)}
-              />
-            </Card>
+                </Card>
+              ) : null}
+              {upNext.length > 0 ? (
+                <UpNextList
+                  items={upNext}
+                  claims={activeClaims}
+                  currentUserId={userId}
+                  onViewLocation={setMapPickListItemId}
+                />
+              ) : null}
+              {completed.length > 0 ? (
+                <PickedItemsSection
+                  items={completed}
+                  expanded={pickedItemsExpanded}
+                  onToggle={() => setPickedItemsExpanded((expanded) => !expanded)}
+                />
+              ) : null}
+            </>
           )}
-
-          {remaining.length > 0 ? (
-            <ItemSection
-              title="Remaining Items"
-              items={remaining}
-              claims={activeClaims}
-              currentUserId={session?.user.id || ""}
-              onViewLocation={setMapPickListItemId}
-            />
-          ) : null}
-          {completed.length > 0 ? (
-            <ItemSection
-              title="Picked Items"
-              items={completed}
-              claims={activeClaims}
-              currentUserId={session?.user.id || ""}
-              onViewLocation={setMapPickListItemId}
-            />
-          ) : null}
         </>
       ) : null}
       <ScannerModal
@@ -740,453 +850,711 @@ export default function PickingDetailScreen() {
   );
 }
 
-const VerifiedPanel = ({
+const RecordedValue = ({ value, missingLabel }: { value: string | null; missingLabel: string }) =>
+  value ? <Text>{value}</Text> : <Text style={styles.missingValue}>{missingLabel}</Text>;
+
+const ScannerStatusBar = ({
+  isVerifying,
+  manualEntryOpen,
+  disabled,
+  onOpenCamera,
+  onToggleManualEntry,
+}: {
+  isVerifying: boolean;
+  manualEntryOpen: boolean;
+  disabled: boolean;
+  onOpenCamera: () => void;
+  onToggleManualEntry: () => void;
+}) => (
+  <View style={[styles.scannerBar, isVerifying ? styles.scannerBarVerifying : null]}>
+    {isVerifying ? (
+      <ActivityIndicator size="small" color={colors.statusInfo} />
+    ) : (
+      <View
+        style={[
+          styles.scannerDot,
+          { backgroundColor: HAS_HARDWARE_SCANNER ? colors.statusSuccess : colors.muted },
+        ]}
+      />
+    )}
+    <Text
+      style={[styles.scannerText, isVerifying ? styles.scannerTextVerifying : null]}
+      numberOfLines={1}
+      accessibilityLiveRegion="polite"
+    >
+      {isVerifying
+        ? "Checking QR code..."
+        : HAS_HARDWARE_SCANNER
+          ? "Scanner ready"
+          : "Scan with the camera"}
+    </Text>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Scan with camera"
+      hitSlop={4}
+      style={({ pressed }) => [styles.scannerAction, pressed ? styles.scannerActionPressed : null]}
+      disabled={disabled}
+      onPress={onOpenCamera}
+    >
+      <Ionicons
+        name="camera-outline"
+        size={24}
+        color={disabled ? colors.textDisabled : colors.primaryDark}
+      />
+    </Pressable>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={manualEntryOpen ? "Hide code entry" : "Type QR code number"}
+      accessibilityState={{ expanded: manualEntryOpen, disabled }}
+      hitSlop={4}
+      style={({ pressed }) => [
+        styles.scannerAction,
+        manualEntryOpen ? styles.scannerActionActive : null,
+        pressed ? styles.scannerActionPressed : null,
+      ]}
+      disabled={disabled}
+      onPress={onToggleManualEntry}
+    >
+      <Ionicons
+        name={manualEntryOpen ? "keypad" : "keypad-outline"}
+        size={22}
+        color={disabled ? colors.textDisabled : colors.primaryDark}
+      />
+    </Pressable>
+  </View>
+);
+
+const ScanErrorBanner = ({ message }: { message: string }) => (
+  <View style={styles.scanErrorBanner} accessibilityLiveRegion="assertive">
+    <Ionicons name="close-circle" size={22} color={colors.statusError} />
+    <Text style={styles.scanErrorText}>{message}</Text>
+  </View>
+);
+
+const ManualLabelEntry = ({
+  value,
+  isVerifying,
+  disabled,
+  onChange,
+  onSubmit,
+}: {
+  value: string;
+  isVerifying: boolean;
+  disabled: boolean;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+}) => {
+  const submitDisabled = disabled || isVerifying || !value.trim();
+  return (
+    <Card style={styles.manualEntryCard}>
+      <Text style={styles.fieldLabel}>QR code number</Text>
+      <View style={styles.manualEntryRow}>
+        <TextInput
+          value={value}
+          onChangeText={onChange}
+          editable={!disabled}
+          autoFocus
+          keyboardType="number-pad"
+          maxLength={10}
+          placeholder="10-digit code"
+          placeholderTextColor={colors.textSecondary}
+          style={styles.manualEntryInput}
+          onSubmitEditing={() => {
+            if (!submitDisabled) onSubmit();
+          }}
+          returnKeyType="go"
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: submitDisabled }}
+          onPress={onSubmit}
+          disabled={submitDisabled}
+          style={[styles.verifyButton, submitDisabled ? styles.verifyButtonDisabled : null]}
+        >
+          <Text
+            style={[
+              styles.verifyButtonText,
+              submitDisabled ? styles.verifyButtonTextDisabled : null,
+            ]}
+          >
+            {isVerifying ? "Checking..." : "Verify"}
+          </Text>
+        </Pressable>
+      </View>
+    </Card>
+  );
+};
+
+const NextPickCard = ({
   item,
-  source,
-  error,
-  pickedQtyText,
-  remainingQty,
-  canConfirm,
-  confirmationPending,
-  onPickedQtyChange,
-  onCancel,
-  onConfirm,
+  remainingLineCount,
   onViewLocation,
 }: {
   item: PickListItem;
-  source: PickSource;
-  error: string;
-  pickedQtyText: string;
-  remainingQty: number;
-  canConfirm: boolean;
-  confirmationPending: boolean;
-  onPickedQtyChange: (value: string) => void;
-  onCancel: () => void;
-  onConfirm: () => void;
+  remainingLineCount: number;
   onViewLocation: () => void;
-}) => (
-  <Card style={styles.verifiedCard}>
-    <View style={styles.verifiedHeader}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <Ionicons name="checkmark-circle-outline" size={20} color={colors.green} />
-        <Text style={styles.sectionTitle}>Item Verified</Text>
-      </View>
-      <Pressable onPress={onCancel} disabled={confirmationPending}>
-        <Text style={[styles.cancelText, confirmationPending ? { opacity: 0.5 } : null]}>
-          Cancel
+}) => {
+  const locationCode = getAssignedLocationCode(item);
+  const sourceMeta = [item.sourceWarehouseCode, item.batchNumber ? `Batch ${item.batchNumber}` : null]
+    .filter((segment): segment is string => Boolean(segment))
+    .join(" · ");
+  return (
+    <View style={styles.nextPickCard}>
+      <Text style={styles.nextPickLabel}>
+        Next pick · {remainingLineCount} {remainingLineCount === 1 ? "line" : "lines"} left
+      </Text>
+      {locationCode ? (
+        <Text style={styles.nextPickLocation}>{locationCode}</Text>
+      ) : (
+        <Text style={styles.nextPickLocationMissing}>Location not recorded</Text>
+      )}
+      {sourceMeta ? <Text style={styles.secondaryText}>{sourceMeta}</Text> : null}
+      <View style={styles.cardDivider} />
+      <View style={styles.nextPickItemRow}>
+        <View style={styles.flexFill}>
+          <Text style={styles.itemNameLarge}>{item.name}</Text>
+          <Text style={styles.secondaryText}>
+            {item.pickedQty} of {item.requiredQty} {item.uom} picked
+          </Text>
+        </View>
+        <Text style={styles.nextPickQty}>
+          {getRemainingQty(item)} {item.uom}
         </Text>
-      </Pressable>
-    </View>
-    <View style={styles.pickLocation}>
-      <View style={styles.pickLocationHeader}>
-        <Text style={styles.locationTitle}>Pick Location</Text>
-        <Pressable style={styles.mapLink} onPress={onViewLocation}>
-          <Ionicons name="map-outline" size={16} color={colors.primary} />
-          <Text style={styles.mapLinkText}>View Map</Text>
+      </View>
+      {item.sourceLocationId ? (
+        <Pressable
+          accessibilityRole="button"
+          style={styles.mapButton}
+          onPress={onViewLocation}
+        >
+          <Ionicons name="map-outline" size={18} color={colors.primaryDark} />
+          <Text style={styles.mapButtonText}>Show on map</Text>
         </Pressable>
-      </View>
-      <Text style={styles.locationText}>Location: {source.locationName || "Main"}</Text>
-      <Text style={styles.locationText}>Batch: {source.batchCode || "OPENING-BALANCE"}</Text>
-      <Text style={styles.locationText}>
-        Location SKU: {source.batchLocationSku || item.barcode || item.code}
-      </Text>
+      ) : null}
     </View>
-    {source.isMismatch ? (
-      <View style={styles.sourceMismatchWarning}>
-        <Ionicons name="warning-outline" size={18} color={colors.amberDark} />
-        <Text style={styles.sourceMismatchWarningText}>
-          Item matches, but it is from a different batch or location than the one assigned for
-          picking. Confirm to proceed with the pick.
-        </Text>
-      </View>
-    ) : null}
-    <View style={styles.detailRow}>
-      <Text style={styles.detailLabel}>Barcode</Text>
-      <Text style={styles.detailValue}>{item.barcode || item.code}</Text>
-    </View>
-    <View style={styles.detailRow}>
-      <Text style={styles.detailLabel}>Required</Text>
-      <Text style={[styles.detailValue, { color: colors.primary }]}>
-        {item.requiredQty} {item.uom}
-      </Text>
-    </View>
-    <View style={styles.detailRow}>
-      <Text style={styles.detailLabel}>To pick</Text>
-      <Text style={[styles.detailValue, { color: colors.amberDark }]}>
-        {remainingQty} {item.uom}
-      </Text>
-    </View>
-    <Text style={styles.label}>Picked Quantity</Text>
-    <TextInput
-      value={pickedQtyText}
-      onChangeText={onPickedQtyChange}
-      editable={!confirmationPending}
-      keyboardType="decimal-pad"
-      placeholder="Enter quantity"
-      placeholderTextColor={colors.textSecondary}
-      style={styles.quantityInput}
-    />
-    {error ? <Text style={styles.scanErrorText}>{error}</Text> : null}
-    <ActionButton
-      label={source.isMismatch ? "Confirm Alternative Pick" : "Confirm Pick"}
-      icon="checkmark-circle-outline"
-      variant="success"
-      disabled={!canConfirm}
-      onPress={onConfirm}
-    />
-  </Card>
-);
+  );
+};
 
-const ItemSection = ({
-  title,
+const UpNextList = ({
   items,
   claims,
   currentUserId,
   onViewLocation,
 }: {
-  title: string;
   items: PickListItem[];
   claims: PickListItemClaim[];
   currentUserId: string;
   onViewLocation: (pickListItemId: string) => void;
 }) => (
-  <Card style={styles.itemSection}>
-    <View style={styles.itemSectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionCount}>
-        <Text style={styles.sectionCountText}>{items.length}</Text>
-      </View>
-    </View>
-    {items.length === 0 ? (
-      <EmptyState title="No items" subtitle="There are no items in this section" />
-    ) : (
-      items.map((item) => {
-        const pickedQty = item.pickedQty;
-        const done = pickedQty >= item.requiredQty;
-        const sourcePath = getPickSourcePath(item);
+  <View style={styles.listSection}>
+    <Text style={styles.sectionLabel}>Up next</Text>
+    <View style={styles.listSurface}>
+      {items.map((item, index) => {
         const claim = claims.find(
           (candidate) =>
             candidate.pickListItemId === item.pickListItemId &&
-            candidate.claimedBy !== currentUserId &&
-            new Date(candidate.expiresAt).getTime() > Date.now()
+            candidate.claimedBy !== currentUserId
         );
-        return (
-          <View
+        const rowContent = (
+          <>
+            <Text style={styles.rowLocation} numberOfLines={1}>
+              {getAssignedLocationCode(item) ?? "—"}
+            </Text>
+            <Text style={styles.rowItemName} numberOfLines={2}>
+              {item.name}
+            </Text>
+            {claim ? (
+              <Text style={styles.rowReserved}>Reserved by {claim.claimedByName}</Text>
+            ) : (
+              <Text style={styles.rowQty}>
+                {getRemainingQty(item)} {item.uom}
+              </Text>
+            )}
+            {item.sourceLocationId ? (
+              <Ionicons name="map-outline" size={18} color={colors.primaryDark} />
+            ) : null}
+          </>
+        );
+        const rowStyle = [styles.listRow, index > 0 ? styles.listRowDivider : null];
+        return item.sourceLocationId ? (
+          <Pressable
             key={item.id}
-            style={[
-              styles.itemRow,
-              done ? styles.itemDone : null,
-              claim ? styles.itemClaimed : null,
-            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`Show ${item.name} on map`}
+            style={rowStyle}
+            onPress={() => onViewLocation(item.pickListItemId)}
           >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.itemName}>{item.name}</Text>
-              <Text style={[styles.itemMeta, done ? styles.itemMetaDone : null]}>
-                {sourcePath || "—"}
-              </Text>
-              <Text style={[styles.itemMetaDetail, done ? styles.itemMetaDone : null]}>
-                Picked {pickedQty} / {item.requiredQty} {item.uom}
-              </Text>
-              {claim ? <Text style={styles.itemClaimedBy}>{claim.claimedByName}</Text> : null}
-            </View>
-            <View style={styles.itemActions}>
-              {item.sourceLocationId ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`View ${item.name} location on map`}
-                  style={styles.itemMapButton}
-                  onPress={() => onViewLocation(item.pickListItemId)}
-                >
-                  <Ionicons name="map-outline" size={18} color={colors.primary} />
-                </Pressable>
-              ) : null}
-              {claim ? (
-                <Ionicons name="lock-closed-outline" size={18} color={colors.amberDark} />
-              ) : done ? (
-                <Ionicons name="checkmark-circle-outline" size={20} color={colors.green} />
-              ) : (
-                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-              )}
-            </View>
+            {rowContent}
+          </Pressable>
+        ) : (
+          <View key={item.id} style={rowStyle}>
+            {rowContent}
           </View>
         );
-      })
-    )}
-  </Card>
+      })}
+    </View>
+  </View>
 );
 
+const PickedItemsSection = ({
+  items,
+  expanded,
+  onToggle,
+}: {
+  items: PickListItem[];
+  expanded: boolean;
+  onToggle: () => void;
+}) => (
+  <View style={styles.listSection}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ expanded }}
+      style={styles.pickedToggle}
+      onPress={onToggle}
+    >
+      <Text style={styles.pickedToggleText}>{items.length} picked</Text>
+      <Ionicons
+        name={expanded ? "chevron-up" : "chevron-down"}
+        size={18}
+        color={colors.primaryDark}
+      />
+    </Pressable>
+    {expanded ? (
+      <View style={styles.listSurface}>
+        {items.map((item, index) => (
+          <View
+            key={item.id}
+            style={[styles.listRow, index > 0 ? styles.listRowDivider : null]}
+          >
+            <Ionicons name="checkmark-circle" size={18} color={colors.statusSuccess} />
+            <View style={styles.flexFill}>
+              <Text style={styles.pickedItemName}>{item.name}</Text>
+              <Text style={styles.secondaryText}>
+                {getAssignedLocationCode(item) ?? "—"} · {item.pickedQty} / {item.requiredQty}{" "}
+                {item.uom}
+              </Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    ) : null}
+  </View>
+);
+
+const PickConfirmationPanel = ({
+  item,
+  source,
+  pickedQtyText,
+  remainingQty,
+  confirmationPending,
+  onPickedQtyChange,
+  onAdjustPickedQty,
+  onViewLocation,
+}: {
+  item: PickListItem;
+  source: PickSource;
+  pickedQtyText: string;
+  remainingQty: number;
+  confirmationPending: boolean;
+  onPickedQtyChange: (value: string) => void;
+  onAdjustPickedQty: (delta: number) => void;
+  onViewLocation: () => void;
+}) => {
+  const receivedDate = formatReceivedDate(source.batchReceivedAt);
+  const pickedQty = Number(pickedQtyText);
+  const canDecrease = !confirmationPending && Number.isFinite(pickedQty) && pickedQty > 0;
+  const canIncrease =
+    !confirmationPending && (!Number.isFinite(pickedQty) || pickedQty < remainingQty);
+  return (
+    <>
+      <View
+        style={[
+          styles.resultBanner,
+          source.isMismatch ? styles.resultBannerWarning : styles.resultBannerSuccess,
+        ]}
+        accessibilityLiveRegion="polite"
+      >
+        <Ionicons
+          name={source.isMismatch ? "warning" : "checkmark-circle"}
+          size={24}
+          color={source.isMismatch ? colors.statusWarning : colors.surface}
+        />
+        <Text
+          style={[
+            styles.resultBannerText,
+            source.isMismatch ? styles.resultBannerTextWarning : null,
+          ]}
+        >
+          {source.isMismatch ? "Different batch or location" : "QR code matches"}
+        </Text>
+      </View>
+
+      <Card style={styles.confirmLocationCard}>
+        {source.locationName ? (
+          <Text style={styles.confirmLocation}>{source.locationName}</Text>
+        ) : (
+          <Text style={styles.nextPickLocationMissing}>Location not recorded</Text>
+        )}
+        <Text style={styles.secondaryText}>
+          <RecordedValue
+            value={source.batchCode ? `Batch ${source.batchCode}` : null}
+            missingLabel="Batch not recorded"
+          />
+          {receivedDate ? ` · received ${receivedDate}` : ""}
+        </Text>
+        <Text style={styles.secondaryText}>
+          QR code{" "}
+          <RecordedValue value={source.batchLocationSku} missingLabel="not recorded" />
+        </Text>
+        <Text style={[styles.itemNameLarge, styles.confirmItemName]}>{item.name}</Text>
+        <Pressable accessibilityRole="button" style={styles.mapButton} onPress={onViewLocation}>
+          <Ionicons name="map-outline" size={18} color={colors.primaryDark} />
+          <Text style={styles.mapButtonText}>Show on map</Text>
+        </Pressable>
+      </Card>
+
+      {source.isMismatch ? (
+        <Card style={styles.comparisonCard}>
+          <View style={styles.comparisonColumn}>
+            <Text style={styles.sectionLabel}>Assigned</Text>
+            <Text style={styles.comparisonValue}>
+              <RecordedValue value={getAssignedLocationCode(item)} missingLabel="Not recorded" />
+            </Text>
+            <Text style={styles.secondaryText}>
+              <RecordedValue
+                value={item.batchNumber ? `Batch ${item.batchNumber}` : null}
+                missingLabel="Batch not recorded"
+              />
+            </Text>
+          </View>
+          <View style={styles.comparisonDivider} />
+          <View style={styles.comparisonColumn}>
+            <Text style={styles.sectionLabel}>Scanned</Text>
+            <Text style={styles.comparisonValue}>
+              <RecordedValue value={source.locationName} missingLabel="Not recorded" />
+            </Text>
+            <Text style={styles.secondaryText}>
+              <RecordedValue
+                value={source.batchCode ? `Batch ${source.batchCode}` : null}
+                missingLabel="Batch not recorded"
+              />
+            </Text>
+          </View>
+        </Card>
+      ) : null}
+
+      <Card style={styles.quantityCard}>
+        <Text style={styles.fieldLabel}>Quantity picked</Text>
+        <View style={styles.stepperRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Decrease quantity"
+            accessibilityState={{ disabled: !canDecrease }}
+            disabled={!canDecrease}
+            style={styles.stepperButton}
+            onPress={() => onAdjustPickedQty(-1)}
+          >
+            <Ionicons
+              name="remove"
+              size={28}
+              color={canDecrease ? colors.text : colors.textDisabled}
+            />
+          </Pressable>
+          <TextInput
+            value={pickedQtyText}
+            onChangeText={onPickedQtyChange}
+            editable={!confirmationPending}
+            keyboardType="decimal-pad"
+            selectTextOnFocus
+            accessibilityLabel="Quantity picked"
+            style={styles.quantityInput}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Increase quantity"
+            accessibilityState={{ disabled: !canIncrease }}
+            disabled={!canIncrease}
+            style={styles.stepperButton}
+            onPress={() => onAdjustPickedQty(1)}
+          >
+            <Ionicons name="add" size={28} color={canIncrease ? colors.text : colors.textDisabled} />
+          </Pressable>
+        </View>
+        <Text style={styles.secondaryText}>
+          {item.uom} · {remainingQty} left on this line · tap the number to type
+        </Text>
+      </Card>
+    </>
+  );
+};
+
 const styles = StyleSheet.create({
-  progressContainer: {
+  flexFill: { flex: 1 },
+  progressBlock: { gap: spacing.sm },
+  progressRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
+  statusText: { fontSize: 15, fontWeight: typography.fontWeights.semibold },
+  lineProgressText: { fontSize: 15, color: colors.textSecondary },
+  lineProgressCount: { color: colors.text, fontWeight: typography.fontWeights.bold },
+  progressTrack: {
+    height: 6,
+    borderRadius: borderRadius.full,
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
+    overflow: "hidden",
   },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingBottom: 12,
-  },
-  pickListCode: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: colors.text,
-  },
-  dateText: {
-    fontSize: 13,
-    fontWeight: "400",
-    color: "#A0AEC0",
-  },
-  dividerLine: {
-    height: 1,
-    backgroundColor: "#E2E8F0",
-    marginVertical: 0,
-  },
-  statsRow: {
+  progressFill: { height: "100%", backgroundColor: colors.primaryDark },
+  scannerBar: {
+    minHeight: 56,
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 16,
-  },
-  statColumnWrapper: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  statColumn: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    width: "100%",
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: "#E2E8F0",
-  },
-  statValue: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#1A202C",
-    lineHeight: 32,
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: "#A78BFA",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-  },
-  statusRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingTop: 12,
-  },
-  statusLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#F59E0B",
-  },
-  statusText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: colors.text,
-  },
-  statusHint: {
-    fontSize: 13,
-    fontWeight: "400",
-    color: "#A0AEC0",
-  },
-  actionRow: { flexDirection: "row", gap: 8 },
-  scanCard: { gap: 12 },
-  scanHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  scanSubtitle: {
-    color: colors.textSecondary,
-    fontSize: 11,
-    fontWeight: "400",
-  },
-  sectionTitle: { color: colors.text, fontSize: 13, fontWeight: "600" },
-  disabledNotice: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    padding: 12,
-    borderWidth: 1.5,
+    gap: spacing.sm,
+    paddingLeft: spacing.base,
+    paddingRight: spacing.xs,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 9,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
-  notice: {
+  scannerBarVerifying: {
+    borderColor: colors.statusInfo,
+    backgroundColor: colors.blueSoft,
+  },
+  scannerDot: { width: 10, height: 10, borderRadius: 5 },
+  scannerText: {
     flex: 1,
-    fontSize: 11,
-    lineHeight: 16,
-    color: colors.textSecondary,
+    fontSize: 16,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.text,
   },
-  label: { color: colors.textSecondary, fontSize: 11, fontWeight: "400" },
-  scanInputCombo: {
+  scannerTextVerifying: { color: colors.statusInfo },
+  scannerAction: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: borderRadius.md,
+  },
+  scannerActionActive: { backgroundColor: colors.primarySoft },
+  scannerActionPressed: { opacity: 0.6 },
+  scanErrorBanner: {
     flexDirection: "row",
     alignItems: "center",
+    gap: spacing.md,
+    padding: spacing.base,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.statusError,
+    backgroundColor: colors.dangerSoft,
+  },
+  scanErrorText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.statusError,
+  },
+  manualEntryCard: { gap: spacing.sm, padding: spacing.base },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.textSecondary,
+  },
+  manualEntryRow: { flexDirection: "row", gap: spacing.sm },
+  manualEntryInput: {
+    flex: 1,
     minHeight: 52,
     borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: 9,
-    paddingHorizontal: 12,
-    gap: 10,
-    backgroundColor: colors.surface,
-  },
-  comboInput: {
-    flex: 1,
-    fontSize: 13,
+    borderRadius: borderRadius.base,
+    paddingHorizontal: spacing.md,
+    fontSize: 18,
+    fontWeight: typography.fontWeights.semibold,
+    letterSpacing: 1,
     color: colors.text,
-    paddingVertical: 8,
   },
   verifyButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: colors.primary,
+    minHeight: 52,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.base,
+    backgroundColor: colors.primaryDark,
     alignItems: "center",
     justifyContent: "center",
   },
-  verifyButtonDisabled: {
-    backgroundColor: colors.backgroundSecondary,
-    opacity: 0.5,
-  },
+  verifyButtonDisabled: { backgroundColor: colors.backgroundSecondary },
   verifyButtonText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.surface,
   },
-  verifyButtonTextDisabled: {
+  verifyButtonTextDisabled: { color: colors.textSecondary },
+  nextPickCard: {
+    gap: spacing.xs,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    borderWidth: 2,
+    borderColor: colors.primaryDark,
+    backgroundColor: colors.surface,
+  },
+  nextPickLabel: {
+    fontSize: 13,
+    fontWeight: typography.fontWeights.semibold,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    color: colors.primaryDark,
+  },
+  nextPickLocation: {
+    fontVariant: ["tabular-nums"],
+    fontSize: 40,
+    lineHeight: 46,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
+  },
+  nextPickLocationMissing: {
+    fontSize: 22,
+    lineHeight: 30,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.statusWarning,
+  },
+  secondaryText: { fontSize: 15, lineHeight: 20, color: colors.textSecondary },
+  missingValue: { color: colors.statusWarning, fontWeight: typography.fontWeights.semibold },
+  cardDivider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
+  nextPickItemRow: { flexDirection: "row", alignItems: "flex-end", gap: spacing.md },
+  itemNameLarge: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.text,
+  },
+  nextPickQty: { fontSize: 28, fontWeight: typography.fontWeights.bold, color: colors.text },
+  mapButton: {
+    minHeight: 48,
+    marginTop: spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    borderRadius: borderRadius.base,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  mapButtonText: {
+    fontSize: 15,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.primaryDark,
+  },
+  allPickedCard: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  allPickedText: {
+    flex: 1,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.text,
+  },
+  listSection: { gap: spacing.sm },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: typography.fontWeights.semibold,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
     color: colors.textSecondary,
   },
-  scanErrorText: {
-    color: colors.danger,
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  verifiedCard: { gap: 12 },
-  verifiedHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  cancelText: { color: colors.primary, fontSize: 13, fontWeight: "600" },
-  pickLocation: {
-    backgroundColor: colors.primarySoft,
-    borderRadius: 9,
-    padding: 12,
-    gap: 6,
-  },
-  pickLocationHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  locationTitle: { color: colors.primary, fontSize: 12, fontWeight: "600" },
-  locationText: { color: colors.primaryDark, fontSize: 11, lineHeight: 16 },
-  mapLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 7,
+  listSurface: {
+    borderRadius: borderRadius.md,
     backgroundColor: colors.surface,
+    overflow: "hidden",
   },
-  mapLinkText: {
-    color: colors.primary,
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  sourceMismatchWarning: {
+  listRow: {
+    minHeight: 56,
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    borderRadius: 9,
-    backgroundColor: colors.amberSoft,
-    padding: 12,
+    alignItems: "center",
+    gap: spacing.md,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm,
   },
-  sourceMismatchWarningText: {
-    flex: 1,
-    color: colors.amberDark,
-    fontSize: 12,
-    lineHeight: 17,
+  listRowDivider: { borderTopWidth: 1, borderTopColor: colors.divider },
+  rowLocation: {
+    width: 88,
+    fontVariant: ["tabular-nums"],
+    fontSize: 15,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
   },
-  detailRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  detailLabel: { color: colors.textSecondary, fontSize: 11 },
-  detailValue: { color: colors.text, fontSize: 13, fontWeight: "600" },
-  quantityInput: {
+  rowItemName: { flex: 1, fontSize: 15, lineHeight: 20, color: colors.text },
+  rowQty: { fontSize: 15, fontWeight: typography.fontWeights.semibold, color: colors.text },
+  rowReserved: {
+    maxWidth: 120,
+    fontSize: 14,
+    fontWeight: typography.fontWeights.medium,
+    color: colors.statusWarning,
+  },
+  pickedToggle: {
     minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    alignSelf: "flex-start",
+  },
+  pickedToggleText: {
+    fontSize: 15,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.primaryDark,
+  },
+  pickedItemName: { fontSize: 15, lineHeight: 20, color: colors.text },
+  resultBanner: {
+    minHeight: 60,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingHorizontal: spacing.base,
+    borderRadius: borderRadius.md,
+  },
+  resultBannerSuccess: { backgroundColor: colors.statusSuccess },
+  resultBannerWarning: {
+    borderWidth: 2,
+    borderColor: colors.statusWarning,
+    backgroundColor: colors.amberSoft,
+  },
+  resultBannerText: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.surface,
+  },
+  resultBannerTextWarning: { color: colors.statusWarning },
+  confirmLocationCard: { gap: spacing.xs },
+  confirmLocation: {
+    fontVariant: ["tabular-nums"],
+    fontSize: 32,
+    lineHeight: 38,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
+  },
+  confirmItemName: { marginTop: spacing.sm },
+  comparisonCard: { flexDirection: "row", gap: spacing.base },
+  comparisonColumn: { flex: 1, gap: spacing.xs },
+  comparisonDivider: { width: 1, backgroundColor: colors.border },
+  comparisonValue: {
+    fontVariant: ["tabular-nums"],
+    fontSize: 18,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
+  },
+  quantityCard: { alignItems: "center", gap: spacing.md },
+  stepperRow: { flexDirection: "row", alignItems: "center", gap: spacing.lg },
+  stepperButton: {
+    width: 64,
+    height: 64,
+    borderRadius: borderRadius.full,
     borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: 9,
-    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quantityInput: {
+    minWidth: 120,
+    paddingVertical: spacing.xs,
+    fontSize: 48,
+    fontWeight: typography.fontWeights.bold,
     color: colors.text,
-    fontSize: 16,
-    fontWeight: "600",
-    paddingHorizontal: 12,
     textAlign: "center",
   },
-  itemSection: { gap: 12 },
-  itemSectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  sectionCount: {
-    minWidth: 32,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.primarySoft,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 8,
-  },
-  sectionCountText: { color: colors.primary, fontSize: 11, fontWeight: "600" },
-  itemRow: {
-    minHeight: 56,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: 9,
-    padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: colors.surface,
-  },
-  itemDone: {
-    borderColor: colors.green,
-    backgroundColor: colors.greenSoft,
-  },
-  itemClaimed: {
-    borderColor: colors.amberDark,
-    backgroundColor: colors.amberSoft,
-  },
-  itemClaimedBy: { color: colors.amberDark, fontSize: 10, marginTop: 2, lineHeight: 13 },
-  itemActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  itemMapButton: {
-    width: 36,
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 9,
-    backgroundColor: colors.primarySoft,
-  },
-  itemName: { color: colors.text, fontSize: 13, fontWeight: "600", lineHeight: 18 },
-  itemMeta: { color: colors.textSecondary, fontSize: 11, marginTop: 2, lineHeight: 14 },
-  itemMetaDetail: { color: colors.muted, fontSize: 10, marginTop: 1, lineHeight: 13 },
-  itemMetaDone: { color: colors.greenDark },
 });

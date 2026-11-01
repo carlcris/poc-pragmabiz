@@ -2,8 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { ReceivingDetailFooter } from "@/components/receiving/ReceivingDetailFooter";
-import { ReceivingFooterButton } from "@/components/receiving/ReceivingFooterButton";
+import { ActionFooter } from "@/components/ActionFooter";
+import { ActionFooterButton } from "@/components/ActionFooterButton";
 import { ReceivingProgressSummary } from "@/components/receiving/ReceivingProgressSummary";
 import { getLoadListStage } from "@/components/receiving/receiving-stages";
 import { Card, ErrorState, LoadingState, Screen } from "@/components/ui";
@@ -289,23 +289,23 @@ export default function LoadListReceivingDetailScreen() {
 
   const footer =
     grn && canStart ? (
-      <ReceivingDetailFooter note={footerNote?.text} noteTone={footerNote?.tone}>
-        <ReceivingFooterButton
+      <ActionFooter note={footerNote?.text} noteTone={footerNote?.tone}>
+        <ActionFooterButton
           label={startGrn.isPending ? "Starting..." : "Start receiving"}
           disabled={busy}
           onPress={() => void handleStartReceiving()}
         />
-      </ReceivingDetailFooter>
+      </ActionFooter>
     ) : grn && canEdit ? (
-      <ReceivingDetailFooter note={footerNote?.text} noteTone={footerNote?.tone}>
-        <ReceivingFooterButton
+      <ActionFooter note={footerNote?.text} noteTone={footerNote?.tone}>
+        <ActionFooterButton
           label={updateGrn.isPending ? "Saving..." : "Save"}
           variant="secondary"
           disabled={!hasUnsavedChanges || busy}
           onPress={() => void saveChanges()}
         />
         {canSubmitReceiving ? (
-          <ReceivingFooterButton
+          <ActionFooterButton
             label={
               submitGrn.isPending
                 ? "Submitting..."
@@ -318,7 +318,7 @@ export default function LoadListReceivingDetailScreen() {
             onPress={() => void handleSubmit()}
           />
         ) : null}
-      </ReceivingDetailFooter>
+      </ActionFooter>
     ) : null;
 
   const facts = loadList

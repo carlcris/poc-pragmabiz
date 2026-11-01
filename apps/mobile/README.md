@@ -54,7 +54,13 @@ Configure the SUNMI ScannerHead data output mode before deployment:
 
 - Enable broadcast output for `com.sunmi.scanner.ACTION_DATA_CODE_RECEIVED`.
 - Disable simulated-keyboard and direct-fill output so scans do not type into the focused field.
+- Disable **Send Enter key** and **Send TAB key** as well; these suffixes can activate or move
+  keyboard focus even when the scan payload is delivered by broadcast.
 - Keep the scanner output encoding aligned with the barcode payload; UTF-8 is the normal default.
+
+The shared screen header provides a neutral initial keyboard-focus target so repeated Enter
+suffixes do not focus and activate Back. Touch navigation, Android Back, and submission from a
+focused manual-entry field remain available. Keep key suffixes disabled on deployed devices.
 
 The native scanner module is unavailable in Expo Go. Use an Android development, APK, preview,
 or production build when testing the physical scan head. Camera scanning remains available on

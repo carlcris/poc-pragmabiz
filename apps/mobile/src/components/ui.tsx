@@ -61,7 +61,8 @@ export const Screen = ({
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <View style={styles.header}>
+      {/* Keep scanner Enter suffixes from initially focusing and activating Back. */}
+      <View style={styles.header} focusable importantForAccessibility="no">
         <View style={styles.headerContent}>
           {back ? (
             <Pressable
