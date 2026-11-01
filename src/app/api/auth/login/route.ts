@@ -104,35 +104,6 @@ function aggregateCapabilities(rows: RawPermissionRow[]): UserCapabilityMap {
   return capabilities;
 }
 
-async function resolveUserAccess(
-  supabase: ReturnType<typeof createRouteHandlerClient>["supabase"],
-  userId: string,
-  businessUnitId: string | null
-) {
-  const { data, error } = await supabase.rpc("get_user_permissions", {
-    p_user_id: userId,
-    p_business_unit_id: businessUnitId,
-  });
-
-  if (error) {
-    console.error("Failed to resolve user access", {
-      userId,
-      businessUnitId,
-      error: error.message,
-    });
-    return {
-      permissions: createEmptyPermissions(),
-      capabilities: {},
-    };
-  }
-
-  const rows = (data || []) as RawPermissionRow[];
-  return {
-    permissions: aggregatePermissions(rows),
-    capabilities: aggregateCapabilities(rows),
-  };
-}
-
 async function resolveBusinessUnitId(
   supabase: ReturnType<typeof createRouteHandlerClient>["supabase"],
   userId: string,
@@ -153,57 +124,6 @@ async function resolveBusinessUnitId(
     rows[0]?.business_unit_id ||
     null
   );
-}
-
-async function resolveLandingPage(
-  supabase: ReturnType<typeof createRouteHandlerClient>["supabase"],
-  userId: string,
-  accessToken: string
-): Promise<string> {
-  const businessUnitId = await resolveBusinessUnitId(supabase, userId, accessToken);
-
-  const [{ data: permissionRows, error: permissionError }, { data: roleRows, error: roleError }] =
-    await Promise.all([
-      supabase.rpc("get_user_permissions", {
-        p_user_id: userId,
-        p_business_unit_id: businessUnitId,
-      }),
-      supabase
-        .from("user_roles")
-        .select(
-          `
-          roles (
-            name
-          )
-        `
-        )
-        .eq("user_id", userId)
-        .is("deleted_at", null),
-    ]);
-
-  if (permissionError) {
-    console.error("Failed to resolve login permissions", {
-      userId,
-      businessUnitId,
-      error: permissionError.message,
-    });
-    return "/403";
-  }
-
-  if (roleError) {
-    console.error("Failed to resolve login roles", {
-      userId,
-      businessUnitId,
-      error: roleError.message,
-    });
-  }
-
-  const permissions = aggregatePermissions((permissionRows || []) as RawPermissionRow[]);
-  const roleNames = ((roleRows as UserRoleWithRole[] | null) || [])
-    .map((row) => (Array.isArray(row.roles) ? row.roles[0] : row.roles)?.name)
-    .filter((name): name is string => typeof name === "string" && name.length > 0);
-
-  return getFirstAccessiblePage(permissions, roleNames);
 }
 
 async function POSTHandler(request: NextRequest) {
@@ -288,13 +208,48 @@ async function POSTHandler(request: NextRequest) {
       data.user.id,
       data.session.access_token
     );
-    const { data: currentBusinessUnit } = currentBusinessUnitId
-      ? await supabase
-          .from("business_units")
-          .select("id, code, name")
-          .eq("id", currentBusinessUnitId)
-          .maybeSingle()
-      : { data: null };
+    const [businessUnitResult, permissionResult, roleResult] = await Promise.all([
+      currentBusinessUnitId
+        ? supabase
+            .from("business_units")
+            .select("id, code, name")
+            .eq("id", currentBusinessUnitId)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.rpc("get_user_permissions", {
+        p_user_id: data.user.id,
+        p_business_unit_id: currentBusinessUnitId,
+      }),
+      supabase
+        .from("user_roles")
+        .select("roles (name)")
+        .eq("user_id", data.user.id)
+        .is("deleted_at", null),
+    ]);
+
+    if (permissionResult.error) {
+      console.error("Failed to resolve login permissions", {
+        userId: data.user.id,
+        businessUnitId: currentBusinessUnitId,
+        error: permissionResult.error.message,
+      });
+    }
+    if (roleResult.error) {
+      console.error("Failed to resolve login roles", {
+        userId: data.user.id,
+        businessUnitId: currentBusinessUnitId,
+        error: roleResult.error.message,
+      });
+    }
+
+    const currentBusinessUnit = businessUnitResult.data;
+    const permissionRows = permissionResult.error
+      ? []
+      : ((permissionResult.data || []) as RawPermissionRow[]);
+    const permissions = aggregatePermissions(permissionRows);
+    const roleNames = ((roleResult.data as UserRoleWithRole[] | null) || [])
+      .map((row) => (Array.isArray(row.roles) ? row.roles[0] : row.roles)?.name)
+      .filter((name): name is string => typeof name === "string" && name.length > 0);
 
     const responseBody = {
       user: {
@@ -316,10 +271,11 @@ async function POSTHandler(request: NextRequest) {
             name: currentBusinessUnit.name,
           }
         : null,
-      landingPage: await resolveLandingPage(supabase, data.user.id, data.session.access_token),
+      landingPage: permissionResult.error ? "/403" : getFirstAccessiblePage(permissions, roleNames),
       ...(isMobileLoginRequest(request)
         ? {
-            ...(await resolveUserAccess(supabase, data.user.id, currentBusinessUnitId)),
+            permissions,
+            capabilities: aggregateCapabilities(permissionRows),
             cookieHeader: toCookieHeader(response.cookies),
           }
         : {}),

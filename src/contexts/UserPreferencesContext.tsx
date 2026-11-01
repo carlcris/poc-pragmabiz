@@ -25,6 +25,8 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
+  const userId = useAuthStore((state) => state.user?.id);
 
   // Apply font size to document
   const applyFontSize = useCallback((fontSize: FontSize) => {
@@ -34,31 +36,43 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
     }
   }, []);
 
-  // Load preferences from API
-  const loadPreferences = useCallback(async () => {
-    try {
-      const response = await fetch("/api/user-preferences");
-      if (response.ok) {
-        const { data } = await response.json();
-        setPreferences(data);
-        applyFontSize(data.fontSize);
-      }
-    } catch (error) {
-      console.error("Failed to load user preferences:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [applyFontSize]);
-
   // Load preferences on mount
   useEffect(() => {
     setMounted(true);
-    if (!isAuthenticated) {
+    if (!isAuthenticated || isLoggingOut) {
+      setPreferences(null);
       setLoading(false);
       return;
     }
-    loadPreferences();
-  }, [isAuthenticated, loadPreferences]);
+
+    const controller = new AbortController();
+    setLoading(true);
+    const loadPreferences = async () => {
+      try {
+        const response = await fetch("/api/user-preferences", { signal: controller.signal });
+        if (response.ok) {
+          const { data }: { data: UserPreferences } = await response.json();
+          const auth = useAuthStore.getState();
+          if (
+            controller.signal.aborted ||
+            !auth.isAuthenticated ||
+            auth.isLoggingOut ||
+            auth.user?.id !== userId
+          ) {
+            return;
+          }
+          setPreferences(data);
+          applyFontSize(data.fontSize);
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) console.error("Failed to load user preferences:", error);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    };
+    void loadPreferences();
+    return () => controller.abort();
+  }, [isAuthenticated, isLoggingOut, userId, applyFontSize]);
 
   // Update preferences on the server
   const updatePreferences = useCallback(

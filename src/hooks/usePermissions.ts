@@ -37,6 +37,9 @@ type UserPermissionsResponse = {
  */
 export function useLoadPermissions() {
   const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
+  const isActive = isAuthenticated && !isLoggingOut;
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
   const availableBusinessUnits = useBusinessUnitStore((state) => state.availableBusinessUnits);
   const isBusinessUnitLoading = useBusinessUnitStore((state) => state.isLoading);
@@ -51,7 +54,7 @@ export function useLoadPermissions() {
 
   const query = useQuery({
     queryKey: ["permissions", userId, businessUnitId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!userId) {
         throw new Error("User not authenticated");
       }
@@ -63,7 +66,7 @@ export function useLoadPermissions() {
 
       const response = await apiClient.get<UserPermissionsResponse>(
         `/api/rbac/users/${userId}/permissions`,
-        { params }
+        { params, signal }
       );
 
       // Transform array response to UserPermissions object
@@ -87,7 +90,7 @@ export function useLoadPermissions() {
 
       return permissions;
     },
-    enabled: !!userId && isBusinessUnitReady, // Only run if user is authenticated and BU resolved
+    enabled: isActive && !!userId && isBusinessUnitReady,
     // SECURITY: authorization is enforced server-side; client cache is UX only.
     // Keep this fresh enough for UI while avoiding repeated page-level latency.
     staleTime: 60_000,
@@ -99,7 +102,7 @@ export function useLoadPermissions() {
 
   // Hydrate permissions from scope-specific persisted cache (user + business unit)
   useEffect(() => {
-    if (!userId) {
+    if (!isActive || !userId) {
       setScope(null);
       return;
     }
@@ -109,10 +112,11 @@ export function useLoadPermissions() {
     }
 
     setScope(permissionScopeKey);
-  }, [userId, isBusinessUnitReady, permissionScopeKey, setScope]);
+  }, [isActive, userId, isBusinessUnitReady, permissionScopeKey, setScope]);
 
   // Update store when query data changes
   useEffect(() => {
+    if (!isActive) return;
     if (query.isLoading) {
       setLoading(true);
     } else if (query.error) {
@@ -125,6 +129,7 @@ export function useLoadPermissions() {
       setLoading(true);
     }
   }, [
+    isActive,
     query.data,
     query.isLoading,
     query.isFetching,

@@ -37,7 +37,9 @@
     "zustand": "5.0.13"
   },
   "devDependencies": {
+    "@babel/plugin-transform-class-static-block": "7.29.7",
     "@types/react": "19.1.10",
+    "babel-preset-expo": "54.0.11",
     "eslint": "9.25.1",
     "eslint-config-expo": "10.0.0",
     "typescript": "5.9.2"

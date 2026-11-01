@@ -144,6 +144,7 @@ export const useRealtimeQueryInvalidation = ({
 }: RealtimeInvalidationOptions) => {
   const queryClient = useQueryClient();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   const isAuthLoading = useAuthStore((state) => state.isLoading);
   const authToken = useAuthStore((state) => state.token);
   const tablesRef = useRef(tables);
@@ -153,7 +154,13 @@ export const useRealtimeQueryInvalidation = ({
   const hasTables = tablesKey.length > 0;
   const hasQueryKeys = queryKeysKey.length > 0;
   const shouldSubscribe =
-    enabled && isAuthenticated && !isAuthLoading && !!authToken && hasTables && hasQueryKeys;
+    enabled &&
+    isAuthenticated &&
+    !isLoggingOut &&
+    !isAuthLoading &&
+    !!authToken &&
+    hasTables &&
+    hasQueryKeys;
 
   tablesRef.current = tables;
   queryKeysRef.current = queryKeys;
@@ -165,6 +172,8 @@ export const useRealtimeQueryInvalidation = ({
 
     const state = ensureChannel({ poolKey, schema, tables: tablesRef.current, debounceMs });
     const listener = () => {
+      const auth = useAuthStore.getState();
+      if (!auth.isAuthenticated || auth.isLoggingOut) return;
       for (const queryKey of queryKeysRef.current) {
         queryClient.invalidateQueries({ queryKey: [queryKey] });
       }

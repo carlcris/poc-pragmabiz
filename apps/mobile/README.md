@@ -13,6 +13,10 @@ EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:3000 CI=1 npx expo start --port 8082 --
 Use `10.0.2.2` for Android emulator access to the host machine.
 The app loads its public Supabase Realtime configuration from the authenticated API. `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` remain optional build-time overrides.
 
+`babel.config.cts` uses the Expo preset and transforms class static blocks used by the shared
+translation dependencies. Keep this transform enabled for Android development bundles. Restart
+Metro with `--clear` after changing Babel configuration.
+
 ## Android Builds
 
 Run EAS from this `apps/mobile` directory so it uses this app's Expo project and credentials:

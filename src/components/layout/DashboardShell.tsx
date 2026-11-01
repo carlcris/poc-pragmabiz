@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { User } from "@/types/auth";
 import type { UserPermissions } from "@/types/rbac";
@@ -33,10 +33,10 @@ export function DashboardShell({
   initialPermissionScopeKey,
   initialBusinessUnitName,
 }: DashboardShellProps) {
-  const user = useAuthStore((state) => state.user);
-  const setUser = useAuthStore((state) => state.setUser);
-  const setToken = useAuthStore((state) => state.setToken);
-  const setLoading = useAuthStore((state) => state.setLoading);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
+  const hydrateFromServer = useAuthStore((state) => state.hydrateFromServer);
+  const hasHydratedAuth = useRef(false);
   const setPermissionScope = usePermissionStore((state) => state.setScope);
   const setPermissions = usePermissionStore((state) => state.setPermissions);
   const isSidebarOpen = useSidebarStore((state) => state.isOpen);
@@ -50,21 +50,26 @@ export function DashboardShell({
 
   // Hydrate auth store from server-rendered user/session to avoid post-mount auth flicker.
   useEffect(() => {
-    if (!user || user.id !== initialUser.id) {
-      setUser(initialUser);
-    }
-    setToken(initialToken);
-    setLoading(false);
-  }, [initialUser, initialToken, setLoading, setToken, setUser, user]);
+    if (hasHydratedAuth.current) return;
+    hasHydratedAuth.current = true;
+    hydrateFromServer(initialUser, initialToken);
+  }, [hydrateFromServer, initialUser, initialToken]);
 
   // Hydrate permission store from server-rendered permissions so sidebar can render immediately.
   useEffect(() => {
-    if (!initialPermissionScopeKey) return;
+    if (!isAuthenticated || isLoggingOut || !initialPermissionScopeKey) return;
     setPermissionScope(initialPermissionScopeKey);
     if (initialPermissions) {
       setPermissions(initialPermissions);
     }
-  }, [initialPermissionScopeKey, initialPermissions, setPermissionScope, setPermissions]);
+  }, [
+    isAuthenticated,
+    isLoggingOut,
+    initialPermissionScopeKey,
+    initialPermissions,
+    setPermissionScope,
+    setPermissions,
+  ]);
 
   // Load user permissions for sidebar/page UI
   useLoadPermissions();
@@ -72,6 +77,9 @@ export function DashboardShell({
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  // Unmount protected consumers while sign-out and navigation finish.
+  if (isLoggingOut || (hasMounted && !isAuthenticated)) return null;
 
   return (
     <BusinessUnitProvider>

@@ -18,6 +18,7 @@ type BusinessUnitProviderProps = {
 
 export const BusinessUnitProvider = ({ children }: BusinessUnitProviderProps) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   const isAuthLoading = useAuthStore((state) => state.isLoading);
   const checkAuth = useAuthStore((state) => state.checkAuth);
   const { data: businessUnits, isLoading, error } = useBusinessUnits();
@@ -28,10 +29,10 @@ export const BusinessUnitProvider = ({ children }: BusinessUnitProviderProps) =>
   const hasCheckedAuth = useRef(false);
 
   useEffect(() => {
-    if (isAuthenticated || hasCheckedAuth.current) return;
+    if (isAuthenticated || isLoggingOut || hasCheckedAuth.current) return;
     hasCheckedAuth.current = true;
     void checkAuth();
-  }, [checkAuth, isAuthenticated]);
+  }, [checkAuth, isAuthenticated, isLoggingOut]);
 
   useEffect(() => {
     setLoading(isAuthLoading || isLoading);
@@ -39,6 +40,7 @@ export const BusinessUnitProvider = ({ children }: BusinessUnitProviderProps) =>
 
   // Initialize business unit when data is loaded
   useEffect(() => {
+    if (!isAuthenticated || isLoggingOut) return;
     if (!isLoading && businessUnits && businessUnits.length > 0 && !hasInitialized.current) {
       setAvailableBusinessUnits(businessUnits);
 
@@ -76,6 +78,8 @@ export const BusinessUnitProvider = ({ children }: BusinessUnitProviderProps) =>
       }
     }
   }, [
+    isAuthenticated,
+    isLoggingOut,
     businessUnits,
     isLoading,
     currentBusinessUnit,

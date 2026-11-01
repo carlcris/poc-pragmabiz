@@ -20,7 +20,7 @@ import {
 export function UserMenu() {
   const t = useTranslations("userMenu");
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user, logout, isLoggingOut } = useAuthStore();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export function UserMenu() {
 
   const handleLogout = async () => {
     await logout();
-    router.push("/login");
+    router.replace("/login");
   };
 
   const getInitials = (name: string) => {
@@ -74,7 +74,7 @@ export function UserMenu() {
           <span>{t("changePassword")}</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout}>
+        <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
           <LogOut className="mr-2 h-4 w-4" />
           <span>{t("logOut")}</span>
         </DropdownMenuItem>

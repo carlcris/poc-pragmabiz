@@ -26,21 +26,24 @@ export function useNotifications({
   enabled?: boolean;
 } = {}) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
+  const isActive = isAuthenticated && !isLoggingOut && enabled;
   useRealtimeDomainInvalidation("notifications", {
     queryKeys: [NOTIFICATIONS_QUERY_KEY],
-    enabled: isAuthenticated && enabled,
+    enabled: isActive,
   });
 
   return useQuery({
     queryKey: [NOTIFICATIONS_QUERY_KEY, { unreadOnly, limit, offset }],
-    enabled: isAuthenticated && enabled,
-    queryFn: async () => {
+    enabled: isActive,
+    queryFn: async ({ signal }) => {
       const response = await apiClient.get<NotificationsResponse>("/api/notifications", {
         params: {
           limit,
           offset,
           unread: unreadOnly ? "true" : undefined,
         },
+        signal,
       });
       return response;
     },

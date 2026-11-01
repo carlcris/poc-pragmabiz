@@ -606,6 +606,17 @@ The request stops after 20 seconds without automatically retrying. Login guidanc
 authentication and translation source directories in the repository. See
 [Sign-in Failure Guidance](01-AUTHENTICATION-AUTHORIZATION.md#sign-in-failure-guidance) for codes.
 
+The login API uses one business-unit resolution and one permission RPC per request. Business-unit
+details, permissions, and roles load in parallel after account validation; the permission and
+capability maps share that permission result. Authentication, effective permissions, session cookies,
+secure-storage behavior, and the native destination remain the same. See
+[Login Performance](../guides/LOGIN-PERFORMANCE.md) for query budgets and measured comparisons.
+
+Native development bundles use `apps/mobile/babel.config.cts` with the Expo preset and the class
+static-block transform required by the shared translation dependencies. Restart Metro with
+`--clear` when changing Babel configuration; a successful production export alone does not verify
+the Android development bundle.
+
 The native mobile app stores the permission and capability maps returned by login and business-unit
 switching. Bottom navigation keeps Receiving and Picking visible in fixed positions but disables
 destinations the current role cannot access. Dashboard quick actions, list queries, detail queries,

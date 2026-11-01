@@ -37,12 +37,15 @@ type SetContextResponse = {
  */
 export function useBusinessUnits() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery({
     queryKey: ["business-units"],
-    enabled: isAuthenticated,
-    queryFn: async () => {
+    enabled: isAuthenticated && !isLoggingOut,
+    queryFn: async ({ signal }) => {
       // apiClient.get returns the JSON response directly, not wrapped
-      const response = await apiClient.get<BusinessUnitsResponse>("/api/business-units");
+      const response = await apiClient.get<BusinessUnitsResponse>("/api/business-units", {
+        signal,
+      });
 
       // Validate response structure
       if (!response.data) {

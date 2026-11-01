@@ -37,7 +37,11 @@ export class ApiClient {
 
   async get<T>(
     endpoint: string,
-    options?: { params?: Record<string, string | number | undefined>; responseType?: "blob" }
+    options?: {
+      params?: Record<string, string | number | undefined>;
+      responseType?: "blob";
+      signal?: AbortSignal;
+    }
   ): Promise<T> {
     let url = `${this.baseURL}${endpoint}`;
 
@@ -59,6 +63,7 @@ export class ApiClient {
       method: "GET",
       headers: this.getHeaders(),
       credentials: "include",
+      signal: options?.signal,
     });
 
     if (!response.ok) {

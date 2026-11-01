@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "activity-logging:check": "node scripts/check-api-activity-logging.mjs",
+    "benchmark:login": "vitest run --config vitest.login-benchmark.config.ts",
     "build": "next build",
     "dev": "next dev --turbopack",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",

@@ -16,8 +16,34 @@
 - Check web guidance in English and Chinese, and native guidance in English. Check long messages
   wrap within the form on a narrow screen and that a screen reader announces the native alert.
 - Repeat a successful login to confirm the existing destination and account access remain intact.
+- Compare login before and after optimization with accounts that have different roles and access.
+  Confirm each still lands on the same screen and sees the same allowed modules and restricted fields.
+  Repeat after changing the selected business unit, and with an account that has no accessible modules.
+- Measure sign-in through the loaded destination screen, including session setup and fresh dashboard
+  data. Record the HTTP request separately, distinguish warm and cold runs, and identify whether
+  mobile measurements use a debug emulator or a release build on a physical device.
 - On the mobile-browser van-sales login, an account without a van warehouse should be directed to
   its supervisor for assignment.
+
+## Sign-out Cleanup
+
+- From the web dashboard, open the user menu and log out. Confirm the sign-in screen appears and no
+  new warehouse-dashboard, business-unit, preferences, permissions, or notification reads start
+  after the logout action. Observe beyond the dashboard's 30-second refresh interval.
+- Log out while a read is pending. Confirm it is cancelled in the browser and does not retry or
+  repopulate the previous account's state. A request already received by the server may still finish
+  and appear in server completion logs; distinguish it from a newly started browser request.
+- Repeat the logout click and confirm only one sign-out operation runs. Simulate sign-out failure
+  and confirm local user, business-unit, permission, and query state still clears.
+- Use browser Back after logout and confirm the previous user's dashboard is not restored. Sign in
+  again and confirm the normal destination, profile, role, business-unit scope, and permissions are
+  retained, with fresh preferences for the signed-in account.
+
+Verified on November 1, 2026, through the real web sign-in and user-menu logout: no protected API
+reads started during more than 108 seconds of observation after logout. Only the existing
+authentication sign-out and login-page navigation ran; the existing global sign-out scope was
+retained. Automated regressions cover pending-read cancellation, repeated logout, failed sign-out
+cleanup, stale auth responses, and preservation of the current account's profile and role.
 
 This document explains, module by module, **what the end user does and what happens**, and — for the records everything else depends on — **what's required before it can be created and what happens if it's edited or removed while in use**. It's written for QA to build test scripts from: no code, no file paths, just screens, fields, buttons, and behavior.
 

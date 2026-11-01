@@ -41,8 +41,10 @@ POST /api/auth/login
 Request: { email: string, password: string }
 Response: {
   user: User,
-  session: Session,
-  landing_page?: string  // Role-based landing page
+  token: string,
+  refreshToken: string,
+  currentBusinessUnit: { id: string, code: string, name: string } | null,
+  landingPage: string
 }
 ```
 
@@ -52,8 +54,25 @@ Response: {
 2. API calls `supabase.auth.signInWithPassword()`
 3. JWT token generated with business unit context
 4. Session stored in HTTP-only cookies
-5. Landing page determined by user's primary role
-6. Client redirects to landing page
+5. API validates the application profile, resolves business-unit context once, then loads
+   business-unit details, effective permissions, and role names in parallel
+6. Landing page determined by effective permissions and role priority
+7. Native permission/capability maps are built from that same request's permission result
+8. Web establishes its Supabase session using the returned tokens and reuses the returned name fields;
+   native mobile saves its returned session to secure storage
+9. Client redirects to its existing destination
+
+The password authentication call, application-account validation, browser Supabase session
+verification, permission RPC, role selection, cookies, and response fields are preserved. The login
+API performs one `get_user_permissions` call per request. A failed permission lookup keeps landing
+access denied (`/403`) and returns denied mobile permissions with an empty capability map. No
+permission result is cached by the API across login requests or business units.
+
+The core successful API path uses five outgoing Supabase requests when the token contains a
+business-unit ID. Missing token context adds one membership lookup. Native mobile no longer repeats
+the permission or membership query. The browser no longer repeats the API's profile query after
+session verification. See [Login Performance](../guides/LOGIN-PERFORMANCE.md) for measurements and
+reproduction commands.
 
 #### Sign-in Failure Guidance
 
@@ -478,6 +497,20 @@ End user session.
   "message": "Logged out successfully"
 }
 ```
+
+Browser logout continues to use the existing `supabase.auth.signOut()` call and its default scope.
+Before signing out, the auth store marks logout in progress, unmounts protected dashboard consumers,
+pauses authenticated reads and realtime invalidation, and cancels pending React Query reads. The
+business-unit, permissions, notifications, and warehouse-dashboard reads pass their cancellation
+signals to `fetch`; the preferences provider separately aborts its read on logout or account change.
+Business-unit, permission, and query caches are then cleared, including when sign-out throws, and
+the web menu replaces the current history entry with `/login`.
+
+Dashboard authentication initializes once from the verified server session. Intentional logout
+blocks stale server hydration, and auth checks started before logout cannot restore the old user.
+Existing API profile fields and role are retained when the server initializes the same user. A new
+successful login clears the intentional-logout marker. API authentication, permissions, RLS,
+business-unit scope, and sign-out scope are unchanged.
 
 #### GET /api/auth/me
 

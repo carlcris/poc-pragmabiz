@@ -3,7 +3,7 @@ import type { AuthResponse, LoginCredentials, User } from "@/types/auth";
 import { supabase } from "@/lib/supabase/client";
 import { useBusinessUnitStore } from "./businessUnitStore";
 import { usePermissionStore } from "./permissionStore";
-import { QueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import {
   getLoginErrorCode,
   LoginError,
@@ -13,12 +13,15 @@ import {
 import {
   clearIntentionalLogoutMarker,
   clearSessionInvalidNoticeShown,
+  hasIntentionalLogoutMarker,
   markIntentionalLogout,
   notifySessionInvalid,
 } from "@/lib/auth/sessionInvalidation";
 
 // Get the query client instance - will be initialized by provider
 let queryClientInstance: QueryClient | null = null;
+let authOperationVersion = 0;
+let logoutPromise: Promise<void> | null = null;
 
 export function setQueryClient(queryClient: QueryClient) {
   queryClientInstance = queryClient;
@@ -47,10 +50,11 @@ type AuthStore = {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isLoggingOut: boolean;
   error: LoginErrorCode | null;
 
   // Actions
-  setUser: (user: User | null) => void;
+  hydrateFromServer: (user: User, token: string | null) => void;
   setToken: (token: string | null) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: LoginErrorCode | null) => void;
@@ -64,14 +68,27 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
   token: null,
   isAuthenticated: false,
   isLoading: true, // Start as true to prevent premature redirects
+  isLoggingOut: false,
   error: null,
 
-  setUser: (user) => set({ user, isAuthenticated: !!user }),
+  hydrateFromServer: (user, token) => {
+    if (get().isLoggingOut || hasIntentionalLogoutMarker()) return;
+    const currentUser = get().user;
+    set({
+      user: currentUser?.id === user.id ? currentUser : user,
+      token,
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+    });
+  },
   setToken: (token) => set({ token }),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
 
   login: async (credentials) => {
+    if (logoutPromise) await logoutPromise;
+    authOperationVersion += 1;
     try {
       set({ isLoading: true, error: null });
 
@@ -95,15 +112,8 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
         throw new LoginError("LOGIN_UNAVAILABLE");
       }
 
-      // Refresh name fields from public.users using the authenticated user id.
-      const { data: userProfile } = await supabase
-        .from("users")
-        .select("first_name, last_name")
-        .eq("id", payload.user.id)
-        .maybeSingle();
-
-      const firstName = userProfile?.first_name || payload.user.firstName || "";
-      const lastName = userProfile?.last_name || payload.user.lastName || "";
+      const firstName = payload.user.firstName || "";
+      const lastName = payload.user.lastName || "";
       const fullName = [firstName, lastName].filter(Boolean).join(" ");
 
       const user: User = {
@@ -138,52 +148,43 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
     }
   },
 
-  logout: async () => {
-    try {
-      markIntentionalLogout();
+  logout: () => {
+    if (logoutPromise) return logoutPromise;
 
-      // Sign out from Supabase
-      await supabase.auth.signOut();
+    authOperationVersion += 1;
+    // Pause protected consumers before cookies or query keys change.
+    set({ isLoggingOut: true });
 
-      // Clear auth state
-      set({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        error: null,
-      });
-
-      // Clear business unit context from previous user
-      useBusinessUnitStore.getState().clearBusinessUnit();
-
-      // Clear permissions from previous user
-      usePermissionStore.getState().clearPermissions();
-
-      // Clear React Query cache to prevent data from previous user
-      if (queryClientInstance) {
-        queryClientInstance.clear();
+    logoutPromise = (async () => {
+      try {
+        markIntentionalLogout();
+        await queryClientInstance?.cancelQueries();
+        await supabase.auth.signOut();
+      } catch {
+        // Preserve local cleanup and navigation if sign-out fails.
+      } finally {
+        useBusinessUnitStore.getState().clearBusinessUnit();
+        usePermissionStore.getState().clearPermissions();
+        queryClientInstance?.clear();
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          isLoading: false,
+          isLoggingOut: false,
+          error: null,
+        });
       }
-    } catch {
-      // Clear state even if API call fails
-      set({
-        user: null,
-        token: null,
-        isAuthenticated: false,
-        error: null,
-      });
+    })().finally(() => {
+      logoutPromise = null;
+    });
 
-      // Clear business unit and permissions even on error
-      useBusinessUnitStore.getState().clearBusinessUnit();
-      usePermissionStore.getState().clearPermissions();
-
-      // Clear React Query cache even on error
-      if (queryClientInstance) {
-        queryClientInstance.clear();
-      }
-    }
+    return logoutPromise;
   },
 
   checkAuth: async () => {
+    if (get().isLoggingOut || hasIntentionalLogoutMarker()) return;
+    const operationVersion = authOperationVersion;
     try {
       set({ isLoading: true });
 
@@ -191,6 +192,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
         data: { session },
       } = await supabase.auth.getSession();
 
+      if (operationVersion !== authOperationVersion) return;
       if (!session) {
         if (get().isAuthenticated || get().token) {
           notifySessionInvalid();
@@ -212,6 +214,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
         error,
       } = await supabase.auth.getUser();
 
+      if (operationVersion !== authOperationVersion) return;
       if (error || !user) {
         if (get().isAuthenticated || get().token) {
           notifySessionInvalid();
@@ -238,6 +241,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
           .eq("id", user.id)
           .maybeSingle();
 
+        if (operationVersion !== authOperationVersion) return;
         companyId = companyId || userData?.company_id || "";
         firstName = firstName || userData?.first_name || "";
         lastName = lastName || userData?.last_name || "";
@@ -267,6 +271,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
         error: null,
       });
     } catch {
+      if (operationVersion !== authOperationVersion) return;
       if (get().isAuthenticated || get().token) {
         notifySessionInvalid();
       }
