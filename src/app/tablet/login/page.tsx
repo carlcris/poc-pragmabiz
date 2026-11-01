@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -9,21 +9,30 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { User, Lock, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import Image from "next/image";
+import {
+  getLoginErrorCode,
+  getLoginErrorMessage,
+  type LoginErrorCode,
+} from "@/lib/auth/login-errors";
 
 export default function TabletLoginPage() {
   const router = useRouter();
   const tCommon = useTranslations("common");
+  const tLoginErrors = useTranslations("loginErrors");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<LoginErrorCode | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const submittingRef = useRef(false);
   const { login } = useAuthStore();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError("");
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setError(null);
     setIsLoading(true);
 
     try {
@@ -32,8 +41,9 @@ export default function TabletLoginPage() {
       // Redirect to tablet dashboard
       router.push("/tablet");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed. Please try again.");
+      setError(getLoginErrorCode(err));
     } finally {
+      submittingRef.current = false;
       setIsLoading(false);
     }
   };
@@ -60,7 +70,7 @@ export default function TabletLoginPage() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleLogin} className="space-y-3">
+          <form onSubmit={handleLogin} onChange={() => setError(null)} className="space-y-3">
             <div>
               <label htmlFor="email" className="sr-only">
                 Email
@@ -134,7 +144,7 @@ export default function TabletLoginPage() {
             {error && (
               <Alert variant="destructive" className="mt-4">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{getLoginErrorMessage(error, tLoginErrors)}</AlertDescription>
               </Alert>
             )}
 

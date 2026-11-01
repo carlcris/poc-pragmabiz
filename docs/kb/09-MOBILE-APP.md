@@ -597,6 +597,15 @@ and overages retain their existing scan-count behavior. Scans already matched to
 skip the lookup. Scan controls and submission stay blocked during identification or recording.
 Errors remain visible inside an open confirmation dialog, which stays available for retry.
 
+The native mobile login shows actionable sign-in guidance for incorrect credentials, account access,
+unconfirmed email, rate limits, connection failures, timeouts, and temporary service failures.
+It never displays arbitrary API or proxy error text. The email and password remain available for a
+retry, errors clear when either input changes, and repeated taps cannot send concurrent attempts.
+The request stops after 20 seconds without automatically retrying. Login guidance uses the shared
+`loginErrors` translations (English for the current native interface); Metro watches the shared
+authentication and translation source directories in the repository. See
+[Sign-in Failure Guidance](01-AUTHENTICATION-AUTHORIZATION.md#sign-in-failure-guidance) for codes.
+
 The native mobile app stores the permission and capability maps returned by login and business-unit
 switching. Bottom navigation keeps Receiving and Picking visible in fixed positions but disables
 destinations the current role cannot access. Dashboard quick actions, list queries, detail queries,

@@ -9,6 +9,19 @@ import { getFirstAccessiblePage } from "@/config/roleDefaultPages";
 import { RESOURCES, type Resource } from "@/constants/resources";
 import type { UserPermissions } from "@/types/rbac";
 import type { RawPermissionRow, UserCapabilityMap } from "@/services/permissions/types";
+import { createTranslator } from "next-intl";
+import { translations } from "@/lib/i18n/translations";
+import {
+  getLoginErrorMessage,
+  getSupabaseLoginErrorCode,
+  type LoginErrorCode,
+} from "@/lib/auth/login-errors";
+
+const tLoginErrors = createTranslator({ locale: "en", messages: translations.en.loginErrors });
+
+function loginErrorResponse(code: LoginErrorCode, status: number) {
+  return NextResponse.json({ message: getLoginErrorMessage(code, tLoginErrors), code }, { status });
+}
 
 type JwtPayload = {
   current_business_unit_id?: string;
@@ -196,11 +209,27 @@ async function resolveLandingPage(
 async function POSTHandler(request: NextRequest) {
   try {
     const { supabase, response } = createRouteHandlerClient(request);
-    const { email, password } = await request.json();
+    let payload: unknown;
+    try {
+      payload = await request.json();
+    } catch {
+      return loginErrorResponse("LOGIN_INVALID_INPUT", 400);
+    }
+    if (typeof payload !== "object" || payload === null) {
+      return loginErrorResponse("LOGIN_INVALID_INPUT", 400);
+    }
+    const { email, password } = payload as Record<string, unknown>;
 
     // Validate input
-    if (!email || !password) {
-      return NextResponse.json({ message: "Email and password are required" }, { status: 400 });
+    if (
+      typeof email !== "string" ||
+      !email.trim() ||
+      email.length > 254 ||
+      typeof password !== "string" ||
+      !password ||
+      password.length > 4096
+    ) {
+      return loginErrorResponse("LOGIN_INVALID_INPUT", 400);
     }
 
     // Sign in with Supabase
@@ -210,14 +239,25 @@ async function POSTHandler(request: NextRequest) {
     });
 
     if (error) {
-      return NextResponse.json(
-        { message: error.message || "Invalid credentials" },
-        { status: 401 }
-      );
+      const code = getSupabaseLoginErrorCode(error);
+      console.error("Login authentication failed", {
+        code: error.code,
+        status: error.status,
+        message: error.message,
+      });
+      const status =
+        code === "LOGIN_INVALID_CREDENTIALS"
+          ? 401
+          : code === "LOGIN_RATE_LIMITED"
+            ? 429
+            : code === "LOGIN_EMAIL_NOT_CONFIRMED" || code === "LOGIN_ACCOUNT_UNAVAILABLE"
+              ? 403
+              : 503;
+      return loginErrorResponse(code, status);
     }
 
     if (!data.user || !data.session) {
-      return NextResponse.json({ message: "Login failed" }, { status: 401 });
+      return loginErrorResponse("LOGIN_UNAVAILABLE", 503);
     }
 
     // Fetch user details from our users table
@@ -228,18 +268,13 @@ async function POSTHandler(request: NextRequest) {
       .maybeSingle();
 
     if (userError) {
-      return NextResponse.json({ message: "Failed to load user profile" }, { status: 500 });
+      console.error("Failed to load login profile", { userId: data.user.id, error: userError });
+      return loginErrorResponse("LOGIN_UNAVAILABLE", 500);
     }
 
     if (!userData?.company_id) {
       await supabase.auth.signOut();
-      return NextResponse.json(
-        {
-          message:
-            "Your account is not provisioned in the application users table. Contact your administrator.",
-        },
-        { status: 403 }
-      );
+      return loginErrorResponse("LOGIN_ACCOUNT_UNAVAILABLE", 403);
     }
 
     // Return user and session data
@@ -304,8 +339,9 @@ async function POSTHandler(request: NextRequest) {
     });
 
     return jsonResponse;
-  } catch {
-    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+  } catch (error) {
+    console.error("Unexpected login failure", error);
+    return loginErrorResponse("LOGIN_UNAVAILABLE", 500);
   }
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -9,20 +9,31 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { User, Lock, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import Image from "next/image";
+import {
+  getLoginErrorCode,
+  getLoginErrorMessage,
+  getSupabaseLoginErrorCode,
+  LoginError,
+  type LoginErrorCode,
+} from "@/lib/auth/login-errors";
 
 export default function MobileLoginPage() {
   const router = useRouter();
   const tCommon = useTranslations("common");
+  const tLoginErrors = useTranslations("loginErrors");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<LoginErrorCode | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const submittingRef = useRef(false);
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError("");
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setError(null);
     setIsLoading(true);
 
     try {
@@ -33,11 +44,13 @@ export default function MobileLoginPage() {
       });
 
       if (signInError) {
-        throw new Error(signInError.message);
+        throw new LoginError(
+          signInError.status === 0 ? "LOGIN_NETWORK_ERROR" : getSupabaseLoginErrorCode(signInError)
+        );
       }
 
       if (!data.user) {
-        throw new Error("Login failed");
+        throw new LoginError("LOGIN_UNAVAILABLE");
       }
 
       // Check if user has van warehouse assignment
@@ -48,18 +61,19 @@ export default function MobileLoginPage() {
         .single();
 
       if (vanError) {
-        throw new Error(vanError.message);
+        throw new LoginError("LOGIN_UNAVAILABLE");
       }
 
       if (!vanData?.van_warehouse_id) {
-        throw new Error("No van warehouse assigned. Please contact your supervisor.");
+        throw new LoginError("LOGIN_VAN_NOT_ASSIGNED");
       }
 
       // Redirect to van sales dashboard
       router.push("/mobile/van-sales/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed. Please try again.");
+      setError(err instanceof TypeError ? "LOGIN_NETWORK_ERROR" : getLoginErrorCode(err));
     } finally {
+      submittingRef.current = false;
       setIsLoading(false);
     }
   };
@@ -86,7 +100,7 @@ export default function MobileLoginPage() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleLogin} className="space-y-3">
+          <form onSubmit={handleLogin} onChange={() => setError(null)} className="space-y-3">
             <div>
               <label htmlFor="email" className="sr-only">
                 Email
@@ -162,7 +176,7 @@ export default function MobileLoginPage() {
             {error && (
               <Alert variant="destructive" className="mt-4">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{getLoginErrorMessage(error, tLoginErrors)}</AlertDescription>
               </Alert>
             )}
 

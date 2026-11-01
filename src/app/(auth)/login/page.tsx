@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
@@ -20,6 +20,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Package, BarChart3, Calendar, Eye, EyeOff } from "lucide-react";
+import {
+  getLoginErrorCode,
+  getLoginErrorMessage,
+  type LoginErrorCode,
+} from "@/lib/auth/login-errors";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -31,17 +36,20 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const router = useRouter();
   const tCommon = useTranslations("common");
-  const { login, isLoading, error, setLoading } = useAuthStore();
-  const [loginError, setLoginError] = useState<string | null>(null);
+  const tLoginErrors = useTranslations("loginErrors");
+  const { login, isLoading, setLoading, setError } = useAuthStore();
+  const [loginError, setLoginError] = useState<LoginErrorCode | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const submittingRef = useRef(false);
   const isBusy = isLoading || isSubmitting;
 
   // Set loading to false when login page mounts
   useEffect(() => {
     setLoading(false);
-  }, [setLoading]);
+    setError(null);
+  }, [setLoading, setError]);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -52,13 +60,16 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormValues) => {
+    if (isBusy || submittingRef.current) return;
+    submittingRef.current = true;
     try {
       setIsSubmitting(true);
       setLoginError(null);
       const result = await login(data);
       router.push(result.landingPage);
     } catch (err) {
-      setLoginError(err instanceof Error ? err.message : "Login failed");
+      submittingRef.current = false;
+      setLoginError(getLoginErrorCode(err));
       setIsSubmitting(false);
     }
   };
@@ -185,7 +196,14 @@ export default function LoginPage() {
           {/* Form Card */}
           <div className="rounded-2xl bg-white p-8 shadow-lg">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                onChange={() => {
+                  setLoginError(null);
+                  setError(null);
+                }}
+                className="space-y-5"
+              >
                 <FormField
                   control={form.control}
                   name="email"
@@ -265,10 +283,10 @@ export default function LoginPage() {
                   </button>
                 </div>
 
-                {(loginError || error) && (
+                {loginError && (
                   <Alert variant="destructive" className="border-red-200 bg-red-50">
                     <AlertDescription className="text-red-800">
-                      {loginError || error}
+                      {getLoginErrorMessage(loginError, tLoginErrors)}
                     </AlertDescription>
                   </Alert>
                 )}

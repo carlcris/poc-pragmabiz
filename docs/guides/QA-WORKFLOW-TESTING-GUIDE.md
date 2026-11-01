@@ -1,5 +1,24 @@
 # QA Workflow Testing Guide
 
+## Sign-in Recovery
+
+- On native mobile and web, submit incorrect credentials and confirm the message asks you to check
+  the email and password. A temporary service failure must ask you to retry later, without showing
+  technical server text or incorrectly claiming the password is wrong.
+- Test an unconfirmed email, an unavailable account, and too many attempts. Each should explain
+  whether to confirm the email, contact the administrator, or wait before retrying.
+- Try signing in with the service unavailable, then with the network disconnected. Both should show
+  neutral service guidance asking you to try again later, without blaming your internet connection.
+  Simulate a stalled response and confirm the same guidance appears and the form becomes usable
+  after the 20-second timeout. A plain-text or HTML server error must also produce readable guidance.
+- After a failure, confirm credentials remain entered, editing either field clears the message,
+  retrying clears the old message, and repeated taps while signing in send only one attempt.
+- Check web guidance in English and Chinese, and native guidance in English. Check long messages
+  wrap within the form on a narrow screen and that a screen reader announces the native alert.
+- Repeat a successful login to confirm the existing destination and account access remain intact.
+- On the mobile-browser van-sales login, an account without a van warehouse should be directed to
+  its supervisor for assignment.
+
 This document explains, module by module, **what the end user does and what happens**, and — for the records everything else depends on — **what's required before it can be created and what happens if it's edited or removed while in use**. It's written for QA to build test scripts from: no code, no file paths, just screens, fields, buttons, and behavior.
 
 The guide has two parts:

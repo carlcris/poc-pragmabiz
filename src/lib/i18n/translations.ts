@@ -7,6 +7,17 @@
 import type { Locale } from "./index";
 
 export type TranslationKeys = {
+  loginErrors: {
+    invalidInput: string;
+    invalidCredentials: string;
+    emailNotConfirmed: string;
+    accountUnavailable: string;
+    rateLimited: string;
+    unavailable: string;
+    networkError: string;
+    timeout: string;
+    vanNotAssigned: string;
+  };
   common: {
     loading: string;
     error: string;
@@ -3803,6 +3814,21 @@ export type TranslationKeys = {
 
 export const translations: Record<Locale, TranslationKeys> = {
   en: {
+    loginErrors: {
+      invalidInput: "Enter your email address and password to sign in.",
+      invalidCredentials: "The email or password is incorrect. Check your details and try again.",
+      emailNotConfirmed:
+        "Confirm your email address before signing in. Check your inbox or contact your administrator for help.",
+      accountUnavailable:
+        "Your account isn't ready to sign in. Contact your administrator for help.",
+      rateLimited: "Too many sign-in attempts. Wait a few minutes, then try again.",
+      unavailable:
+        "We can't sign you in right now. Please try again in a few minutes. If this keeps happening, contact your administrator.",
+      networkError: "We couldn't connect to the sign-in service. Please try again later.",
+      timeout: "We couldn't connect to the sign-in service. Please try again later.",
+      vanNotAssigned:
+        "Your account doesn't have a van warehouse assigned. Contact your supervisor to set one up, then try again.",
+    },
     common: {
       loading: "Loading...",
       error: "An error occurred",
@@ -10546,6 +10572,17 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
   },
   zh: {
+    loginErrors: {
+      invalidInput: "请输入电子邮箱地址和密码以登录。",
+      invalidCredentials: "电子邮箱或密码不正确。请检查后重试。",
+      emailNotConfirmed: "请先验证您的电子邮箱地址再登录。请检查收件箱，或联系管理员寻求帮助。",
+      accountUnavailable: "您的账户暂时无法登录。请联系管理员寻求帮助。",
+      rateLimited: "登录尝试次数过多。请等待几分钟后重试。",
+      unavailable: "暂时无法登录。请几分钟后重试。如果问题持续，请联系管理员。",
+      networkError: "暂时无法连接到登录服务。请稍后重试。",
+      timeout: "暂时无法连接到登录服务。请稍后重试。",
+      vanNotAssigned: "您的账户尚未分配车载仓库。请联系主管完成设置后重试。",
+    },
     common: {
       loading: "加载中...",
       error: "发生错误",

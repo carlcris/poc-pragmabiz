@@ -5,6 +5,12 @@ import { useBusinessUnitStore } from "./businessUnitStore";
 import { usePermissionStore } from "./permissionStore";
 import { QueryClient } from "@tanstack/react-query";
 import {
+  getLoginErrorCode,
+  LoginError,
+  requestLogin,
+  type LoginErrorCode,
+} from "@/lib/auth/login-errors";
+import {
   clearIntentionalLogoutMarker,
   clearSessionInvalidNoticeShown,
   markIntentionalLogout,
@@ -36,22 +42,22 @@ function decodeCompanyIdFromToken(token: string | null | undefined): string {
   }
 }
 
-interface AuthStore {
+type AuthStore = {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  error: string | null;
+  error: LoginErrorCode | null;
 
   // Actions
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setLoading: (isLoading: boolean) => void;
-  setError: (error: string | null) => void;
+  setError: (error: LoginErrorCode | null) => void;
   login: (credentials: LoginCredentials) => Promise<{ landingPage: string }>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
-}
+};
 
 export const useAuthStore = create<AuthStore>()((set, get) => ({
   user: null,
@@ -69,16 +75,14 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
     try {
       set({ isLoading: true, error: null });
 
-      const response = await fetch("/api/auth/login", {
+      const payload = await requestLogin<AuthResponse>("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
       });
 
-      const payload = (await response.json()) as AuthResponse & { message?: string };
-
-      if (!response.ok) {
-        throw new Error(payload.message || "Login failed");
+      if (!payload.user || !payload.token || !payload.refreshToken) {
+        throw new LoginError("LOGIN_UNAVAILABLE");
       }
 
       // Sync browser Supabase session for BU refresh and client auth APIs
@@ -88,7 +92,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
       });
 
       if (sessionError) {
-        throw new Error(sessionError.message || "Failed to establish session");
+        throw new LoginError("LOGIN_UNAVAILABLE");
       }
 
       // Refresh name fields from public.users using the authenticated user id.
@@ -128,9 +132,9 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
         token: null,
         isAuthenticated: false,
         isLoading: false,
-        error: error instanceof Error ? error.message : "Login failed",
+        error: getLoginErrorCode(error),
       });
-      throw error;
+      throw new LoginError(getLoginErrorCode(error));
     }
   },
 

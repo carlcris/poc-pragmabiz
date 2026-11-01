@@ -55,6 +55,36 @@ Response: {
 5. Landing page determined by user's primary role
 6. Client redirects to landing page
 
+#### Sign-in Failure Guidance
+
+Native mobile, web, tablet, and mobile-browser login screens show safe guidance rather than provider
+messages, database details, or proxy text such as `Internal Server Error`. English and Chinese
+messages share the `loginErrors` namespace in `src/lib/i18n/translations.ts`. The native app uses
+English, matching its current interface language.
+
+`POST /api/auth/login` returns `{ message: string, code: string }` on failure. Clients select the
+translated guidance by the allowlisted code; they do not display arbitrary response messages.
+
+| Code                        | HTTP status | User guidance                                                     |
+| --------------------------- | ----------- | ----------------------------------------------------------------- |
+| `LOGIN_INVALID_INPUT`       | 400         | Enter an email address and password.                              |
+| `LOGIN_INVALID_CREDENTIALS` | 401         | Check the email and password, then retry.                         |
+| `LOGIN_EMAIL_NOT_CONFIRMED` | 403         | Confirm the email or contact the administrator.                   |
+| `LOGIN_ACCOUNT_UNAVAILABLE` | 403         | Contact the administrator about account access.                   |
+| `LOGIN_RATE_LIMITED`        | 429         | Wait a few minutes before retrying.                               |
+| `LOGIN_UNAVAILABLE`         | 500 or 503  | Retry in a few minutes; contact the administrator if it persists. |
+
+The shared native/web login request handles connection failures and a 20-second timeout with neutral
+guidance: "We couldn't connect to the sign-in service. Please try again later." A failed request does
+not establish whether the user's internet connection or the service is responsible, so the message
+does not diagnose the cause. Plain-text or HTML proxy failures and malformed responses also use safe
+service guidance. Requests are not automatically retried. Forms preserve credentials after failure, clear
+stale messages when the inputs change or another attempt starts, and prevent submission while busy.
+The mobile-browser van-sales login also explains when a supervisor must assign a van warehouse.
+
+Raw provider and profile-query failures are logged server-side by the login API. The existing
+activity-logging wrapper continues to record attempts with password fields redacted.
+
 #### Session Management
 
 ```typescript

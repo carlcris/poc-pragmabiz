@@ -12,22 +12,29 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
 import { spacing, borderRadius, shadows, sizes } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
+import { createTranslator } from "use-intl/core";
+import { translations } from "../../../src/lib/i18n/translations";
+import { getLoginErrorMessage } from "../../../src/lib/auth/login-errors";
+
+// The native app currently uses English; reuse the web source of truth for sign-in guidance.
+const tLoginErrors = createTranslator({ locale: "en", messages: translations.en.loginErrors });
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const { login, error } = useAuthStore();
+  const { login, error, clearError } = useAuthStore();
   const scrollViewRef = useRef<ScrollView>(null);
   const passwordInputRef = useRef<TextInput>(null);
+  const submittingRef = useRef(false);
   const canSubmit = !submitting && Boolean(email.trim()) && Boolean(password);
 
   const scrollFormAboveKeyboard = () => {
@@ -39,16 +46,18 @@ export default function LoginScreen() {
   // iOS shrinks the scroll viewport before keyboardDidShow; Android shrinks it after,
   // so the viewport layout change must also bring the form above the keyboard.
   useEffect(() => {
+    clearError();
     const keyboardSubscription = Keyboard.addListener("keyboardDidShow", scrollFormAboveKeyboard);
 
     return () => keyboardSubscription.remove();
-  }, []);
+  }, [clearError]);
 
   const submit = async () => {
-    if (!canSubmit) {
+    if (!canSubmit || submittingRef.current) {
       return;
     }
 
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       await login(email.trim(), password);
@@ -56,6 +65,7 @@ export default function LoginScreen() {
     } catch {
       // The auth store owns the displayed error state.
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -91,7 +101,11 @@ export default function LoginScreen() {
                   <Ionicons name="mail-outline" size={20} color={colors.muted} />
                   <TextInput
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={(value) => {
+                      setEmail(value);
+                      clearError();
+                    }}
+                    editable={!submitting}
                     placeholder="Enter your email"
                     placeholderTextColor={colors.muted}
                     autoCapitalize="none"
@@ -117,7 +131,11 @@ export default function LoginScreen() {
                   <TextInput
                     ref={passwordInputRef}
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(value) => {
+                      setPassword(value);
+                      clearError();
+                    }}
+                    editable={!submitting}
                     placeholder="Enter your password"
                     placeholderTextColor={colors.muted}
                     autoComplete="current-password"
@@ -146,9 +164,13 @@ export default function LoginScreen() {
               </View>
 
               {error ? (
-                <View style={styles.errorContainer}>
+                <View
+                  accessibilityRole="alert"
+                  accessibilityLiveRegion="polite"
+                  style={styles.errorContainer}
+                >
                   <Ionicons name="alert-circle" size={20} color={colors.danger} />
-                  <Text style={styles.error}>{error}</Text>
+                  <Text style={styles.error}>{getLoginErrorMessage(error, tLoginErrors)}</Text>
                 </View>
               ) : null}
 
@@ -177,60 +199,60 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.background
+    backgroundColor: colors.background,
   },
   shell: {
-    flex: 1
+    flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: spacing.xl
+    padding: spacing.xl,
   },
   container: {
     width: "100%",
     maxWidth: 440,
-    gap: spacing["3xl"]
+    gap: spacing["3xl"],
   },
   header: {
     alignItems: "center",
-    gap: spacing.md
+    gap: spacing.md,
   },
   logoContainer: {
     width: 120,
     height: 120,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.sm
+    marginBottom: spacing.sm,
   },
   logo: {
     width: "100%",
-    height: "100%"
+    height: "100%",
   },
   title: {
     ...typography.heading1,
     color: colors.text,
-    textAlign: "center"
+    textAlign: "center",
   },
   subtitle: {
     ...typography.body,
     color: colors.textSecondary,
-    textAlign: "center"
+    textAlign: "center",
   },
   form: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.xl,
     padding: spacing.xl,
     gap: spacing.lg,
-    ...shadows.md
+    ...shadows.md,
   },
   inputGroup: {
-    gap: spacing.sm
+    gap: spacing.sm,
   },
   label: {
     ...typography.label,
-    color: colors.text
+    color: colors.text,
   },
   inputWrapper: {
     flexDirection: "row",
@@ -241,18 +263,18 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.base,
-    backgroundColor: colors.surface
+    backgroundColor: colors.surface,
   },
   input: {
     flex: 1,
     ...typography.body,
-    color: colors.text
+    color: colors.text,
   },
   passwordToggle: {
     width: sizes.button.base,
     height: sizes.button.base,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
   },
   errorContainer: {
     flexDirection: "row",
@@ -262,12 +284,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dangerSoft,
     borderRadius: borderRadius.base,
     borderWidth: 1,
-    borderColor: colors.danger
+    borderColor: colors.danger,
   },
   error: {
     ...typography.bodySmall,
     color: colors.danger,
-    flex: 1
+    flex: 1,
   },
   button: {
     flexDirection: "row",
@@ -278,13 +300,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.sm,
     marginTop: spacing.sm,
-    ...shadows.md
+    ...shadows.md,
   },
   disabled: {
-    opacity: 0.5
+    opacity: 0.5,
   },
   buttonText: {
     ...typography.button,
-    color: "#FFFFFF"
-  }
+    color: "#FFFFFF",
+  },
 });

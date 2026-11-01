@@ -2,12 +2,14 @@ import { create } from "zustand";
 import type { AuthSession } from "@/contracts/auth";
 import { clearSession, loadSession, saveSession } from "@/storage/sessionStorage";
 import * as authApi from "@/api/auth";
+import { getLoginErrorCode, type LoginErrorCode } from "../../../../src/lib/auth/login-errors";
 
 type AuthState = {
   session: AuthSession | null;
   isRestoring: boolean;
   isSwitchingBusinessUnit: boolean;
-  error: string | null;
+  error: LoginErrorCode | null;
+  clearError: () => void;
   restore: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -20,6 +22,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isRestoring: true,
   isSwitchingBusinessUnit: false,
   error: null,
+  clearError: () => set({ error: null }),
   restore: async () => {
     const session = await loadSession();
     set({ session, isRestoring: false, isSwitchingBusinessUnit: false });
@@ -31,8 +34,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await saveSession(session);
       set({ session });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Sign in failed";
-      set({ error: message });
+      set({ error: getLoginErrorCode(error) });
       throw error;
     }
   },
@@ -54,5 +56,5 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   setBusinessUnitSwitching: (isSwitching) => {
     set({ isSwitchingBusinessUnit: isSwitching });
-  }
+  },
 }));
