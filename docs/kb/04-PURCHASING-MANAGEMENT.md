@@ -837,9 +837,16 @@ class PurchaseReceiptService {
 
 **Location**: `src/components/purchasing/SupplierList.tsx`
 
-#### StockRequisitionForm
+#### StockRequisitionFormDialog
 
-**Location**: `src/components/purchasing/StockRequisitionForm.tsx`
+**Location**: `src/components/stock-requisitions/StockRequisitionFormDialog.tsx`
+
+- Fixed-height create/edit dialog in three sections: a header strip (supplier, requisition date, required-by date, notes), a New Item section, and the Items table
+- New Item fields (item, unit, qty/unit, qty, total qty, unit cost, line total preview) align with the Items table columns; unit cost is per base unit and one currency is allowed per requisition
+- Each item can appear on only one line; picking an item that is already listed shows an inline error, and the existing line must be removed to change its unit, quantity, or cost
+- The Items table scrolls inside the dialog with a sticky column header, so New Item and the footer stay in view as lines are added
+- Item count and total amount stay visible in the footer; unit cost and amounts follow the stock requisition granular cost permissions
+- Reorder alerts open the same dialog with prefilled line items
 
 #### LoadListForm
 

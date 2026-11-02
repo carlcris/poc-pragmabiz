@@ -798,7 +798,6 @@ export default function ReorderManagementPage() {
           open={stockRequisitionDialogOpen}
           onOpenChange={setStockRequisitionDialogOpen}
           initialLineItems={stockRequisitionLineItems}
-          initialActiveTab="items"
         />
       )}
 

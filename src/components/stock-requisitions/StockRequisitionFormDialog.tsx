@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { FieldErrors, Path } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, Plus, Trash2, FileText, Package, ShoppingCart } from "lucide-react";
+import { AlertCircle, Check, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateStockRequisition, useUpdateStockRequisition } from "@/hooks/useStockRequisitions";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -22,6 +22,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import {
   Select,
@@ -39,7 +40,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
@@ -48,6 +48,7 @@ import {
   type StockRequisitionFormValues,
 } from "@/lib/validations/stock-requisition";
 import type { StockRequisition } from "@/types/stock-requisition";
+import { cn } from "@/lib/utils";
 
 type RequisitionCostSource = {
   importCost?: number | null;
@@ -117,7 +118,6 @@ type StockRequisitionFormDialogProps = {
   onOpenChange: (open: boolean) => void;
   stockRequisition?: StockRequisition | null;
   initialLineItems?: StockRequisitionInitialLineItem[];
-  initialActiveTab?: "general" | "items";
 };
 
 const STOCK_REQUISITION_COST_CAPABILITY_KEYS = [
@@ -125,16 +125,24 @@ const STOCK_REQUISITION_COST_CAPABILITY_KEYS = [
   GRANULAR_CAPABILITIES.STOCK_REQUISITIONS_UNIT_COST,
 ] as const;
 
+// Mirrors the line items table's fixed column widths (w-36, w-20, w-20, w-24, w-32, w-32, w-24)
+// so each New Item field sits directly above the column it fills.
+const LINE_ITEM_GRID_COLUMNS = {
+  quantityOnly: "md:grid-cols-[minmax(0,1fr)_9rem_5rem_5rem_6rem_6rem]",
+  withUnitCost: "md:grid-cols-[minmax(0,1fr)_9rem_5rem_5rem_6rem_8rem_6rem]",
+  withAmounts: "md:grid-cols-[minmax(0,1fr)_9rem_5rem_5rem_6rem_8rem_8rem_6rem]",
+} as const;
+
 export function StockRequisitionFormDialog({
   open,
   onOpenChange,
   stockRequisition,
   initialLineItems = EMPTY_INITIAL_LINE_ITEMS,
-  initialActiveTab = "general",
 }: StockRequisitionFormDialogProps) {
   const t = useTranslations("stockRequisitionForm");
   const tValidation = useTranslations("stockRequisitionValidation");
   const locale = useLocale();
+  const newItemFieldId = useId();
   const isEditMode = !!stockRequisition;
   const { formatCurrency, currentCurrency } = useCurrency();
   const { data: granularCapabilities } = useGranularCapabilities(
@@ -178,7 +186,6 @@ export function StockRequisitionFormDialog({
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
   const [addItemError, setAddItemError] = useState("");
-  const [activeTab, setActiveTab] = useState("general");
   const { data: selectedItemResponse } = useItem(selectedItemId);
   const selectedItemDetail = selectedItemResponse?.data;
   const itemOptions = useMemo(() => {
@@ -259,6 +266,7 @@ export function StockRequisitionFormDialog({
   const derivedTotalQty = selectedUnitOption
     ? Number(quantity || 0) * selectedUnitOption.qtyPerUnit
     : 0;
+  const draftLineTotal = derivedTotalQty * Number(price || 0);
 
   useEffect(() => {
     if (!selectedItemId) return;
@@ -270,7 +278,6 @@ export function StockRequisitionFormDialog({
   // Reset form when dialog opens/closes or SR changes
   useEffect(() => {
     if (open && stockRequisition) {
-      setActiveTab("general");
       form.reset({
         supplierId: stockRequisition.supplierId,
         requisitionDate: stockRequisition.requisitionDate.split("T")[0],
@@ -303,7 +310,6 @@ export function StockRequisitionFormDialog({
       setQuantity("");
       setPrice("");
       setAddItemError("");
-      setActiveTab(initialLineItems.length > 0 ? initialActiveTab : "general");
     }
   }, [
     open,
@@ -313,7 +319,6 @@ export function StockRequisitionFormDialog({
     currentCurrency.code,
     canViewUnitCost,
     initialLineItems,
-    initialActiveTab,
   ]);
 
   useEffect(() => {
@@ -357,6 +362,11 @@ export function StockRequisitionFormDialog({
       return;
     }
 
+    if (lineItems.some((lineItem) => lineItem.itemId === selectedItemId)) {
+      setAddItemError(t("duplicateItemNotAllowed", { item: selectedItem.code }));
+      return;
+    }
+
     if (!selectedUnitOption) {
       setAddItemError(t("unitNotFound"));
       return;
@@ -396,7 +406,6 @@ export function StockRequisitionFormDialog({
 
   async function onSubmit(values: StockRequisitionFormValues) {
     if (lineItems.length === 0) {
-      setActiveTab("items");
       toast.error(t("lineItemsRequired"));
       return;
     }
@@ -466,555 +475,511 @@ export function StockRequisitionFormDialog({
 
     const firstGeneralError = generalFields.find((field) => errors[field]);
     if (firstGeneralError) {
-      setActiveTab("general");
       window.requestAnimationFrame(() => form.setFocus(firstGeneralError));
     }
   };
 
+  const lineItemCountLabel = `${lineItems.length} ${
+    lineItems.length === 1 ? t("itemSingular") : t("itemPlural")
+  }`;
+  const lineItemColumnCount = 6 + (canViewUnitCost ? 1 : 0) + (canShowFormAmounts ? 1 : 0);
+  const lineItemGridColumns = canShowFormAmounts
+    ? LINE_ITEM_GRID_COLUMNS.withAmounts
+    : canViewUnitCost
+      ? LINE_ITEM_GRID_COLUMNS.withUnitCost
+      : LINE_ITEM_GRID_COLUMNS.quantityOnly;
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[92vh] max-w-6xl flex-col gap-0 p-0">
+      <DialogContent className="flex h-[92vh] max-w-7xl flex-col gap-0 p-0">
         {/* Header */}
-        <div className="flex-shrink-0 border-b border-gray-200 bg-white px-6 pb-5 pt-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              <div>
-                <DialogTitle className="mb-1 text-2xl font-bold text-gray-900">
-                  {isEditMode ? t("editTitle") : t("createTitle")}
-                </DialogTitle>
-                <DialogDescription className="text-sm text-gray-500">
-                  {isEditMode ? t("editDescription") : t("createDescription")}
-                </DialogDescription>
-              </div>
-            </div>
-          </div>
+        <div className="flex-shrink-0 px-8 pb-5 pr-14 pt-6">
+          <DialogTitle className="text-xl font-semibold tracking-tight text-gray-900">
+            {isEditMode ? t("editTitle") : t("createTitle")}
+          </DialogTitle>
+          <DialogDescription className="mt-1 text-sm text-gray-600">
+            {isEditMode ? t("editDescription") : t("createDescription")}
+          </DialogDescription>
         </div>
 
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit, handleInvalidSubmit)}
-            className="flex min-h-0 flex-1 flex-col"
+            className="flex min-h-0 flex-1 flex-col overflow-y-auto"
           >
-            <Tabs
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="flex min-h-0 flex-1 flex-col"
-            >
-              <div className="flex-shrink-0 px-6 pt-4">
-                <TabsList className="grid h-9 w-full grid-cols-2">
-                  <TabsTrigger value="general" className="gap-1.5 text-xs font-semibold">
-                    <FileText className="h-3.5 w-3.5" />
-                    {t("generalTab")}
-                  </TabsTrigger>
-                  <TabsTrigger value="items" className="gap-1.5 text-xs font-semibold">
-                    <Package className="h-3.5 w-3.5" />
-                    {t("itemsTab")}{" "}
-                    {lineItems.length > 0 && (
-                      <span className="ml-1 rounded-full bg-purple-600 px-1.5 py-0.5 text-[10px] text-white">
-                        {lineItems.length}
-                      </span>
+            {/* Requisition details */}
+            <div className="grid flex-shrink-0 grid-cols-1 gap-4 border-y border-gray-200 bg-gray-50 px-8 py-5 md:grid-cols-6">
+              <FormField
+                control={form.control}
+                name="supplierId"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      {t("supplierLabel")}
+                    </FormLabel>
+                    <FormControl>
+                      <AsyncSearchCombobox
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        searchValue={supplierSearch}
+                        onSearchValueChange={setSupplierSearch}
+                        options={suppliers}
+                        selectedOption={selectedSupplier}
+                        getOptionValue={(supplier) => supplier.id}
+                        getOptionLabel={(supplier) => `${supplier.name} (${supplier.code})`}
+                        getOptionSearchValue={(supplier) => `${supplier.code} ${supplier.name}`}
+                        placeholder={t("selectSupplier")}
+                        searchPlaceholder={t("selectSupplier")}
+                        emptyMessage={t("selectSupplier")}
+                        isLoading={isSuppliersLoading}
+                        buttonClassName="h-10 bg-white text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="requisitionDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      {t("requisitionDateLabel")}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        {...field}
+                        className="h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="requiredByDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      {t("requiredByDateLabel")}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        {...field}
+                        className="h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      {t("notesLabel")}
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        rows={1}
+                        placeholder={t("notesPlaceholder")}
+                        className="h-10 min-h-10 resize-none border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* New item and line items */}
+            <div className="flex min-h-96 flex-1 flex-col px-8 py-5">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200">
+                <section
+                  aria-labelledby={`${newItemFieldId}-title`}
+                  className="flex-shrink-0 border-b border-purple-200 bg-purple-50/60 pb-4 pt-3.5"
+                >
+                  <h3
+                    id={`${newItemFieldId}-title`}
+                    className="px-4 text-sm font-semibold text-purple-800"
+                  >
+                    {t("newItemTitle")}
+                  </h3>
+                  <div
+                    className={cn(
+                      "mt-2.5 grid grid-cols-2 items-end gap-3 px-4 md:gap-0 md:px-0",
+                      lineItemGridColumns
                     )}
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-
-              <TabsContent
-                value="general"
-                className="min-h-0 flex-1 overflow-y-auto bg-gray-50 px-6 py-5"
-              >
-                <div className="mx-auto max-w-5xl space-y-5">
-                  {/* Basic Information Card */}
-                  <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                    <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-transparent">
-                          <FileText className="h-4 w-4 text-gray-600" />
-                        </div>
-                        <h3 className="text-sm font-semibold text-gray-900">
-                          {t("basicInformation")}
-                        </h3>
-                      </div>
-                    </div>
-                    <div className="p-5">
-                      <div className="mb-4 grid grid-cols-3 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="supplierId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs font-semibold tracking-wide text-gray-700">
-                                {t("supplierLabel")}
-                              </FormLabel>
-                              <FormControl>
-                                <AsyncSearchCombobox
-                                  value={field.value}
-                                  onValueChange={field.onChange}
-                                  searchValue={supplierSearch}
-                                  onSearchValueChange={setSupplierSearch}
-                                  options={suppliers}
-                                  selectedOption={selectedSupplier}
-                                  getOptionValue={(supplier) => supplier.id}
-                                  getOptionLabel={(supplier) =>
-                                    `${supplier.name} (${supplier.code})`
-                                  }
-                                  getOptionSearchValue={(supplier) =>
-                                    `${supplier.code} ${supplier.name}`
-                                  }
-                                  placeholder={t("selectSupplier")}
-                                  searchPlaceholder={t("selectSupplier")}
-                                  emptyMessage={t("selectSupplier")}
-                                  isLoading={isSuppliersLoading}
-                                  buttonClassName="h-10 text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="requisitionDate"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs font-semibold tracking-wide text-gray-700">
-                                {t("requisitionDateLabel")}
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="date"
-                                  {...field}
-                                  className="h-10 border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="requiredByDate"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs font-semibold tracking-wide text-gray-700">
-                                {t("requiredByDateLabel")}
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="date"
-                                  {...field}
-                                  className="h-10 border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <FormField
-                        control={form.control}
-                        name="notes"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-xs font-semibold tracking-wide text-gray-700">
-                              {t("notesLabel")}
-                            </FormLabel>
-                            <FormControl>
-                              <Textarea
-                                {...field}
-                                rows={2}
-                                placeholder={t("notesPlaceholder")}
-                                className="resize-none border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"
+                  >
+                    <div className="col-span-2 space-y-1.5 md:col-span-1 md:pl-4 md:pr-2">
+                      <span className="block text-xs font-medium text-gray-600">
+                        {t("itemColumn")}
+                      </span>
+                      <AsyncSearchCombobox
+                        value={selectedItemId}
+                        onValueChange={(value) => {
+                          setSelectedItemId(value);
+                          const selectedItem = items.find((item) => item.id === value);
+                          setSelectedUnitOptionId("");
+                          setPrice(getDefaultRequisitionUnitCost(selectedItem).toFixed(2));
+                          const existingLine = lineItems.find(
+                            (lineItem) => lineItem.itemId === value
+                          );
+                          setAddItemError(
+                            existingLine
+                              ? t("duplicateItemNotAllowed", {
+                                  item: existingLine.itemCode ?? existingLine.itemName ?? "",
+                                })
+                              : ""
+                          );
+                        }}
+                        searchValue={itemSearch}
+                        onSearchValueChange={setItemSearch}
+                        options={itemOptions}
+                        selectedOption={selectedItemDetail ?? null}
+                        getOptionValue={(item) => item.id}
+                        getOptionLabel={(item) => `${item.code} - ${item.name}`}
+                        getOptionSearchValue={(item) => `${item.code} ${item.name}`}
+                        placeholder={t("searchItemByCodeOrName")}
+                        searchPlaceholder={t("searchItemByCodeOrName")}
+                        emptyMessage={t("noItemFound")}
+                        isLoading={isItemsLoading}
+                        buttonClassName="h-10 w-full min-w-0 justify-between bg-white text-sm border-gray-300 hover:border-purple-400"
+                        popoverClassName="w-[520px]"
+                        renderOption={(item, selected) => (
+                          <div className="flex w-full items-start justify-between gap-3 py-2">
+                            <div className="flex min-w-0 items-start gap-2">
+                              <Check
+                                className={`mt-0.5 h-4 w-4 shrink-0 ${selected ? "opacity-100" : "opacity-0"}`}
                               />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
+                              <div className="min-w-0 flex-1">
+                                <div className="font-medium">{item.code}</div>
+                                <div className="whitespace-normal break-words text-sm leading-snug text-muted-foreground">
+                                  {item.name}
+                                </div>
+                              </div>
+                            </div>
+                            {canViewUnitCost && (
+                              <div className="flex-shrink-0 self-start pl-3 text-right text-sm font-semibold tabular-nums">
+                                {formatRequisitionUnitCost(item)}
+                              </div>
+                            )}
+                          </div>
                         )}
                       />
                     </div>
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent
-                value="items"
-                className="min-h-0 flex-1 overflow-y-auto bg-gray-50 px-6 py-5"
-              >
-                <div className="mx-auto max-w-5xl space-y-5">
-                  {/* Add Items Card */}
-                  <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                    <div className="border-b border-purple-100 bg-gradient-to-r from-purple-50 to-violet-50 px-5 py-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-transparent">
-                          <Package className="h-4 w-4 text-gray-600" />
-                        </div>
-                        <h3 className="text-sm font-semibold text-gray-900">
-                          {t("addItemsTitle")}
-                        </h3>
-                      </div>
-                    </div>
-                    <div className="bg-gradient-to-br from-purple-50/30 to-violet-50/30 p-5">
-                      <div
-                        className={
-                          canViewUnitCost
-                            ? "grid gap-3 xl:grid-cols-[minmax(0,2.8fr)_minmax(0,1.75fr)_100px_120px_120px_150px_160px]"
-                            : "grid gap-3 xl:grid-cols-[minmax(0,2.8fr)_minmax(0,1.75fr)_100px_120px_120px_160px]"
-                        }
+                    <div className="space-y-1.5 md:px-2">
+                      <Label
+                        htmlFor={`${newItemFieldId}-unit`}
+                        className="block text-xs font-medium text-gray-600"
                       >
-                        <div className="min-w-0">
-                          <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
-                            {t("itemLabel")}
-                          </label>
-                          <AsyncSearchCombobox
-                            value={selectedItemId}
-                            onValueChange={(value) => {
-                              setSelectedItemId(value);
-                              const selectedItem = items.find((item) => item.id === value);
-                              setSelectedUnitOptionId("");
-                              setPrice(getDefaultRequisitionUnitCost(selectedItem).toFixed(2));
-                              setAddItemError("");
-                            }}
-                            searchValue={itemSearch}
-                            onSearchValueChange={setItemSearch}
-                            options={itemOptions}
-                            selectedOption={selectedItemDetail ?? null}
-                            getOptionValue={(item) => item.id}
-                            getOptionLabel={(item) => `${item.code} - ${item.name}`}
-                            getOptionSearchValue={(item) => `${item.code} ${item.name}`}
-                            placeholder={t("searchItemPlaceholder")}
-                            searchPlaceholder={t("searchItemByCodeOrName")}
-                            emptyMessage={t("noItemFound")}
-                            isLoading={isItemsLoading}
-                            buttonClassName="w-full min-w-0 justify-between h-10 text-sm bg-white border-gray-300 hover:border-purple-400"
-                            popoverClassName="w-[520px]"
-                            renderOption={(item, selected) => (
-                              <div className="flex w-full items-start justify-between gap-3 py-2">
-                                <div className="flex min-w-0 items-start gap-2">
-                                  <Check
-                                    className={`mt-0.5 h-4 w-4 shrink-0 ${selected ? "opacity-100" : "opacity-0"}`}
-                                  />
-                                  <div className="min-w-0 flex-1">
-                                    <div className="font-medium">{item.code}</div>
-                                    <div className="whitespace-normal break-words text-sm leading-snug text-muted-foreground">
-                                      {item.name}
-                                    </div>
-                                  </div>
-                                </div>
-                                {canViewUnitCost && (
-                                  <div className="flex-shrink-0 self-start pl-3 text-right text-sm font-semibold tabular-nums">
-                                    {formatRequisitionUnitCost(item)}
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                        {t("unitLabel")}
+                      </Label>
+                      <Select
+                        value={selectedUnitOptionId}
+                        onValueChange={(value) => {
+                          setSelectedUnitOptionId(value);
+                          setAddItemError("");
+                        }}
+                        disabled={!selectedItemId || unitOptions.length === 0}
+                      >
+                        <SelectTrigger
+                          id={`${newItemFieldId}-unit`}
+                          className="h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500"
+                        >
+                          <SelectValue
+                            placeholder={selectedItemId ? t("selectUnit") : t("selectItemFirst")}
                           />
-                        </div>
-                        <div className="min-w-0">
-                          <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
-                            {t("unitLabel")}
-                          </label>
-                          <Select
-                            value={selectedUnitOptionId}
-                            onValueChange={(value) => {
-                              setSelectedUnitOptionId(value);
-                              setAddItemError("");
-                            }}
-                            disabled={!selectedItemId || unitOptions.length === 0}
-                          >
-                            <SelectTrigger className="h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500">
-                              <SelectValue
-                                placeholder={
-                                  selectedItemId ? t("selectUnit") : t("selectItemFirst")
-                                }
-                              />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {unitOptions.map((option) => (
-                                <SelectItem key={option.id} value={option.id}>
-                                  {option.displayLabel}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
-                            {t("qtyPerUnitLabel")}
-                          </label>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {unitOptions.map((option) => (
+                            <SelectItem key={option.id} value={option.id}>
+                              {option.displayLabel}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5 md:px-2">
+                      <span
+                        id={`${newItemFieldId}-qty-per-unit`}
+                        className="block text-right text-xs font-medium text-gray-600"
+                      >
+                        {t("qtyPerUnitLabel")}
+                      </span>
+                      <output
+                        aria-labelledby={`${newItemFieldId}-qty-per-unit`}
+                        className="flex h-10 items-center justify-end text-sm tabular-nums text-gray-600"
+                      >
+                        {selectedUnitOption
+                          ? selectedUnitOption.qtyPerUnit.toLocaleString(locale, {
+                              maximumFractionDigits: 4,
+                            })
+                          : "--"}
+                      </output>
+                    </div>
+                    <div className="space-y-1.5 md:px-2">
+                      <Label
+                        htmlFor={`${newItemFieldId}-qty`}
+                        className="block text-right text-xs font-medium text-gray-600"
+                      >
+                        {t("qty")}
+                      </Label>
+                      <Input
+                        id={`${newItemFieldId}-qty`}
+                        type="number"
+                        placeholder={t("quantityPlaceholder")}
+                        value={quantity}
+                        onChange={(e) => {
+                          setQuantity(e.target.value);
+                          setAddItemError("");
+                        }}
+                        step="0.01"
+                        className="h-10 border-gray-300 bg-white px-2 text-right text-sm tabular-nums focus:border-purple-500 focus:ring-purple-500"
+                      />
+                    </div>
+                    <div className="space-y-1.5 md:px-2">
+                      <span
+                        id={`${newItemFieldId}-total-qty`}
+                        className="block text-right text-xs font-medium text-gray-600"
+                      >
+                        {t("totalQtyLabel")}
+                      </span>
+                      <output
+                        aria-labelledby={`${newItemFieldId}-total-qty`}
+                        className="flex h-10 items-center justify-end text-sm tabular-nums text-gray-600"
+                      >
+                        {selectedUnitOption
+                          ? derivedTotalQty.toLocaleString(locale, { maximumFractionDigits: 4 })
+                          : "--"}
+                      </output>
+                    </div>
+                    {canViewUnitCost && (
+                      <div className="space-y-1.5 md:px-2">
+                        <Label
+                          htmlFor={`${newItemFieldId}-unit-cost`}
+                          className="block text-right text-xs font-medium text-gray-600"
+                        >
+                          {t("unitCostLabel")}
+                        </Label>
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-2.5 top-1/2 z-10 -translate-y-1/2 text-sm text-gray-500">
+                            {selectedUnitCostSymbol}
+                          </span>
                           <Input
-                            value={
-                              selectedUnitOption
-                                ? selectedUnitOption.qtyPerUnit.toLocaleString(locale, {
-                                    maximumFractionDigits: 4,
-                                  })
-                                : ""
-                            }
-                            readOnly
-                            placeholder="--"
-                            className="h-10 border-gray-300 bg-gray-50 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
-                            {t("quantityLabel")}
-                          </label>
-                          <Input
-                            type="number"
-                            placeholder={t("quantityPlaceholder")}
-                            value={quantity}
+                            key={`unit-price-${selectedItemId}`}
+                            id={`${newItemFieldId}-unit-cost`}
+                            type="text"
+                            inputMode="decimal"
+                            pattern="^-?\d*(\.\d{0,2})?$"
+                            placeholder={t("unitPricePlaceholder")}
+                            value={price ?? ""}
                             onChange={(e) => {
-                              setQuantity(e.target.value);
-                              setAddItemError("");
+                              const next = e.target.value;
+                              if (next === "" || /^-?\d*(\.\d{0,2})?$/.test(next)) {
+                                setPrice(next);
+                                setAddItemError("");
+                              }
                             }}
-                            step="0.01"
-                            className="h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500"
+                            className="h-10 border-gray-300 bg-white pl-7 pr-2 text-right text-sm tabular-nums focus:border-purple-500 focus:ring-purple-500"
                           />
-                        </div>
-                        <div className="min-w-0">
-                          <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
-                            {t("totalQtyLabel")}
-                          </label>
-                          <Input
-                            value={
-                              selectedUnitOption
-                                ? derivedTotalQty.toLocaleString(locale, {
-                                    maximumFractionDigits: 4,
-                                  })
-                                : ""
-                            }
-                            readOnly
-                            placeholder="--"
-                            className="h-10 border-gray-300 bg-gray-50 text-sm"
-                          />
-                        </div>
-                        {canViewUnitCost && (
-                          <div className="min-w-0">
-                            <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
-                              {t("unitCostLabel")} *
-                            </label>
-                            <div className="relative">
-                              <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-sm font-semibold text-gray-500">
-                                {selectedUnitCostSymbol}
-                              </span>
-                              <Input
-                                key={`unit-price-${selectedItemId}`}
-                                type="text"
-                                inputMode="decimal"
-                                pattern="^-?\\d*(\\.\\d{0,2})?$"
-                                placeholder={t("unitPricePlaceholder")}
-                                value={price ?? ""}
-                                onChange={(e) => {
-                                  const next = e.target.value;
-                                  if (next === "" || /^-?\\d*(\\.\\d{0,2})?$/.test(next)) {
-                                    setPrice(next);
-                                    setAddItemError("");
-                                  }
-                                }}
-                                className="h-10 border-gray-300 bg-white pl-8 text-sm focus:border-purple-500 focus:ring-purple-500"
-                              />
-                            </div>
-                          </div>
-                        )}
-                        <div className="flex items-end">
-                          <Button
-                            type="button"
-                            onClick={handleAddItem}
-                            className="h-10 w-full bg-gradient-to-r from-purple-600 to-violet-600 text-sm font-semibold shadow-lg hover:from-purple-700 hover:to-violet-700"
-                          >
-                            <Plus className="mr-2 h-4 w-4" />
-                            {t("addItem")}
-                          </Button>
                         </div>
                       </div>
-
-                      {/* Inline Error Message */}
-                      {addItemError && (
-                        <div className="mt-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
-                          <svg
-                            className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          <p className="text-sm font-medium text-red-800">{addItemError}</p>
-                        </div>
-                      )}
+                    )}
+                    {canShowFormAmounts && (
+                      <div className="space-y-1.5 md:px-4">
+                        <span
+                          id={`${newItemFieldId}-line-total`}
+                          className="block text-right text-xs font-medium text-gray-600"
+                        >
+                          {t("total")}
+                        </span>
+                        <output
+                          aria-labelledby={`${newItemFieldId}-line-total`}
+                          className="flex h-10 items-center justify-end text-sm font-semibold tabular-nums text-gray-900"
+                        >
+                          {selectedUnitOption
+                            ? formatLineItemAmount(draftLineTotal, selectedCostCurrency)
+                            : "--"}
+                        </output>
+                      </div>
+                    )}
+                    <div className="col-span-2 md:col-span-1 md:pl-1.5 md:pr-3">
+                      <Button
+                        type="button"
+                        onClick={handleAddItem}
+                        className="h-10 w-full gap-1 bg-purple-600 px-2 text-sm font-semibold text-white hover:bg-purple-700"
+                      >
+                        <Plus className="h-4 w-4" />
+                        {t("addItem")}
+                      </Button>
                     </div>
                   </div>
 
-                  {/* Items List */}
-                  {lineItems.length > 0 ? (
-                    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                      <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-3.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-transparent">
-                              <Package className="h-4 w-4 text-gray-600" />
-                            </div>
-                            <h3 className="text-sm font-semibold text-gray-900">
-                              {t("itemsTitle")}
-                            </h3>
-                            <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800">
-                              {lineItems.length}{" "}
-                              {lineItems.length === 1 ? t("itemSingular") : t("itemPlural")}
-                            </span>
-                          </div>
-                          {canShowFormAmounts && (
-                            <div className="text-right">
-                              <p className="text-xs font-medium text-gray-500">
-                                {t("totalAmount")}
-                              </p>
-                              <p className="bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-xl font-bold text-transparent">
-                                {formattedTotalAmount}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="border-b border-gray-200 bg-gray-50">
-                              <TableHead className="h-10 text-xs font-semibold text-gray-700">
-                                {t("itemCode")}
-                              </TableHead>
-                              <TableHead className="h-10 text-xs font-semibold text-gray-700">
-                                {t("itemName")}
-                              </TableHead>
-                              <TableHead className="h-10 text-right text-xs font-semibold text-gray-700">
-                                {t("qty")}
-                              </TableHead>
-                              <TableHead className="h-10 text-xs font-semibold text-gray-700">
-                                {t("unitLabel")}
-                              </TableHead>
-                              <TableHead className="h-10 text-right text-xs font-semibold text-gray-700">
-                                {t("totalQtyLabel")}
-                              </TableHead>
-                              {canViewUnitCost && (
-                                <TableHead className="h-10 text-right text-xs font-semibold text-gray-700">
-                                  {t("unitCostLabel")}
-                                </TableHead>
-                              )}
-                              {canShowFormAmounts && (
-                                <TableHead className="h-10 text-right text-xs font-semibold text-gray-700">
-                                  {t("total")}
-                                </TableHead>
-                              )}
-                              <TableHead className="h-10 w-[60px]"></TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {lineItems.map((item, index) => (
-                              <TableRow
-                                key={index}
-                                className="border-b border-gray-100 transition-colors hover:bg-purple-50/50"
-                              >
-                                <TableCell className="py-3 text-sm font-semibold text-gray-900">
-                                  {item.itemCode}
-                                </TableCell>
-                                <TableCell className="py-3 text-sm text-gray-700">
-                                  {item.itemName}
-                                </TableCell>
-                                <TableCell className="py-3 text-right text-sm font-medium tabular-nums text-gray-900">
-                                  {item.requestedQty}
-                                </TableCell>
-                                <TableCell className="py-3 text-sm text-gray-700">
-                                  {item.uomLabel}
-                                </TableCell>
-                                <TableCell className="py-3 text-right text-sm font-medium tabular-nums text-gray-900">
-                                  {(item.requestedQty * item.qtyPerUnit).toLocaleString(locale, {
-                                    maximumFractionDigits: 4,
-                                  })}
-                                </TableCell>
-                                {canViewUnitCost && (
-                                  <TableCell className="py-3 text-right text-sm tabular-nums text-gray-700">
-                                    {formatLineItemAmount(item.unitPrice, item.unitPriceCurrency)}
-                                  </TableCell>
-                                )}
-                                {canShowFormAmounts && (
-                                  <TableCell className="py-3 text-right text-sm font-bold tabular-nums text-purple-600">
-                                    {formatLineItemAmount(
-                                      item.requestedQty * item.qtyPerUnit * item.unitPrice,
-                                      item.unitPriceCurrency
-                                    )}
-                                  </TableCell>
-                                )}
-                                <TableCell className="py-3">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleRemoveItem(index)}
-                                    className="h-8 w-8 rounded-lg p-0 hover:bg-red-50 hover:text-red-600"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border-2 border-dashed border-gray-300 bg-white p-12 shadow-sm">
-                      <div className="text-center">
-                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-violet-100">
-                          <ShoppingCart className="h-8 w-8 text-purple-600" />
-                        </div>
-                        <h3 className="mb-2 text-base font-semibold text-gray-900">
-                          {t("noItemsTitle")}
-                        </h3>
-                        <p className="mx-auto max-w-sm text-sm text-gray-500">
-                          {t("noItemsDescription")}
-                        </p>
-                      </div>
-                    </div>
+                  {addItemError && (
+                    <p
+                      role="alert"
+                      className="mx-4 mt-3 flex items-start gap-2 text-sm font-medium text-red-700"
+                    >
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                      {addItemError}
+                    </p>
                   )}
-                </div>
-              </TabsContent>
-            </Tabs>
+                </section>
 
-            {/* Fixed Footer */}
-            <div className="flex-shrink-0 border-t border-gray-200 bg-white px-6 py-4">
-              <div className="mx-auto flex max-w-5xl items-center justify-between">
-                <div className="text-sm text-gray-500">
-                  {lineItems.length > 0 && (
-                    <span>
-                      {canShowFormAmounts
-                        ? t("footerSummary", {
-                            count: lineItems.length,
-                            label: lineItems.length === 1 ? t("itemSingular") : t("itemPlural"),
-                            total: formattedTotalAmount,
-                          })
-                        : `${lineItems.length} ${
-                            lineItems.length === 1 ? t("itemSingular") : t("itemPlural")
-                          }`}
+                <section
+                  aria-labelledby={`${newItemFieldId}-items-title`}
+                  className="flex min-h-0 flex-1 flex-col"
+                >
+                  <div className="flex flex-shrink-0 items-center gap-2.5 px-4 pb-2.5 pt-3.5">
+                    <h3
+                      id={`${newItemFieldId}-items-title`}
+                      className="text-sm font-semibold text-gray-900"
+                    >
+                      {t("itemsTitle")}
+                    </h3>
+                    <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-purple-800">
+                      {lineItems.length}
                     </span>
-                  )}
-                </div>
+                  </div>
+
+                  <Table className="table-fixed" containerClassName="min-h-0 flex-1">
+                    <TableHeader className="sticky top-0 z-10 bg-gray-50">
+                      <TableRow className="border-y border-gray-200 bg-gray-50 hover:bg-gray-50">
+                        <TableHead className="h-10 text-xs font-semibold text-gray-600">
+                          {t("itemColumn")}
+                        </TableHead>
+                        <TableHead className="h-10 w-36 px-2 text-xs font-semibold text-gray-600">
+                          {t("unitLabel")}
+                        </TableHead>
+                        <TableHead className="h-10 w-20 px-2 text-right text-xs font-semibold text-gray-600">
+                          {t("qtyPerUnitLabel")}
+                        </TableHead>
+                        <TableHead className="h-10 w-20 px-2 text-right text-xs font-semibold text-gray-600">
+                          {t("qty")}
+                        </TableHead>
+                        <TableHead className="h-10 w-24 px-2 text-right text-xs font-semibold text-gray-600">
+                          {t("totalQtyLabel")}
+                        </TableHead>
+                        {canViewUnitCost && (
+                          <TableHead className="h-10 w-32 px-2 text-right text-xs font-semibold text-gray-600">
+                            {t("unitCostLabel")}
+                          </TableHead>
+                        )}
+                        {canShowFormAmounts && (
+                          <TableHead className="h-10 w-32 text-right text-xs font-semibold text-gray-600">
+                            {t("total")}
+                          </TableHead>
+                        )}
+                        <TableHead className="h-10 w-24">
+                          <span className="sr-only">{t("actionsColumn")}</span>
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {lineItems.length === 0 && (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={lineItemColumnCount} className="py-8 text-center">
+                            <p className="text-sm font-medium text-gray-900">{t("noItemsTitle")}</p>
+                            <p className="mt-1 text-sm text-gray-600">{t("noItemsDescription")}</p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {lineItems.map((item, index) => (
+                        <TableRow key={index} className="border-b border-gray-100">
+                          <TableCell className="py-3">
+                            <div className="font-semibold text-gray-900">{item.itemCode}</div>
+                            <div className="truncate text-sm text-gray-600" title={item.itemName}>
+                              {item.itemName}
+                            </div>
+                          </TableCell>
+                          <TableCell className="px-2 py-3 text-sm text-gray-700">
+                            {item.uomLabel}
+                          </TableCell>
+                          <TableCell className="px-2 py-3 text-right text-sm tabular-nums text-gray-600">
+                            {item.qtyPerUnit.toLocaleString(locale, { maximumFractionDigits: 4 })}
+                          </TableCell>
+                          <TableCell className="px-2 py-3 text-right text-sm font-medium tabular-nums text-gray-900">
+                            {item.requestedQty}
+                          </TableCell>
+                          <TableCell className="px-2 py-3 text-right text-sm tabular-nums text-gray-600">
+                            {(item.requestedQty * item.qtyPerUnit).toLocaleString(locale, {
+                              maximumFractionDigits: 4,
+                            })}
+                          </TableCell>
+                          {canViewUnitCost && (
+                            <TableCell className="px-2 py-3 text-right text-sm tabular-nums text-gray-600">
+                              {formatLineItemAmount(item.unitPrice, item.unitPriceCurrency)}
+                            </TableCell>
+                          )}
+                          {canShowFormAmounts && (
+                            <TableCell className="py-3 text-right text-sm font-semibold tabular-nums text-gray-900">
+                              {formatLineItemAmount(
+                                item.requestedQty * item.qtyPerUnit * item.unitPrice,
+                                item.unitPriceCurrency
+                              )}
+                            </TableCell>
+                          )}
+                          <TableCell className="px-3 py-3 text-right">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveItem(index)}
+                              aria-label={t("removeItem", {
+                                item: item.itemCode ?? item.itemName ?? "",
+                              })}
+                              className="h-9 w-9 rounded-lg p-0 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </section>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-4 border-t border-gray-200 bg-gray-50 px-8 py-4">
+              <p className="text-sm text-gray-600">{lineItemCountLabel}</p>
+              <div className="flex flex-wrap items-center gap-6">
+                {canShowFormAmounts && (
+                  <div className="flex items-baseline gap-2.5">
+                    <span className="text-sm text-gray-600">{t("totalAmount")}</span>
+                    <span className="text-xl font-semibold tabular-nums tracking-tight text-gray-900">
+                      {formattedTotalAmount}
+                    </span>
+                  </div>
+                )}
                 <div className="flex gap-3">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => onOpenChange(false)}
-                    className="h-10 min-w-[100px] border-gray-300 text-sm hover:bg-gray-50"
+                    className="h-10 border-gray-300 px-5 text-sm hover:bg-gray-100"
                   >
                     {t("cancel")}
                   </Button>
                   <Button
                     type="submit"
-                    disabled={createMutation.isPending || updateMutation.isPending}
-                    className="h-10 min-w-[140px] bg-gradient-to-r from-purple-600 to-violet-600 text-sm font-semibold shadow-lg hover:from-purple-700 hover:to-violet-700"
+                    disabled={isSaving}
+                    className="h-10 bg-purple-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-purple-700"
                   >
-                    {createMutation.isPending || updateMutation.isPending ? (
+                    {isSaving ? (
                       <span className="flex items-center gap-2">
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                         {t("saving")}
