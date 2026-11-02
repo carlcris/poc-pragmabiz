@@ -2,9 +2,11 @@
 
 import { type Ref, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Check } from "lucide-react";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useLookupBusinessUnits, type LookupBusinessUnitOption } from "@/hooks/useLookups";
+import { cn } from "@/lib/utils";
 
 type BusinessUnitSelectProps = {
   value: string;
@@ -15,7 +17,24 @@ type BusinessUnitSelectProps = {
   disabled?: boolean;
   buttonClassName?: string;
   triggerRef?: Ref<HTMLButtonElement>;
+  /** "warehouse" words the picker for screens where business unit names stand for warehouses. */
+  labelVariant?: "businessUnit" | "warehouse";
 };
+
+const LABEL_KEYS = {
+  businessUnit: {
+    placeholder: "selectBusinessUnit",
+    searchPlaceholder: "searchPlaceholder",
+    empty: "empty",
+    loading: "loading",
+  },
+  warehouse: {
+    placeholder: "selectWarehouse",
+    searchPlaceholder: "searchWarehousePlaceholder",
+    empty: "emptyWarehouses",
+    loading: "loadingWarehouses",
+  },
+} as const;
 
 export function BusinessUnitSelect({
   value,
@@ -26,8 +45,10 @@ export function BusinessUnitSelect({
   disabled = false,
   buttonClassName,
   triggerRef,
+  labelVariant = "businessUnit",
 }: BusinessUnitSelectProps) {
   const t = useTranslations("businessUnitSelect");
+  const labelKeys = LABEL_KEYS[labelVariant];
   const [search, setSearch] = useState("");
   const [lastSelectedOption, setLastSelectedOption] = useState<LookupBusinessUnitOption | null>(
     selectedOption
@@ -70,10 +91,23 @@ export function BusinessUnitSelect({
       getOptionValue={(option) => option.id}
       getOptionLabel={(option) => (option.code ? `${option.code} - ${option.name}` : option.name)}
       getOptionSearchValue={(option) => `${option.code} ${option.name}`}
-      placeholder={t("selectBusinessUnit")}
-      searchPlaceholder={t("searchPlaceholder")}
-      emptyMessage={t("empty")}
-      loadingMessage={t("loading")}
+      renderOption={(option, selected) => (
+        <>
+          <Check
+            className={cn("mr-2 mt-0.5 h-4 w-4 shrink-0", selected ? "opacity-100" : "opacity-0")}
+          />
+          <div className="min-w-0">
+            <div className="truncate">{option.name}</div>
+            {option.code ? (
+              <div className="text-xs text-muted-foreground">{option.code}</div>
+            ) : null}
+          </div>
+        </>
+      )}
+      placeholder={t(labelKeys.placeholder)}
+      searchPlaceholder={t(labelKeys.searchPlaceholder)}
+      emptyMessage={t(labelKeys.empty)}
+      loadingMessage={t(labelKeys.loading)}
       isLoading={isLoading}
       disabled={disabled}
       buttonClassName={buttonClassName}

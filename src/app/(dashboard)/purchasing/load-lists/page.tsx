@@ -326,6 +326,7 @@ export default function LoadListsPage() {
                   setDestinationBusinessUnitFilter(value);
                   setPage(1);
                 }}
+                labelVariant="warehouse"
                 buttonClassName="h-10"
               />
               {destinationBusinessUnitFilter && (

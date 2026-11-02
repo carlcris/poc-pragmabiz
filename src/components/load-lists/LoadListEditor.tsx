@@ -357,6 +357,7 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
                             onValueChange={field.onChange}
                             onOptionChange={setDestinationOption}
                             selectedOption={destinationOption}
+                            labelVariant="warehouse"
                             buttonClassName="h-10"
                           />
                         </FormControl>
