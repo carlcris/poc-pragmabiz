@@ -484,6 +484,13 @@ Get supplier details with analytics.
 
 ### Stock Requisition Management
 
+Submitting a stock requisition emails the supplier when application email delivery is enabled and
+the supplier has an email address. Set the server environment variable `EMAIL_ENABLED=false` to
+disable all application email, including supplier requisitions and test emails. Submission still
+succeeds without preparing or sending an email. Delivery is enabled when the variable is `true` or
+unset; restart or redeploy the server after changing it. The workflow setting **Send Email
+Notifications** does not control this delivery path.
+
 Stock requisition cost fields are protected by granular permissions. The API returns `null` for unit cost and total amount fields when the user does not have the matching stock requisition cost capability. Printed and downloaded stock requisition PDFs also require both the document display setting and the user's cost-view permission before showing Unit Price, line Total, or Total Amount.
 
 The Purchasing > On Order page shows item-level stock requisition quantities still pending from suppliers. It includes submitted and partially fulfilled stock requisition lines in the current business unit where requested quantity is greater than fulfilled quantity. Ordered is the requisition requested quantity, Received is the fulfilled quantity reconciled from approved GRN/accounted receiving, and Outstanding is the remaining supplier quantity. Users can filter by a searchable supplier selector, delivery status, expected delivery date, and search by supplier, stock requisition number, or item. The supplier selector loads the first 10 suppliers ordered by name and searches suppliers remotely. The list is served by `get_purchase_on_order_items` with server-side filtering, sorting, bounded pagination, and last-page clamping for stale page requests.
@@ -843,16 +850,18 @@ class PurchaseReceiptService {
 
 **Location**: `src/components/purchasing/SupplierList.tsx`
 
-#### StockRequisitionFormDialog
+#### Stock requisition pages
 
-**Location**: `src/components/stock-requisitions/StockRequisitionFormDialog.tsx`
+**Location**: `src/components/stock-requisitions/StockRequisitionEditor.tsx` (create at `/purchasing/stock-requisitions/new`, edit at `/purchasing/stock-requisitions/[id]/edit`) and `src/components/stock-requisitions/StockRequisitionDetails.tsx` (view at `/purchasing/stock-requisitions/[id]`)
 
-- Fixed-height create/edit dialog in three sections: a header strip (supplier, requisition date, required-by date, notes), a New Item section, and the Items table
-- New Item fields (item, unit, qty/unit, qty, total qty, unit cost, line total preview) align with the Items table columns; unit cost is per base unit and one currency is allowed per requisition
+- Create, edit, and view are full pages that share the load list page layout: a Request section (supplier, requisition date, required-by date), the Items section, Notes, and a sticky Summary panel with the item count, total, and actions
+- The New item row (item, unit, qty, total qty, unit cost, line total) sits above the Items table and aligns with its columns; the unit's quantity per unit shows under the unit. Unit cost is per base unit and one currency is allowed per requisition. Enter adds the line and Esc clears the row
 - Each item can appear on only one line; picking an item that is already listed shows an inline error, and the existing line must be removed to change its unit, quantity, or cost
-- The Items table scrolls inside the dialog with a sticky column header, so New Item and the footer stay in view as lines are added
-- Item count and total amount stay visible in the footer; unit cost and amounts follow the stock requisition granular cost permissions
-- Reorder alerts open the same dialog with prefilled line items
+- Unit cost and amounts follow the stock requisition granular cost permissions; users without unit cost access save lines without costs and the API prices them
+- Only draft requisitions can be edited, and only with stock requisition edit permission; other requisitions show a message linking back to the view page
+- The view page shows Fulfilled and Outstanding quantities once the requisition has been sent, and offers Send and Edit (draft only, with edit permission), Print, and Download PDF
+- Reorder alerts open the new requisition page with prefilled line items; the hand-off lasts for that navigation only and is not kept after a reload
+- Shared building blocks live in `src/components/document-page/` and are also used by the load list pages
 
 #### LoadListForm
 

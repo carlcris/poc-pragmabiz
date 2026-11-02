@@ -484,23 +484,20 @@ WHERE id = 'your-dr-item-id';
 - ✅ View/Edit/Delete actions (status-dependent)
 - ✅ Create new SR button
 
-**Form Dialog:** `src/components/stock-requisitions/StockRequisitionFormDialog.tsx`
+**Create/Edit Pages:** `src/app/(dashboard)/purchasing/stock-requisitions/new/page.tsx` and `[id]/edit/page.tsx`, rendering `src/components/stock-requisitions/StockRequisitionEditor.tsx`
 
-- ✅ Supplier and date selection
-- ✅ Dynamic line items with add/remove functionality
-- ✅ Item selection with quantity and unit price
-- ✅ Auto-calculated total amount
-- ✅ Form validation with Zod
-- ✅ Create and Edit modes
+- ✅ Server-searched supplier selector and date fields
+- ✅ New item row aligned with the Items table; Enter adds a line, duplicate items are refused
+- ✅ Unit cost per base unit, one currency per requisition, cost fields follow granular permissions
+- ✅ Summary panel with item count and total
+- ✅ Edit is limited to drafts and stock requisition edit permission
 
-**Detail Page:** `src/app/(dashboard)/purchasing/stock-requisitions/[id]/page.tsx`
+**Detail Page:** `src/app/(dashboard)/purchasing/stock-requisitions/[id]/page.tsx`, rendering `src/components/stock-requisitions/StockRequisitionDetails.tsx`
 
-- ✅ Complete SR header information
-- ✅ Supplier and business unit details
-- ✅ Line items table with fulfillment tracking (requested, fulfilled, outstanding quantities)
-- ✅ Status workflow buttons (Submit, Cancel)
-- ✅ Status-based action controls (edit only for draft)
-- ✅ Confirmation dialogs for status changes
+- ✅ Supplier, business unit, and date details
+- ✅ Line items table with fulfillment tracking (fulfilled and outstanding quantities once sent)
+- ✅ Send and Edit for drafts, plus Print and Download PDF
+- ✅ Confirmation dialog before sending
 
 **API Client & Hooks:**
 

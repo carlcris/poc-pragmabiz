@@ -30,25 +30,24 @@ import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import { useCreateLoadList, useUpdateLoadList } from "@/hooks/useLoadLists";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import type { LookupBusinessUnitOption } from "@/hooks/useLookups";
+import { DocumentLineEntry } from "@/components/document-page/DocumentLineEntry";
+import { DocumentLinesTable } from "@/components/document-page/DocumentLinesTable";
+import { DocumentSection } from "@/components/document-page/DocumentSection";
+import { DocumentSummaryPanel } from "@/components/document-page/DocumentSummaryPanel";
+import { getDocumentLineColumns } from "@/components/document-page/document-line-columns";
+import {
+  formatDocumentAmount,
+  formatDocumentDate,
+  formatDocumentPerson,
+} from "@/lib/documents/document-display";
 import {
   LOAD_LIST_STATUS_LABEL_KEYS,
   LOAD_LIST_STATUS_TONES,
-  formatLoadListAmount,
-  formatLoadListDate,
 } from "@/lib/load-lists/load-list-display";
 import { createLoadListFormSchema, type LoadListFormValues } from "@/lib/validations/load-list";
+import type { DocumentFormLine } from "@/types/document-line";
+import type { CreateLoadListRequest, LoadList, UpdateLoadListRequest } from "@/types/load-list";
 import type { Supplier } from "@/types/supplier";
-import type {
-  CreateLoadListRequest,
-  LoadList,
-  LoadListFormLine,
-  UpdateLoadListRequest,
-} from "@/types/load-list";
-import { LoadListLineEntry } from "./LoadListLineEntry";
-import { LoadListLinesTable } from "./LoadListLinesTable";
-import { LoadListSection } from "./LoadListSection";
-import { LoadListSummaryPanel } from "./LoadListSummaryPanel";
-import { getLoadListLineColumns } from "./load-list-line-columns";
 
 type LoadListEditorProps = {
   loadList: LoadList | null;
@@ -61,31 +60,27 @@ const LOAD_LIST_COST_CAPABILITY_KEYS = [
   GRANULAR_CAPABILITIES.LOAD_LISTS_UNIT_PRICE,
 ] as const;
 
-const toFormLines = (loadList: LoadList | null): LoadListFormLine[] =>
+const toFormLines = (loadList: LoadList | null): DocumentFormLine[] =>
   loadList?.items.map((item) => ({
     key: item.id,
-    loadListItemId: item.id,
+    savedLineId: item.id,
     itemId: item.itemId,
     itemCode: item.item?.code ?? "",
     itemName: item.item?.name ?? "",
     itemUnitOptionId: item.itemUnitOptionId || item.itemUnitOption?.id || "",
     uomId: item.uomId || "",
     unitLabel: item.unitName,
+    uomCode: item.itemUnitOption?.uomCode || item.uomCode || "",
     qtyPerUnit: item.qtyPerUnit,
-    loadListQty: item.loadListQty,
+    quantity: item.loadListQty,
     unitPrice: item.unitPrice ?? 0,
     unitPriceCurrency: loadList.currency,
     notes: item.notes,
   })) ?? [];
 
-const getLinesSignature = (lines: LoadListFormLine[]) =>
+const getLinesSignature = (lines: DocumentFormLine[]) =>
   JSON.stringify(
-    lines.map((line) => [
-      line.loadListItemId,
-      line.itemUnitOptionId,
-      line.loadListQty,
-      line.unitPrice,
-    ])
+    lines.map((line) => [line.savedLineId, line.itemUnitOptionId, line.quantity, line.unitPrice])
   );
 
 export function LoadListEditor({ loadList }: LoadListEditorProps) {
@@ -107,14 +102,14 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
     loadList?.capabilities?.canViewUnitPrice ??
     granularCapabilities?.[GRANULAR_CAPABILITIES.LOAD_LISTS_UNIT_PRICE] === true;
   const canShowAmounts = canViewTotalAmount && canViewUnitPrice;
-  const columns = getLoadListLineColumns({
-    showReceipt: false,
+  const columns = getDocumentLineColumns({
+    trackingColumns: [],
     showUnitCost: canViewUnitPrice,
     showLineTotal: canShowAmounts,
     showAction: true,
   });
 
-  const [lines, setLines] = useState<LoadListFormLine[]>(() => toFormLines(loadList));
+  const [lines, setLines] = useState<DocumentFormLine[]>(() => toFormLines(loadList));
   const [initialLinesSignature] = useState(() => getLinesSignature(toFormLines(loadList)));
   const [hasPendingEntry, setHasPendingEntry] = useState(false);
   const [linesError, setLinesError] = useState<string | null>(null);
@@ -168,13 +163,13 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
   const lockedCurrency = lines[0]?.unitPriceCurrency ?? null;
   const documentCurrency = lockedCurrency ?? loadList?.currency ?? currentCurrency.code;
   const totalAmount = canShowAmounts
-    ? lines.reduce((sum, line) => sum + line.loadListQty * line.qtyPerUnit * line.unitPrice, 0)
+    ? lines.reduce((sum, line) => sum + line.quantity * line.qtyPerUnit * line.unitPrice, 0)
     : null;
   const hasUnsavedChanges =
     isEditMode && (form.formState.isDirty || getLinesSignature(lines) !== initialLinesSignature);
   const viewHref = loadList ? `/purchasing/load-lists/${loadList.id}` : "/purchasing/load-lists";
 
-  const handleAddLine = (line: LoadListFormLine) => {
+  const handleAddLine = (line: DocumentFormLine) => {
     setLines((current) => [...current, line]);
     setLinesError(null);
     setSaveError(null);
@@ -206,7 +201,7 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
         itemId: line.itemId,
         itemUnitOptionId: line.itemUnitOptionId,
         uomId: line.uomId,
-        loadListQty: line.loadListQty,
+        loadListQty: line.quantity,
         unitPrice: line.unitPrice,
         notes: line.notes,
       })),
@@ -256,11 +251,7 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
   };
 
   const status = loadList?.status ?? "draft";
-  const createdByName = loadList?.createdByUser
-    ? [loadList.createdByUser.firstName, loadList.createdByUser.lastName]
-        .filter(Boolean)
-        .join(" ") || loadList.createdByUser.email
-    : null;
+  const createdByName = formatDocumentPerson(loadList?.createdByUser);
 
   return (
     <Form {...form}>
@@ -284,7 +275,7 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
 
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           <div className="min-w-0 flex-1 overflow-hidden rounded-xl border bg-card">
-            <LoadListSection
+            <DocumentSection
               id="load-list-shipment"
               title={t("shipmentTitle")}
               description={t("shipmentDescription")}
@@ -327,9 +318,6 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
                           buttonClassName="h-10"
                         />
                       </FormControl>
-                      {selectedSupplier ? (
-                        <p className="text-xs text-muted-foreground">{selectedSupplier.code}</p>
-                      ) : null}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -421,9 +409,9 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
                   )}
                 />
               </div>
-            </LoadListSection>
+            </DocumentSection>
 
-            <LoadListSection
+            <DocumentSection
               id="load-list-container"
               title={t("containerTitle")}
               description={t("containerDescription")}
@@ -452,13 +440,14 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
                   />
                 ))}
               </div>
-            </LoadListSection>
+            </DocumentSection>
 
             <section aria-labelledby="load-list-items" className="border-t">
-              <LoadListLineEntry
+              <DocumentLineEntry
                 columns={columns}
-                canViewUnitPrice={canViewUnitPrice}
+                canViewUnitCost={canViewUnitPrice}
                 lockedCurrency={lockedCurrency}
+                mixedCurrencyMessage={t("mixedCurrencyNotAllowed")}
                 itemTriggerRef={itemTriggerRef}
                 linesError={linesError}
                 onAdd={handleAddLine}
@@ -476,17 +465,18 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
                 {/* Seven columns stay readable on phones by scrolling instead of squeezing. */}
                 <div className="mt-2 overflow-x-auto">
                   <div className="min-w-[44rem]">
-                    <LoadListLinesTable
+                    <DocumentLinesTable
                       rows={lines.map((line) => ({
                         key: line.key,
                         itemCode: line.itemCode,
                         itemName: line.itemName,
                         unitLabel: line.unitLabel,
+                        uomCode: line.uomCode,
                         qtyPerUnit: line.qtyPerUnit,
-                        loadListQty: line.loadListQty,
+                        quantity: line.quantity,
                         unitPrice: line.unitPrice,
-                        lineTotal: line.loadListQty * line.qtyPerUnit * line.unitPrice,
-                        isUnsaved: isEditMode && !line.loadListItemId,
+                        lineTotal: line.quantity * line.qtyPerUnit * line.unitPrice,
+                        isUnsaved: isEditMode && !line.savedLineId,
                       }))}
                       columns={columns}
                       currency={documentCurrency}
@@ -500,7 +490,7 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
               </div>
             </section>
 
-            <LoadListSection
+            <DocumentSection
               id="load-list-notes"
               title={t("notesTitle")}
               description={t("notesDescription")}
@@ -518,10 +508,10 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
                   </FormItem>
                 )}
               />
-            </LoadListSection>
+            </DocumentSection>
           </div>
 
-          <LoadListSummaryPanel
+          <DocumentSummaryPanel
             title={t("summaryTitle")}
             headerAside={
               hasUnsavedChanges ? (
@@ -547,7 +537,7 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
               {
                 key: "loadDate",
                 label: t("summaryLoaded"),
-                value: loadDate ? formatLoadListDate(loadDate, locale) : t("noValue"),
+                value: loadDate ? formatDocumentDate(loadDate, locale) : t("noValue"),
               },
               {
                 key: "container",
@@ -560,7 +550,7 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
             total={
               totalAmount == null
                 ? null
-                : formatLoadListAmount(totalAmount, documentCurrency, locale)
+                : formatDocumentAmount(totalAmount, documentCurrency, locale)
             }
             actions={
               <>
@@ -585,7 +575,7 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
                   <p>
                     {t("createdBy", {
                       name: createdByName,
-                      date: formatLoadListDate(loadList.createdAt, locale),
+                      date: formatDocumentDate(loadList.createdAt, locale),
                     })}
                   </p>
                 ) : null}

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
 import {
   Plus,
@@ -16,7 +15,7 @@ import {
   Printer,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   useStockRequisitions,
   useDeleteStockRequisition,
@@ -65,25 +64,14 @@ import { stockRequisitionsApi } from "@/lib/api/stock-requisitions";
 import type { StockRequisition, StockRequisitionStatus } from "@/types/stock-requisition";
 import type { StockRequisitionPDFData } from "@/lib/pdf-generator";
 
-const StockRequisitionFormDialog = dynamic(
-  () =>
-    import("@/components/stock-requisitions/StockRequisitionFormDialog").then(
-      (mod) => mod.StockRequisitionFormDialog
-    ),
-  { ssr: false }
-);
-
 export default function StockRequisitionsPage() {
   const t = useTranslations("stockRequisitionsPage");
   const locale = useLocale();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedSR, setSelectedSR] = useState<StockRequisition | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -117,14 +105,6 @@ export default function StockRequisitionsPage() {
 
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
-
-  useEffect(() => {
-    if (searchParams.get("create") !== "1") return;
-
-    setSelectedSR(null);
-    setDialogOpen(true);
-    router.replace("/purchasing/stock-requisitions");
-  }, [router, searchParams]);
 
   const formatDate = (value?: string | null) => {
     if (!value) return t("noValue");
@@ -215,13 +195,11 @@ export default function StockRequisitionsPage() {
   };
 
   const handleCreateSR = () => {
-    setSelectedSR(null);
-    setDialogOpen(true);
+    router.push("/purchasing/stock-requisitions/new");
   };
 
   const handleEditSR = (sr: StockRequisition) => {
-    setSelectedSR(sr);
-    setDialogOpen(true);
+    router.push(`/purchasing/stock-requisitions/${sr.id}/edit`);
   };
 
   const handleViewSR = (sr: StockRequisition) => {
@@ -603,14 +581,6 @@ export default function StockRequisitionsPage() {
           </>
         )}
       </div>
-
-      {dialogOpen && (
-        <StockRequisitionFormDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          stockRequisition={selectedSR}
-        />
-      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

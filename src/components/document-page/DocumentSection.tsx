@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 
-type LoadListSectionProps = {
+type DocumentSectionProps = {
   id: string;
   title: string;
   description?: string;
   children: ReactNode;
 };
 
-export function LoadListSection({ id, title, description, children }: LoadListSectionProps) {
+export function DocumentSection({ id, title, description, children }: DocumentSectionProps) {
   return (
     <section
       aria-labelledby={id}

@@ -4,27 +4,30 @@ import { useLocale, useTranslations } from "next-intl";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formatLoadListAmount, formatLoadListQuantity } from "@/lib/load-lists/load-list-display";
-import { getLoadListLineColumnWidth, type LoadListLineColumn } from "./load-list-line-columns";
+import { formatDocumentAmount, formatDocumentQuantity } from "@/lib/documents/document-display";
+import {
+  getDocumentLineColumnWidth,
+  type DocumentLineColumn,
+  type DocumentTrackingColumn,
+} from "./document-line-columns";
 
-export type LoadListLinesTableRow = {
+export type DocumentLinesTableRow = {
   key: string;
   itemCode: string;
   itemName: string;
   unitLabel: string;
+  uomCode: string;
   qtyPerUnit: number;
-  loadListQty: number;
+  quantity: number;
   unitPrice: number | null;
   lineTotal: number | null;
-  receivedQty?: number;
-  damagedQty?: number;
-  shortageQty?: number;
+  tracking?: Partial<Record<DocumentTrackingColumn, number>>;
   isUnsaved?: boolean;
 };
 
-type LoadListLinesTableProps = {
-  rows: LoadListLinesTableRow[];
-  columns: LoadListLineColumn[];
+type DocumentLinesTableProps = {
+  rows: DocumentLinesTableRow[];
+  columns: DocumentLineColumn[];
   currency: string;
   totalAmount: number | null;
   emptyTitle: string;
@@ -32,19 +35,28 @@ type LoadListLinesTableProps = {
   onRemove?: (key: string) => void;
 };
 
-const NUMERIC_COLUMNS = new Set<LoadListLineColumn>([
+const NUMERIC_COLUMNS = new Set<DocumentLineColumn>([
   "qty",
   "totalQty",
   "receivedQty",
   "damagedQty",
   "shortageQty",
+  "fulfilledQty",
+  "outstandingQty",
   "unitCost",
   "lineTotal",
 ]);
 
+// Nonzero values in these columns need attention, so they carry a semantic color.
+const TRACKING_ALERT_CLASSES: Partial<Record<DocumentTrackingColumn, string>> = {
+  damagedQty: "font-semibold text-red-700 dark:text-red-400",
+  shortageQty: "font-semibold text-orange-700 dark:text-orange-400",
+  outstandingQty: "font-semibold text-orange-700 dark:text-orange-400",
+};
+
 const cellPadding = "px-2 first:pl-0 last:pr-0";
 
-export function LoadListLinesTable({
+export function DocumentLinesTable({
   rows,
   columns,
   currency,
@@ -52,10 +64,10 @@ export function LoadListLinesTable({
   emptyTitle,
   emptyDescription,
   onRemove,
-}: LoadListLinesTableProps) {
-  const t = useTranslations("loadListPage");
+}: DocumentLinesTableProps) {
+  const t = useTranslations("documentLines");
   const locale = useLocale();
-  const columnLabels: Record<LoadListLineColumn, string> = {
+  const columnLabels: Record<DocumentLineColumn, string> = {
     item: t("item"),
     unit: t("unit"),
     qty: t("qty"),
@@ -63,15 +75,26 @@ export function LoadListLinesTable({
     receivedQty: t("receivedQty"),
     damagedQty: t("damagedQty"),
     shortageQty: t("shortageQty"),
+    fulfilledQty: t("fulfilledQty"),
+    outstandingQty: t("outstandingQty"),
     unitCost: t("unitCost"),
     lineTotal: t("lineTotal"),
     action: t("actions"),
   };
   const formatAmount = (value: number | null) =>
-    value == null ? t("noValue") : formatLoadListAmount(value, currency, locale);
+    value == null ? t("noValue") : formatDocumentAmount(value, currency, locale);
   const lineTotalIndex = columns.indexOf("lineTotal");
 
-  const renderCell = (row: LoadListLinesTableRow, column: LoadListLineColumn) => {
+  const renderTrackingCell = (row: DocumentLinesTableRow, column: DocumentTrackingColumn) => {
+    const value = row.tracking?.[column] ?? 0;
+    return (
+      <span className={cn(value > 0 && TRACKING_ALERT_CLASSES[column])}>
+        {formatDocumentQuantity(value, locale)}
+      </span>
+    );
+  };
+
+  const renderCell = (row: DocumentLinesTableRow, column: DocumentLineColumn) => {
     switch (column) {
       case "item":
         return (
@@ -93,40 +116,24 @@ export function LoadListLinesTable({
             <div>{row.unitLabel}</div>
             <div className="mt-0.5 text-sm text-muted-foreground">
               {t("qtyPerUnit", {
-                qty: formatLoadListQuantity(row.qtyPerUnit, locale),
-                unit: row.unitLabel,
+                qty: formatDocumentQuantity(row.qtyPerUnit, locale),
+                unit: row.uomCode || row.unitLabel,
               })}
             </div>
           </>
         );
       case "qty":
         return (
-          <span className="font-semibold">{formatLoadListQuantity(row.loadListQty, locale)}</span>
+          <span className="font-semibold">{formatDocumentQuantity(row.quantity, locale)}</span>
         );
       case "totalQty":
-        return formatLoadListQuantity(row.loadListQty * row.qtyPerUnit, locale);
+        return formatDocumentQuantity(row.quantity * row.qtyPerUnit, locale);
       case "receivedQty":
-        return formatLoadListQuantity(row.receivedQty ?? 0, locale);
       case "damagedQty":
-        return (
-          <span
-            className={cn(
-              (row.damagedQty ?? 0) > 0 && "font-semibold text-red-700 dark:text-red-400"
-            )}
-          >
-            {formatLoadListQuantity(row.damagedQty ?? 0, locale)}
-          </span>
-        );
       case "shortageQty":
-        return (
-          <span
-            className={cn(
-              (row.shortageQty ?? 0) > 0 && "font-semibold text-orange-700 dark:text-orange-400"
-            )}
-          >
-            {formatLoadListQuantity(row.shortageQty ?? 0, locale)}
-          </span>
-        );
+      case "fulfilledQty":
+      case "outstandingQty":
+        return renderTrackingCell(row, column);
       case "unitCost":
         return formatAmount(row.unitPrice);
       case "lineTotal":
@@ -152,7 +159,7 @@ export function LoadListLinesTable({
       <caption className="sr-only">{t("itemsTitle")}</caption>
       <colgroup>
         {columns.map((column) => (
-          <col key={column} style={{ width: getLoadListLineColumnWidth(columns, column) }} />
+          <col key={column} style={{ width: getDocumentLineColumnWidth(columns, column) }} />
         ))}
       </colgroup>
       <thead>

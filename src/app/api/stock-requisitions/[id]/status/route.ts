@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
-import { sendStockRequisitionEmail } from "@/lib/email";
+import { isEmailEnabled, sendStockRequisitionEmail } from "@/lib/email";
 
 // PATCH /api/stock-requisitions/[id]/status
 async function PATCHHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -69,7 +69,7 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       .eq("id", id)
       .eq("company_id", companyId)
       .eq("business_unit_id", currentBusinessUnitId)
-      .select()
+      .select("id, sr_number, status")
       .single();
 
     if (updateError) {
@@ -80,8 +80,8 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       );
     }
 
-    // Send email if status is changed to submitted
-    if (newStatus === "submitted") {
+    // Skip email preparation and delivery when application email is disabled.
+    if (newStatus === "submitted" && isEmailEnabled()) {
       try {
         // Fetch complete stock requisition data with all related information
         const { data: srComplete, error: fetchCompleteError } = await supabase

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   AlertTriangle,
@@ -54,15 +55,17 @@ import {
 import type { ReorderSuggestion, ReorderAlert, ReorderSeason } from "@/types/reorder";
 import { SeasonItemPolicyDialog } from "@/components/reorder/SeasonItemPolicyDialog";
 import { AddSeasonDialog } from "@/components/reorder/AddSeasonDialog";
-import {
-  StockRequisitionFormDialog,
-  type StockRequisitionInitialLineItem,
-} from "@/components/stock-requisitions/StockRequisitionFormDialog";
+import { useStockRequisitionDraftStore } from "@/stores/stockRequisitionDraftStore";
+import type { DocumentFormLine } from "@/types/document-line";
 import { toast } from "sonner";
 
 export default function ReorderManagementPage() {
   const [selectedTab, setSelectedTab] = useState("suggestions");
   const t = useTranslations("reorderManagementPage");
+  const router = useRouter();
+  const setPendingStockRequisitionLines = useStockRequisitionDraftStore(
+    (state) => state.setPendingLines
+  );
   const { formatCurrency } = useCurrency();
 
   const { data: suggestionsData, isLoading: suggestionsLoading } = useReorderSuggestions();
@@ -94,10 +97,6 @@ export default function ReorderManagementPage() {
   );
   const seasons = seasonsData?.data || [];
   const [selectedAlertIds, setSelectedAlertIds] = useState<string[]>([]);
-  const [stockRequisitionDialogOpen, setStockRequisitionDialogOpen] = useState(false);
-  const [stockRequisitionLineItems, setStockRequisitionLineItems] = useState<
-    StockRequisitionInitialLineItem[]
-  >([]);
   const [policyDialogOpen, setPolicyDialogOpen] = useState(false);
   const [addSeasonDialogOpen, setAddSeasonDialogOpen] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState<ReorderSeason | null>(null);
@@ -173,7 +172,7 @@ export default function ReorderManagementPage() {
     if (selectedAlertIds.length === 0) return;
 
     const selectedAlerts = alerts.filter((alert) => selectedAlertIds.includes(alert.id));
-    const lineItems: StockRequisitionInitialLineItem[] = [];
+    const lineItems: DocumentFormLine[] = [];
 
     selectedAlerts.forEach((alert) => {
       if (!alert.requisitionUomId) return;
@@ -184,14 +183,16 @@ export default function ReorderManagementPage() {
       const requestedQty = Math.max(0.01, baseQuantity / qtyPerUnit);
 
       lineItems.push({
+        key: crypto.randomUUID(),
         itemId: alert.itemId,
         itemCode: alert.itemCode,
         itemName: alert.itemName,
         itemUnitOptionId: alert.requisitionItemUnitOptionId,
         uomId: alert.requisitionUomId,
-        uomLabel: alert.requisitionUomLabel,
+        unitLabel: alert.requisitionUomLabel,
+        uomCode: alert.requisitionUomCode,
         qtyPerUnit: alert.requisitionQtyPerUnit,
-        requestedQty,
+        quantity: requestedQty,
         unitPrice: alert.requisitionUnitPrice,
         unitPriceCurrency: alert.requisitionUnitPriceCurrency,
         notes: t("reorderAlertLineNote"),
@@ -203,8 +204,8 @@ export default function ReorderManagementPage() {
       return;
     }
 
-    setStockRequisitionLineItems(lineItems);
-    setStockRequisitionDialogOpen(true);
+    setPendingStockRequisitionLines(lineItems);
+    router.push("/purchasing/stock-requisitions/new");
   };
 
   const allAlertsSelected = alerts.length > 0 && selectedAlertIds.length === alerts.length;
@@ -792,14 +793,6 @@ export default function ReorderManagementPage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {stockRequisitionDialogOpen && (
-        <StockRequisitionFormDialog
-          open={stockRequisitionDialogOpen}
-          onOpenChange={setStockRequisitionDialogOpen}
-          initialLineItems={stockRequisitionLineItems}
-        />
-      )}
 
       <AddSeasonDialog
         open={addSeasonDialogOpen}

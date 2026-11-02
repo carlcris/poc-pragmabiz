@@ -6,6 +6,14 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link as LinkIcon, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { LinkStockRequisitionsDialog } from "@/components/load-lists/LinkStockRequisitionsDialog";
+import { DocumentDetailField } from "@/components/document-page/DocumentDetailField";
+import { DocumentLinesTable } from "@/components/document-page/DocumentLinesTable";
+import { DocumentSection } from "@/components/document-page/DocumentSection";
+import { DocumentSummaryPanel } from "@/components/document-page/DocumentSummaryPanel";
+import {
+  getDocumentLineColumns,
+  type DocumentTrackingColumn,
+} from "@/components/document-page/document-line-columns";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusText } from "@/components/shared/StatusText";
 import {
@@ -34,24 +42,20 @@ import { useUpdateLoadListStatus } from "@/hooks/useLoadLists";
 import { useResourcePermissions } from "@/hooks/usePermissions";
 import { canEditLoadList } from "@/lib/load-lists/editability";
 import {
+  formatDocumentAmount,
+  formatDocumentDate,
+  formatDocumentPerson,
+} from "@/lib/documents/document-display";
+import {
   LOAD_LIST_STATUS_LABEL_KEYS,
   LOAD_LIST_STATUS_TONES,
-  formatLoadListAmount,
-  formatLoadListDate,
   showsLoadListReceiptQuantities,
 } from "@/lib/load-lists/load-list-display";
 import type { LoadList, LoadListStatus } from "@/types/load-list";
-import { LoadListDetailField } from "./LoadListDetailField";
-import { LoadListLinesTable } from "./LoadListLinesTable";
-import { LoadListSection } from "./LoadListSection";
-import { LoadListSummaryPanel } from "./LoadListSummaryPanel";
-import { getLoadListLineColumns } from "./load-list-line-columns";
 
 type LoadListDetailsProps = {
   loadList: LoadList;
 };
-
-type LoadListPerson = { firstName?: string; lastName?: string; email?: string } | null | undefined;
 
 const STOCK_REQUISITION_LINK_STATUSES: readonly LoadListStatus[] = [
   "draft",
@@ -60,9 +64,11 @@ const STOCK_REQUISITION_LINK_STATUSES: readonly LoadListStatus[] = [
   "arrived",
 ];
 const PRE_TRANSIT_STATUSES: readonly LoadListStatus[] = ["draft", "confirmed", "cancelled"];
-
-const formatPerson = (person: LoadListPerson) =>
-  person ? [person.firstName, person.lastName].filter(Boolean).join(" ") || person.email : null;
+const RECEIPT_COLUMNS: readonly DocumentTrackingColumn[] = [
+  "receivedQty",
+  "damagedQty",
+  "shortageQty",
+];
 
 export function LoadListDetails({ loadList }: LoadListDetailsProps) {
   const t = useTranslations("loadListPage");
@@ -102,8 +108,8 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
     capabilities?.canLinkStockRequisitions === true &&
     STOCK_REQUISITION_LINK_STATUSES.includes(status);
 
-  const columns = getLoadListLineColumns({
-    showReceipt: showsLoadListReceiptQuantities(status),
+  const columns = getDocumentLineColumns({
+    trackingColumns: showsLoadListReceiptQuantities(status) ? RECEIPT_COLUMNS : [],
     showUnitCost: canViewUnitPrice,
     showLineTotal: canViewTotalAmount,
     showAction: false,
@@ -111,7 +117,7 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
   const showTransit =
     !PRE_TRANSIT_STATUSES.includes(status) ||
     Boolean(loadList.linerName || loadList.estimatedArrivalDate || loadList.actualArrivalDate);
-  const formatDate = (value?: string | null) => (value ? formatLoadListDate(value, locale) : null);
+  const formatDate = (value?: string | null) => (value ? formatDocumentDate(value, locale) : null);
   const statusLabel = t(LOAD_LIST_STATUS_LABEL_KEYS[status]);
   const statusText = (
     <StatusText tone={LOAD_LIST_STATUS_TONES[status]} className="font-semibold">
@@ -204,91 +210,89 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 overflow-hidden rounded-xl border bg-card">
-          <LoadListSection id="load-list-shipment" title={t("shipmentTitle")}>
+          <DocumentSection id="load-list-shipment" title={t("shipmentTitle")}>
             <dl className="grid gap-5 sm:grid-cols-2">
-              <LoadListDetailField
+              <DocumentDetailField
                 label={t("supplier")}
                 value={loadList.supplier?.name}
-                hint={[loadList.supplier?.code, loadList.supplier?.contactPerson]
-                  .filter(Boolean)
-                  .join(" · ")}
+                hint={loadList.supplier?.contactPerson}
                 emptyLabel={noValue}
               />
-              <LoadListDetailField
+              <DocumentDetailField
                 label={t("destinationBusinessUnit")}
                 value={loadList.destinationBusinessUnit?.name}
                 hint={loadList.destinationBusinessUnit?.code}
                 emptyLabel={noValue}
               />
-              <LoadListDetailField
+              <DocumentDetailField
                 label={t("sourceBusinessUnit")}
                 value={loadList.sourceBusinessUnit?.name}
                 hint={loadList.sourceBusinessUnit?.code}
                 emptyLabel={noValue}
               />
-              <LoadListDetailField
+              <DocumentDetailField
                 label={t("supplierLlNumber")}
                 value={loadList.supplierLlNumber}
                 emptyLabel={noValue}
                 numeric
               />
-              <LoadListDetailField
+              <DocumentDetailField
                 label={t("loadDate")}
                 value={formatDate(loadList.loadDate)}
                 emptyLabel={noValue}
                 numeric
               />
             </dl>
-          </LoadListSection>
+          </DocumentSection>
 
-          <LoadListSection id="load-list-container" title={t("containerTitle")}>
+          <DocumentSection id="load-list-container" title={t("containerTitle")}>
             <dl className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              <LoadListDetailField
+              <DocumentDetailField
                 label={t("containerNumber")}
                 value={loadList.containerNumber}
                 emptyLabel={noValue}
                 numeric
               />
-              <LoadListDetailField
+              <DocumentDetailField
                 label={t("sealNumber")}
                 value={loadList.sealNumber}
                 emptyLabel={noValue}
                 numeric
               />
-              <LoadListDetailField
+              <DocumentDetailField
                 label={t("batchNumber")}
                 value={loadList.batchNumber}
                 emptyLabel={noValue}
               />
             </dl>
-          </LoadListSection>
+          </DocumentSection>
 
           {showTransit ? (
-            <LoadListSection
+            <DocumentSection
               id="load-list-transit"
               title={t("transitTitle")}
               description={t("transitDescription")}
             >
               <dl className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                <LoadListDetailField
+                <DocumentDetailField
                   label={t("linerName")}
                   value={loadList.linerName}
                   emptyLabel={noValue}
                 />
-                <LoadListDetailField
+                <DocumentDetailField
                   label={t("estimatedArrival")}
                   value={formatDate(loadList.estimatedArrivalDate)}
                   emptyLabel={noValue}
                   numeric
                 />
-                <LoadListDetailField
+                <DocumentDetailField
                   label={t("actualArrival")}
                   value={formatDate(loadList.actualArrivalDate)}
                   emptyLabel={t("notArrivedYet")}
                   numeric
                 />
               </dl>
-            </LoadListSection>
+            </DocumentSection>
           ) : null}
 
           <section aria-labelledby="load-list-items" className="border-t px-5 pb-2 pt-6 sm:px-7">
@@ -303,19 +307,22 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
             {/* Receipt columns add width, so phones scroll the table instead of squeezing it. */}
             <div className="mt-2 overflow-x-auto">
               <div className="min-w-[44rem]">
-                <LoadListLinesTable
+                <DocumentLinesTable
                   rows={loadList.items.map((item) => ({
                     key: item.id,
                     itemCode: item.item?.code ?? "",
                     itemName: item.item?.name ?? "",
                     unitLabel: item.unitName,
+                    uomCode: item.itemUnitOption?.uomCode || item.uomCode || "",
                     qtyPerUnit: item.qtyPerUnit,
-                    loadListQty: item.loadListQty,
+                    quantity: item.loadListQty,
                     unitPrice: item.unitPrice,
                     lineTotal: item.totalPrice,
-                    receivedQty: item.receivedQty,
-                    damagedQty: item.damagedQty,
-                    shortageQty: item.shortageQty,
+                    tracking: {
+                      receivedQty: item.receivedQty,
+                      damagedQty: item.damagedQty,
+                      shortageQty: item.shortageQty,
+                    },
                   }))}
                   columns={columns}
                   currency={currency}
@@ -327,7 +334,7 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
             </div>
           </section>
 
-          <LoadListSection id="load-list-notes" title={t("notesTitle")}>
+          <DocumentSection id="load-list-notes" title={t("notesTitle")}>
             <p
               className={
                 loadList.notes
@@ -337,10 +344,10 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
             >
               {loadList.notes || noValue}
             </p>
-          </LoadListSection>
+          </DocumentSection>
         </div>
 
-        <LoadListSummaryPanel
+        <DocumentSummaryPanel
           title={t("summaryTitle")}
           rows={[
             { key: "status", label: t("summaryStatus"), value: statusText },
@@ -373,7 +380,7 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
           totalLabel={t("total")}
           total={
             canViewTotalAmount && loadList.totalAmount != null
-              ? formatLoadListAmount(loadList.totalAmount, currency, locale)
+              ? formatDocumentAmount(loadList.totalAmount, currency, locale)
               : null
           }
           actions={
@@ -415,10 +422,10 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
             ) : null
           }
           footer={recordLines.map((record) => {
-            const name = formatPerson(record.person);
+            const name = formatDocumentPerson(record.person);
             return name && record.date ? (
               <p key={record.key}>
-                {t(record.label, { name, date: formatLoadListDate(record.date, locale) })}
+                {t(record.label, { name, date: formatDocumentDate(record.date, locale) })}
               </p>
             ) : null;
           })}

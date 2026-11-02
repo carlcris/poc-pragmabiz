@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type LoadListDetailFieldProps = {
+type DocumentDetailFieldProps = {
   label: string;
   value: ReactNode;
   hint?: ReactNode;
@@ -9,13 +9,13 @@ type LoadListDetailFieldProps = {
   numeric?: boolean;
 };
 
-export function LoadListDetailField({
+export function DocumentDetailField({
   label,
   value,
   hint,
   emptyLabel,
   numeric = false,
-}: LoadListDetailFieldProps) {
+}: DocumentDetailFieldProps) {
   const isEmpty = value == null || value === "";
 
   return (

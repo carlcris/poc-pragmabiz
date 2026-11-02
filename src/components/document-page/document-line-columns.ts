@@ -1,18 +1,24 @@
 import type { CSSProperties } from "react";
 
-export type LoadListLineColumn =
+// Quantities that track a saved document's progress after it leaves draft.
+export type DocumentTrackingColumn =
+  | "receivedQty"
+  | "damagedQty"
+  | "shortageQty"
+  | "fulfilledQty"
+  | "outstandingQty";
+
+export type DocumentLineColumn =
   | "item"
   | "unit"
   | "qty"
   | "totalQty"
-  | "receivedQty"
-  | "damagedQty"
-  | "shortageQty"
+  | DocumentTrackingColumn
   | "unitCost"
   | "lineTotal"
   | "action";
 
-const LINE_COLUMN_WEIGHTS: Record<LoadListLineColumn, number> = {
+const LINE_COLUMN_WEIGHTS: Record<DocumentLineColumn, number> = {
   item: 33,
   unit: 15,
   qty: 9,
@@ -20,46 +26,48 @@ const LINE_COLUMN_WEIGHTS: Record<LoadListLineColumn, number> = {
   receivedQty: 9,
   damagedQty: 9,
   shortageQty: 9,
+  fulfilledQty: 10,
+  outstandingQty: 11,
   unitCost: 13,
   lineTotal: 11,
   action: 9,
 };
 
-type LoadListLineColumnOptions = {
-  showReceipt: boolean;
+type DocumentLineColumnOptions = {
+  trackingColumns: readonly DocumentTrackingColumn[];
   showUnitCost: boolean;
   showLineTotal: boolean;
   showAction: boolean;
 };
 
-export const getLoadListLineColumns = ({
-  showReceipt,
+export const getDocumentLineColumns = ({
+  trackingColumns,
   showUnitCost,
   showLineTotal,
   showAction,
-}: LoadListLineColumnOptions): LoadListLineColumn[] => [
+}: DocumentLineColumnOptions): DocumentLineColumn[] => [
   "item",
   "unit",
   "qty",
   "totalQty",
-  ...(showReceipt ? (["receivedQty", "damagedQty", "shortageQty"] as const) : []),
+  ...trackingColumns,
   ...(showUnitCost ? (["unitCost"] as const) : []),
   ...(showLineTotal ? (["lineTotal"] as const) : []),
   ...(showAction ? (["action"] as const) : []),
 ];
 
-export const getLoadListLineColumnWidth = (
-  columns: LoadListLineColumn[],
-  column: LoadListLineColumn
+export const getDocumentLineColumnWidth = (
+  columns: DocumentLineColumn[],
+  column: DocumentLineColumn
 ) => {
   const totalWeight = columns.reduce((sum, current) => sum + LINE_COLUMN_WEIGHTS[current], 0);
   return `${(LINE_COLUMN_WEIGHTS[column] / totalWeight) * 100}%`;
 };
 
 // The New item grid and the lines table share these tracks so entry fields sit over their columns.
-export const getLoadListLineGridStyle = (columns: LoadListLineColumn[]) =>
+export const getDocumentLineGridStyle = (columns: DocumentLineColumn[]) =>
   ({
-    "--load-list-line-columns": columns
+    "--document-line-columns": columns
       .map((column) => `minmax(0, ${LINE_COLUMN_WEIGHTS[column]}fr)`)
       .join(" "),
   }) as CSSProperties;

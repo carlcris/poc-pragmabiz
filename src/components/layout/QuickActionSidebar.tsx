@@ -41,7 +41,8 @@ const quickActions: QuickAction[] = [
   },
   {
     labelKey: "newStockRequisition",
-    href: "/purchasing/stock-requisitions?create=1",
+    href: "/purchasing/stock-requisitions/new",
+    activePath: "/purchasing/stock-requisitions/new",
     icon: ClipboardPlus,
     resource: RESOURCES.STOCK_REQUISITIONS,
   },

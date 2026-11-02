@@ -235,6 +235,12 @@ async function GETHandler(request: NextRequest) {
         baseUom?.symbol ||
         baseUom?.code ||
         "";
+      const alertRequisitionUomCode =
+        policyUnitOption?.uomCode ||
+        policyUom?.code ||
+        requisitionUnitOption?.uomCode ||
+        baseUom?.code ||
+        "";
       const alertRequisitionItemUnitOptionId =
         policyDetails?.item_unit_option_id || requisitionUnitOption?.id || "";
       const alertRequisitionQtyPerUnit = policyDetails
@@ -274,6 +280,7 @@ async function GETHandler(request: NextRequest) {
         warehouseName: null,
         requisitionUomId: alertRequisitionUomId,
         requisitionUomLabel: alertRequisitionUomLabel,
+        requisitionUomCode: alertRequisitionUomCode,
         requisitionItemUnitOptionId: alertRequisitionItemUnitOptionId,
         requisitionQtyPerUnit: alertRequisitionQtyPerUnit,
         requisitionUnitPrice,

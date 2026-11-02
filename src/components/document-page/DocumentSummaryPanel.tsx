@@ -1,22 +1,22 @@
 import type { ReactNode } from "react";
 
-export type LoadListSummaryRow = {
+export type DocumentSummaryRow = {
   key: string;
   label: string;
   value: ReactNode;
 };
 
-type LoadListSummaryPanelProps = {
+type DocumentSummaryPanelProps = {
   title: string;
   headerAside?: ReactNode;
-  rows: LoadListSummaryRow[];
+  rows: DocumentSummaryRow[];
   totalLabel: string;
   total: string | null;
   actions?: ReactNode;
   footer?: ReactNode;
 };
 
-export function LoadListSummaryPanel({
+export function DocumentSummaryPanel({
   title,
   headerAside,
   rows,
@@ -24,7 +24,7 @@ export function LoadListSummaryPanel({
   total,
   actions,
   footer,
-}: LoadListSummaryPanelProps) {
+}: DocumentSummaryPanelProps) {
   return (
     <aside aria-label={title} className="w-full lg:sticky lg:top-6 lg:w-80 lg:shrink-0">
       <div className="space-y-5 rounded-xl border bg-card p-5">

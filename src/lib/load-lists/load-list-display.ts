@@ -33,29 +33,3 @@ const RECEIPT_TRACKING_STATUSES: readonly LoadListStatus[] = [
 
 export const showsLoadListReceiptQuantities = (status: LoadListStatus) =>
   RECEIPT_TRACKING_STATUSES.includes(status);
-
-export const formatLoadListAmount = (amount: number, currencyCode: string, locale: string) => {
-  try {
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: currencyCode,
-      currencyDisplay: "narrowSymbol",
-    }).format(amount);
-  } catch {
-    return `${currencyCode} ${amount.toLocaleString(locale, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
-  }
-};
-
-export const getLoadListCurrencySymbol = (currencyCode: string, locale: string) =>
-  formatLoadListAmount(0, currencyCode, locale).replace(/[\d\s.,]/g, "") || currencyCode;
-
-export const formatLoadListQuantity = (value: number, locale: string) =>
-  value.toLocaleString(locale, { maximumFractionDigits: 4 });
-
-export const formatLoadListDate = (value: string, locale: string) =>
-  new Intl.DateTimeFormat(locale, { year: "numeric", month: "short", day: "2-digit" }).format(
-    new Date(value)
-  );

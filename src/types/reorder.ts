@@ -91,6 +91,7 @@ export interface ReorderAlert {
   warehouseBreakdown: unknown;
   requisitionUomId: string;
   requisitionUomLabel: string;
+  requisitionUomCode: string;
   requisitionItemUnitOptionId: string;
   requisitionQtyPerUnit: number;
   requisitionUnitPrice: number;

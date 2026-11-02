@@ -6,6 +6,7 @@
  * 2. Add Gmail credentials to your .env file:
  *    - GMAIL_USER: Your Gmail address
  *    - GMAIL_APP_PASSWORD: Your Gmail App Password (not your regular password)
+ *    - EMAIL_ENABLED: Set to false to disable all application email delivery
  * 3. To get an App Password:
  *    - Go to https://myaccount.google.com/apppasswords
  *    - Select "Mail" and your device
@@ -20,6 +21,8 @@ const GMAIL_USER = process.env.GMAIL_USER || "";
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD || "";
 const COMPANY_NAME = process.env.COMPANY_NAME || "Your Company";
 
+export const isEmailEnabled = () => process.env.EMAIL_ENABLED !== "false";
+
 // Logo path
 const LOGO_PATH = path.join(process.cwd(), "public", "achlers_circle.png");
 
@@ -32,7 +35,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export interface StockRequisitionEmailData {
+export type StockRequisitionEmailData = {
   language?: "english" | "chinese";
   srNumber: string;
   supplierName: string;
@@ -50,7 +53,7 @@ export interface StockRequisitionEmailData {
   notes?: string;
   createdBy: string;
   businessUnit?: string;
-}
+};
 
 const emailTextByLanguage = {
   english: {
@@ -109,6 +112,8 @@ const emailTextByLanguage = {
  * Send stock requisition email to supplier
  */
 export async function sendStockRequisitionEmail(data: StockRequisitionEmailData) {
+  if (!isEmailEnabled()) return { success: false, skipped: true };
+
   try {
     const language = data.language === "chinese" ? "chinese" : "english";
     const t = emailTextByLanguage[language];
@@ -309,6 +314,8 @@ export async function sendStockRequisitionEmail(data: StockRequisitionEmailData)
  * Send test email (for debugging)
  */
 export async function sendTestEmail(to: string) {
+  if (!isEmailEnabled()) return { success: false, skipped: true };
+
   try {
     const htmlContent = `
 <!DOCTYPE html>

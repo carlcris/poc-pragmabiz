@@ -25,17 +25,17 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useItem, useItems } from "@/hooks/useItems";
 import { cn } from "@/lib/utils";
 import {
-  formatLoadListAmount,
-  formatLoadListQuantity,
-  getLoadListCurrencySymbol,
-} from "@/lib/load-lists/load-list-display";
-import { isValidLoadListQuantity } from "@/lib/validations/load-list";
+  formatDocumentAmount,
+  formatDocumentQuantity,
+  getDocumentCurrencySymbol,
+} from "@/lib/documents/document-display";
+import { isValidDocumentLineQuantity } from "@/lib/validations/document-line";
+import type { DocumentFormLine } from "@/types/document-line";
 import type { Item } from "@/types/item";
-import type { LoadListFormLine } from "@/types/load-list";
-import { getLoadListLineGridStyle, type LoadListLineColumn } from "./load-list-line-columns";
+import { getDocumentLineGridStyle, type DocumentLineColumn } from "./document-line-columns";
 
 // Narrow projection shared by the item list and item-with-stock response shapes.
-type LoadListItemOption = Pick<
+type DocumentItemOption = Pick<
   Item,
   | "id"
   | "code"
@@ -54,17 +54,21 @@ type LineEntryError = {
   message: string;
 };
 
-type LoadListLineEntryProps = {
-  columns: LoadListLineColumn[];
-  canViewUnitPrice: boolean;
+type DocumentLineEntryProps = {
+  columns: DocumentLineColumn[];
+  canViewUnitCost: boolean;
+  /** Currency every line must share; null when the document has no lines or hides costs. */
   lockedCurrency: string | null;
+  mixedCurrencyMessage: string;
+  /** Items already on the document; when given, adding one of them again is rejected. */
+  existingItemIds?: ReadonlySet<string>;
   itemTriggerRef: RefObject<HTMLButtonElement | null>;
   linesError: string | null;
-  onAdd: (line: LoadListFormLine) => void;
+  onAdd: (line: DocumentFormLine) => void;
   onEntryChange: (hasPendingEntry: boolean) => void;
 };
 
-const getDefaultUnitCost = (item?: LoadListItemOption | null) =>
+const getDefaultUnitCost = (item?: DocumentItemOption | null) =>
   item?.importCost ?? item?.purchasePrice ?? item?.listPrice ?? 0;
 
 const normalizeCurrencyCode = (value?: string | null) => {
@@ -73,23 +77,25 @@ const normalizeCurrencyCode = (value?: string | null) => {
   return /^[A-Z]{3}$/.test(normalized) ? normalized : null;
 };
 
-const getDefaultCostCurrency = (item: LoadListItemOption | null | undefined, fallback: string) =>
+const getDefaultCostCurrency = (item: DocumentItemOption | null | undefined, fallback: string) =>
   item?.importCost != null ? (normalizeCurrencyCode(item.importCurrency) ?? fallback) : fallback;
 
 const cellClassName = "min-w-0 lg:px-2 lg:first:pl-0 lg:last:pr-0";
 const labelClassName = "mb-1.5 block text-sm font-medium";
 const derivedValueClassName = "flex h-10 items-center justify-end text-sm tabular-nums";
 
-export function LoadListLineEntry({
+export function DocumentLineEntry({
   columns,
-  canViewUnitPrice,
+  canViewUnitCost,
   lockedCurrency,
+  mixedCurrencyMessage,
+  existingItemIds,
   itemTriggerRef,
   linesError,
   onAdd,
   onEntryChange,
-}: LoadListLineEntryProps) {
-  const t = useTranslations("loadListPage");
+}: DocumentLineEntryProps) {
+  const t = useTranslations("documentLines");
   const locale = useLocale();
   const fieldId = useId();
   const { currentCurrency } = useCurrency();
@@ -98,7 +104,7 @@ export function LoadListLineEntry({
   const quantityRef = useRef<HTMLInputElement>(null);
   const unitCostRef = useRef<HTMLInputElement>(null);
 
-  const [selectedItem, setSelectedItem] = useState<LoadListItemOption | null>(null);
+  const [selectedItem, setSelectedItem] = useState<DocumentItemOption | null>(null);
   const [selectedUnitOptionId, setSelectedUnitOptionId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unitCost, setUnitCost] = useState("");
@@ -117,7 +123,7 @@ export function LoadListLineEntry({
     limit: 5,
     enabled: isSearchingItems,
   });
-  const itemOptions = useMemo<LoadListItemOption[]>(
+  const itemOptions = useMemo<DocumentItemOption[]>(
     () =>
       ((isSearchingItems ? searchedItemsData?.data : preloadItemsData?.data) ?? []).filter(
         (item) => item.isActive
@@ -137,7 +143,7 @@ export function LoadListLineEntry({
     ? selectedUnitOption.optionLabel?.trim() || selectedUnitOption.uomName
     : "";
   const qtyPerUnit = selectedUnitOption?.qtyPerUnit ?? 1;
-  const parsedQuantity = isValidLoadListQuantity(quantity) ? Number(quantity) : 0;
+  const parsedQuantity = isValidDocumentLineQuantity(quantity) ? Number(quantity) : 0;
   const parsedUnitCost = Number.parseFloat(unitCost);
   const costCurrency = getDefaultCostCurrency(selectedItem, currentCurrency.code);
   const totalQty = parsedQuantity * qtyPerUnit;
@@ -191,16 +197,19 @@ export function LoadListLineEntry({
 
   const handleAdd = () => {
     if (!selectedItem) return showError("item", t("itemRequired"));
+    if (existingItemIds?.has(selectedItem.id)) {
+      return showError("item", t("duplicateItemNotAllowed", { code: selectedItem.code }));
+    }
     if (!selectedUnitOption) return showError("unit", t("unitRequired"));
-    if (!isValidLoadListQuantity(quantity)) return showError("quantity", t("quantityRequired"));
-    if (canViewUnitPrice && (!Number.isFinite(parsedUnitCost) || parsedUnitCost < 0)) {
+    if (!isValidDocumentLineQuantity(quantity)) return showError("quantity", t("quantityRequired"));
+    if (canViewUnitCost && (!Number.isFinite(parsedUnitCost) || parsedUnitCost < 0)) {
       return showError("unitCost", t("unitCostRequired"));
     }
     if (lockedCurrency && lockedCurrency !== costCurrency) {
-      return showError("item", t("mixedCurrencyNotAllowed"));
+      return showError("item", mixedCurrencyMessage);
     }
 
-    const unitPrice = canViewUnitPrice ? parsedUnitCost : Number(getDefaultUnitCost(selectedItem));
+    const unitPrice = canViewUnitCost ? parsedUnitCost : Number(getDefaultUnitCost(selectedItem));
     onAdd({
       key: crypto.randomUUID(),
       itemId: selectedItem.id,
@@ -209,8 +218,9 @@ export function LoadListLineEntry({
       itemUnitOptionId: selectedUnitOption.id,
       uomId: selectedUnitOption.uomId,
       unitLabel,
+      uomCode: selectedUnitOption.uomCode,
       qtyPerUnit,
-      loadListQty: Number(quantity),
+      quantity: Number(quantity),
       unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
       unitPriceCurrency: costCurrency,
     });
@@ -260,8 +270,8 @@ export function LoadListLineEntry({
       </div>
 
       <div
-        style={getLoadListLineGridStyle(columns)}
-        className="mt-4 grid grid-cols-2 items-start gap-x-3 gap-y-4 lg:grid-cols-[var(--load-list-line-columns)] lg:gap-x-0"
+        style={getDocumentLineGridStyle(columns)}
+        className="mt-4 grid grid-cols-2 items-start gap-x-3 gap-y-4 lg:grid-cols-[var(--document-line-columns)] lg:gap-x-0"
       >
         <div className={cn(cellClassName, "col-span-2 lg:col-span-1")}>
           <label htmlFor={`${fieldId}-item`} className={labelClassName}>
@@ -274,7 +284,14 @@ export function LoadListLineEntry({
               setSelectedItem(item);
               setSelectedUnitOptionId("");
               setUnitCost(item ? Number(getDefaultUnitCost(item)).toFixed(2) : "");
-              setEntryError(null);
+              setEntryError(
+                item && existingItemIds?.has(item.id)
+                  ? {
+                      field: "item",
+                      message: t("duplicateItemNotAllowed", { code: item.code }),
+                    }
+                  : null
+              );
             }}
             searchValue={itemSearch}
             onSearchValueChange={setItemSearch}
@@ -289,9 +306,9 @@ export function LoadListLineEntry({
                   <div className="font-semibold">{item.code}</div>
                   <div className="whitespace-normal text-sm text-muted-foreground">{item.name}</div>
                 </div>
-                {canViewUnitPrice ? (
+                {canViewUnitCost ? (
                   <div className="shrink-0 text-sm tabular-nums">
-                    {formatLoadListAmount(
+                    {formatDocumentAmount(
                       Number(getDefaultUnitCost(item)),
                       getDefaultCostCurrency(item, currentCurrency.code),
                       locale
@@ -346,8 +363,8 @@ export function LoadListLineEntry({
           {selectedUnitOption ? (
             <p className="mt-1.5 px-3 text-xs text-muted-foreground">
               {t("qtyPerUnit", {
-                qty: formatLoadListQuantity(qtyPerUnit, locale),
-                unit: unitLabel,
+                qty: formatDocumentQuantity(qtyPerUnit, locale),
+                unit: selectedUnitOption.uomCode || unitLabel,
               })}
             </p>
           ) : null}
@@ -377,7 +394,7 @@ export function LoadListLineEntry({
           <span className={cn(labelClassName, "lg:text-right")}>{t("totalQty")}</span>
           <div className={cn(derivedValueClassName, !parsedQuantity && "text-muted-foreground")}>
             {selectedUnitOption && parsedQuantity
-              ? formatLoadListQuantity(totalQty, locale)
+              ? formatDocumentQuantity(totalQty, locale)
               : t("noValue")}
           </div>
         </div>
@@ -389,7 +406,7 @@ export function LoadListLineEntry({
             </label>
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                {getLoadListCurrencySymbol(costCurrency, locale)}
+                {getDocumentCurrencySymbol(costCurrency, locale)}
               </span>
               <Input
                 ref={unitCostRef}
@@ -422,7 +439,7 @@ export function LoadListLineEntry({
                 !lineTotal && "text-muted-foreground"
               )}
             >
-              {formatLoadListAmount(lineTotal, costCurrency, locale)}
+              {formatDocumentAmount(lineTotal, costCurrency, locale)}
             </div>
           </div>
         ) : null}

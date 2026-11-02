@@ -1,8 +1,5 @@
 import { z } from "zod";
 
-export const isValidLoadListQuantity = (value: string) =>
-  /^\d*(\.\d{0,2})?$/.test(value) && Number.isFinite(Number(value)) && Number(value) > 0;
-
 export const createLoadListFormSchema = (
   t: (key: string) => string,
   isLoadDateInputInvalid: () => boolean

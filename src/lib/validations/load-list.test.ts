@@ -1,22 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { translations } from "@/lib/i18n/translations";
-import { createLoadListFormSchema, isValidLoadListQuantity } from "./load-list";
-
-describe("load list quantity validation", () => {
-  it.each(["1", "0.01", "1.23", ".5", "100.00", "1."])(
-    "accepts positive quantities with at most two decimal places: %s",
-    (quantity) => {
-      expect(isValidLoadListQuantity(quantity)).toBe(true);
-    }
-  );
-
-  it.each(["", "0", "-1", ".", "1.234", "0.001", "1e2", "NaN", "Infinity", "9".repeat(400)])(
-    "rejects missing, nonpositive, malformed, or overprecision quantities: %s",
-    (quantity) => {
-      expect(isValidLoadListQuantity(quantity)).toBe(false);
-    }
-  );
-});
+import { createLoadListFormSchema } from "./load-list";
 
 describe("load list date validation", () => {
   const values = {

@@ -265,7 +265,7 @@ The script rolls back all fixtures and changes. Focused API and dialog checks ar
 - The New Supplier form also requires a valid Email. Blank or malformed email values are rejected before submission.
 - **Important gap to test**: the required-field list above is enforced by the on-screen form, but if a request were made a different way (bypassing the form), most of those "required" fields aren't actually double-checked — meaning it may be possible to end up with a supplier missing a contact person or address if something submits data outside the normal screen. Worth flagging if you find a way to reproduce this (e.g. via an import tool, if one exists).
 
-**Why the supplier's email and language matter**: when a Stock Requisition (section 17b) is sent, the app emails that supplier the itemized request, using whichever language is set on the supplier record.
+**Why the supplier's email and language matter**: when a Stock Requisition (section 17b) is sent and application email delivery is enabled, the app emails that supplier the itemized request, using whichever language is set on the supplier record. The server environment variable `EMAIL_ENABLED=false` disables all application email delivery while allowing requisition submission.
 
 **Bypass-only checks (not New Supplier form tests)**:
 
@@ -971,14 +971,16 @@ For each line, choose either **Existing Batch** or **Create New Batch**. Creatin
 **What it's for**: a purchasing-side request to source specific items — the internal ask that eventually gets fulfilled by a supplier shipment (Load List). Not to be confused with "Stock Requests" (section 12), which is a warehouse-to-warehouse transfer.
 
 **How a record starts**: click **New** on the Stock Requisitions list, or use **New stock
-requisition** from the desktop quick-action rail. Both paths open the same creation form.
+requisition** from the desktop quick-action rail. Both paths open the same full-page creation
+form at `/purchasing/stock-requisitions/new`. Opening a requisition shows its view page; **Edit**
+(drafts only) opens the same layout as an edit page.
 
 **Stages**: Draft → Submitted → Partially Fulfilled → Fulfilled, or Cancelled.
 
 **Step-by-step workflow**:
 
 1. **Create** → status Draft.
-2. **Send** → status Submitted. This actually emails the supplier the itemized request, in the supplier's preferred language.
+2. **Send** → status Submitted. When application email delivery is enabled, this emails the supplier the itemized request in the supplier's preferred language. With `EMAIL_ENABLED=false`, submission succeeds without sending email.
 3. Partially Fulfilled and Fulfilled are set automatically as Load Lists get linked against this requisition (section 17, step 3) — not by any button on the requisition itself.
 4. **Cancel** — allowed any time except once already Fulfilled or Cancelled.
 
@@ -986,9 +988,12 @@ requisition** from the desktop quick-action rail. Both paths open the same creat
 
 **Things to test**:
 
-- Send a requisition and verify the supplier actually receives an email with the correct line items, in the expected language.
+- With `EMAIL_ENABLED=true` or unset, send a requisition and verify the supplier receives an email with the correct line items, in the expected language.
+- Set `EMAIL_ENABLED=false` and restart the server. Send a requisition and confirm it becomes Submitted without sending supplier email. Confirm test emails are also suppressed. Re-enable delivery only in an environment intended to send mail.
 - Link a Load List that only partially covers the requisitioned quantity and confirm it becomes Partially Fulfilled, not Fulfilled.
 - Try to cancel a Fulfilled requisition — should be refused.
+- In the New item row, press Enter in Qty or Unit Cost and confirm the line is added; press Esc and confirm the row clears. Pick an item that is already listed and confirm it is refused with an inline message.
+- Open `/purchasing/stock-requisitions/<id>/edit` for a Submitted requisition and confirm the page says it can't be edited and links back to the view page.
 
 ---
 
@@ -1073,7 +1078,7 @@ A rule ties one item to one warehouse with a reorder point, a min/max quantity, 
 When an item/warehouse with a rule drops below its reorder point, an alert appears here automatically. This tab is fully functional:
 
 - **Acknowledge** — dismisses an active alert (moves it to the "acknowledged" list). **Unacknowledge** reverses this.
-- **Create Stock Requisition** — select one or more alerts with the checkboxes, then click this button. It opens the Stock Requisition form pre-filled with a line per selected item, using the rule's reorder quantity (or a calculated fallback if that's zero) as the requested quantity. This is the real, working path from "stock is low" to "an order request exists" — use this, not the Suggestions tab, for that flow.
+- **Create Stock Requisition** — select one or more alerts with the checkboxes, then click this button. It opens the New stock requisition page pre-filled with a line per selected item, using the rule's reorder quantity (or a calculated fallback if that's zero) as the requested quantity. This is the real, working path from "stock is low" to "an order request exists" — use this, not the Suggestions tab, for that flow.
 
 ### Suggestions tab — **unimplemented; do not test as a workflow**
 
@@ -1086,7 +1091,7 @@ The Suggestions endpoint currently returns an empty list unconditionally, so sto
 - Create a rule for an item/warehouse, drop that item's stock below the reorder point (via a Stock Adjustment, for example), and confirm an alert appears on the Alerts tab.
 - Try to create a second rule for the same item + warehouse — should be refused.
 - Acknowledge an alert, confirm it moves to the acknowledged list, then unacknowledge it and confirm it reappears as active.
-- Select one or more active alerts and click Create Stock Requisition — confirm the requisition form opens pre-filled with the correct item(s) and a sensible quantity, and that submitting it creates a real requisition.
+- Select one or more active alerts and click Create Stock Requisition — confirm the new requisition page opens pre-filled with the correct item(s) and a sensible quantity, and that submitting it creates a real requisition.
 
 ---
 

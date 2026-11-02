@@ -9,11 +9,12 @@ import { customersApi } from "@/lib/api/customers";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
 import { itemsApi } from "@/lib/api/items";
 import { loadListsApi } from "@/lib/api/load-lists";
+import { stockRequisitionsApi } from "@/lib/api/stock-requisitions";
 import { suppliersApi } from "@/lib/api/suppliers";
 import { transformationOrdersApi } from "@/lib/api/transformation-orders";
 import { transformationOrderIdSchema } from "@/lib/validations/transformation-order";
 import { DELIVERY_NOTES_QUERY_KEY } from "@/hooks/useDeliveryNotes";
-import { LOAD_LISTS_QUERY_KEY } from "@/hooks/queryKeys";
+import { LOAD_LISTS_QUERY_KEY, STOCK_REQUISITIONS_QUERY_KEY } from "@/hooks/queryKeys";
 import { useQuotation } from "@/hooks/useQuotations";
 import { TRANSFORMATION_ORDERS_QUERY_KEY } from "@/hooks/useTransformationOrders";
 
@@ -34,6 +35,15 @@ const fetchFrameJobOrderBreadcrumb = async (
   return response.json() as Promise<FrameJobOrderBreadcrumbResponse>;
 };
 
+const PURCHASING_DOCUMENT_ROUTES = [
+  { segment: "load-lists", listLabelKey: "Load Lists", detailLabelKey: "Load List Details" },
+  {
+    segment: "stock-requisitions",
+    listLabelKey: "Stock Requisitions",
+    detailLabelKey: "Stock Requisition Details",
+  },
+] as const;
+
 export function Breadcrumb() {
   const t = useTranslations("navigation");
   const tCommon = useTranslations("common");
@@ -52,12 +62,16 @@ export function Breadcrumb() {
   const isItemCreate = pathname === "/inventory/items/create";
   const isQuotationCreate = pathname === "/sales/quotations/create";
   const isSalesOrderCreate = pathname === "/sales/orders/create";
-  const isLoadListPage =
-    pathSegments[0] === "purchasing" &&
-    pathSegments[1] === "load-lists" &&
-    pathSegments.length >= 3;
-  const isLoadListCreate = isLoadListPage && pathSegments[2] === "new";
-  const isLoadListEdit = isLoadListPage && pathSegments.length === 4 && lastSegment === "edit";
+  // Full-page purchasing documents: /purchasing/<segment>/new, /<id>, and /<id>/edit.
+  const purchasingDocument =
+    pathSegments[0] === "purchasing" && pathSegments.length >= 3
+      ? PURCHASING_DOCUMENT_ROUTES.find((route) => route.segment === pathSegments[1])
+      : undefined;
+  const isPurchasingDocumentCreate = !!purchasingDocument && pathSegments[2] === "new";
+  const isPurchasingDocumentEdit =
+    !!purchasingDocument && pathSegments.length === 4 && lastSegment === "edit";
+  const purchasingDocumentId =
+    purchasingDocument && !isPurchasingDocumentCreate ? pathSegments[2] : "";
   const isQuotationEdit =
     pathSegments[0] === "sales" &&
     pathSegments[1] === "quotations" &&
@@ -100,7 +114,9 @@ export function Breadcrumb() {
   const frameJobOrderId = isFrameJobOrderDetail ? lastSegment : "";
   const transformationOrderId = isTransformationOrderDetail ? lastSegment : "";
   const quotationId = isQuotationEdit ? pathSegments[2] : "";
-  const loadListId = isLoadListPage && !isLoadListCreate ? pathSegments[2] : "";
+  const loadListId = purchasingDocument?.segment === "load-lists" ? purchasingDocumentId : "";
+  const stockRequisitionId =
+    purchasingDocument?.segment === "stock-requisitions" ? purchasingDocumentId : "";
   const adminSettingsLabelMap: Record<string, string> = {
     settings: tAdminSettingsIndex("title"),
     company: tAdminSettingsPages("companyTitle"),
@@ -166,12 +182,20 @@ export function Breadcrumb() {
 
   const { data: quotation, isLoading: isQuotationLoading } = useQuotation(quotationId);
 
-  // Shares the page's cache entry, so the LL number costs no extra request.
+  // These share the page's cache entries, so the document number costs no extra request.
   const { data: loadList, isLoading: isLoadListLoading } = useQuery({
     queryKey: [LOAD_LISTS_QUERY_KEY, loadListId],
     queryFn: () => loadListsApi.getLoadList(loadListId),
     enabled: !!loadListId,
   });
+
+  const { data: stockRequisition, isLoading: isStockRequisitionLoading } = useQuery({
+    queryKey: [STOCK_REQUISITIONS_QUERY_KEY, stockRequisitionId],
+    queryFn: () => stockRequisitionsApi.getStockRequisition(stockRequisitionId),
+    enabled: !!stockRequisitionId,
+  });
+  const purchasingDocumentNumber = loadListId ? loadList?.llNumber : stockRequisition?.srNumber;
+  const isPurchasingDocumentLoading = loadListId ? isLoadListLoading : isStockRequisitionLoading;
 
   const { data: frameJobOrderResponse, isLoading: isFrameJobOrderLoading } = useQuery({
     queryKey: ["frame-job-order", frameJobOrderId],
@@ -287,7 +311,8 @@ export function Breadcrumb() {
     );
   }
 
-  if (isLoadListPage) {
+  if (purchasingDocument) {
+    const documentListHref = `/purchasing/${purchasingDocument.segment}`;
     return (
       <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
         <Link
@@ -298,36 +323,38 @@ export function Breadcrumb() {
         </Link>
         <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
         <Link
-          href="/purchasing/load-lists"
+          href={documentListHref}
           className="flex items-center font-medium transition-colors hover:text-foreground"
         >
-          {t("Load Lists")}
+          {t(purchasingDocument.listLabelKey)}
         </Link>
         <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
-        {isLoadListCreate ? (
+        {isPurchasingDocumentCreate ? (
           <span className="font-medium text-foreground">{tCommon("new")}</span>
-        ) : loadList?.llNumber ? (
-          isLoadListEdit ? (
+        ) : purchasingDocumentNumber ? (
+          isPurchasingDocumentEdit ? (
             <>
               <Link
-                href={`/purchasing/load-lists/${loadListId}`}
+                href={`${documentListHref}/${purchasingDocumentId}`}
                 className="flex items-center font-medium transition-colors hover:text-foreground"
               >
-                {loadList.llNumber}
+                {purchasingDocumentNumber}
               </Link>
               <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="font-medium text-foreground">{tCommon("edit")}</span>
             </>
           ) : (
-            <span className="font-medium text-foreground">{loadList.llNumber}</span>
+            <span className="font-medium text-foreground">{purchasingDocumentNumber}</span>
           )
-        ) : isLoadListLoading ? (
+        ) : isPurchasingDocumentLoading ? (
           <span
             aria-label={tCommon("loading")}
             className="h-4 w-40 animate-pulse rounded bg-muted"
           />
         ) : (
-          <span className="font-medium text-foreground">{t("Load List Details")}</span>
+          <span className="font-medium text-foreground">
+            {t(purchasingDocument.detailLabelKey)}
+          </span>
         )}
       </nav>
     );

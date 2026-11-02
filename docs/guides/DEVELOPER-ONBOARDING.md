@@ -109,7 +109,16 @@ Add the following (use values from `supabase start` output):
 NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key-from-supabase-start>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key-from-supabase-start>
+# Disable application email delivery during local development
+EMAIL_ENABLED=false
 ```
+
+`EMAIL_ENABLED=false` disables all email sent through the application's shared email utility,
+including supplier stock requisitions and test emails. Stock requisitions can still be submitted;
+email preparation and delivery are skipped. Set `EMAIL_ENABLED=true` or leave it unset to enable
+delivery using `GMAIL_USER` and `GMAIL_APP_PASSWORD`. Restart the server after changing local
+environment variables, or redeploy after changing hosted environment variables. This setting does
+not control emails managed separately by Supabase Auth.
 
 ### 7. Start the Development Server
 
