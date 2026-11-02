@@ -352,7 +352,6 @@ async function POSTHandler(request: NextRequest) {
       throw error;
     }
 
-    const estimatedArrivalDate = normalizeOptionalDate(body.estimatedArrivalDate);
     const loadDate = normalizeOptionalDate(body.loadDate);
 
     const rpcItems = resolvedLineItems.map((item) => ({
@@ -373,8 +372,9 @@ async function POSTHandler(request: NextRequest) {
       p_container_number: body.containerNumber ?? null,
       p_seal_number: body.sealNumber ?? null,
       p_batch_number: body.batchNumber ?? null,
-      p_liner_name: body.linerName ?? null,
-      p_estimated_arrival_date: estimatedArrivalDate,
+      // Liner and ETA are captured when the load list is marked in transit.
+      p_liner_name: null,
+      p_estimated_arrival_date: null,
       p_load_date: loadDate,
       p_currency: currency,
       p_notes: body.notes ?? null,

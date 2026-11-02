@@ -523,16 +523,16 @@ WHERE id = 'your-dr-item-id';
 - ✅ Pagination support
 - ✅ View/Edit/Delete actions (status-dependent)
 
-**Form Dialog:** `src/components/load-lists/LoadListFormDialog.tsx`
+**Create/Edit Pages:** `src/app/(dashboard)/purchasing/load-lists/new/page.tsx` and `src/app/(dashboard)/purchasing/load-lists/[id]/edit/page.tsx` (both render `src/components/load-lists/LoadListEditor.tsx`)
 
-- ✅ Supplier and warehouse selection
-- ✅ Shipping details (container number, seal number, supplier LL number)
-- ✅ Load date and estimated arrival date
-- ✅ Dynamic line items with quantity and price
+- ✅ Supplier and destination business unit selection (destination locked when editing)
+- ✅ Shipping details (container number, seal number, batch number, supplier LL number)
+- ✅ Load date (liner and estimated arrival are captured by Mark In Transit)
+- ✅ New item row aligned to the items table; Enter adds a line
 - ✅ Auto-calculated totals
 - ✅ Form validation
 
-**Detail Page:** `src/app/(dashboard)/purchasing/load-lists/[id]/page.tsx`
+**Detail Page:** `src/app/(dashboard)/purchasing/load-lists/[id]/page.tsx` (renders `src/components/load-lists/LoadListDetails.tsx`)
 
 - ✅ Complete LL header with shipment details
 - ✅ Warehouse and supplier information

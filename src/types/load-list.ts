@@ -119,8 +119,6 @@ export type CreateLoadListRequest = {
   containerNumber?: string;
   sealNumber?: string;
   batchNumber?: string;
-  linerName?: string;
-  estimatedArrivalDate?: string;
   loadDate?: string;
   currency?: string | null;
   notes?: string;
@@ -231,4 +229,20 @@ export type EligibleLoadListRequisitionItemsResponse = {
     limit: number;
     totalPages: number;
   };
+};
+
+export type LoadListFormLine = {
+  key: string;
+  loadListItemId?: string;
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  itemUnitOptionId: string;
+  uomId: string;
+  unitLabel: string;
+  qtyPerUnit: number;
+  loadListQty: number;
+  unitPrice: number;
+  unitPriceCurrency: string | null;
+  notes?: string;
 };

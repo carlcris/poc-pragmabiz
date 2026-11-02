@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
 import {
   Plus,
@@ -61,11 +60,6 @@ import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import type { LoadList, LoadListStatus } from "@/types/load-list";
 
-const LoadListFormDialog = dynamic(
-  () => import("@/components/load-lists/LoadListFormDialog").then((mod) => mod.LoadListFormDialog),
-  { ssr: false }
-);
-
 const formatLoadListCurrency = (amount: number, currencyCode: string, locale: string) => {
   try {
     return new Intl.NumberFormat(locale, {
@@ -89,8 +83,6 @@ export default function LoadListsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedLL, setSelectedLL] = useState<LoadList | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
   const [destinationBusinessUnitFilter, setDestinationBusinessUnitFilter] = useState("");
@@ -164,13 +156,11 @@ export default function LoadListsPage() {
   };
 
   const handleCreateLL = () => {
-    setSelectedLL(null);
-    setDialogOpen(true);
+    router.push("/purchasing/load-lists/new");
   };
 
   const handleEditLL = (ll: LoadList) => {
-    setSelectedLL(ll);
-    setDialogOpen(true);
+    router.push(`/purchasing/load-lists/${ll.id}/edit`);
   };
 
   const handleViewLL = (ll: LoadList) => {
@@ -628,10 +618,6 @@ export default function LoadListsPage() {
           </>
         )}
       </div>
-
-      {dialogOpen && (
-        <LoadListFormDialog open={dialogOpen} onOpenChange={setDialogOpen} loadList={selectedLL} />
-      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

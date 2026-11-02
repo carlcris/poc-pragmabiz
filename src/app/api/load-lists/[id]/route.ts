@@ -301,7 +301,7 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
     // Check if load list exists
     const { data: existingLL, error: fetchError } = await supabase
       .from("load_lists")
-      .select("id, status, currency")
+      .select("id, status, currency, liner_name, estimated_arrival_date")
       .eq("id", id)
       .eq("company_id", companyId)
       .eq("business_unit_id", currentBusinessUnitId)
@@ -351,7 +351,6 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
       throw error;
     }
 
-    const estimatedArrivalDate = normalizeOptionalDate(body.estimatedArrivalDate);
     const loadDate = normalizeOptionalDate(body.loadDate);
 
     const rpcItems = resolvedLineItems.map((item) => ({
@@ -372,8 +371,9 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
       p_container_number: body.containerNumber ?? null,
       p_seal_number: body.sealNumber ?? null,
       p_batch_number: body.batchNumber ?? null,
-      p_liner_name: body.linerName ?? null,
-      p_estimated_arrival_date: estimatedArrivalDate,
+      // Liner and ETA belong to the in-transit transition; edits keep the stored values.
+      p_liner_name: existingLL.liner_name,
+      p_estimated_arrival_date: existingLL.estimated_arrival_date,
       p_load_date: loadDate,
       p_currency: currency,
       p_notes: body.notes ?? null,

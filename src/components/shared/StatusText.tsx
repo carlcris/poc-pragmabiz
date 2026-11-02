@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-type StatusTextTone =
+export type StatusTextTone =
   | "muted"
   | "blue"
   | "green"

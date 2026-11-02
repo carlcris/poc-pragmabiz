@@ -33,6 +33,9 @@ type AsyncSearchComboboxProps<T> = {
   disabled?: boolean;
   buttonClassName?: string;
   triggerRef?: Ref<HTMLButtonElement>;
+  triggerId?: string;
+  invalid?: boolean;
+  describedBy?: string;
   popoverClassName?: string;
 };
 
@@ -55,6 +58,9 @@ export function AsyncSearchCombobox<T>({
   disabled = false,
   buttonClassName,
   triggerRef,
+  triggerId,
+  invalid,
+  describedBy,
   popoverClassName,
 }: AsyncSearchComboboxProps<T>) {
   const [open, setOpen] = useState(false);
@@ -110,9 +116,12 @@ export function AsyncSearchCombobox<T>({
       <PopoverTrigger asChild>
         <Button
           ref={triggerRef}
+          id={triggerId}
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          aria-invalid={invalid}
+          aria-describedby={describedBy}
           disabled={disabled}
           className={cn(
             "w-full justify-between",

@@ -8,10 +8,12 @@ import { ChevronRight } from "lucide-react";
 import { customersApi } from "@/lib/api/customers";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
 import { itemsApi } from "@/lib/api/items";
+import { loadListsApi } from "@/lib/api/load-lists";
 import { suppliersApi } from "@/lib/api/suppliers";
 import { transformationOrdersApi } from "@/lib/api/transformation-orders";
 import { transformationOrderIdSchema } from "@/lib/validations/transformation-order";
 import { DELIVERY_NOTES_QUERY_KEY } from "@/hooks/useDeliveryNotes";
+import { LOAD_LISTS_QUERY_KEY } from "@/hooks/queryKeys";
 import { useQuotation } from "@/hooks/useQuotations";
 import { TRANSFORMATION_ORDERS_QUERY_KEY } from "@/hooks/useTransformationOrders";
 
@@ -50,6 +52,12 @@ export function Breadcrumb() {
   const isItemCreate = pathname === "/inventory/items/create";
   const isQuotationCreate = pathname === "/sales/quotations/create";
   const isSalesOrderCreate = pathname === "/sales/orders/create";
+  const isLoadListPage =
+    pathSegments[0] === "purchasing" &&
+    pathSegments[1] === "load-lists" &&
+    pathSegments.length >= 3;
+  const isLoadListCreate = isLoadListPage && pathSegments[2] === "new";
+  const isLoadListEdit = isLoadListPage && pathSegments.length === 4 && lastSegment === "edit";
   const isQuotationEdit =
     pathSegments[0] === "sales" &&
     pathSegments[1] === "quotations" &&
@@ -92,6 +100,7 @@ export function Breadcrumb() {
   const frameJobOrderId = isFrameJobOrderDetail ? lastSegment : "";
   const transformationOrderId = isTransformationOrderDetail ? lastSegment : "";
   const quotationId = isQuotationEdit ? pathSegments[2] : "";
+  const loadListId = isLoadListPage && !isLoadListCreate ? pathSegments[2] : "";
   const adminSettingsLabelMap: Record<string, string> = {
     settings: tAdminSettingsIndex("title"),
     company: tAdminSettingsPages("companyTitle"),
@@ -156,6 +165,13 @@ export function Breadcrumb() {
   });
 
   const { data: quotation, isLoading: isQuotationLoading } = useQuotation(quotationId);
+
+  // Shares the page's cache entry, so the LL number costs no extra request.
+  const { data: loadList, isLoading: isLoadListLoading } = useQuery({
+    queryKey: [LOAD_LISTS_QUERY_KEY, loadListId],
+    queryFn: () => loadListsApi.getLoadList(loadListId),
+    enabled: !!loadListId,
+  });
 
   const { data: frameJobOrderResponse, isLoading: isFrameJobOrderLoading } = useQuery({
     queryKey: ["frame-job-order", frameJobOrderId],
@@ -266,6 +282,52 @@ export function Breadcrumb() {
           />
         ) : (
           <span className="font-medium text-foreground">{t("Quotation")}</span>
+        )}
+      </nav>
+    );
+  }
+
+  if (isLoadListPage) {
+    return (
+      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+        <Link
+          href="/dashboard"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {t("Home")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <Link
+          href="/purchasing/load-lists"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {t("Load Lists")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        {isLoadListCreate ? (
+          <span className="font-medium text-foreground">{tCommon("new")}</span>
+        ) : loadList?.llNumber ? (
+          isLoadListEdit ? (
+            <>
+              <Link
+                href={`/purchasing/load-lists/${loadListId}`}
+                className="flex items-center font-medium transition-colors hover:text-foreground"
+              >
+                {loadList.llNumber}
+              </Link>
+              <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="font-medium text-foreground">{tCommon("edit")}</span>
+            </>
+          ) : (
+            <span className="font-medium text-foreground">{loadList.llNumber}</span>
+          )
+        ) : isLoadListLoading ? (
+          <span
+            aria-label={tCommon("loading")}
+            className="h-4 w-40 animate-pulse rounded bg-muted"
+          />
+        ) : (
+          <span className="font-medium text-foreground">{t("Load List Details")}</span>
         )}
       </nav>
     );
