@@ -40,7 +40,7 @@ Android cleartext traffic only for that HTTP build. Confirm that the address bel
 server on the current network before building. The device and API server must be on the same LAN,
 and the API server must listen on a non-loopback interface.
 
-All other EAS profiles use the public HTTPS API at `https://achlers.onrender.com` and retain
+All other EAS profiles use the public HTTPS API at `https://stagingachlers.netlify.app` and retain
 Android's default cleartext-traffic restriction.
 
 ### Launcher Icon
