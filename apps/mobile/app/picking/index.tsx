@@ -1,16 +1,19 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View, ScrollView } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Card, ErrorState, LoadingState, Screen, SearchInput } from "@/components/ui";
 import type { PickListSummary } from "@/contracts/picking";
 import { usePickLists, useSetPickListStatus } from "@/hooks/queries";
+import { useWarehouseQueueRealtime } from "@/hooks/useWarehouseQueueRealtime";
 import { useScreenFocusState } from "@/hooks/useScreenFocusState";
 import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
 import { borderRadius, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
+import { primaryGlow, softShadow } from "@/theme/elevation";
 import { canAccessPicking } from "@/utils/permissions";
+import { titleCaseStatus } from "@/utils/record";
 
 const statusFilters = [
   { value: "pending", label: "Pending" },
@@ -19,17 +22,19 @@ const statusFilters = [
   { value: "all", label: "All" }
 ];
 
-const PRIORITY_COLORS = {
-  ACTIVE: { bg: "#EFF6FF", text: "#2563EB", border: "#93C5FD" },
-  PENDING: { bg: "#FFFBEB", text: "#D97706", border: "#FCD34D" },
-  DONE: { bg: "#ECFDF5", text: "#059669", border: "#6EE7B7" },
-  PAUSED: { bg: "#F3F4F6", text: "#6B7280", border: "#D1D5DB" },
-  CANCELLED: { bg: "#FEF2F2", text: "#DC2626", border: "#FCA5A5" },
-  UNKNOWN: { bg: "#F3F4F6", text: "#6B7280", border: "#D1D5DB" }
+// Statuses render as colored text, not badges.
+const PRIORITY_TEXT_COLORS = {
+  ACTIVE: colors.statusInfo,
+  PENDING: colors.statusWarning,
+  DONE: colors.statusSuccess,
+  PAUSED: colors.statusNeutral,
+  CANCELLED: colors.statusError,
+  UNKNOWN: colors.statusNeutral
 };
 
 export default function PickingScreen() {
   const isFocused = useScreenFocusState();
+  useWarehouseQueueRealtime(isFocused, "picking");
   const session = useAuthStore((state) => state.session);
   const canViewPicking = canAccessPicking(session);
   const [status, setStatus] = useState("pending");
@@ -71,33 +76,22 @@ export default function PickingScreen() {
     >
       {/* KPI Summary Strip */}
       <View style={styles.kpiStrip}>
-        <View style={styles.kpiItem}>
-          <Text style={styles.kpiNumber}>{kpis.pending}</Text>
-          <Text style={[styles.kpiLabel, { color: "#F59E0B" }]}>Pending</Text>
-        </View>
+        <View style={styles.kpiCircle} />
+        <KpiItem count={kpis.pending} label="Pending" color={colors.statusWarning} dot={colors.amber} />
         <View style={styles.kpiDivider} />
-        <View style={styles.kpiItem}>
-          <Text style={styles.kpiNumber}>{kpis.inProgress}</Text>
-          <Text style={[styles.kpiLabel, { color: "#3B82F6" }]}>In progress</Text>
-        </View>
+        <KpiItem count={kpis.inProgress} label="In progress" color={colors.statusInfo} dot={colors.blue} />
         <View style={styles.kpiDivider} />
-        <View style={styles.kpiItem}>
-          <Text style={styles.kpiNumber}>{kpis.done}</Text>
-          <Text style={[styles.kpiLabel, { color: "#10B981" }]}>Done</Text>
-        </View>
+        <KpiItem count={kpis.done} label="Done" color={colors.statusSuccess} dot={colors.green} />
       </View>
 
       {/* Filter Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterTabsContainer}
-        style={styles.filterTabsScroll}
-      >
+      <View style={styles.filterTabs}>
         {statusFilters.map((filter) => (
           <Pressable
             key={filter.value}
             onPress={() => setStatus(filter.value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: status === filter.value }}
             style={[styles.filterTab, status === filter.value && styles.filterTabActive]}
           >
             <Text style={[styles.filterTabText, status === filter.value && styles.filterTabTextActive]}>
@@ -105,7 +99,7 @@ export default function PickingScreen() {
             </Text>
           </Pressable>
         ))}
-      </ScrollView>
+      </View>
 
       {/* Search Bar */}
       <SearchInput
@@ -119,7 +113,7 @@ export default function PickingScreen() {
         <View style={styles.listHeader}>
           <Text style={styles.listHeaderText}>{pickLists.length} PICK LISTS</Text>
           <Pressable style={styles.sortButton}>
-            <Ionicons name="swap-vertical-outline" size={14} color={colors.primary} />
+            <Ionicons name="swap-vertical-outline" size={14} color={colors.primaryDark} />
             <Text style={styles.sortText}>Sort</Text>
           </Pressable>
         </View>
@@ -155,8 +149,8 @@ export default function PickingScreen() {
 const PickListCard = ({ item }: { item: PickListSummary }) => {
   const setStatus = useSetPickListStatus(item.id);
   const progress = item.lines > 0 ? (item.pickedLines / item.lines) * 100 : 0;
-  const priority = item.priority in PRIORITY_COLORS ? item.priority : "UNKNOWN";
-  const priorityStyle = PRIORITY_COLORS[priority as keyof typeof PRIORITY_COLORS];
+  const priority = item.priority in PRIORITY_TEXT_COLORS ? item.priority : "UNKNOWN";
+  const priorityColor = PRIORITY_TEXT_COLORS[priority as keyof typeof PRIORITY_TEXT_COLORS];
   const createdLabel = item.requiredDate
     ? `Created ${new Date(item.requiredDate).toLocaleTimeString("en-US", {
         hour: "numeric",
@@ -189,28 +183,23 @@ const PickListCard = ({ item }: { item: PickListSummary }) => {
       <Card style={styles.pickListCard}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardCode}>{item.code}</Text>
-          <View
-            style={[
-              styles.priorityBadge,
-              { backgroundColor: priorityStyle.bg, borderColor: priorityStyle.border }
-            ]}
-          >
-            <Text style={[styles.priorityText, { color: priorityStyle.text }]}>{item.priority}</Text>
-          </View>
+          <Text style={[styles.priorityText, { color: priorityColor }]}>
+            {titleCaseStatus(item.priority.toLowerCase())}
+          </Text>
         </View>
 
         <View style={styles.chipRow}>
           <View style={[styles.chip, styles.chipZone]}>
-            <Ionicons name="location-outline" size={14} color={colors.primary} />
-            <Text style={styles.chipText}>{item.zone || "No warehouse"}</Text>
+            <Ionicons name="location-outline" size={14} color={colors.primaryDark} />
+            <Text style={[styles.chipText, { color: colors.primaryDark }]}>{item.zone || "No warehouse"}</Text>
           </View>
           <View style={[styles.chip, styles.chipItems]}>
-            <MaterialCommunityIcons name="package-variant" size={14} color={colors.blue} />
-            <Text style={styles.chipText}>{item.lines} items</Text>
+            <MaterialCommunityIcons name="package-variant" size={14} color={colors.statusSuccess} />
+            <Text style={[styles.chipText, { color: colors.statusSuccess }]}>{item.lines} items</Text>
           </View>
           <View style={[styles.chip, styles.chipDue]}>
-            <Ionicons name="time-outline" size={14} color={colors.amber} />
-            <Text style={styles.chipText}>{createdLabel}</Text>
+            <Ionicons name="time-outline" size={14} color={colors.statusWarning} />
+            <Text style={[styles.chipText, { color: colors.statusWarning }]}>{createdLabel}</Text>
           </View>
         </View>
 
@@ -241,6 +230,26 @@ const PickListCard = ({ item }: { item: PickListSummary }) => {
     </Pressable>
   );
 };
+
+const KpiItem = ({
+  count,
+  label,
+  color,
+  dot
+}: {
+  count: number;
+  label: string;
+  color: string;
+  dot: string;
+}) => (
+  <View style={styles.kpiItem}>
+    <Text style={[styles.kpiNumber, { color }]}>{count}</Text>
+    <View style={styles.kpiLabelRow}>
+      <View style={[styles.kpiDot, { backgroundColor: dot }]} />
+      <Text style={styles.kpiLabel}>{label}</Text>
+    </View>
+  </View>
+);
 
 // Avatar Stack Component - handles overlapping avatars with overflow
 const AvatarStack = ({
@@ -332,73 +341,90 @@ const TipCard = () => (
 const styles = StyleSheet.create({
   // KPI Strip
   kpiStrip: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    borderWidth: 0,
+    overflow: "hidden",
+    backgroundColor: colors.violetSoft,
+    borderRadius: 22,
     flexDirection: "row",
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.base,
     paddingHorizontal: spacing.xs,
-    marginBottom: spacing.base,
-    alignItems: "center"
+    alignItems: "center",
+    shadowColor: colors.primaryDark,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 6
+  },
+  kpiCircle: {
+    position: "absolute",
+    right: -36,
+    top: -56,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: colors.violet,
+    opacity: 0.12
   },
   kpiItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 2
+    gap: spacing.xs
   },
   kpiDivider: {
     width: 1,
-    height: 32,
-    backgroundColor: "#F0EDF7"
+    height: 36,
+    backgroundColor: colors.violetLight
   },
   kpiNumber: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: typography.fontWeights.bold,
-    color: colors.text,
-    lineHeight: 32
+    lineHeight: 30
+  },
+  kpiLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6
+  },
+  kpiDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4
   },
   kpiLabel: {
-    fontSize: 11,
-    textAlign: "center",
-    lineHeight: 14,
-    fontWeight: typography.fontWeights.medium
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.violetText
   },
 
   // Filter Tabs
-  filterTabsScroll: {
-    marginBottom: spacing.base
-  },
-  filterTabsContainer: {
+  filterTabs: {
+    flexDirection: "row",
     gap: spacing.xs,
-    paddingHorizontal: 2
-  },
-  filterTab: {
-    minHeight: 36,
-    paddingHorizontal: spacing.lg,
+    padding: spacing.xs,
     borderRadius: borderRadius.full,
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...softShadow
+  },
+  filterTab: {
+    flexGrow: 1,
+    minHeight: 36,
+    paddingHorizontal: 10,
+    borderRadius: borderRadius.full,
     alignItems: "center",
     justifyContent: "center"
   },
   filterTabActive: {
     backgroundColor: colors.primary,
-    borderColor: colors.primary,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3
+    ...primaryGlow
   },
   filterTabText: {
     fontSize: 13,
-    fontWeight: typography.fontWeights.semibold,
-    color: colors.text
+    fontWeight: typography.fontWeights.medium,
+    color: colors.textSecondary
   },
   filterTabTextActive: {
-    color: "#FFFFFF"
+    color: colors.surface,
+    fontWeight: typography.fontWeights.semibold
   },
 
   // List Header
@@ -406,13 +432,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: spacing.sm
+    paddingHorizontal: spacing.xs
   },
   listHeaderText: {
-    fontSize: 11,
-    fontWeight: typography.fontWeights.semibold,
-    color: "#9B8FC4",
-    letterSpacing: 0.8
+    fontSize: 12,
+    fontWeight: typography.fontWeights.medium,
+    color: colors.textSecondary,
+    letterSpacing: 0.4
   },
   sortButton: {
     flexDirection: "row",
@@ -420,20 +446,18 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
-    borderRadius: borderRadius.base,
-    backgroundColor: colors.primarySoft
+    borderRadius: borderRadius.full
   },
   sortText: {
-    fontSize: 12,
-    fontWeight: typography.fontWeights.semibold,
-    color: colors.primary
+    fontSize: 13,
+    fontWeight: typography.fontWeights.medium,
+    color: colors.primaryDark
   },
 
   // Pick List Card
   pickListCard: {
     padding: spacing.base,
-    gap: spacing.sm,
-    marginBottom: spacing.base
+    gap: spacing.md
   },
   cardHeader: {
     flexDirection: "row",
@@ -442,20 +466,13 @@ const styles = StyleSheet.create({
   },
   cardCode: {
     fontSize: 16,
-    fontWeight: typography.fontWeights.extrabold,
+    fontWeight: typography.fontWeights.bold,
     color: colors.text,
     flex: 1
   },
-  priorityBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.base,
-    borderWidth: 1
-  },
   priorityText: {
-    fontSize: 11,
-    fontWeight: typography.fontWeights.bold,
-    letterSpacing: 0.5
+    fontSize: 13,
+    fontWeight: typography.fontWeights.semibold
   },
 
   // Chip Row
@@ -467,40 +484,35 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.base
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: borderRadius.full
   },
   chipZone: {
     backgroundColor: colors.primarySoft
   },
   chipItems: {
-    backgroundColor: colors.blueSoft
+    backgroundColor: colors.mintSoft
   },
   chipDue: {
-    backgroundColor: colors.amberSoft
+    backgroundColor: colors.amberBanner
   },
   chipText: {
     fontSize: 12,
-    fontWeight: typography.fontWeights.medium,
-    color: colors.text
+    fontWeight: typography.fontWeights.medium
   },
 
   // Assignee Row
   assigneeRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    paddingTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.border
+    gap: spacing.sm
   },
   assigneeLabel: {
     fontSize: 12,
-    fontWeight: typography.fontWeights.semibold,
-    color: colors.textSecondary,
-    minWidth: 48
+    fontWeight: typography.fontWeights.medium,
+    color: colors.textSecondary
   },
   avatarStackContainer: {
     flex: 1,
@@ -524,15 +536,15 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 10,
     fontWeight: typography.fontWeights.bold,
-    color: "#FFFFFF"
+    color: colors.surface
   },
   avatarOverflow: {
-    backgroundColor: "#9CA3AF"
+    backgroundColor: colors.muted
   },
   avatarOverflowText: {
     fontSize: 9,
     fontWeight: typography.fontWeights.bold,
-    color: "#FFFFFF"
+    color: colors.surface
   },
   assigneeNames: {
     fontSize: 12,
@@ -550,13 +562,13 @@ const styles = StyleSheet.create({
   progressBarBg: {
     flex: 1,
     height: 6,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.violetFaint,
     borderRadius: borderRadius.full,
     overflow: "hidden"
   },
   progressBarFill: {
     height: "100%",
-    backgroundColor: colors.primary,
+    backgroundColor: colors.violet,
     borderRadius: borderRadius.full
   },
   progressText: {
@@ -569,25 +581,21 @@ const styles = StyleSheet.create({
 
   // CTA Button
   ctaButton: {
-    minHeight: 44,
-    borderRadius: borderRadius.md,
+    minHeight: 48,
+    borderRadius: borderRadius.full,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     marginTop: spacing.xs,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2
+    ...primaryGlow
   },
   ctaButtonInProgress: {
     backgroundColor: colors.primary
   },
   ctaButtonText: {
-    fontSize: 14,
-    fontWeight: typography.fontWeights.bold,
-    color: "#FFFFFF"
+    fontSize: 15,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.surface
   },
 
   // Empty State
@@ -602,7 +610,7 @@ const styles = StyleSheet.create({
   emptyIconBubble: {
     width: 80,
     height: 80,
-    borderRadius: borderRadius.lg,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.primarySoft
@@ -628,9 +636,9 @@ const styles = StyleSheet.create({
   emptyActionButton: {
     minHeight: 44,
     minWidth: 120,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.full,
     borderWidth: 1.5,
-    borderColor: colors.primary,
+    borderColor: colors.violetAvatar,
     backgroundColor: colors.surface,
     alignItems: "center",
     justifyContent: "center",
@@ -640,8 +648,8 @@ const styles = StyleSheet.create({
   },
   emptyActionText: {
     fontSize: 14,
-    color: colors.primary,
-    fontWeight: typography.fontWeights.semibold
+    color: colors.primaryDark,
+    fontWeight: typography.fontWeights.medium
   },
 
   // Tip Card
@@ -650,8 +658,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: spacing.sm,
-    borderColor: colors.primary,
-    borderWidth: 1,
     backgroundColor: colors.primarySoft,
     padding: spacing.base
   },
@@ -667,7 +673,7 @@ const styles = StyleSheet.create({
     lineHeight: 18
   },
   tipStrong: {
-    color: colors.primary,
+    color: colors.primaryDark,
     fontWeight: typography.fontWeights.bold
   }
 });

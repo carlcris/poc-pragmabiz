@@ -44,8 +44,14 @@ import {
 import { colors } from "@/theme/colors";
 import { borderRadius, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
+import { primaryGlow, softShadow } from "@/theme/elevation";
 import { canAccessPicking } from "@/utils/permissions";
+import { createTranslator } from "use-intl/core";
+import { translations } from "../../../../src/lib/i18n/translations";
 
+
+// The native app currently uses English; reuse the web source of truth for new pick detail copy.
+const tPickDetail = createTranslator({ locale: "en", messages: translations.en.mobilePickDetail });
 const getStatusMeta = (status: string) => {
   switch (status) {
     case "in_progress":
@@ -998,39 +1004,65 @@ const NextPickCard = ({
   const sourceMeta = [item.sourceWarehouseCode, item.batchNumber ? `Batch ${item.batchNumber}` : null]
     .filter((segment): segment is string => Boolean(segment))
     .join(" · ");
+  const remainingQty = getRemainingQty(item);
+  const progress = item.requiredQty > 0 ? Math.min(item.pickedQty / item.requiredQty, 1) : 0;
   return (
     <View style={styles.nextPickCard}>
-      <Text style={styles.nextPickLabel}>
-        Next pick · {remainingLineCount} {remainingLineCount === 1 ? "line" : "lines"} left
-      </Text>
-      {locationCode ? (
-        <Text style={styles.nextPickLocation}>{locationCode}</Text>
-      ) : (
-        <Text style={styles.nextPickLocationMissing}>Location not recorded</Text>
-      )}
-      {sourceMeta ? <Text style={styles.secondaryText}>{sourceMeta}</Text> : null}
-      <View style={styles.cardDivider} />
-      <View style={styles.nextPickItemRow}>
+      <View style={styles.nextPickCircle} />
+      <View style={styles.nextPickHeader}>
+        <Text style={styles.nextPickLabel}>{tPickDetail("nextPick")}</Text>
+        <Text style={styles.nextPickRemaining}>
+          {tPickDetail("linesLeft", { count: remainingLineCount })}
+        </Text>
+      </View>
+      <View style={styles.nextPickLocationRow}>
+        <View style={styles.nextPickPin}>
+          <Ionicons name="location-outline" size={24} color={colors.primary} />
+        </View>
         <View style={styles.flexFill}>
-          <Text style={styles.itemNameLarge}>{item.name}</Text>
-          <Text style={styles.secondaryText}>
+          <Text style={styles.nextPickMeta}>{tPickDetail("location")}</Text>
+          {locationCode ? (
+            <Text style={styles.nextPickLocation} numberOfLines={1}>
+              {locationCode}
+            </Text>
+          ) : (
+            <Text style={styles.nextPickLocationMissing}>Location not recorded</Text>
+          )}
+          {sourceMeta ? (
+            <Text style={styles.nextPickMeta} numberOfLines={1}>
+              {sourceMeta}
+            </Text>
+          ) : null}
+        </View>
+        {item.sourceLocationId ? (
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.nextPickMapButton, pressed && styles.scannerActionPressed]}
+            onPress={onViewLocation}
+          >
+            <Ionicons name="map-outline" size={16} color={colors.primaryDark} />
+            <Text style={styles.nextPickMapText}>{tPickDetail("map")}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      <View style={styles.nextPickItemCard}>
+        <View style={[styles.flexFill, styles.nextPickItemText]}>
+          <Text style={styles.nextPickItemName}>{item.name}</Text>
+          <View style={styles.nextPickItemTrack}>
+            <View style={[styles.nextPickItemFill, { width: `${progress * 100}%` }]} />
+          </View>
+          <Text style={styles.nextPickMeta}>
             {item.pickedQty} of {item.requiredQty} {item.uom} picked
           </Text>
         </View>
-        <Text style={styles.nextPickQty}>
-          {getRemainingQty(item)} {item.uom}
-        </Text>
+        <View style={styles.nextPickQtyBox}>
+          <Text style={styles.nextPickQtyLabel}>{tPickDetail("pickQuantity")}</Text>
+          <Text style={styles.nextPickQty}>{remainingQty}</Text>
+          <Text style={styles.nextPickQtyUom} numberOfLines={1}>
+            {item.uom}
+          </Text>
+        </View>
       </View>
-      {item.sourceLocationId ? (
-        <Pressable
-          accessibilityRole="button"
-          style={styles.mapButton}
-          onPress={onViewLocation}
-        >
-          <Ionicons name="map-outline" size={18} color={colors.primaryDark} />
-          <Text style={styles.mapButtonText}>Show on map</Text>
-        </Pressable>
-      ) : null}
     </View>
   );
 };
@@ -1298,10 +1330,10 @@ const styles = StyleSheet.create({
   progressTrack: {
     height: 6,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.violetFaint,
     overflow: "hidden",
   },
-  progressFill: { height: "100%", backgroundColor: colors.primaryDark },
+  progressFill: { height: "100%", backgroundColor: colors.violet },
   scannerBar: {
     minHeight: 56,
     flexDirection: "row",
@@ -1309,10 +1341,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingLeft: spacing.base,
     paddingRight: spacing.xs,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: borderRadius.xl,
     backgroundColor: colors.surface,
+    ...softShadow,
   },
   scannerBarVerifying: {
     borderColor: colors.statusInfo,
@@ -1327,20 +1358,21 @@ const styles = StyleSheet.create({
   },
   scannerTextVerifying: { color: colors.statusInfo },
   scannerAction: {
-    width: 48,
-    height: 48,
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.violetSoft,
   },
-  scannerActionActive: { backgroundColor: colors.primarySoft },
+  scannerActionActive: { backgroundColor: colors.violetLight },
   scannerActionPressed: { opacity: 0.6 },
   scanErrorBanner: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
     padding: spacing.base,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.statusError,
     backgroundColor: colors.dangerSoft,
@@ -1362,24 +1394,24 @@ const styles = StyleSheet.create({
   manualEntryInput: {
     flex: 1,
     minHeight: 52,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: borderRadius.base,
+    borderRadius: 14,
     paddingHorizontal: spacing.md,
     fontSize: 18,
     fontWeight: typography.fontWeights.semibold,
     letterSpacing: 1,
     color: colors.text,
+    backgroundColor: colors.background,
   },
   verifyButton: {
     minHeight: 52,
     paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.base,
-    backgroundColor: colors.primaryDark,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
+    ...primaryGlow,
   },
-  verifyButtonDisabled: { backgroundColor: colors.backgroundSecondary },
+  verifyButtonDisabled: { backgroundColor: colors.backgroundSecondary, shadowOpacity: 0, elevation: 0 },
   verifyButtonText: {
     fontSize: 16,
     fontWeight: typography.fontWeights.semibold,
@@ -1387,44 +1419,133 @@ const styles = StyleSheet.create({
   },
   verifyButtonTextDisabled: { color: colors.textSecondary },
   nextPickCard: {
-    gap: spacing.xs,
-    padding: spacing.lg,
-    borderRadius: borderRadius.lg,
-    borderWidth: 2,
-    borderColor: colors.primaryDark,
-    backgroundColor: colors.surface,
+    overflow: "hidden",
+    gap: 14,
+    padding: spacing.base,
+    borderRadius: 22,
+    backgroundColor: colors.violetSoft,
+    shadowColor: colors.primaryDark,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 6,
   },
+  nextPickCircle: {
+    position: "absolute",
+    right: -50,
+    top: -70,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: colors.violet,
+    opacity: 0.12,
+  },
+  nextPickHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   nextPickLabel: {
-    fontSize: 13,
-    fontWeight: typography.fontWeights.semibold,
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
+    fontSize: 14,
+    fontWeight: typography.fontWeights.bold,
     color: colors.primaryDark,
+  },
+  nextPickRemaining: {
+    overflow: "hidden",
+    paddingHorizontal: 10,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surface,
+    fontSize: 12,
+    fontWeight: typography.fontWeights.medium,
+    color: colors.primaryDark,
+  },
+  nextPickLocationRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  nextPickPin: {
+    width: 48,
+    height: 48,
+    borderRadius: spacing.base,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+    ...softShadow,
   },
   nextPickLocation: {
     fontVariant: ["tabular-nums"],
-    fontSize: 40,
-    lineHeight: 46,
+    fontSize: 20,
+    lineHeight: 26,
     fontWeight: typography.fontWeights.bold,
     color: colors.text,
   },
   nextPickLocationMissing: {
-    fontSize: 22,
-    lineHeight: 30,
+    fontSize: 17,
+    lineHeight: 24,
     fontWeight: typography.fontWeights.bold,
     color: colors.statusWarning,
   },
+  nextPickMeta: { fontSize: 12, lineHeight: 16, color: colors.textSecondary },
+  nextPickMapButton: {
+    minHeight: 36,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surface,
+    ...softShadow,
+  },
+  nextPickMapText: {
+    fontSize: 13,
+    fontWeight: typography.fontWeights.medium,
+    color: colors.primaryDark,
+  },
+  nextPickItemCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 14,
+    borderRadius: spacing.base,
+    backgroundColor: colors.surface,
+    ...softShadow,
+  },
+  nextPickItemText: { gap: spacing.sm },
+  nextPickItemName: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.text,
+  },
+  nextPickItemTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.violetFaint,
+    overflow: "hidden",
+  },
+  nextPickItemFill: { height: 6, borderRadius: 3, backgroundColor: colors.violet },
+  nextPickQtyBox: {
+    width: 72,
+    paddingVertical: 10,
+    borderRadius: 14,
+    alignItems: "center",
+    backgroundColor: colors.primarySoft,
+  },
+  nextPickQtyLabel: { fontSize: 11, lineHeight: 14, color: colors.textSecondary },
+  nextPickQty: {
+    fontSize: 26,
+    lineHeight: 30,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text,
+  },
+  nextPickQtyUom: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: typography.fontWeights.medium,
+    color: colors.primaryDark,
+  },
   secondaryText: { fontSize: 15, lineHeight: 20, color: colors.textSecondary },
   missingValue: { color: colors.statusWarning, fontWeight: typography.fontWeights.semibold },
-  cardDivider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
-  nextPickItemRow: { flexDirection: "row", alignItems: "flex-end", gap: spacing.md },
   itemNameLarge: {
     fontSize: 18,
     lineHeight: 24,
     fontWeight: typography.fontWeights.semibold,
     color: colors.text,
   },
-  nextPickQty: { fontSize: 28, fontWeight: typography.fontWeights.bold, color: colors.text },
   mapButton: {
     minHeight: 48,
     marginTop: spacing.sm,
@@ -1432,9 +1553,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.sm,
-    borderRadius: borderRadius.base,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.violetSoft,
   },
   mapButtonText: {
     fontSize: 15,
@@ -1458,9 +1578,10 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   listSurface: {
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.xl,
     backgroundColor: colors.surface,
     overflow: "hidden",
+    ...softShadow,
   },
   listRow: {
     minHeight: 56,
@@ -1505,7 +1626,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
     paddingHorizontal: spacing.base,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.xl,
   },
   resultBannerSuccess: { backgroundColor: colors.statusSuccess },
   resultBannerWarning: {
@@ -1544,10 +1665,9 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: borderRadius.full,
-    borderWidth: 1.5,
-    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: colors.violetSoft,
   },
   quantityInput: {
     minWidth: 120,

@@ -20,10 +20,12 @@ import type {
 } from "@/contracts/receiving";
 import { queryKeys, useReceivingInbox } from "@/hooks/queries";
 import { useScreenFocusState } from "@/hooks/useScreenFocusState";
+import { useWarehouseQueueRealtime } from "@/hooks/useWarehouseQueueRealtime";
 import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
 import { borderRadius, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
+import { primaryGlow, softShadow } from "@/theme/elevation";
 import {
   canAccessDeliveryNoteReceiving,
   canAccessLoadListReceiving,
@@ -61,6 +63,7 @@ export default function ReceivingScreen() {
   const refreshOnFocusRef = useRef<() => void>(() => undefined);
   const queryClient = useQueryClient();
   const isFocused = useScreenFocusState();
+  useWarehouseQueueRealtime(isFocused, "receiving");
   const session = useAuthStore((state) => state.session);
   const currentBusinessUnitId = session?.currentBusinessUnit?.id || "";
   const currentBusinessUnitName = session?.currentBusinessUnit?.name || "";
@@ -144,6 +147,7 @@ export default function ReceivingScreen() {
       />
 
       <View style={styles.filterRow}>
+        <View style={styles.chipTrack}>
         <FilterChip
           label={`To receive · ${toReceiveCount}`}
           active={stage === "to_receive"}
@@ -154,6 +158,7 @@ export default function ReceivingScreen() {
           active={stage === "expected"}
           onPress={() => setStage("expected")}
         />
+        </View>
         <Pressable
           onPress={() => setFiltersOpen(true)}
           accessibilityRole="button"
@@ -164,14 +169,14 @@ export default function ReceivingScreen() {
         >
           <Ionicons
             name="options-outline"
-            size={18}
-            color={activeFilterCount > 0 ? colors.primaryDark : colors.statusNeutral}
+            size={20}
+            color={activeFilterCount > 0 ? colors.surface : colors.primaryDark}
           />
-          <Text
-            style={[styles.filtersText, activeFilterCount > 0 ? styles.filtersTextActive : null]}
-          >
-            {activeFilterCount > 0 ? `Filters · ${activeFilterCount}` : "Filters"}
-          </Text>
+          {activeFilterCount > 0 ? (
+            <View style={styles.filtersCount}>
+              <Text style={styles.filtersCountText}>{activeFilterCount}</Text>
+            </View>
+          ) : null}
         </Pressable>
       </View>
 
@@ -227,11 +232,10 @@ export default function ReceivingScreen() {
                   </Text>
                 </View>
                 <View style={styles.sectionList}>
-                  {section.rows.map((row, index) => (
+                  {section.rows.map((row) => (
                     <ReceivingInboxListItem
                       key={`${row.kind}-${row.id}`}
                       row={row}
-                      isFirst={index === 0}
                       onPress={
                         canOpenReceivingInboxRow(row.kind, row.stage)
                           ? () => openRow(row)
@@ -322,53 +326,66 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
   },
+  chipTrack: {
+    flex: 1,
+    flexDirection: "row",
+    gap: spacing.xs,
+    padding: spacing.xs,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surface,
+    ...softShadow,
+  },
   chip: {
-    minHeight: 44,
-    paddingHorizontal: spacing.base,
+    flex: 1,
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
   },
   chipActive: {
-    borderColor: colors.primaryDark,
-    backgroundColor: colors.primaryDark,
+    backgroundColor: colors.primary,
+    ...primaryGlow,
   },
   chipText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: typography.fontWeights.medium,
-    color: colors.statusNeutral,
+    color: colors.textSecondary,
   },
   chipTextActive: {
     fontWeight: typography.fontWeights.semibold,
     color: colors.surface,
   },
   filtersButton: {
-    marginLeft: "auto",
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    flexDirection: "row",
+    width: 44,
+    height: 44,
     alignItems: "center",
-    gap: spacing.xs,
+    justifyContent: "center",
     borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.border,
     backgroundColor: colors.surface,
+    ...softShadow,
   },
   filtersButtonActive: {
-    borderColor: colors.primaryDark,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.primary,
   },
-  filtersText: {
-    fontSize: 14,
-    fontWeight: typography.fontWeights.medium,
-    color: colors.statusNeutral,
+  filtersCount: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: colors.background,
+    backgroundColor: colors.primaryDark,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  filtersTextActive: {
-    fontWeight: typography.fontWeights.semibold,
-    color: colors.primaryDark,
+  filtersCountText: {
+    fontSize: 10,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.surface,
   },
   section: {
     gap: spacing.sm,
@@ -390,19 +407,15 @@ const styles = StyleSheet.create({
     fontWeight: typography.fontWeights.semibold,
   },
   sectionList: {
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    overflow: "hidden",
+    gap: 10,
   },
   moreButton: {
     minHeight: 48,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: borderRadius.full,
+    borderWidth: 1.5,
+    borderColor: colors.violetAvatar,
     backgroundColor: colors.surface,
   },
   moreText: {
@@ -432,9 +445,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.base,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.violetSoft,
   },
   emptyActionText: {
     fontSize: 14,

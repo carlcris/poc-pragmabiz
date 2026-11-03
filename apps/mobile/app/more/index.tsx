@@ -1,27 +1,25 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Card, Screen } from "@/components/ui";
+import { Screen } from "@/components/ui";
 import { colors } from "@/theme/colors";
-import { spacing, borderRadius } from "@/theme/spacing";
+import { borderRadius } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
 
 export default function MoreScreen() {
   return (
     <Screen title="More">
-      <Card style={styles.menuCard}>
-        <FeatureItem
-          icon="scan-outline"
-          title="Scan Item Info"
-          subtitle="Scan a product QR code and view item details"
-          onPress={() => router.push("/more/item-info")}
-        />
-      </Card>
+      <FeatureBanner
+        icon="scan-outline"
+        title="Scan Item Info"
+        subtitle="Scan a product QR code and view item details"
+        onPress={() => router.push("/more/item-info")}
+      />
     </Screen>
   );
 }
 
-const FeatureItem = ({
+const FeatureBanner = ({
   icon,
   title,
   subtitle,
@@ -34,53 +32,72 @@ const FeatureItem = ({
 }) => (
   <Pressable
     onPress={onPress}
-    style={({ pressed }) => [styles.featureItem, pressed ? styles.featureItemPressed : null]}
+    accessibilityRole="button"
+    style={({ pressed }) => [styles.banner, pressed ? styles.bannerPressed : null]}
   >
-    <View style={styles.featureIcon}>
-      <Ionicons name={icon} size={22} color={colors.primary} />
+    <View style={styles.bannerCircle} />
+    <View style={styles.bannerArt} importantForAccessibility="no-hide-descendants">
+      <Ionicons name={icon} size={64} color={colors.violet} />
     </View>
-    <View style={styles.featureText}>
-      <Text style={styles.featureTitle}>{title}</Text>
-      <Text style={styles.featureSubtitle}>{subtitle}</Text>
+    <Text style={styles.bannerTitle}>{title}</Text>
+    <Text style={styles.bannerSubtitle}>{subtitle}</Text>
+    <View style={styles.bannerAction}>
+      <Ionicons name="arrow-forward" size={18} color={colors.surface} />
     </View>
-    <Ionicons name="chevron-forward" size={20} color={colors.muted} />
   </Pressable>
 );
 
 const styles = StyleSheet.create({
-  menuCard: {
-    padding: 0,
-    overflow: "hidden"
+  banner: {
+    overflow: "hidden",
+    gap: 6,
+    padding: 18,
+    borderRadius: 22,
+    backgroundColor: colors.violetSoft,
+    shadowColor: colors.primaryDark,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 6
   },
-  featureItem: {
-    minHeight: 76,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    padding: spacing.base,
-    backgroundColor: colors.surface
+  bannerPressed: {
+    opacity: 0.8
   },
-  featureItemPressed: {
-    backgroundColor: colors.faint
+  bannerCircle: {
+    position: "absolute",
+    right: -30,
+    bottom: -40,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: colors.violet,
+    opacity: 0.12
   },
-  featureIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.base,
-    backgroundColor: colors.primarySoft,
-    alignItems: "center",
-    justifyContent: "center"
+  bannerArt: {
+    position: "absolute",
+    right: 22,
+    top: 22,
+    transform: [{ rotate: "8deg" }]
   },
-  featureText: {
-    flex: 1,
-    gap: spacing.xs
-  },
-  featureTitle: {
-    ...typography.titleSmall,
+  bannerTitle: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: typography.fontWeights.bold,
     color: colors.text
   },
-  featureSubtitle: {
-    ...typography.bodySmall,
+  bannerSubtitle: {
+    maxWidth: 210,
+    fontSize: 13,
+    lineHeight: 19,
     color: colors.textSecondary
+  },
+  bannerAction: {
+    marginTop: 6,
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primaryDark,
+    alignItems: "center",
+    justifyContent: "center"
   }
 });

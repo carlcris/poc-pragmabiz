@@ -22,6 +22,9 @@ export type DocumentLinesTableRow = {
   unitPrice: number | null;
   lineTotal: number | null;
   tracking?: Partial<Record<DocumentTrackingColumn, number>>;
+  /** Pinned source batch; null means the line is allocated automatically. */
+  batch?: { code: string; warehouseCode?: string } | null;
+  note?: string;
   isUnsaved?: boolean;
 };
 
@@ -43,6 +46,7 @@ const NUMERIC_COLUMNS = new Set<DocumentLineColumn>([
   "shortageQty",
   "fulfilledQty",
   "outstandingQty",
+  "deliveredQty",
   "unitCost",
   "lineTotal",
 ]);
@@ -77,6 +81,8 @@ export function DocumentLinesTable({
     shortageQty: t("shortageQty"),
     fulfilledQty: t("fulfilledQty"),
     outstandingQty: t("outstandingQty"),
+    deliveredQty: t("deliveredQty"),
+    batch: t("batch"),
     unitCost: t("unitCost"),
     lineTotal: t("lineTotal"),
     action: t("actions"),
@@ -108,6 +114,9 @@ export function DocumentLinesTable({
               ) : null}
             </div>
             <div className="mt-0.5 text-sm text-muted-foreground">{row.itemName}</div>
+            {row.note ? (
+              <div className="mt-0.5 text-xs italic text-muted-foreground">{row.note}</div>
+            ) : null}
           </>
         );
       case "unit":
@@ -133,7 +142,19 @@ export function DocumentLinesTable({
       case "shortageQty":
       case "fulfilledQty":
       case "outstandingQty":
+      case "deliveredQty":
         return renderTrackingCell(row, column);
+      case "batch":
+        return row.batch ? (
+          <>
+            <div className="font-medium">{row.batch.code}</div>
+            {row.batch.warehouseCode ? (
+              <div className="mt-0.5 text-sm text-muted-foreground">{row.batch.warehouseCode}</div>
+            ) : null}
+          </>
+        ) : (
+          <span className="text-muted-foreground">{t("autoBatch")}</span>
+        );
       case "unitCost":
         return formatAmount(row.unitPrice);
       case "lineTotal":

@@ -1,27 +1,43 @@
 // Modern, professional color palette following industry standards
 export const colors = {
   // Neutral colors - refined grayscale
-  background: "#E8E5F3", // Soft lavender background
+  background: "#F7F5FF", // Soft lavender background
   surface: "#FFFFFF",
-  border: "#DDD9E8", // Soft lavender border
-  divider: "#F3F4F6", // For subtle separators
+  border: "#EEEAF8", // Soft lavender border
+  divider: "#F1EEF9", // For subtle separators
 
   // Text colors - improved hierarchy
-  text: "#111827", // Darker for better contrast
-  textSecondary: "#6B7280", // Secondary text
-  muted: "#9CA3AF", // Muted elements
-  textDisabled: "#D1D5DB", // Disabled state
+  text: "#1E1B4B", // Deep indigo ink
+  textSecondary: "#6B6493", // Violet-tinted secondary text
+  muted: "#8C85B0", // Muted elements
+  textDisabled: "#D4CFE6", // Disabled state
 
   // Backgrounds
-  faint: "#F9FAFB",
-  backgroundSecondary: "#F3F4F6",
+  faint: "#FAF9FF",
+  backgroundSecondary: "#F1EDFF",
 
-  // Primary brand colors - professional purple/indigo
-  primary: "#6366F1", // Modern indigo
-  primaryDark: "#4F46E5", // Darker indigo for hover states
-  primaryLight: "#818CF8", // Lighter for accents
-  primarySoft: "#EEF2FF", // Very light for backgrounds
-  primaryAlpha: "rgba(99, 102, 241, 0.08)", // Transparent for overlays
+  // Primary brand colors - violet
+  primary: "#7C3AED", // Violet
+  primaryDark: "#5B21B6", // Darker violet for text on soft fills
+  primaryLight: "#A78BFA", // Lighter for accents
+  primarySoft: "#F1EDFF", // Very light for backgrounds
+  primaryAlpha: "rgba(124, 58, 237, 0.08)", // Transparent for overlays
+
+  // Violet accent - soft lavender dashboard surfaces and quick actions
+  violet: "#8B5CF6",
+  violetDark: "#5B21B6",
+  violetMid: "#A78BFA",
+  violetLight: "#C4B5FD",
+  violetSoft: "#EAE3FF",
+  violetFaint: "#EEEAF8",
+  violetText: "#5B5389",
+  violetAvatar: "#DDD3FF",
+  mintSoft: "#D9F5E8",
+  limeSoft: "#EEF8D4",
+  limeDark: "#4D7C0F",
+  amberBanner: "#FFF4E0",
+  amberText: "#92400E",
+  navInactive: "#9B8FC4",
 
   // Blue accent - for informational elements
   blue: "#3B82F6",
@@ -57,7 +73,7 @@ export const colors = {
   warningTrack: "#F3EEE6",
 
   // Shadow and overlay
-  shadow: "#111827",
+  shadow: "#2E1065",
   overlay: "rgba(0, 0, 0, 0.5)",
   overlayLight: "rgba(0, 0, 0, 0.25)"
 };

@@ -41,6 +41,7 @@ import type {
 import { colors } from "@/theme/colors";
 import { spacing, borderRadius, shadows } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
+import { softShadow, primaryGlow } from "@/theme/elevation";
 import { formatDate } from "@/utils/format";
 import { ApiError } from "@/api/client";
 import {
@@ -1261,15 +1262,15 @@ const styles = StyleSheet.create({
   warehouseOption: {
     minHeight: 48,
     justifyContent: "center",
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    paddingHorizontal: spacing.base,
+    borderRadius: borderRadius.full,
+    borderWidth: 1.5,
+    borderColor: colors.violetAvatar,
     backgroundColor: colors.surface,
   },
   warehouseOptionSelected: {
     borderWidth: 2,
-    borderColor: colors.primaryDark,
+    borderColor: colors.primary,
     backgroundColor: colors.primarySoft,
   },
   warehouseOptionText: {
@@ -1299,12 +1300,11 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   scanCard: {
-    gap: spacing.sm,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    gap: 10,
+    padding: 14,
+    borderRadius: borderRadius.xl,
     backgroundColor: colors.surface,
+    ...softShadow,
   },
   scanRow: {
     flexDirection: "row",
@@ -1315,25 +1315,23 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     minHeight: 48,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.base,
-    borderWidth: 1,
-    borderColor: colors.border,
+    paddingHorizontal: 14,
+    borderRadius: 14,
     fontSize: 15,
     color: colors.text,
+    backgroundColor: colors.background,
   },
   addButton: {
     minHeight: 48,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.base,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: borderRadius.base,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.violetSoft,
   },
   addButtonText: {
     fontSize: 14,
-    fontWeight: typography.fontWeights.semibold,
+    fontWeight: typography.fontWeights.medium,
     color: colors.primaryDark,
   },
   cameraButton: {
@@ -1341,8 +1339,9 @@ const styles = StyleSheet.create({
     height: 48,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: borderRadius.base,
-    backgroundColor: colors.primaryDark,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primary,
+    ...primaryGlow,
   },
   cameraButtonPressed: {
     opacity: 0.85,
@@ -1356,7 +1355,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     paddingVertical: spacing.sm,
     paddingLeft: spacing.md,
-    borderRadius: borderRadius.base,
+    borderRadius: 14,
     borderWidth: 1,
   },
   scanFailureWarning: {
@@ -1407,7 +1406,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.base,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: borderRadius.base,
+    borderRadius: borderRadius.full,
     borderWidth: 1,
     borderColor: colors.danger,
     backgroundColor: colors.surface,
@@ -1427,7 +1426,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
     paddingLeft: spacing.md,
-    borderRadius: borderRadius.base,
+    borderRadius: 14,
     backgroundColor: colors.greenSoft,
   },
   lastScanText: {
@@ -1451,6 +1450,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     alignItems: "center",
     justifyContent: "center",
+    borderRadius: borderRadius.full,
   },
   undoText: {
     fontSize: 13,
@@ -1465,11 +1465,10 @@ const styles = StyleSheet.create({
     color: colors.statusNeutral,
   },
   lines: {
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: borderRadius.xl,
     backgroundColor: colors.surface,
     overflow: "hidden",
+    ...softShadow,
   },
   line: {
     gap: spacing.sm,
@@ -1525,18 +1524,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.dangerSoft,
   },
   lineTrack: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.backgroundSecondary,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.violetFaint,
     overflow: "hidden",
   },
   lineFill: {
-    height: 4,
-    borderRadius: 2,
+    height: 6,
+    borderRadius: 3,
   },
   discrepancyRoot: {
     flex: 1,
@@ -1622,7 +1620,7 @@ const styles = StyleSheet.create({
   discrepancyButton: {
     flex: 1,
     minHeight: 50,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.full,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1633,7 +1631,7 @@ const styles = StyleSheet.create({
   discrepancyButtonSecondary: {
     backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: colors.violetAvatar,
   },
   discrepancyButtonDisabled: {
     opacity: 0.5,
@@ -1724,7 +1722,7 @@ const styles = StyleSheet.create({
   confirmationButton: {
     flex: 1,
     minHeight: 50,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.full,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1739,7 +1737,7 @@ const styles = StyleSheet.create({
   confirmationButtonSecondary: {
     backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: colors.violetAvatar,
   },
   confirmationButtonDisabled: {
     opacity: 0.5,

@@ -559,8 +559,10 @@ chosen internally during fulfillment and receiving; this is not a customer sale.
 > Naming note: this is different from "Stock Requisitions" (section 17b), which is a request to purchase from a supplier. Don't mix them up when writing tickets.
 
 **How a record starts**: click **New** on the Stock Requests list page, or use **New stock request**
-from the desktop quick-action rail. Both paths open the same creation form. Fill in the item(s),
-quantities, and fulfilling business unit.
+from the desktop quick-action rail. Both paths open the full-page creation form at
+`/inventory/stock-requests/new`. Fill in the fulfilling business unit (Requested To), then add
+item(s) and quantities in the New Item row. Opening a request shows its view page; **Edit** (drafts
+only) opens the same layout as an edit page.
 
 The current business unit is the requesting side. Select a different active business unit as the
 fulfilling side; the request does not ask the user to select either warehouse. A request line
@@ -606,6 +608,10 @@ requires the granular delivery-note receiving capability.
   fails without falling back to another batch or leaving a partial delivery note/reservation.
 - Force a line validation error while updating a draft and confirm the previous header and all
   previous lines remain unchanged.
+- In the New Item row, press Enter in Qty and confirm the line is added; press Esc and confirm the row
+  clears. Pin a batch on a line and confirm Requested To locks until that line is removed.
+- Open `/inventory/stock-requests/<id>/edit` for a Submitted request and confirm the page says it
+  can't be edited and links back to the view page.
 - Confirm a user at the requesting side cannot see or click Approve/Reject.
 - Confirm a fulfilling-side user cannot see the request while it is Draft, but can see it after
   submission.

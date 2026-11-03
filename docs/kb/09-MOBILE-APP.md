@@ -443,6 +443,16 @@ Complete picking.
 
 Fetch the unified mobile receiving inbox for the current business unit. Backed by the `SECURITY INVOKER` database function `list_receiving_inbox`, which unions load lists and delivery notes, maps them to shared stages, filters, sorts (stage, then completion date for completed rows, then expected date) and paginates in one round trip. Line counts and progress are computed only for the returned page.
 
+The visible Receiving screen automatically refreshes its inbox and stage counts when incoming load
+lists or delivery notes change, including arrivals, dispatches, and receiving state transitions.
+GRN header changes also refresh the inbox, so saved GRN quantities update the displayed progress.
+Load-list events are filtered by `destination_business_unit_id`, GRNs by `business_unit_id`, and
+delivery notes by `requesting_business_unit_id`, all for the selected business unit. Only document
+kinds allowed by the session's existing receiving permissions are subscribed. Home uses the same
+subscription to refresh its receiving counts. Reconnect and app resume catch missed updates;
+background and hidden screens do not keep queue subscriptions active. The existing 20-row pages,
+server-side search, filters, and sorting are preserved.
+
 Delivery-note progress measures scanned units against dispatched units, including partial dispatches. Allocating 10 units but dispatching and scanning 6 shows `6 / 6` in both the inbox and detail. Unshipped allocations do not increase the expected total; pending, accepted, and resolved unexpected-item quantities remain included in scanned units.
 
 **Query**: `stage` (`to_receive` default, `ready`, `in_progress`, `expected`, `awaiting_approval`, `completed`, `all`), `kind` (`all` default, `load_list`, `delivery_note`), `search` (max 100 characters, matched literally), `page` (default 1), `limit` (default 20, max 50).
@@ -627,15 +637,32 @@ list, detail, and mutation access to current-user assignments. With the toggle d
 remain restricted to the selected business unit. Picking rights alone do not grant delivery-note
 receiving access.
 
-Main screens (Home, Receiving, Picking, Profile, More) share a header whose title is the current
-business unit, which opens the business-unit switcher, with the screen name beneath it. Detail
-screens (with Back) keep their record title and context subtitle and do not offer the switcher. The
-header has no notification button. The Home screen shows, in order: a Continue picking card for the
-user's assigned started pick list, or a Next up card for their oldest assigned pending one (hidden
-when nothing is assigned); a Today's work card with Receiving and Picking rows showing total counts
-and their stage breakdown, with neutral empty copy when a count is zero; and either the urgent stock
-request count (review happens in the web app) or a matching "No urgent tasks" card. The header
-subtitle shows the date and the time the dashboard data was last fetched.
+Main screens (Receiving, Picking, Profile, More) share a header whose title is the screen name,
+with the current business unit beneath it, which opens the business-unit switcher. Home uses a
+greeting header instead: the user's initials, a time-of-day greeting with their first name, the
+business-unit switcher beneath it, and the time the dashboard data was last fetched. Detail screens
+(with Back) keep their record title and context subtitle and do not offer the switcher. No header
+has a notification button. The Home screen shows, in order: an Open tasks today card with the total
+of permitted receiving and picking work (or All caught up when there is none) and Receiving and
+Picking counts with their stage breakdown, each opening its list; Quick actions for Receive, Pick
+(each shown only with access), Scan item, and Profile; a Continue picking card for the user's
+assigned started pick list, or a Next up card for their oldest assigned pending one (hidden when
+nothing is assigned); either an urgent stock request banner (review happens in the web app) or a
+"No urgent stock requests" row; and, when there is no work, a Check an item banner that opens item
+lookup.
+
+While Home, Picking, or Receiving is visible and the app is active, one warehouse-queue subscription
+listens for the permitted queues on that screen. Pick Lists view permission enables pick-list
+changes for the selected business unit on Home and Picking. Queuing a pick list from the web
+automatically refreshes the mobile Picking list, its status counts, and Home's picking queue and
+assigned-work card. Receiving permissions separately enable incoming load-list, GRN, and
+delivery-note events on Home and Receiving. Event bursts are coalesced into a refresh of the affected
+queue queries and dashboard; event payloads are not inserted directly into the cache. API scope and
+Realtime RLS continue to apply, including assigned-only pick-list access. Subscribing or reconnecting
+also refreshes the queries to catch missed changes. The subscription stops when the screen loses
+focus, the app enters the background, the user signs out, or the business unit changes, and restarts
+when the permitted screen becomes active again. Failed Realtime configuration requests retry every
+five seconds while that screen remains active; queue data is not polled.
 
 #### GET /api/mobile/items/search
 
@@ -721,11 +748,11 @@ Search items for mobile (autocomplete).
 
 #### PickingList
 
-**Location**: `apps/mobile/app/(tabs)/picking.tsx`
+**Location**: `apps/mobile/app/picking/index.tsx`
 
-- List delivery notes assigned to user
-- Filter by status
-- Search by customer
+- List pick lists in the current business unit, restricted to current-user assignments when the assigned-only capability is enabled
+- Filter by status and search by pick-list number on the server, with requests limited to 50 rows
+- Refresh the list and status counts automatically when pick lists are queued or updated
 - Navigate to detail
 
 #### PickingDetail

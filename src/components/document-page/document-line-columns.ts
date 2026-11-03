@@ -6,7 +6,8 @@ export type DocumentTrackingColumn =
   | "damagedQty"
   | "shortageQty"
   | "fulfilledQty"
-  | "outstandingQty";
+  | "outstandingQty"
+  | "deliveredQty";
 
 export type DocumentLineColumn =
   | "item"
@@ -14,6 +15,7 @@ export type DocumentLineColumn =
   | "qty"
   | "totalQty"
   | DocumentTrackingColumn
+  | "batch"
   | "unitCost"
   | "lineTotal"
   | "action";
@@ -28,6 +30,8 @@ const LINE_COLUMN_WEIGHTS: Record<DocumentLineColumn, number> = {
   shortageQty: 9,
   fulfilledQty: 10,
   outstandingQty: 11,
+  deliveredQty: 10,
+  batch: 20,
   unitCost: 13,
   lineTotal: 11,
   action: 9,
@@ -35,6 +39,7 @@ const LINE_COLUMN_WEIGHTS: Record<DocumentLineColumn, number> = {
 
 type DocumentLineColumnOptions = {
   trackingColumns: readonly DocumentTrackingColumn[];
+  showBatch?: boolean;
   showUnitCost: boolean;
   showLineTotal: boolean;
   showAction: boolean;
@@ -42,6 +47,7 @@ type DocumentLineColumnOptions = {
 
 export const getDocumentLineColumns = ({
   trackingColumns,
+  showBatch = false,
   showUnitCost,
   showLineTotal,
   showAction,
@@ -51,6 +57,7 @@ export const getDocumentLineColumns = ({
   "qty",
   "totalQty",
   ...trackingColumns,
+  ...(showBatch ? (["batch"] as const) : []),
   ...(showUnitCost ? (["unitCost"] as const) : []),
   ...(showLineTotal ? (["lineTotal"] as const) : []),
   ...(showAction ? (["action"] as const) : []),

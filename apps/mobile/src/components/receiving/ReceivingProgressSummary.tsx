@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import type { ReceivingInboxStage } from "@/contracts/receiving";
 import { colors } from "@/theme/colors";
-import { borderRadius, spacing } from "@/theme/spacing";
+import { spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
 import { RECEIVING_INBOX_STAGE_COLORS, RECEIVING_INBOX_STAGE_LABELS } from "./receiving-stages";
 
@@ -28,6 +28,7 @@ export const ReceivingProgressSummary = ({
 
   return (
     <View style={styles.card}>
+      <View style={styles.circle} />
       <View style={styles.topRow}>
         {stage ? (
           <View style={styles.stage}>
@@ -49,7 +50,7 @@ export const ReceivingProgressSummary = ({
         accessibilityLabel={unitLabel}
         accessibilityValue={{ min: 0, max: total, now: done }}
       >
-        <View style={[styles.fill, { width: `${progress * 100}%`, backgroundColor: stageColor }]} />
+        <View style={[styles.fill, { width: `${progress * 100}%` }]} />
       </View>
       {facts.length > 0 ? <Text style={styles.facts}>{facts.join(" · ")}</Text> : null}
       {action}
@@ -59,12 +60,26 @@ export const ReceivingProgressSummary = ({
 
 const styles = StyleSheet.create({
   card: {
-    gap: spacing.sm,
+    gap: 10,
     padding: spacing.base,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderRadius: 22,
+    backgroundColor: colors.violetSoft,
+    overflow: "hidden",
+    shadowColor: colors.primaryDark,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 6,
+  },
+  circle: {
+    position: "absolute",
+    right: -40,
+    top: -60,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: colors.violet,
+    opacity: 0.12,
   },
   topRow: {
     flexDirection: "row",
@@ -101,12 +116,13 @@ const styles = StyleSheet.create({
   track: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.surface,
     overflow: "hidden",
   },
   fill: {
     height: 6,
     borderRadius: 3,
+    backgroundColor: colors.violet,
   },
   facts: {
     fontSize: 12,

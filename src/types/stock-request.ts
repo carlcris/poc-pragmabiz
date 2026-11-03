@@ -1,3 +1,4 @@
+import type { DocumentFormLine } from "@/types/document-line";
 import type { ItemUnitOption } from "@/types/item";
 
 export type StockRequestStatus =
@@ -165,4 +166,16 @@ export type StockRequestListResponse = {
     limit: number;
     totalPages: number;
   };
+};
+
+// A source batch pinned on a line being edited; absent means automatic FIFO allocation.
+export type StockRequestLineBatch = {
+  id: string;
+  code: string;
+  warehouseCode: string;
+  availableBaseQty?: number;
+};
+
+export type StockRequestFormLine = DocumentFormLine & {
+  batch: StockRequestLineBatch | null;
 };

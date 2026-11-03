@@ -1289,14 +1289,16 @@ class LocationService {
 - Show variance calculations
 - Post adjustment workflow
 
-#### StockTransferForm
+#### Stock transfer pages
 
-**Location**: `src/components/inventory/StockTransferForm.tsx`
+**Location**: `src/components/stock-requests/StockRequestEditor.tsx` (create at `/inventory/stock-requests/new`, edit at `/inventory/stock-requests/[id]/edit`) and `src/components/stock-requests/StockRequestDetails.tsx` (view at `/inventory/stock-requests/[id]`)
 
-- Create transfer between warehouses
-- Select from/to locations
-- Validate available stock
-- Submit and track transfer
+- Stock transfers (stock requests) are created, edited, and viewed on full pages that share the load list and stock requisition layout: a Transfer section (requesting warehouse, Requested To, request and required dates, priority), the Items section, Purpose and Notes, and a sticky Summary panel
+- The New Item row (item, unit, qty, total qty, batch) sits above the Items table; Enter adds the line and Esc clears it. Batch defaults to Auto (FIFO); a specific batch can be pinned once Requested To is chosen, and the row rejects a batch whose availability is below the requested base quantity
+- Requested To is fixed after creation and stays locked while any line pins a batch, because pinned batches belong to that warehouse
+- Only drafts from the requesting business unit can be edited, and only with stock request edit permission; other transfers show a message linking back to the view page
+- The view page shows each line's batch, delivered quantity once fulfillment starts, and linked delivery notes. The requesting side can Submit, Edit, Cancel, or Delete a draft; the fulfilling side can Approve or Reject a submitted transfer. Reject and Cancel require a reason
+- Save errors for unavailable or insufficient batches show their own messages instead of the generic save failure
 
 #### ReorderAlerts
 

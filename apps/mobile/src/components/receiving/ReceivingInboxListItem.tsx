@@ -2,8 +2,9 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { ReceivingInboxRow } from "@/contracts/receiving";
 import { colors } from "@/theme/colors";
-import { spacing } from "@/theme/spacing";
+import { borderRadius, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
+import { softShadow } from "@/theme/elevation";
 import { formatDate } from "@/utils/format";
 
 const formatQty = (value: number) =>
@@ -59,26 +60,29 @@ const describeRow = (row: ReceivingInboxRow) => {
 
 export const ReceivingInboxListItem = ({
   row,
-  isFirst,
   onPress,
 }: {
   row: ReceivingInboxRow;
-  isFirst: boolean;
   onPress?: () => void;
 }) => {
   const { meta, value, detail, progress } = describeRow(row);
-  const kindLabel = row.kind === "load_list" ? "Load list" : "Delivery note";
+  const isLoadList = row.kind === "load_list";
+  const kindLabel = isLoadList ? "Load list" : "Delivery note";
 
   const content = (
     <>
       <View style={styles.mainRow}>
-        {row.kind === "load_list" ? (
-          <MaterialCommunityIcons name="truck-outline" size={22} color={colors.textSecondary} />
-        ) : (
-          <MaterialCommunityIcons name="swap-horizontal" size={22} color={colors.textSecondary} />
-        )}
+        <View style={[styles.kindTile, isLoadList ? styles.loadListTile : styles.deliveryNoteTile]}>
+          <MaterialCommunityIcons
+            name={isLoadList ? "truck-outline" : "swap-horizontal"}
+            size={22}
+            color={isLoadList ? colors.primaryDark : colors.statusInfo}
+          />
+        </View>
         <View style={styles.titleBlock}>
-          <Text style={styles.code}>{row.code}</Text>
+          <Text style={styles.code} numberOfLines={1}>
+            {row.code}
+          </Text>
           <Text style={styles.meta} numberOfLines={1}>
             {meta}
           </Text>
@@ -88,10 +92,8 @@ export const ReceivingInboxListItem = ({
           <Text style={styles.detail}>{detail}</Text>
         </View>
         {onPress ? (
-          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-        ) : (
-          <View style={styles.chevronSpacer} />
-        )}
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+        ) : null}
       </View>
       {progress !== null ? (
         <View style={styles.progressTrack}>
@@ -101,15 +103,11 @@ export const ReceivingInboxListItem = ({
     </>
   );
 
-  const rowStyle = [styles.row, isFirst ? null : styles.rowDivider];
+  const accessibilityLabel = `${kindLabel} ${row.code}, ${meta}, ${value} ${detail}`;
 
   if (!onPress) {
     return (
-      <View
-        style={rowStyle}
-        accessible
-        accessibilityLabel={`${kindLabel} ${row.code}, ${meta}, ${value} ${detail}`}
-      >
+      <View style={styles.row} accessible accessibilityLabel={accessibilityLabel}>
         {content}
       </View>
     );
@@ -119,35 +117,47 @@ export const ReceivingInboxListItem = ({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${kindLabel} ${row.code}, ${meta}, ${value} ${detail}`}
-      style={({ pressed }) => [...rowStyle, pressed ? styles.rowPressed : null]}
+      accessibilityLabel={accessibilityLabel}
+      style={({ pressed }) => [styles.row, pressed ? styles.rowPressed : null]}
     >
       {content}
     </Pressable>
   );
 };
 
+// Kind tile width plus the row gap, so progress aligns with the title text.
+const TEXT_INSET = 44 + spacing.md;
+
 const styles = StyleSheet.create({
   row: {
-    minHeight: 68,
-    paddingVertical: spacing.md,
-    paddingLeft: spacing.md,
-    paddingRight: spacing.md,
-    gap: spacing.sm,
+    minHeight: 72,
+    padding: 14,
+    gap: 10,
     justifyContent: "center",
+    borderRadius: borderRadius.xl,
     backgroundColor: colors.surface,
-  },
-  rowDivider: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    ...softShadow,
   },
   rowPressed: {
-    backgroundColor: colors.primarySoft,
+    opacity: 0.7,
   },
   mainRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
+  },
+  kindTile: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadListTile: {
+    backgroundColor: colors.violetSoft,
+  },
+  deliveryNoteTile: {
+    backgroundColor: colors.blueSoft,
   },
   titleBlock: {
     flex: 1,
@@ -155,8 +165,11 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   code: {
-    ...typography.titleSmall,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: typography.fontWeights.semibold,
     color: colors.text,
+    fontVariant: ["tabular-nums"],
   },
   meta: {
     fontSize: 13,
@@ -165,12 +178,12 @@ const styles = StyleSheet.create({
   },
   valueBlock: {
     alignItems: "flex-end",
-    gap: 2,
+    gap: 1,
   },
   value: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: typography.fontWeights.semibold,
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: typography.fontWeights.bold,
     color: colors.text,
     fontVariant: ["tabular-nums"],
   },
@@ -179,20 +192,16 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     color: colors.textSecondary,
   },
-  chevronSpacer: {
-    width: 20,
-  },
   progressTrack: {
-    height: 4,
-    marginLeft: 34,
-    marginRight: 32,
-    borderRadius: 2,
-    backgroundColor: colors.warningTrack,
+    height: 6,
+    marginLeft: TEXT_INSET,
+    borderRadius: 3,
+    backgroundColor: colors.violetFaint,
     overflow: "hidden",
   },
   progressFill: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.statusWarning,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.violet,
   },
 });

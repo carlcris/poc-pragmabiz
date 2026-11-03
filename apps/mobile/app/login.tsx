@@ -17,8 +17,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
-import { spacing, borderRadius, shadows, sizes } from "@/theme/spacing";
+import { spacing, borderRadius, sizes } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
+import { primaryGlow } from "@/theme/elevation";
 import { createTranslator } from "use-intl/core";
 import { translations } from "../../../src/lib/i18n/translations";
 import { getLoginErrorMessage } from "../../../src/lib/auth/login-errors";
@@ -81,6 +82,10 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.band} pointerEvents="none">
+            <View style={[styles.bandCircle, styles.bandCircleLarge]} />
+            <View style={[styles.bandCircle, styles.bandCircleSmall]} />
+          </View>
           <View style={styles.container}>
             <View style={styles.header}>
               <View style={styles.logoContainer}>
@@ -207,24 +212,64 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.xl,
+    justifyContent: "flex-start",
+    padding: spacing.base,
+    paddingTop: spacing["5xl"],
   },
   container: {
     width: "100%",
     maxWidth: 440,
-    gap: spacing["3xl"],
+    gap: spacing.xl,
+  },
+  band: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 330,
+    overflow: "hidden",
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    backgroundColor: colors.violetSoft
+  },
+  bandCircle: {
+    position: "absolute",
+    backgroundColor: colors.violet,
+    opacity: 0.12
+  },
+  bandCircleLarge: {
+    right: -60,
+    top: -70,
+    width: 240,
+    height: 240,
+    borderRadius: 120
+  },
+  bandCircleSmall: {
+    left: -50,
+    top: 150,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    opacity: 0.08
   },
   header: {
     alignItems: "center",
     gap: spacing.md,
   },
   logoContainer: {
-    width: 120,
-    height: 120,
+    width: 96,
+    height: 96,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
+    padding: 14,
+    borderRadius: 28,
+    backgroundColor: colors.surface,
+    shadowColor: colors.primaryDark,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 6,
   },
   logo: {
     width: "100%",
@@ -234,6 +279,9 @@ const styles = StyleSheet.create({
     ...typography.heading1,
     color: colors.text,
     textAlign: "center",
+    fontSize: 24,
+    lineHeight: 30,
+    letterSpacing: -0.3,
   },
   subtitle: {
     ...typography.body,
@@ -243,9 +291,13 @@ const styles = StyleSheet.create({
   form: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.xl,
-    padding: spacing.xl,
-    gap: spacing.lg,
-    ...shadows.md,
+    padding: spacing.lg,
+    gap: spacing.base,
+    shadowColor: colors.primaryDark,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.1,
+    shadowRadius: 30,
+    elevation: 8,
   },
   inputGroup: {
     gap: spacing.sm,
@@ -253,17 +305,17 @@ const styles = StyleSheet.create({
   label: {
     ...typography.label,
     color: colors.text,
+    fontSize: 13,
+    fontWeight: typography.fontWeights.medium,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
-    minHeight: sizes.input.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.base,
-    backgroundColor: colors.surface,
+    gap: 10,
+    minHeight: 50,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    backgroundColor: colors.background,
   },
   input: {
     flex: 1,
@@ -282,9 +334,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.md,
     backgroundColor: colors.dangerSoft,
-    borderRadius: borderRadius.base,
-    borderWidth: 1,
-    borderColor: colors.danger,
+    borderRadius: 14,
   },
   error: {
     ...typography.bodySmall,
@@ -293,20 +343,20 @@ const styles = StyleSheet.create({
   },
   button: {
     flexDirection: "row",
-    minHeight: sizes.button.lg,
-    borderRadius: borderRadius.md,
+    minHeight: 52,
+    borderRadius: borderRadius.full,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.sm,
     marginTop: spacing.sm,
-    ...shadows.md,
+    ...primaryGlow,
   },
   disabled: {
     opacity: 0.5,
   },
   buttonText: {
     ...typography.button,
-    color: "#FFFFFF",
+    color: colors.surface,
   },
 });

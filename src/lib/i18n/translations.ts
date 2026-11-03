@@ -21,31 +21,50 @@ export type TranslationKeys = {
   mobileShell: {
     switchBusinessUnit: string;
   };
+  mobilePickDetail: {
+    nextPick: string;
+    linesLeft: string;
+    location: string;
+    map: string;
+    pickQuantity: string;
+  };
   mobileDashboard: {
-    updatedAt: string;
+    updatedTime: string;
+    goodMorning: string;
+    goodAfternoon: string;
+    goodEvening: string;
+    openTasksToday: string;
+    inProgressCount: string;
+    waitingCount: string;
+    readyCount: string;
+    startedCount: string;
+    pendingCount: string;
+    receiving: string;
+    picking: string;
+    receivingEmpty: string;
+    pickingEmpty: string;
+    allCaughtUp: string;
+    noWorkHint: string;
+    queueRowAccessibilityLabel: string;
+    quickActions: string;
+    quickReceive: string;
+    quickPick: string;
+    quickScanItem: string;
+    quickProfile: string;
     continuePicking: string;
     nextUp: string;
-    linesPicked: string;
+    resume: string;
+    start: string;
+    linesProgress: string;
     lineCount: string;
     resumePicking: string;
     startPicking: string;
-    todaysWork: string;
-    receiving: string;
-    picking: string;
-    receivingReady: string;
-    receivingInProgress: string;
-    receivingReadyAndInProgress: string;
-    receivingEmpty: string;
-    pickingPending: string;
-    pickingInProgress: string;
-    pickingInProgressAndPending: string;
-    pickingEmpty: string;
-    noWorkHint: string;
-    workRowAccessibilityLabel: string;
+    pickListActionAccessibilityLabel: string;
     urgentStockRequests: string;
     urgentStockRequestsHint: string;
-    noUrgentTasks: string;
-    noUrgentTasksHint: string;
+    noUrgentStockRequests: string;
+    checkAnItem: string;
+    checkAnItemHint: string;
     loadError: string;
   };
   common: {
@@ -3602,6 +3621,7 @@ export type TranslationKeys = {
   grnDamagedItemsSection: Record<string, string>;
   grnBoxManagementSection: Record<string, string>;
   grnPutawayPage: Record<string, string>;
+  stockRequestPage: Record<string, string>;
   stockRequestsPage: {
     title: string;
     subtitle: string;
@@ -3674,67 +3694,9 @@ export type TranslationKeys = {
     completeDescription: string;
     cancelTitle: string;
     cancelDescription: string;
-    createSuccess: string;
-    updateSuccess: string;
-    saveFailed: string;
-    authenticationRequired: string;
-    saveForbidden: string;
-    contextRequired: string;
-    notDraft: string;
-    invalidDetails: string;
     warehousesMustDiffer: string;
     warehouseUnavailable: string;
-    invalidItems: string;
-    invalidLine: string;
-    itemUnavailable: string;
-    unitUnavailable: string;
-    unitMismatch: string;
-    batchUnavailable: string;
-    batchQuantityUnavailable: string;
     warehouseImmutable: string;
-    businessUnitsMustDiffer: string;
-    businessUnitUnavailable: string;
-    businessUnitImmutable: string;
-  };
-  stockRequestForm: {
-    editTitle: string;
-    createTitle: string;
-    editDescription: string;
-    createDescription: string;
-    requestDateLabel: string;
-    requiredDateLabel: string;
-    priorityLabel: string;
-    selectPriority: string;
-    requestedByLabel: string;
-    selectRequestedBy: string;
-    autoAssignedWarehouseUnavailable: string;
-    requestedToLabel: string;
-    selectRequestedTo: string;
-    purposeLabel: string;
-    purposePlaceholder: string;
-    notesLabel: string;
-    notesPlaceholder: string;
-    lineItemsTitle: string;
-    lineItemsDescription: string;
-    addItem: string;
-    noItems: string;
-    noItemsDescription: string;
-    item: string;
-    qty: string;
-    unit: string;
-    batch: string;
-    autoBatchAllocation: string;
-    qtyPerUnit: string;
-    notes: string;
-    actions: string;
-    cancel: string;
-    saving: string;
-    updateAction: string;
-    createAction: string;
-    lineItemRequired: string;
-    selectWarehousesBeforeItems: string;
-    selectBusinessUnitBeforeItems: string;
-    noValue: string;
   };
   stockRequestValidation: {
     requestDateRequired: string;
@@ -3742,45 +3704,6 @@ export type TranslationKeys = {
     requestedByRequired: string;
     requestedToRequired: string;
     requestingAndFulfillingMustDiffer: string;
-  };
-  stockRequestLineItemDialog: {
-    editTitle: string;
-    createTitle: string;
-    editDescription: string;
-    createDescription: string;
-    itemLabel: string;
-    unitLabel: string;
-    qtyPerUnitLabel: string;
-    selectUnit: string;
-    selectItemFirst: string;
-    loadingUnits: string;
-    noUnitsAvailable: string;
-    batchLabel: string;
-    autoBatchAllocation: string;
-    selectWarehouseFirst: string;
-    loadingBatches: string;
-    searchBatch: string;
-    noBatchesAvailable: string;
-    batchInsufficient: string;
-    selectItem: string;
-    searchItem: string;
-    loadingItems: string;
-    noItemFound: string;
-    onHand: string;
-    available: string;
-    requestedQuantityLabel: string;
-    requestedQuantityPlaceholder: string;
-    notesLabel: string;
-    notesPlaceholder: string;
-    quantityToRequest: string;
-    cancel: string;
-    updateAction: string;
-    addAction: string;
-  };
-  stockRequestLineItemValidation: {
-    itemRequired: string;
-    uomRequired: string;
-    requestedQtyMin: string;
   };
   receiveStockRequestDialog: {
     title: string;
@@ -3813,36 +3736,6 @@ export type TranslationKeys = {
     receivedDateRequired: string;
     receivedQtyMin: string;
   };
-  stockRequestViewDialog: {
-    title: string;
-    requestNumber: string;
-    requestedByBusinessUnit: string;
-    requestedToBusinessUnit: string;
-    requestedByUser: string;
-    requestDate: string;
-    requiredDate: string;
-    receivedDate: string;
-    receivedBy: string;
-    priority: string;
-    purpose: string;
-    notes: string;
-    lineItems: string;
-    item: string;
-    quantity: string;
-    deliveredQty: string;
-    unit: string;
-    batch: string;
-    automaticBatch: string;
-    qtyPerUnit: string;
-    noItems: string;
-    fulfillmentSummary: string;
-    totalRequested: string;
-    totalDelivered: string;
-    remainingQty: string;
-    fulfillingDeliveryNotes: string;
-    noLinkedDeliveryNotes: string;
-    noValue: string;
-  };
 };
 
 export const translations: Record<Locale, TranslationKeys> = {
@@ -3865,32 +3758,50 @@ export const translations: Record<Locale, TranslationKeys> = {
     mobileShell: {
       switchBusinessUnit: "Switch business unit. Current: {name}",
     },
+    mobilePickDetail: {
+      nextPick: "Next Pick",
+      linesLeft: "Lines Left: {count}",
+      location: "Location",
+      map: "Map",
+      pickQuantity: "Pick",
+    },
     mobileDashboard: {
-      updatedAt: "{date} · Updated {time}",
-      continuePicking: "Continue picking",
-      nextUp: "Next up",
-      linesPicked: "{picked} of {total} lines picked",
-      lineCount: "{count, plural, one {# line} other {# lines}}",
-      resumePicking: "Resume picking",
-      startPicking: "Start picking",
-      todaysWork: "Today's work",
+      updatedTime: "Updated {time}",
+      goodMorning: "Good morning, {name}",
+      goodAfternoon: "Good afternoon, {name}",
+      goodEvening: "Good evening, {name}",
+      openTasksToday: "Open Tasks Today",
+      inProgressCount: "{count} In Progress",
+      waitingCount: "{count} Waiting",
+      readyCount: "{count} Ready",
+      startedCount: "{count} Started",
+      pendingCount: "{count} Pending",
       receiving: "Receiving",
       picking: "Picking",
-      receivingReady: "{count} ready to receive",
-      receivingInProgress: "{count} in progress",
-      receivingReadyAndInProgress: "{ready} ready · {inProgress} in progress",
-      receivingEmpty: "Nothing to receive right now",
-      pickingPending: "{count} waiting to start",
-      pickingInProgress: "{count} in progress",
-      pickingInProgressAndPending: "{inProgress} in progress · {pending} pending",
-      pickingEmpty: "No pick lists waiting",
+      receivingEmpty: "Nothing to Receive",
+      pickingEmpty: "Nothing to Pick",
+      allCaughtUp: "All Caught Up",
       noWorkHint: "New work shows up here as soon as it's assigned. Pull down to refresh.",
-      workRowAccessibilityLabel: "{title}: {count}. {detail}",
-      urgentStockRequests:
-        "{count, plural, one {# urgent stock request} other {# urgent stock requests}}",
+      queueRowAccessibilityLabel: "{title}: {count}. {detail}",
+      quickActions: "Quick Actions",
+      quickReceive: "Receive",
+      quickPick: "Pick",
+      quickScanItem: "Scan Item",
+      quickProfile: "Profile",
+      continuePicking: "Continue Picking",
+      nextUp: "Next Up",
+      resume: "Resume",
+      start: "Start",
+      linesProgress: "{picked} of {total} Lines",
+      lineCount: "Lines: {count}",
+      resumePicking: "Resume Picking",
+      startPicking: "Start Picking",
+      pickListActionAccessibilityLabel: "{action}: {code}",
+      urgentStockRequests: "Urgent Stock Requests: {count}",
       urgentStockRequestsHint: "Waiting for review in the web app.",
-      noUrgentTasks: "No urgent tasks",
-      noUrgentTasksHint: "Nothing needs your attention right now.",
+      noUrgentStockRequests: "No Urgent Stock Requests",
+      checkAnItem: "Check an Item",
+      checkAnItemHint: "Scan a product QR code to see its details.",
       loadError: "Unable to load the warehouse dashboard.",
     },
     common: {
@@ -4370,6 +4281,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Delivery Note Details": "Delivery Note Details",
       "Stock Requisition Details": "Stock Requisition Details",
       "Load List Details": "Load List Details",
+      "Stock Transfer Details": "Stock Transfer Details",
       "GRN Details": "GRN Details",
     },
     quickActions: {
@@ -8618,6 +8530,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       quantityRequired: "Enter a quantity greater than zero with up to 2 decimal places.",
       unitCostRequired: "Enter a unit cost of zero or more.",
       noValue: "--",
+      batch: "Batch",
+      autoBatch: "Auto (FIFO)",
+      deliveredQty: "Delivered",
+      newItemHintQuantityOnly: "<kbd>Enter</kbd> adds the line",
     },
     stockRequisitionValidation: {
       supplierRequired: "Supplier is required",
@@ -10414,72 +10330,140 @@ export const translations: Record<Locale, TranslationKeys> = {
         "Complete this stock transfer? This will create stock transactions and update inventory levels.",
       cancelTitle: "Cancel Stock Transfer",
       cancelDescription: "Cancel this stock transfer? Please provide a reason.",
-      createSuccess: "Stock transfer created successfully.",
-      updateSuccess: "Stock transfer updated successfully.",
+      warehousesMustDiffer: "The requesting and fulfilling warehouses must be different.",
+      warehouseUnavailable:
+        "A selected warehouse is no longer available. Choose another warehouse.",
+      warehouseImmutable: "Warehouses cannot be changed after a stock transfer is created.",
+    },
+    stockRequestPage: {
+      createTitle: "New Stock Transfer",
+      createDescription:
+        "Request stock from another warehouse. The request number is assigned when you save.",
+      editTitle: "Edit {code}",
+      editDescription: "Changes apply when you save.",
+      viewDescription: "{from} to {to}",
+      loading: "Loading stock transfer...",
+      loadError: "Failed to load stock transfer.",
+      notFound: "Stock transfer not found.",
+      notEditable:
+        "This stock transfer can't be edited. Only drafts from your warehouse can be changed, and only by users with edit access.",
+      viewStockRequest: "View Stock Transfer",
+      backToStockRequests: "Back to Stock Transfers",
+      statusDraft: "Draft",
+      statusSubmitted: "Submitted",
+      statusApproved: "Approved",
+      statusAllocating: "Allocating",
+      statusPartiallyAllocated: "Partially Allocated",
+      statusAllocated: "Allocated",
+      statusPicking: "Picking",
+      statusPicked: "Picked",
+      statusDispatched: "Dispatched",
+      statusDelivered: "Delivered",
+      statusReceived: "Received",
+      statusPartiallyFulfilled: "Partially Fulfilled",
+      statusFulfilled: "Fulfilled",
+      statusCompleted: "Completed",
+      statusCancelled: "Cancelled",
+      priorityLow: "Low",
+      priorityNormal: "Normal",
+      priorityHigh: "High",
+      priorityUrgent: "Urgent",
+      transferTitle: "Transfer",
+      transferDescription:
+        "Which warehouse sends the stock, when it's needed, and how urgent it is.",
+      requestedBy: "Requested By",
+      requestedByHint: "Your current warehouse",
+      requestedTo: "Requested To",
+      requestedToLockedHint: "Set when the transfer was created",
+      requestedToBatchHint: "Remove pinned batches to change the warehouse",
+      requestDate: "Request Date",
+      requiredDate: "Required Date",
+      priority: "Priority",
+      requestedByUser: "Requested By User",
+      receivedDate: "Received Date",
+      receivedBy: "Received By",
+      itemsTitle: "Items",
+      noItemsTitle: "No Items Yet",
+      noItemsDescription: "Add at least one item using the New Item row above.",
+      noItemsViewDescription: "This stock transfer has no items.",
+      notesTitle: "Purpose and Notes",
+      notesDescription: "Why the stock is needed and anything the sending warehouse should know.",
+      purpose: "Purpose",
+      purposePlaceholder: "Restock, store opening, customer order...",
+      notes: "Notes",
+      notesPlaceholder: "Handling instructions, delivery window...",
+      notProvided: "Not provided",
+      deliveryNotesTitle: "Delivery Notes",
+      noDeliveryNotes: "No delivery notes linked yet.",
+      autoBatch: "Auto (FIFO)",
+      autoBatchHint: "Oldest stock is picked first",
+      batchAvailable: "{qty} available",
+      selectRequestedToFirst: "Select Requested To first",
+      searchBatch: "Search batch...",
+      noBatchesAvailable: "No available batches",
+      loadingBatches: "Loading batches...",
+      batchInsufficient:
+        "This batch has {available} base units available, but {required} are needed.",
+      lineItemsRequired: "Add at least one item before saving.",
+      summaryTitle: "Summary",
+      summaryStatus: "Status",
+      summaryFrom: "From",
+      summaryTo: "To",
+      summaryRequiredBy: "Required By",
+      summaryPriority: "Priority",
+      summaryItems: "Items",
+      unsavedChanges: "Unsaved Changes",
+      createAction: "Create Stock Transfer",
+      saveChanges: "Save Changes",
+      saving: "Saving...",
+      cancel: "Cancel",
+      discardChanges: "Discard Changes",
+      createNote: "Saves as a draft. Submit it when it's ready for approval.",
+      pendingEntryNote: "The item in New Item isn't added yet and won't be saved.",
+      createdBy: "Requested by {name} · {date}",
+      createSuccess: "Stock transfer created",
+      updateSuccess: "Stock transfer updated",
       saveFailed: "The stock transfer could not be saved. Please try again.",
       authenticationRequired: "Sign in again before saving this stock transfer.",
       saveForbidden: "You do not have permission to save stock transfers in this business unit.",
       contextRequired: "Select a valid business unit before saving this stock transfer.",
       notDraft: "This stock transfer is no longer a draft. Refresh the page and try again.",
       invalidDetails: "Complete the required stock transfer details before saving.",
-      warehousesMustDiffer: "The requesting and fulfilling warehouses must be different.",
-      warehouseUnavailable:
-        "A selected warehouse is no longer available. Choose another warehouse.",
+      businessUnitsMustDiffer: "The requesting and sending warehouses must be different.",
+      businessUnitUnavailable:
+        "The selected sending warehouse is no longer available. Choose another warehouse.",
+      businessUnitImmutable:
+        "The sending warehouse cannot be changed after a stock transfer is created.",
       invalidItems: "Add between 1 and 200 stock transfer items.",
       invalidLine: "One or more stock transfer lines contain invalid values.",
       itemUnavailable: "An item is no longer available. Refresh the item list and try again.",
       unitUnavailable: "A selected unit is no longer available. Reselect the unit and try again.",
       unitMismatch: "A selected unit does not match its item. Reselect the unit and try again.",
-      batchUnavailable: "A selected batch is no longer available in the fulfilling warehouse.",
+      batchUnavailable: "A selected batch is no longer available in the sending warehouse.",
       batchQuantityUnavailable: "A selected batch no longer has enough available quantity.",
-      warehouseImmutable: "Warehouses cannot be changed after a stock transfer is created.",
-      businessUnitsMustDiffer: "The requesting and fulfilling business units must be different.",
-      businessUnitUnavailable:
-        "The selected fulfilling business unit is no longer available. Choose another business unit.",
-      businessUnitImmutable:
-        "The fulfilling business unit cannot be changed after a stock request is created.",
-    },
-    stockRequestForm: {
-      editTitle: "Edit Stock Transfer",
-      createTitle: "Create Stock Transfer",
-      editDescription: "Edit request {code}",
-      createDescription: "Create a new stock transfer",
-      requestDateLabel: "Request Date",
-      requiredDateLabel: "Required Date",
-      priorityLabel: "Priority",
-      selectPriority: "Select priority",
-      requestedByLabel: "Requested By",
-      selectRequestedBy: "Select requested by",
-      autoAssignedWarehouseUnavailable: "No warehouse assigned to the current business unit",
-      requestedToLabel: "Requested To",
-      selectRequestedTo: "Select requested to",
-      purposeLabel: "Purpose",
-      purposePlaceholder: "Enter purpose of request (optional)",
-      notesLabel: "Notes",
-      notesPlaceholder: "Additional notes (optional)",
-      lineItemsTitle: "Line Items",
-      lineItemsDescription: "Add items to request",
-      addItem: "Add Item",
-      noItems: "No items added yet.",
-      noItemsDescription: 'Click "Add Item" to get started.',
-      item: "Item",
-      qty: "Qty",
-      unit: "Unit",
-      batch: "Batch",
-      autoBatchAllocation: "Auto",
-      qtyPerUnit: "Qty/Unit",
-      notes: "Notes",
-      actions: "Actions",
-      cancel: "Cancel",
-      saving: "Saving...",
-      updateAction: "Update Request",
-      createAction: "Create Request",
-      lineItemRequired: "Please add at least one line item",
-      selectWarehousesBeforeItems:
-        "Select both the requesting and fulfilling warehouses before adding items.",
-      selectBusinessUnitBeforeItems:
-        "Select the fulfilling business unit before adding request items.",
       noValue: "--",
+      edit: "Edit",
+      submit: "Submit",
+      approve: "Approve",
+      reject: "Reject",
+      cancelTransfer: "Cancel Transfer",
+      delete: "Delete",
+      submitHint:
+        "Once submitted, the sending warehouse can approve it and it can no longer be edited.",
+      submitTitle: "Submit Stock Transfer",
+      submitDescription: "Submit this stock transfer for approval?",
+      approveTitle: "Approve Stock Transfer",
+      approveDescription: "Approve this stock transfer?",
+      rejectTitle: "Reject Stock Transfer",
+      rejectDescription: "Reject this stock transfer? Please provide a reason.",
+      cancelTitle: "Cancel Stock Transfer",
+      cancelDescription: "Cancel this stock transfer? Please provide a reason.",
+      deleteTitle: "Delete Stock Transfer",
+      deleteDescription: "Delete request {code}? This action cannot be undone.",
+      reason: "Reason",
+      reasonPlaceholder: "Enter reason...",
+      goBack: "No, Go Back",
+      processing: "Processing...",
     },
     stockRequestValidation: {
       requestDateRequired: "Request date is required",
@@ -10487,46 +10471,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       requestedByRequired: "Requested by is required",
       requestedToRequired: "Requested to is required",
       requestingAndFulfillingMustDiffer: "Requested to must be different from requested by",
-    },
-    stockRequestLineItemDialog: {
-      editTitle: "Edit Request Item",
-      createTitle: "Add Request Item",
-      editDescription: "Update the request item details.",
-      createDescription: "Fill in the details for the new request item.",
-      itemLabel: "Item",
-      unitLabel: "Unit",
-      qtyPerUnitLabel: "Qty per unit",
-      selectUnit: "Select a unit",
-      selectItemFirst: "Select an item first",
-      loadingUnits: "Loading units...",
-      noUnitsAvailable: "No units available for this item",
-      batchLabel: "Batch (Optional)",
-      autoBatchAllocation: "Auto allocate by FIFO",
-      selectWarehouseFirst: "Select requested to first",
-      loadingBatches: "Loading batches...",
-      searchBatch: "Search batch...",
-      noBatchesAvailable: "No available batches",
-      batchInsufficient:
-        "Selected batch has {available} base units available, but {required} are required.",
-      selectItem: "Select an item",
-      searchItem: "Search by code or name...",
-      loadingItems: "Loading items...",
-      noItemFound: "No item found.",
-      onHand: "On hand",
-      available: "Available",
-      requestedQuantityLabel: "Requested Quantity",
-      requestedQuantityPlaceholder: "Enter quantity",
-      notesLabel: "Notes (Optional)",
-      notesPlaceholder: "Additional notes for this item...",
-      quantityToRequest: "Quantity to Request",
-      cancel: "Cancel",
-      updateAction: "Update Item",
-      addAction: "Add Item",
-    },
-    stockRequestLineItemValidation: {
-      itemRequired: "Item is required",
-      uomRequired: "Unit of measure is required",
-      requestedQtyMin: "Requested quantity must be greater than 0",
     },
     receiveStockRequestDialog: {
       title: "Receive Stock Transfer",
@@ -10559,36 +10503,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       receivedDateRequired: "Received date is required",
       receivedQtyMin: "Quantity cannot be negative",
     },
-    stockRequestViewDialog: {
-      title: "Stock Transfer Details",
-      requestNumber: "Request #{code}",
-      requestedByBusinessUnit: "Requesting Business Unit",
-      requestedToBusinessUnit: "Fulfilling Business Unit",
-      requestedByUser: "Requested By",
-      requestDate: "Request Date",
-      requiredDate: "Required Date",
-      receivedDate: "Received Date",
-      receivedBy: "Received By",
-      priority: "Priority",
-      purpose: "Purpose",
-      notes: "Notes",
-      lineItems: "Line Items",
-      item: "Item",
-      quantity: "Quantity",
-      deliveredQty: "Delivered Qty",
-      unit: "Unit",
-      batch: "Batch",
-      automaticBatch: "Automatic FIFO",
-      qtyPerUnit: "Qty/Unit",
-      noItems: "No items found.",
-      fulfillmentSummary: "Fulfillment Summary",
-      totalRequested: "Total Requested",
-      totalDelivered: "Total Delivered",
-      remainingQty: "Remaining Qty",
-      fulfillingDeliveryNotes: "Fulfilling Delivery Notes",
-      noLinkedDeliveryNotes: "No linked delivery notes yet.",
-      noValue: "--",
-    },
   },
   zh: {
     loginErrors: {
@@ -10605,31 +10519,50 @@ export const translations: Record<Locale, TranslationKeys> = {
     mobileShell: {
       switchBusinessUnit: "切换业务单元。当前：{name}",
     },
+    mobilePickDetail: {
+      nextPick: "下一拣货",
+      linesLeft: "剩余行数：{count}",
+      location: "库位",
+      map: "地图",
+      pickQuantity: "拣货",
+    },
     mobileDashboard: {
-      updatedAt: "{date} · 更新于 {time}",
-      continuePicking: "继续拣货",
-      nextUp: "下一个",
-      linesPicked: "已拣 {picked}/{total} 行",
-      lineCount: "{count} 行",
-      resumePicking: "继续拣货",
-      startPicking: "开始拣货",
-      todaysWork: "今日工作",
+      updatedTime: "更新于 {time}",
+      goodMorning: "早上好，{name}",
+      goodAfternoon: "下午好，{name}",
+      goodEvening: "晚上好，{name}",
+      openTasksToday: "今日未完成任务",
+      inProgressCount: "{count} 个进行中",
+      waitingCount: "{count} 个待处理",
+      readyCount: "{count} 个待收货",
+      startedCount: "{count} 个已开始",
+      pendingCount: "{count} 个待开始",
       receiving: "收货",
       picking: "拣货",
-      receivingReady: "{count} 个待收货",
-      receivingInProgress: "{count} 个进行中",
-      receivingReadyAndInProgress: "{ready} 个待收货 · {inProgress} 个进行中",
       receivingEmpty: "目前没有待收货",
-      pickingPending: "{count} 个待开始",
-      pickingInProgress: "{count} 个进行中",
-      pickingInProgressAndPending: "{inProgress} 个进行中 · {pending} 个待开始",
-      pickingEmpty: "没有待处理的拣货单",
+      pickingEmpty: "目前没有待拣货",
+      allCaughtUp: "全部完成",
       noWorkHint: "分配新工作后会立即显示在这里。下拉即可刷新。",
-      workRowAccessibilityLabel: "{title}：{count}。{detail}",
-      urgentStockRequests: "{count} 个紧急库存申请",
+      queueRowAccessibilityLabel: "{title}：{count}。{detail}",
+      quickActions: "快捷操作",
+      quickReceive: "收货",
+      quickPick: "拣货",
+      quickScanItem: "扫描商品",
+      quickProfile: "个人资料",
+      continuePicking: "继续拣货",
+      nextUp: "下一个",
+      resume: "继续",
+      start: "开始",
+      linesProgress: "已拣 {picked}/{total} 行",
+      lineCount: "行数：{count}",
+      resumePicking: "继续拣货",
+      startPicking: "开始拣货",
+      pickListActionAccessibilityLabel: "{action}：{code}",
+      urgentStockRequests: "紧急库存申请：{count}",
       urgentStockRequestsHint: "等待在网页端审核。",
-      noUrgentTasks: "没有紧急任务",
-      noUrgentTasksHint: "目前没有需要您处理的事项。",
+      noUrgentStockRequests: "没有紧急库存申请",
+      checkAnItem: "查询商品",
+      checkAnItemHint: "扫描商品二维码查看详情。",
       loadError: "无法加载仓库仪表板。",
     },
     common: {
@@ -11088,6 +11021,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Delivery Note Details": "送货单详情",
       "Stock Requisition Details": "库存请购详情",
       "Load List Details": "装载单详情",
+      "Stock Transfer Details": "库存调拨详情",
       "GRN Details": "收货单详情",
     },
     quickActions: {
@@ -15196,6 +15130,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       quantityRequired: "请输入大于零且最多两位小数的数量。",
       unitCostRequired: "请输入大于或等于零的单位成本。",
       noValue: "--",
+      batch: "批次",
+      autoBatch: "自动（先进先出）",
+      deliveredQty: "已交付",
+      newItemHintQuantityOnly: "按 <kbd>Enter</kbd> 添加该行",
     },
     stockRequisitionValidation: {
       supplierRequired: "供应商为必填项",
@@ -16942,16 +16880,103 @@ export const translations: Record<Locale, TranslationKeys> = {
       completeDescription: "确定要完成此库存调拨吗？这将创建库存交易并更新库存数量。",
       cancelTitle: "取消库存调拨",
       cancelDescription: "确定要取消此库存调拨吗？请提供原因。",
-      createSuccess: "库存调拨创建成功。",
-      updateSuccess: "库存调拨更新成功。",
+      warehousesMustDiffer: "申请方仓库和供货方仓库必须不同。",
+      warehouseUnavailable: "所选仓库已不可用，请选择其他仓库。",
+      warehouseImmutable: "库存调拨创建后不能更改仓库。",
+    },
+    stockRequestPage: {
+      createTitle: "新建库存调拨",
+      createDescription: "向其他仓库申请库存。保存时会分配申请单号。",
+      editTitle: "编辑 {code}",
+      editDescription: "保存后更改生效。",
+      viewDescription: "{from} 至 {to}",
+      loading: "正在加载库存调拨...",
+      loadError: "加载库存调拨失败。",
+      notFound: "未找到库存调拨。",
+      notEditable: "此库存调拨无法编辑。只有本仓库的草稿可以修改，且仅限拥有编辑权限的用户。",
+      viewStockRequest: "查看库存调拨",
+      backToStockRequests: "返回库存调拨",
+      statusDraft: "草稿",
+      statusSubmitted: "已提交",
+      statusApproved: "已批准",
+      statusAllocating: "分配中",
+      statusPartiallyAllocated: "部分分配",
+      statusAllocated: "已分配",
+      statusPicking: "拣货中",
+      statusPicked: "已拣货",
+      statusDispatched: "已发运",
+      statusDelivered: "已送达",
+      statusReceived: "已接收",
+      statusPartiallyFulfilled: "部分完成",
+      statusFulfilled: "已完成",
+      statusCompleted: "已完成",
+      statusCancelled: "已取消",
+      priorityLow: "低",
+      priorityNormal: "普通",
+      priorityHigh: "高",
+      priorityUrgent: "紧急",
+      transferTitle: "调拨信息",
+      transferDescription: "由哪个仓库供货、何时需要以及紧急程度。",
+      requestedBy: "申请方",
+      requestedByHint: "您当前的仓库",
+      requestedTo: "供货方",
+      requestedToLockedHint: "在创建调拨时设定",
+      requestedToBatchHint: "移除已指定的批次后才能更改仓库",
+      requestDate: "申请日期",
+      requiredDate: "需求日期",
+      priority: "优先级",
+      requestedByUser: "申请人",
+      receivedDate: "接收日期",
+      receivedBy: "接收人",
+      itemsTitle: "商品",
+      noItemsTitle: "尚无商品",
+      noItemsDescription: "请通过上方的新增商品行至少添加一个商品。",
+      noItemsViewDescription: "此库存调拨没有商品。",
+      notesTitle: "用途与备注",
+      notesDescription: "需要此批库存的原因，以及供货仓库需要了解的事项。",
+      purpose: "用途",
+      purposePlaceholder: "补货、门店开业、客户订单...",
+      notes: "备注",
+      notesPlaceholder: "搬运说明、送货时间段...",
+      notProvided: "未提供",
+      deliveryNotesTitle: "送货单",
+      noDeliveryNotes: "尚未关联送货单。",
+      autoBatch: "自动（先进先出）",
+      autoBatchHint: "优先拣选最早入库的库存",
+      batchAvailable: "可用 {qty}",
+      selectRequestedToFirst: "请先选择供货方",
+      searchBatch: "搜索批次...",
+      noBatchesAvailable: "没有可用批次",
+      loadingBatches: "正在加载批次...",
+      batchInsufficient: "此批次可用 {available} 个基本单位，但需要 {required} 个。",
+      lineItemsRequired: "保存前请至少添加一个商品。",
+      summaryTitle: "摘要",
+      summaryStatus: "状态",
+      summaryFrom: "发出方",
+      summaryTo: "接收方",
+      summaryRequiredBy: "需求日期",
+      summaryPriority: "优先级",
+      summaryItems: "商品",
+      unsavedChanges: "有未保存的更改",
+      createAction: "创建库存调拨",
+      saveChanges: "保存更改",
+      saving: "保存中...",
+      cancel: "取消",
+      discardChanges: "放弃更改",
+      createNote: "保存为草稿。准备好后再提交审批。",
+      pendingEntryNote: "新增商品中的商品尚未添加，不会被保存。",
+      createdBy: "由 {name} 申请 · {date}",
+      createSuccess: "库存调拨已创建",
+      updateSuccess: "库存调拨已更新",
       saveFailed: "无法保存库存调拨，请重试。",
       authenticationRequired: "请重新登录后再保存此库存调拨。",
       saveForbidden: "您无权在此业务单元中保存库存调拨。",
       contextRequired: "请选择有效的业务单元后再保存此库存调拨。",
       notDraft: "此库存调拨已不再是草稿，请刷新页面后重试。",
       invalidDetails: "请完整填写必填的库存调拨信息后再保存。",
-      warehousesMustDiffer: "申请方仓库和供货方仓库必须不同。",
-      warehouseUnavailable: "所选仓库已不可用，请选择其他仓库。",
+      businessUnitsMustDiffer: "申请方仓库和供货方仓库必须不同。",
+      businessUnitUnavailable: "所选供货仓库已不可用，请选择其他仓库。",
+      businessUnitImmutable: "库存调拨创建后不能更改供货仓库。",
       invalidItems: "请添加 1 至 200 个库存调拨商品。",
       invalidLine: "一个或多个库存调拨明细包含无效值。",
       itemUnavailable: "某个商品已不可用，请刷新商品列表后重试。",
@@ -16959,50 +16984,28 @@ export const translations: Record<Locale, TranslationKeys> = {
       unitMismatch: "所选单位与商品不匹配，请重新选择单位后重试。",
       batchUnavailable: "所选批次在供货仓库中已不可用。",
       batchQuantityUnavailable: "所选批次的可用数量已不足。",
-      warehouseImmutable: "库存调拨创建后不能更改仓库。",
-      businessUnitsMustDiffer: "申请业务单元和履行业务单元必须不同。",
-      businessUnitUnavailable: "所选履行业务单元已不可用，请选择其他业务单元。",
-      businessUnitImmutable: "库存申请创建后不能更改履行业务单元。",
-    },
-    stockRequestForm: {
-      editTitle: "编辑库存调拨",
-      createTitle: "创建库存调拨",
-      editDescription: "编辑申请单 {code}",
-      createDescription: "创建新的库存调拨",
-      requestDateLabel: "申请日期",
-      requiredDateLabel: "需求日期",
-      priorityLabel: "优先级",
-      selectPriority: "选择优先级",
-      requestedByLabel: "申请方",
-      selectRequestedBy: "选择申请方",
-      autoAssignedWarehouseUnavailable: "当前业务单元未分配仓库",
-      requestedToLabel: "供货方",
-      selectRequestedTo: "选择供货方",
-      purposeLabel: "用途",
-      purposePlaceholder: "输入申请用途（可选）",
-      notesLabel: "备注",
-      notesPlaceholder: "附加备注（可选）",
-      lineItemsTitle: "明细项目",
-      lineItemsDescription: "添加申请商品",
-      addItem: "添加商品",
-      noItems: "尚未添加商品。",
-      noItemsDescription: "点击“添加商品”开始。",
-      item: "商品",
-      qty: "数量",
-      unit: "单位",
-      batch: "批次",
-      autoBatchAllocation: "自动",
-      qtyPerUnit: "每单位数量",
-      notes: "备注",
-      actions: "操作",
-      cancel: "取消",
-      saving: "保存中...",
-      updateAction: "更新申请",
-      createAction: "创建申请",
-      lineItemRequired: "请至少添加一条明细项目",
-      selectWarehousesBeforeItems: "请先选择申请仓库和供货仓库，再添加商品。",
-      selectBusinessUnitBeforeItems: "请先选择履行业务单元，再添加申请商品。",
       noValue: "--",
+      edit: "编辑",
+      submit: "提交",
+      approve: "批准",
+      reject: "拒绝",
+      cancelTransfer: "取消调拨",
+      delete: "删除",
+      submitHint: "提交后，供货仓库即可审批，且无法再编辑。",
+      submitTitle: "提交库存调拨",
+      submitDescription: "确定要提交此库存调拨以供审批吗？",
+      approveTitle: "批准库存调拨",
+      approveDescription: "确定要批准此库存调拨吗？",
+      rejectTitle: "拒绝库存调拨",
+      rejectDescription: "确定要拒绝此库存调拨吗？请提供原因。",
+      cancelTitle: "取消库存调拨",
+      cancelDescription: "确定要取消此库存调拨吗？请提供原因。",
+      deleteTitle: "删除库存调拨",
+      deleteDescription: "确定要删除申请单 {code} 吗？此操作无法撤销。",
+      reason: "原因",
+      reasonPlaceholder: "输入原因...",
+      goBack: "不，返回",
+      processing: "处理中...",
     },
     stockRequestValidation: {
       requestDateRequired: "申请日期为必填项",
@@ -17010,45 +17013,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       requestedByRequired: "申请方为必填项",
       requestedToRequired: "供货方为必填项",
       requestingAndFulfillingMustDiffer: "供货方必须不同于申请方",
-    },
-    stockRequestLineItemDialog: {
-      editTitle: "编辑申请商品",
-      createTitle: "添加申请商品",
-      editDescription: "更新申请商品详情。",
-      createDescription: "填写新申请商品的详情。",
-      itemLabel: "商品",
-      unitLabel: "单位",
-      qtyPerUnitLabel: "每单位数量",
-      selectUnit: "选择单位",
-      selectItemFirst: "请先选择商品",
-      loadingUnits: "加载单位中...",
-      noUnitsAvailable: "此商品没有可用单位",
-      batchLabel: "批次（可选）",
-      autoBatchAllocation: "按先进先出自动分配",
-      selectWarehouseFirst: "请先选择供货方",
-      loadingBatches: "加载批次中...",
-      searchBatch: "搜索批次...",
-      noBatchesAvailable: "没有可用批次",
-      batchInsufficient: "所选批次可用基础单位为 {available}，但需要 {required}。",
-      selectItem: "选择商品",
-      searchItem: "按编码或名称搜索...",
-      loadingItems: "加载商品中...",
-      noItemFound: "未找到商品。",
-      onHand: "现有库存",
-      available: "可用数量",
-      requestedQuantityLabel: "申请数量",
-      requestedQuantityPlaceholder: "输入数量",
-      notesLabel: "备注（可选）",
-      notesPlaceholder: "此商品的附加备注...",
-      quantityToRequest: "申请数量",
-      cancel: "取消",
-      updateAction: "更新商品",
-      addAction: "添加商品",
-    },
-    stockRequestLineItemValidation: {
-      itemRequired: "商品为必填项",
-      uomRequired: "计量单位为必填项",
-      requestedQtyMin: "申请数量必须大于 0",
     },
     receiveStockRequestDialog: {
       title: "接收库存调拨",
@@ -17080,36 +17044,6 @@ export const translations: Record<Locale, TranslationKeys> = {
     receiveStockRequestValidation: {
       receivedDateRequired: "接收日期为必填项",
       receivedQtyMin: "数量不能为负数",
-    },
-    stockRequestViewDialog: {
-      title: "库存调拨详情",
-      requestNumber: "申请单号 #{code}",
-      requestedByBusinessUnit: "申请业务单元",
-      requestedToBusinessUnit: "履行业务单元",
-      requestedByUser: "申请人",
-      requestDate: "申请日期",
-      requiredDate: "需求日期",
-      receivedDate: "接收日期",
-      receivedBy: "接收人",
-      priority: "优先级",
-      purpose: "用途",
-      notes: "备注",
-      lineItems: "明细项目",
-      item: "商品",
-      quantity: "数量",
-      deliveredQty: "已交付数量",
-      unit: "单位",
-      batch: "批次",
-      automaticBatch: "自动先进先出",
-      qtyPerUnit: "每单位数量",
-      noItems: "未找到商品。",
-      fulfillmentSummary: "履行汇总",
-      totalRequested: "申请总数",
-      totalDelivered: "已交付总数",
-      remainingQty: "剩余数量",
-      fulfillingDeliveryNotes: "相关送货单",
-      noLinkedDeliveryNotes: "尚无关联送货单。",
-      noValue: "--",
     },
   },
 };

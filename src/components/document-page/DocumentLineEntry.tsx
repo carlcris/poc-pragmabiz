@@ -2,6 +2,7 @@
 
 import {
   type KeyboardEvent,
+  type ReactNode,
   type RefObject,
   useEffect,
   useId,
@@ -47,14 +48,33 @@ type DocumentItemOption = Pick<
   | "listPrice"
 >;
 
-type LineEntryField = "item" | "unit" | "quantity" | "unitCost";
+type LineEntryField = "item" | "unit" | "quantity" | "batch" | "unitCost";
+
+export type DocumentLineBatchFieldState<TBatch> = {
+  itemId: string | null;
+  /** Requested quantity in base units, for availability checks. */
+  baseQuantity: number;
+  value: TBatch | null;
+  onChange: (value: TBatch | null) => void;
+  triggerId: string;
+  triggerRef: RefObject<HTMLButtonElement | null>;
+  invalid: boolean;
+  describedBy?: string;
+};
+
+// Optional source-batch picker rendered in the "batch" column of the New item row.
+export type DocumentLineBatchField<TBatch> = {
+  render: (state: DocumentLineBatchFieldState<TBatch>) => ReactNode;
+  /** Returns an error message when the chosen batch cannot cover the line. */
+  validate: (value: TBatch | null, baseQuantity: number) => string | null;
+};
 
 type LineEntryError = {
   field: LineEntryField;
   message: string;
 };
 
-type DocumentLineEntryProps = {
+type DocumentLineEntryProps<TBatch> = {
   columns: DocumentLineColumn[];
   canViewUnitCost: boolean;
   /** Currency every line must share; null when the document has no lines or hides costs. */
@@ -62,9 +82,10 @@ type DocumentLineEntryProps = {
   mixedCurrencyMessage: string;
   /** Items already on the document; when given, adding one of them again is rejected. */
   existingItemIds?: ReadonlySet<string>;
+  batchField?: DocumentLineBatchField<TBatch>;
   itemTriggerRef: RefObject<HTMLButtonElement | null>;
   linesError: string | null;
-  onAdd: (line: DocumentFormLine) => void;
+  onAdd: (line: DocumentFormLine, batch: TBatch | null) => void;
   onEntryChange: (hasPendingEntry: boolean) => void;
 };
 
@@ -84,17 +105,18 @@ const cellClassName = "min-w-0 lg:px-2 lg:first:pl-0 lg:last:pr-0";
 const labelClassName = "mb-1.5 block text-sm font-medium";
 const derivedValueClassName = "flex h-10 items-center justify-end text-sm tabular-nums";
 
-export function DocumentLineEntry({
+export function DocumentLineEntry<TBatch = never>({
   columns,
   canViewUnitCost,
   lockedCurrency,
   mixedCurrencyMessage,
   existingItemIds,
+  batchField,
   itemTriggerRef,
   linesError,
   onAdd,
   onEntryChange,
-}: DocumentLineEntryProps) {
+}: DocumentLineEntryProps<TBatch>) {
   const t = useTranslations("documentLines");
   const locale = useLocale();
   const fieldId = useId();
@@ -103,11 +125,13 @@ export function DocumentLineEntry({
   const unitTriggerRef = useRef<HTMLButtonElement>(null);
   const quantityRef = useRef<HTMLInputElement>(null);
   const unitCostRef = useRef<HTMLInputElement>(null);
+  const batchTriggerRef = useRef<HTMLButtonElement>(null);
 
   const [selectedItem, setSelectedItem] = useState<DocumentItemOption | null>(null);
   const [selectedUnitOptionId, setSelectedUnitOptionId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unitCost, setUnitCost] = useState("");
+  const [batch, setBatch] = useState<TBatch | null>(null);
   const [itemSearch, setItemSearch] = useState("");
   const [entryError, setEntryError] = useState<LineEntryError | null>(null);
   const [announcement, setAnnouncement] = useState("");
@@ -176,6 +200,7 @@ export function DocumentLineEntry({
       item: itemTriggerRef.current,
       unit: unitTriggerRef.current,
       quantity: quantityRef.current,
+      batch: batchTriggerRef.current,
       unitCost: unitCostRef.current,
     }[field];
     (control?.disabled ? itemTriggerRef.current : control)?.focus();
@@ -191,6 +216,7 @@ export function DocumentLineEntry({
     setSelectedUnitOptionId("");
     setQuantity("");
     setUnitCost("");
+    setBatch(null);
     setItemSearch("");
     setEntryError(null);
   };
@@ -202,6 +228,8 @@ export function DocumentLineEntry({
     }
     if (!selectedUnitOption) return showError("unit", t("unitRequired"));
     if (!isValidDocumentLineQuantity(quantity)) return showError("quantity", t("quantityRequired"));
+    const batchError = batchField?.validate(batch, totalQty) ?? null;
+    if (batchError) return showError("batch", batchError);
     if (canViewUnitCost && (!Number.isFinite(parsedUnitCost) || parsedUnitCost < 0)) {
       return showError("unitCost", t("unitCostRequired"));
     }
@@ -210,20 +238,23 @@ export function DocumentLineEntry({
     }
 
     const unitPrice = canViewUnitCost ? parsedUnitCost : Number(getDefaultUnitCost(selectedItem));
-    onAdd({
-      key: crypto.randomUUID(),
-      itemId: selectedItem.id,
-      itemCode: selectedItem.code,
-      itemName: selectedItem.name,
-      itemUnitOptionId: selectedUnitOption.id,
-      uomId: selectedUnitOption.uomId,
-      unitLabel,
-      uomCode: selectedUnitOption.uomCode,
-      qtyPerUnit,
-      quantity: Number(quantity),
-      unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
-      unitPriceCurrency: costCurrency,
-    });
+    onAdd(
+      {
+        key: crypto.randomUUID(),
+        itemId: selectedItem.id,
+        itemCode: selectedItem.code,
+        itemName: selectedItem.name,
+        itemUnitOptionId: selectedUnitOption.id,
+        uomId: selectedUnitOption.uomId,
+        unitLabel,
+        uomCode: selectedUnitOption.uomCode,
+        qtyPerUnit,
+        quantity: Number(quantity),
+        unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
+        unitPriceCurrency: costCurrency,
+      },
+      batch
+    );
     setAnnouncement(t("lineAdded", { code: selectedItem.code }));
     resetEntry();
     itemTriggerRef.current?.focus();
@@ -259,7 +290,7 @@ export function DocumentLineEntry({
           {t("newItemTitle")}
         </h3>
         <p className="text-sm text-muted-foreground">
-          {t.rich("newItemHint", {
+          {t.rich(columns.includes("unitCost") ? "newItemHint" : "newItemHintQuantityOnly", {
             kbd: (chunks) => (
               <kbd className="rounded border border-b-2 bg-background px-1.5 font-sans text-xs font-semibold text-foreground">
                 {chunks}
@@ -283,6 +314,7 @@ export function DocumentLineEntry({
               const item = itemOptions.find((option) => option.id === itemId) ?? null;
               setSelectedItem(item);
               setSelectedUnitOptionId("");
+              setBatch(null);
               setUnitCost(item ? Number(getDefaultUnitCost(item)).toFixed(2) : "");
               setEntryError(
                 item && existingItemIds?.has(item.id)
@@ -398,6 +430,27 @@ export function DocumentLineEntry({
               : t("noValue")}
           </div>
         </div>
+
+        {batchField && columns.includes("batch") ? (
+          <div className={cellClassName}>
+            <label htmlFor={`${fieldId}-batch`} className={labelClassName}>
+              {t("batch")}
+            </label>
+            {batchField.render({
+              itemId: selectedItem?.id ?? null,
+              baseQuantity: totalQty,
+              value: batch,
+              onChange: (value) => {
+                setBatch(value);
+                setEntryError((error) => (error?.field === "batch" ? null : error));
+              },
+              triggerId: `${fieldId}-batch`,
+              triggerRef: batchTriggerRef,
+              invalid: errorFor("batch") != null,
+              describedBy: errorFor("batch") ? errorId : undefined,
+            })}
+          </div>
+        ) : null}
 
         {columns.includes("unitCost") ? (
           <div className={cellClassName}>

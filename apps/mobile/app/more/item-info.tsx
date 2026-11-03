@@ -56,23 +56,22 @@ export default function ItemInfoScreen() {
 
   return (
     <Screen title="Scan Item Info" subtitle="Read-only product lookup" back>
-      <Card style={styles.scanCard}>
-        <View style={styles.scanHeader}>
-          <View style={styles.scanIcon}>
-            <Ionicons name="qr-code-outline" size={24} color={colors.primary} />
-          </View>
-          <View style={styles.scanText}>
-            <Text style={styles.cardTitle}>Product Code</Text>
-            <Text style={styles.cardSubtitle}>Scan a product code or enter the printed code.</Text>
-          </View>
+      <View style={styles.scanHero}>
+        <View style={styles.scanHeroCircle} />
+        <View style={styles.scanHeroArt} importantForAccessibility="no-hide-descendants">
+          <Ionicons name="qr-code-outline" size={72} color={colors.violet} />
         </View>
-
+        <Text style={styles.heroTitle}>Product Code</Text>
+        <Text style={styles.cardSubtitle}>Scan a product code or enter the printed code.</Text>
         <ActionButton
           label="Scan QR Code"
           icon="scan-outline"
           onPress={() => setScannerOpen(true)}
+          style={styles.scanButton}
         />
+      </View>
 
+      <Card style={styles.scanCard}>
         <View style={styles.inputWrap}>
           <TextInput
             value={input}
@@ -101,7 +100,9 @@ export default function ItemInfoScreen() {
 
       {!submittedPayload ? (
         <Card style={styles.readyCard}>
-          <Ionicons name="information-circle-outline" size={28} color={colors.blue} />
+          <View style={styles.readyIcon}>
+            <Ionicons name="information-circle-outline" size={24} color={colors.primary} />
+          </View>
           <Text style={styles.readyTitle}>Ready to scan</Text>
           <Text style={styles.readyText}>
             Results will show product details and aggregate inventory for the current business unit.
@@ -225,25 +226,49 @@ const InventoryMetric = ({
 };
 
 const styles = StyleSheet.create({
+  scanHero: {
+    overflow: "hidden",
+    alignItems: "flex-start",
+    gap: 6,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: 18,
+    borderRadius: 22,
+    backgroundColor: colors.violetSoft,
+    shadowColor: colors.primaryDark,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 6
+  },
+  scanHeroCircle: {
+    position: "absolute",
+    right: -30,
+    bottom: -50,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: colors.violet,
+    opacity: 0.12
+  },
+  scanHeroArt: {
+    position: "absolute",
+    right: 26,
+    top: 24,
+    transform: [{ rotate: "8deg" }]
+  },
+  heroTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text
+  },
+  scanButton: {
+    marginTop: 10,
+    minHeight: 44,
+    paddingHorizontal: spacing.lg
+  },
   scanCard: {
     gap: spacing.md
-  },
-  scanHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md
-  },
-  scanIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.base,
-    backgroundColor: colors.primarySoft,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  scanText: {
-    flex: 1,
-    gap: spacing.xs
   },
   cardTitle: {
     ...typography.titleSmall,
@@ -251,17 +276,16 @@ const styles = StyleSheet.create({
   },
   cardSubtitle: {
     ...typography.bodySmall,
-    color: colors.textSecondary
+    color: colors.textSecondary,
+    maxWidth: 210
   },
   inputWrap: {
     position: "relative"
   },
   input: {
     minHeight: 92,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.base,
-    backgroundColor: colors.faint,
+    borderRadius: 14,
+    backgroundColor: colors.background,
     padding: spacing.base,
     paddingRight: 44,
     color: colors.text,
@@ -281,7 +305,16 @@ const styles = StyleSheet.create({
   },
   readyCard: {
     alignItems: "center",
-    gap: spacing.sm
+    gap: spacing.sm,
+    paddingVertical: 22
+  },
+  readyIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center"
   },
   readyTitle: {
     ...typography.titleSmall,
@@ -309,13 +342,13 @@ const styles = StyleSheet.create({
   itemImage: {
     width: "100%",
     aspectRatio: 16 / 9,
-    borderRadius: borderRadius.base,
+    borderRadius: 14,
     backgroundColor: colors.faint
   },
   imageFallback: {
     width: "100%",
     aspectRatio: 16 / 9,
-    borderRadius: borderRadius.base,
+    borderRadius: 14,
     backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center"
@@ -340,7 +373,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.xs,
     padding: spacing.md,
-    borderRadius: borderRadius.base,
+    borderRadius: 14,
     backgroundColor: colors.faint
   },
   infoRow: {
@@ -377,7 +410,7 @@ const styles = StyleSheet.create({
   inventoryMetric: {
     flex: 1,
     minHeight: 82,
-    borderRadius: borderRadius.base,
+    borderRadius: 14,
     padding: spacing.md,
     justifyContent: "center",
     gap: spacing.xs

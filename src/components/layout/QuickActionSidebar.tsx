@@ -48,7 +48,8 @@ const quickActions: QuickAction[] = [
   },
   {
     labelKey: "newStockRequest",
-    href: "/inventory/stock-requests?create=1",
+    href: "/inventory/stock-requests/new",
+    activePath: "/inventory/stock-requests/new",
     icon: PackagePlus,
     resource: RESOURCES.STOCK_REQUESTS,
   },

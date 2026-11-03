@@ -20,6 +20,7 @@ import type { GrnLine, UpdateGrnLinePayload } from "@/contracts/receiving";
 import { colors } from "@/theme/colors";
 import { borderRadius, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
+import { softShadow, primaryGlow } from "@/theme/elevation";
 import { formatDate } from "@/utils/format";
 import {
   canAccessLoadListReceiving,
@@ -547,7 +548,7 @@ const QuantityStepper = ({
         accessibilityLabel={`Decrease ${label.toLowerCase()}`}
         style={styles.stepperButton}
       >
-        <Ionicons name="remove" size={20} color={colors.text} />
+        <Ionicons name="remove" size={20} color={colors.primaryDark} />
       </Pressable>
       <TextInput
         value={String(value)}
@@ -565,7 +566,7 @@ const QuantityStepper = ({
         accessibilityLabel={`Increase ${label.toLowerCase()}`}
         style={styles.stepperButton}
       >
-        <Ionicons name="add" size={20} color={colors.text} />
+        <Ionicons name="add" size={20} color={colors.primaryDark} />
       </Pressable>
     </View>
   </View>
@@ -574,14 +575,17 @@ const QuantityStepper = ({
 const styles = StyleSheet.create({
   pauseButton: {
     alignSelf: "flex-start",
-    minHeight: 44,
+    minHeight: 36,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
+    gap: 6,
+    paddingHorizontal: 14,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surface,
   },
   pauseText: {
-    fontSize: 14,
-    fontWeight: typography.fontWeights.semibold,
+    fontSize: 13,
+    fontWeight: typography.fontWeights.medium,
     color: colors.primaryDark,
   },
   errorText: {
@@ -598,28 +602,30 @@ const styles = StyleSheet.create({
   },
   tabs: {
     flexDirection: "row",
-    gap: 3,
-    padding: 3,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.border,
+    gap: spacing.xs,
+    padding: spacing.xs,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surface,
+    ...softShadow,
   },
   tab: {
     flex: 1,
-    minHeight: 44,
+    minHeight: 36,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
+    borderRadius: borderRadius.full,
   },
   tabActive: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.primary,
+    ...primaryGlow,
   },
   tabText: {
     fontSize: 13,
-    fontWeight: typography.fontWeights.semibold,
+    fontWeight: typography.fontWeights.medium,
     color: colors.textSecondary,
   },
   tabTextActive: {
-    color: colors.text,
+    color: colors.surface,
   },
   emptyLines: {
     paddingVertical: spacing.lg,
@@ -628,19 +634,18 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   lines: {
-    gap: spacing.sm,
+    gap: 10,
   },
   line: {
     gap: spacing.md,
     padding: spacing.base,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: borderRadius.xl,
     backgroundColor: colors.surface,
+    ...softShadow,
   },
   lineExpanded: {
     borderWidth: 2,
-    borderColor: colors.primaryDark,
+    borderColor: colors.violet,
   },
   lineHeader: {
     flexDirection: "row",
@@ -667,12 +672,12 @@ const styles = StyleSheet.create({
   lineValueLabel: {
     fontSize: 11,
     lineHeight: 15,
-    fontWeight: typography.fontWeights.semibold,
+    fontWeight: typography.fontWeights.medium,
     color: colors.textSecondary,
   },
   lineValue: {
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 20,
+    lineHeight: 26,
     fontWeight: typography.fontWeights.bold,
     color: colors.text,
     fontVariant: ["tabular-nums"],
@@ -701,17 +706,16 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   lineAction: {
-    minHeight: 44,
-    paddingHorizontal: spacing.base,
+    minHeight: 40,
+    paddingHorizontal: 18,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.violetSoft,
   },
   lineActionText: {
     fontSize: 14,
-    fontWeight: typography.fontWeights.semibold,
+    fontWeight: typography.fontWeights.medium,
     color: colors.primaryDark,
   },
   stepperGrid: {
@@ -724,27 +728,27 @@ const styles = StyleSheet.create({
   },
   stepperLabel: {
     fontSize: 12,
-    fontWeight: typography.fontWeights.semibold,
-    color: colors.statusNeutral,
+    fontWeight: typography.fontWeights.medium,
+    color: colors.textSecondary,
   },
   stepper: {
     flexDirection: "row",
     alignItems: "center",
     height: 48,
-    borderRadius: borderRadius.base,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
+    borderRadius: 14,
+    backgroundColor: colors.background,
+    paddingHorizontal: 6,
   },
   stepperDisabled: {
     opacity: 0.5,
   },
   stepperButton: {
-    width: 44,
-    height: 48,
+    width: 36,
+    height: 36,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.violetSoft,
+    borderRadius: 18,
   },
   stepperInput: {
     flex: 1,

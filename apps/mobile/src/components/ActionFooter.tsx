@@ -38,11 +38,16 @@ const styles = StyleSheet.create({
   footer: {
     gap: spacing.sm,
     paddingHorizontal: spacing.base,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    paddingTop: 14,
+    paddingBottom: spacing.base,
     backgroundColor: colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    shadowColor: colors.primaryDark,
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
+    elevation: 12,
   },
   note: {
     fontSize: 13,
@@ -51,6 +56,6 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: "row",
-    gap: spacing.md,
+    gap: 10,
   },
 });

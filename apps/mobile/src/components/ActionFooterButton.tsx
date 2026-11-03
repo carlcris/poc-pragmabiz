@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text } from "react-native";
 import { colors } from "@/theme/colors";
 import { borderRadius, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
+import { primaryGlow } from "@/theme/elevation";
 
 type ActionFooterButtonVariant = "primary" | "secondary" | "success" | "warning";
 
@@ -56,17 +57,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.base,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.full,
   },
   primary: {
-    backgroundColor: colors.primaryDark,
+    backgroundColor: colors.primary,
+    ...primaryGlow,
   },
   success: {
     backgroundColor: colors.statusSuccess,
   },
   secondary: {
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1.5,
+    borderColor: colors.violetAvatar,
     backgroundColor: colors.surface,
   },
   warning: {
@@ -76,6 +78,8 @@ const styles = StyleSheet.create({
   },
   filledDisabled: {
     backgroundColor: colors.backgroundSecondary,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   outlinedDisabled: {
     borderColor: colors.divider,
@@ -91,7 +95,7 @@ const styles = StyleSheet.create({
     color: colors.surface,
   },
   secondaryLabel: {
-    color: colors.text,
+    color: colors.primaryDark,
   },
   warningLabel: {
     color: colors.statusWarning,

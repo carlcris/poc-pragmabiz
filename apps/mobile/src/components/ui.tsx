@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Animated,
   Modal,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -25,6 +24,7 @@ import { useBusinessUnits, useSetBusinessUnit } from "@/hooks/queries";
 import { useAuthStore } from "@/stores/authStore";
 import { spacing, borderRadius, shadows, sizes } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
+import { primaryGlow, softShadow } from "@/theme/elevation";
 import { canAccessPicking, canAccessReceiving } from "@/utils/permissions";
 import { titleCaseStatus } from "@/utils/record";
 import { createTranslator } from "use-intl/core";
@@ -40,15 +40,17 @@ type ScreenProps = {
   refreshing?: boolean;
 } & (
   // Detail screens keep their record title and context subtitle.
-  | { back: true; title: string; subtitle?: string }
-  // Main screens show the business unit switcher as the title and the screen title beneath it.
-  | { back?: false; title: string; subtitle?: never }
+  | { back: true; title: string; subtitle?: string; greeting?: never }
+  // Main screens show the screen title with the business unit switcher beneath it.
+  // A greeting swaps in the avatar header, with the screen title as trailing meta text.
+  | { back?: false; title: string; subtitle?: never; greeting?: string }
 );
 
 export const Screen = ({
   title,
   subtitle,
   back,
+  greeting,
   children,
   footer,
   onRefresh,
@@ -69,18 +71,17 @@ export const Screen = ({
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      {/* Keep scanner Enter suffixes from initially focusing and activating Back. */}
-      <View style={styles.header} focusable importantForAccessibility="no">
-        <View style={styles.headerContent}>
+      {greeting ? (
+        <GreetingHeader greeting={greeting} meta={title} />
+      ) : (
+        /* Keep scanner Enter suffixes from initially focusing and activating Back. */
+        <View style={styles.header} focusable importantForAccessibility="no">
           {back ? (
             <Pressable
               onPress={() => router.back()}
-              style={({ pressed }) => [
-                styles.backButton,
-                pressed && styles.backButtonPressed
-              ]}
+              style={({ pressed }) => [styles.backButton, pressed && styles.backButtonPressed]}
             >
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
+              <Ionicons name="arrow-back" size={22} color={colors.text} />
             </Pressable>
           ) : null}
           <View style={styles.headerTitleBlock}>
@@ -89,21 +90,22 @@ export const Screen = ({
                 {title}
               </Text>
             ) : (
-              <BusinessUnitSwitcher />
-            )}
-            {back && subtitle ? (
-              <Text style={styles.headerSubtitle} numberOfLines={1}>
-                {subtitle}
-              </Text>
-            ) : null}
-            {!back ? (
-              <Text style={styles.headerSubtitle} numberOfLines={1}>
+              <Text style={styles.screenTitle} numberOfLines={1} accessibilityRole="header">
                 {title}
               </Text>
-            ) : null}
+            )}
+            {back ? (
+              subtitle ? (
+                <Text style={styles.headerSubtitle} numberOfLines={1}>
+                  {subtitle}
+                </Text>
+              ) : null
+            ) : (
+              <BusinessUnitSwitcher />
+            )}
           </View>
         </View>
-      </View>
+      )}
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -122,6 +124,38 @@ export const Screen = ({
       </ScrollView>
       {footer}
     </SafeAreaView>
+  );
+};
+
+const GreetingHeader = ({ greeting, meta }: { greeting: string; meta: string }) => {
+  const user = useAuthStore((state) => state.session?.user);
+  const initials = [user?.firstName, user?.lastName]
+    .map((part) => part?.trim().charAt(0) ?? "")
+    .join("")
+    .toUpperCase();
+
+  return (
+    // Keep scanner Enter suffixes from initially focusing and activating the switcher.
+    <View style={styles.greetingHeader} focusable importantForAccessibility="no">
+      <View style={styles.avatar} importantForAccessibility="no-hide-descendants">
+        {initials ? (
+          <Text style={styles.avatarText}>{initials}</Text>
+        ) : (
+          <Ionicons name="person" size={20} color={colors.violetDark} />
+        )}
+      </View>
+      <View style={styles.headerTitleBlock}>
+        <Text style={styles.greetingText} numberOfLines={1} accessibilityRole="header">
+          {greeting}
+        </Text>
+        <BusinessUnitSwitcher />
+      </View>
+      {meta ? (
+        <Text style={styles.greetingMeta} numberOfLines={1}>
+          {meta}
+        </Text>
+      ) : null}
+    </View>
   );
 };
 
@@ -173,10 +207,10 @@ const BusinessUnitSwitcher = () => {
         accessibilityRole="button"
         accessibilityLabel={tShell("switchBusinessUnit", { name: businessUnitLabel })}
       >
-        <Text style={[styles.headerTitle, styles.businessUnitSwitcherText]} numberOfLines={1}>
+        <Text style={styles.businessUnitSwitcherText} numberOfLines={1}>
           {businessUnitLabel}
         </Text>
-        <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+        <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -260,8 +294,8 @@ export const ActionButton = ({
       <Ionicons
         name={icon}
         size={22}
-        color={variant === "secondary" ? "#000" : "#fff"}
-        style={{ marginRight: 12 }}
+        color={variant === "secondary" ? colors.primaryDark : colors.surface}
+        style={{ marginRight: spacing.sm }}
       />
     ) : null}
     <Text style={[styles.buttonText, variant === "secondary" ? styles.buttonTextSecondary : null]}>
@@ -280,12 +314,12 @@ export const SearchInput = ({
   placeholder: string;
 }) => (
   <View style={styles.searchBox}>
-    <Ionicons name="search-outline" size={30} color="#9aa2b1" />
+    <Ionicons name="search-outline" size={20} color={colors.muted} />
     <TextInput
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor="#9aa2b1"
+      placeholderTextColor={colors.muted}
       style={styles.searchInput}
       autoCapitalize="none"
     />
@@ -311,7 +345,7 @@ export const SegmentedControl = ({
           style={[styles.segment, active ? styles.segmentActive : null]}
         >
           {option.icon ? (
-            <Ionicons name={option.icon} size={22} color={active ? "#000" : colors.muted} />
+            <Ionicons name={option.icon} size={18} color={active ? colors.surface : colors.textSecondary} />
           ) : null}
           <Text style={[styles.segmentText, active ? styles.segmentTextActive : null]}>
             {option.label}
@@ -330,7 +364,7 @@ export const StatusBadge = ({ status }: { status: string }) => (
 
 export const EmptyState = ({ title, subtitle }: { title: string; subtitle: string }) => (
   <Card style={styles.emptyCard}>
-    <Ionicons name="file-tray-outline" size={66} color="#9aa2b1" />
+    <Ionicons name="file-tray-outline" size={56} color={colors.primaryLight} />
     <Text style={styles.emptyTitle}>{title}</Text>
     <Text style={styles.emptySubtitle}>{subtitle}</Text>
   </Card>
@@ -485,147 +519,148 @@ export const BottomNav = () => {
   return (
     <SafeAreaView edges={["bottom"]} style={styles.bottomSafe}>
       <View style={styles.bottomNav}>
-        <Pressable
-          style={styles.navItem}
+        <NavItem
+          label="Receiving"
+          active={active === "receiving"}
           disabled={!showReceiving}
-          accessibilityState={{ disabled: !showReceiving }}
           onPress={() => handleNavigation("/receiving", "receiving")}
-        >
-          <MaterialCommunityIcons
-            name="package-variant-closed"
-            size={22}
-            color={
-              !showReceiving
-                ? colors.textDisabled
-                : active === "receiving"
-                  ? colors.primary
-                  : "#9B8FC4"
-            }
-          />
-          <Text
-            style={[
-              styles.navText,
-              active === "receiving" && showReceiving ? styles.navTextActive : null,
-              !showReceiving ? styles.navTextDisabled : null
-            ]}
-          >
-            Receiving
-          </Text>
-        </Pressable>
-        <Pressable
-          style={styles.navItem}
+          renderIcon={(color) => (
+            <MaterialCommunityIcons name="package-variant-closed" size={22} color={color} />
+          )}
+        />
+        <NavItem
+          label="Picking"
+          active={active === "picking"}
           disabled={!showPicking}
-          accessibilityState={{ disabled: !showPicking }}
           onPress={() => handleNavigation("/picking", "picking")}
-        >
-          <MaterialCommunityIcons
-            name="package-variant-plus"
-            size={22}
-            color={
-              !showPicking
-                ? colors.textDisabled
-                : active === "picking"
-                  ? colors.primary
-                  : "#9B8FC4"
-            }
-          />
-          <Text
-            style={[
-              styles.navText,
-              active === "picking" && showPicking ? styles.navTextActive : null,
-              !showPicking ? styles.navTextDisabled : null
-            ]}
+          renderIcon={(color) => (
+            <MaterialCommunityIcons name="package-variant-plus" size={22} color={color} />
+          )}
+        />
+        <View style={styles.navItem}>
+          <Pressable
+            style={styles.navCenter}
+            onPress={() => handleNavigation("/", "dashboard")}
+            accessibilityRole="button"
+            accessibilityLabel="Dashboard"
           >
-            Picking
-          </Text>
-        </Pressable>
-        <Pressable style={styles.navCenter} onPress={() => handleNavigation("/", "dashboard")}>
-          <Ionicons name="grid-outline" size={26} color="#fff" />
-        </Pressable>
-        <Pressable style={styles.navItem} onPress={() => handleNavigation("/profile", "profile")}>
-          <Ionicons
-            name="person-outline"
-            size={22}
-            color={active === "profile" ? colors.primary : "#9B8FC4"}
-          />
-          <Text style={[styles.navText, active === "profile" ? styles.navTextActive : null]}>
-            Profile
-          </Text>
-        </Pressable>
-        <Pressable style={styles.navItem} onPress={() => handleNavigation("/more", "more")}>
-          <Ionicons
-            name="ellipsis-horizontal"
-            size={22}
-            color={active === "more" ? colors.primary : "#9B8FC4"}
-          />
-          <Text style={[styles.navText, active === "more" ? styles.navTextActive : null]}>
-            More
-          </Text>
-        </Pressable>
+            <Ionicons name="grid-outline" size={24} color={colors.surface} />
+          </Pressable>
+        </View>
+        <NavItem
+          label="Profile"
+          active={active === "profile"}
+          onPress={() => handleNavigation("/profile", "profile")}
+          renderIcon={(color, isActive) => (
+            <Ionicons name={isActive ? "person" : "person-outline"} size={22} color={color} />
+          )}
+        />
+        <NavItem
+          label="More"
+          active={active === "more"}
+          onPress={() => handleNavigation("/more", "more")}
+          renderIcon={(color) => <Ionicons name="ellipsis-horizontal" size={22} color={color} />}
+        />
       </View>
     </SafeAreaView>
+  );
+};
+
+const NavItem = ({
+  label,
+  active,
+  disabled = false,
+  onPress,
+  renderIcon
+}: {
+  label: string;
+  active: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+  renderIcon: (color: string, isActive: boolean) => React.ReactNode;
+}) => {
+  const isActive = active && !disabled;
+  const color = disabled ? colors.textDisabled : isActive ? colors.primary : colors.navInactive;
+
+  return (
+    <Pressable
+      style={styles.navItem}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled, selected: isActive }}
+      onPress={onPress}
+    >
+      {renderIcon(color, isActive)}
+      <Text
+        style={[
+          styles.navText,
+          isActive ? styles.navTextActive : null,
+          disabled ? styles.navTextDisabled : null
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 };
 
 export const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.surface
+    backgroundColor: colors.background
   },
   scroll: {
     flex: 1,
     backgroundColor: colors.background
   },
   scrollContent: {
-    padding: spacing.lg,
-    paddingBottom: 120,
-    gap: spacing.base
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.md,
+    paddingBottom: spacing["2xl"],
+    gap: 14
   },
   header: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xs,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    backgroundColor: colors.background,
     gap: spacing.md
-  },
-  headerContent: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    minWidth: 0
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.full,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.backgroundSecondary
+    backgroundColor: colors.surface,
+    ...softShadow
   },
   backButtonPressed: {
-    backgroundColor: colors.border,
-    opacity: 0.8
+    opacity: 0.7
   },
   headerTitleBlock: {
     flex: 1,
     minWidth: 0,
     gap: 2
   },
+  screenTitle: {
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: typography.fontWeights.bold,
+    letterSpacing: -0.3,
+    color: colors.text
+  },
   headerTitle: {
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: typography.fontWeights.bold,
     color: colors.text
   },
   headerSubtitle: {
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: typography.fontWeights.medium,
     color: colors.textSecondary
   },
   businessUnitSwitcher: {
@@ -636,7 +671,43 @@ export const styles = StyleSheet.create({
     gap: spacing.xs
   },
   businessUnitSwitcherText: {
-    flexShrink: 1
+    flexShrink: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textSecondary
+  },
+  greetingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.base,
+    paddingBottom: spacing.xs,
+    backgroundColor: colors.background
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.violetAvatar,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  avatarText: {
+    fontSize: 15,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.violetDark
+  },
+  greetingText: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: typography.fontWeights.medium,
+    color: colors.text
+  },
+  greetingMeta: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.muted
   },
   switcherBackdrop: {
     flex: 1,
@@ -700,26 +771,25 @@ export const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    ...shadows.base
+    borderRadius: borderRadius.xl,
+    padding: spacing.base,
+    ...softShadow
   },
   button: {
     minHeight: sizes.button.lg,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.full,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
     paddingHorizontal: spacing.xl,
-    ...shadows.sm
+    ...primaryGlow
   },
   buttonSecondary: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border
+    borderWidth: 1.5,
+    borderColor: colors.violetAvatar,
+    ...shadows.none
   },
   buttonSuccess: {
     backgroundColor: colors.green
@@ -729,22 +799,20 @@ export const styles = StyleSheet.create({
   },
   buttonText: {
     ...typography.button,
-    color: "#FFFFFF"
+    color: colors.surface
   },
   buttonTextSecondary: {
-    color: colors.text
+    color: colors.primaryDark
   },
   searchBox: {
-    minHeight: sizes.input.lg,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    minHeight: 50,
+    borderRadius: borderRadius.lg,
     backgroundColor: colors.surface,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: spacing.base,
-    gap: spacing.md,
-    ...shadows.sm
+    paddingHorizontal: 14,
+    gap: 10,
+    ...softShadow
   },
   searchInput: {
     flex: 1,
@@ -753,31 +821,34 @@ export const styles = StyleSheet.create({
   },
   segmented: {
     flexDirection: "row",
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.full,
     padding: spacing.xs,
-    gap: spacing.xs
+    gap: spacing.xs,
+    ...softShadow
   },
   segment: {
     flex: 1,
-    minHeight: sizes.button.base,
-    borderRadius: borderRadius.base,
+    minHeight: 36,
+    borderRadius: borderRadius.full,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: spacing.sm
+    gap: 6,
+    paddingHorizontal: spacing.sm
   },
   segmentActive: {
-    backgroundColor: colors.surface,
-    ...shadows.sm
+    backgroundColor: colors.primary,
+    ...primaryGlow
   },
   segmentText: {
-    ...typography.body,
-    fontWeight: typography.fontWeights.semibold,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: typography.fontWeights.medium,
     color: colors.textSecondary
   },
   segmentTextActive: {
-    color: colors.text
+    color: colors.surface
   },
   badge: {
     alignSelf: "flex-start",
@@ -810,8 +881,7 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.md,
     alignItems: "center",
-    backgroundColor: colors.amberSoft,
-    borderColor: colors.amber
+    backgroundColor: colors.amberBanner
   },
   noticeText: {
     ...typography.body,
@@ -820,32 +890,34 @@ export const styles = StyleSheet.create({
     flex: 1
   },
   bottomSafe: {
-    backgroundColor: colors.surface
+    backgroundColor: colors.background
   },
   bottomNav: {
-    height: 72,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    height: 68,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
+    borderRadius: 34,
     backgroundColor: colors.surface,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: spacing.sm,
-    ...shadows.lg
+    paddingHorizontal: 6,
+    boxShadow: "0px 10px 24px rgba(91, 33, 182, 0.14)"
   },
   navItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 2,
-    paddingVertical: spacing.xs
+    gap: 3,
   },
   navText: {
     fontSize: 11,
-    color: "#9B8FC4",
+    color: colors.navInactive,
     fontWeight: typography.fontWeights.medium
   },
   navTextActive: {
-    color: colors.primary
+    color: colors.primaryDark,
+    fontWeight: typography.fontWeights.bold
   },
   navTextDisabled: {
     color: colors.textDisabled
@@ -854,19 +926,17 @@ export const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
+    borderWidth: 4,
+    borderColor: colors.surface,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: -28,
-    ...Platform.select({
-      android: { elevation: 12 },
-      ios: {
-        shadowColor: colors.primary,
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 4 }
-      }
-    })
+    marginTop: -22,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8
   },
   scannerShell: {
     flex: 1,

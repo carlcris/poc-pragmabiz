@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
   Plus,
@@ -24,8 +23,6 @@ import {
 } from "lucide-react";
 import {
   useStockRequests,
-  useCreateStockRequest,
-  useUpdateStockRequest,
   useDeleteStockRequest,
   useSubmitStockRequest,
   useApproveStockRequest,
@@ -72,46 +69,23 @@ import {
 import type { StockRequest, StockRequestStatus, StockRequestPriority } from "@/types/stock-request";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 
-const StockRequestFormDialog = dynamic(
-  () =>
-    import("@/components/stock-requests/StockRequestFormDialog").then(
-      (mod) => mod.StockRequestFormDialog
-    ),
-  { ssr: false }
-);
-type StockRequestFormValues =
-  import("@/components/stock-requests/StockRequestFormDialog").StockRequestFormValues;
-type StockRequestLineItemPayload =
-  import("@/components/stock-requests/StockRequestLineItemDialog").StockRequestLineItemPayload;
-const StockRequestViewDialog = dynamic(
-  () =>
-    import("@/components/stock-requests/StockRequestViewDialog").then(
-      (mod) => mod.StockRequestViewDialog
-    ),
-  { ssr: false }
-);
-
 export default function StockRequestsPage() {
   const t = useTranslations("stockRequestsPage");
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<StockRequest | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [requestToDelete, setRequestToDelete] = useState<StockRequest | null>(null);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [actionType, setActionType] = useState<string>("");
   const [requestToAction, setRequestToAction] = useState<StockRequest | null>(null);
   const [actionReason, setActionReason] = useState("");
-  const [viewRequest, setViewRequest] = useState<StockRequest | null>(null);
 
   const { data, isLoading, error } = useStockRequests({
     search: search || undefined,
@@ -123,36 +97,6 @@ export default function StockRequestsPage() {
 
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
 
-  const draftMutationErrors = {
-    STOCK_REQUEST_SAVE_FAILED: t("saveFailed"),
-    STOCK_REQUEST_UNAUTHORIZED: t("authenticationRequired"),
-    STOCK_REQUEST_FORBIDDEN: t("saveForbidden"),
-    STOCK_REQUEST_CONTEXT_INVALID: t("contextRequired"),
-    STOCK_REQUEST_NOT_DRAFT: t("notDraft"),
-    STOCK_REQUEST_HEADER_INVALID: t("invalidDetails"),
-    STOCK_REQUEST_BUSINESS_UNITS_MUST_DIFFER: t("businessUnitsMustDiffer"),
-    STOCK_REQUEST_FULFILLING_BUSINESS_UNIT_INVALID: t("businessUnitUnavailable"),
-    STOCK_REQUEST_ITEMS_INVALID: t("invalidItems"),
-    STOCK_REQUEST_LINE_INVALID: t("invalidLine"),
-    STOCK_REQUEST_ITEM_UNAVAILABLE: t("itemUnavailable"),
-    STOCK_REQUEST_UNIT_OPTION_UNAVAILABLE: t("unitUnavailable"),
-    STOCK_REQUEST_UNIT_OPTION_MISMATCH: t("unitMismatch"),
-    STOCK_REQUEST_SELECTED_BATCH_UNAVAILABLE: t("batchUnavailable"),
-    STOCK_REQUEST_SELECTED_BATCH_ITEM_MISMATCH: t("batchUnavailable"),
-    STOCK_REQUEST_SELECTED_BATCH_BUSINESS_UNIT_MISMATCH: t("batchUnavailable"),
-    STOCK_REQUEST_SELECTED_BATCH_INSUFFICIENT: t("batchQuantityUnavailable"),
-    STOCK_REQUEST_FULFILLING_BUSINESS_UNIT_IMMUTABLE: t("businessUnitImmutable"),
-  };
-  const createMutation = useCreateStockRequest({
-    success: t("createSuccess"),
-    fallbackError: t("saveFailed"),
-    errors: draftMutationErrors,
-  });
-  const updateMutation = useUpdateStockRequest({
-    success: t("updateSuccess"),
-    fallbackError: t("saveFailed"),
-    errors: draftMutationErrors,
-  });
   const deleteMutation = useDeleteStockRequest();
   const submitMutation = useSubmitStockRequest();
   const approveMutation = useApproveStockRequest();
@@ -284,22 +228,12 @@ export default function StockRequestsPage() {
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
 
-  useEffect(() => {
-    if (searchParams.get("create") !== "1") return;
-
-    setSelectedRequest(null);
-    setDialogOpen(true);
-    router.replace("/inventory/stock-requests");
-  }, [router, searchParams]);
-
   const handleCreateRequest = () => {
-    setSelectedRequest(null);
-    setDialogOpen(true);
+    router.push("/inventory/stock-requests/new");
   };
 
   const handleEditRequest = (request: StockRequest) => {
-    setSelectedRequest(request);
-    setDialogOpen(true);
+    router.push(`/inventory/stock-requests/${request.id}/edit`);
   };
 
   const handleDeleteRequest = (request: StockRequest) => {
@@ -343,43 +277,6 @@ export default function StockRequestsPage() {
       setActionDialogOpen(false);
       setRequestToAction(null);
       setActionReason("");
-    } catch {
-      // Error is handled by mutation onError
-    }
-  };
-
-  const handleSaveRequest = async (payload: {
-    values: StockRequestFormValues;
-    lineItems: StockRequestLineItemPayload[];
-    selectedRequest: StockRequest | null;
-  }) => {
-    try {
-      const items = payload.lineItems.map((item) => ({
-        item_id: item.itemId,
-        requested_qty: item.requestedQty,
-        item_unit_option_id: item.itemUnitOptionId,
-        selected_item_batch_id: item.selectedItemBatchId || null,
-        uom_id: item.uomId,
-        notes: item.notes,
-      }));
-
-      if (payload.selectedRequest) {
-        const { fulfilling_business_unit_id: _fulfillingBusinessUnitId, ...updateValues } =
-          payload.values;
-        void _fulfillingBusinessUnitId;
-        await updateMutation.mutateAsync({
-          id: payload.selectedRequest.id,
-          data: {
-            ...updateValues,
-            items,
-          },
-        });
-      } else {
-        await createMutation.mutateAsync({
-          ...payload.values,
-          items,
-        });
-      }
     } catch {
       // Error is handled by mutation onError
     }
@@ -609,7 +506,7 @@ export default function StockRequestsPage() {
                       <TableRow
                         key={request.id}
                         className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => setViewRequest(request)}
+                        onClick={() => router.push(`/inventory/stock-requests/${request.id}`)}
                       >
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
@@ -761,31 +658,6 @@ export default function StockRequestsPage() {
             </>
           )}
         </div>
-
-        {dialogOpen && (
-          <StockRequestFormDialog
-            open={dialogOpen}
-            onOpenChange={(open) => {
-              setDialogOpen(open);
-              if (!open) setSelectedRequest(null);
-            }}
-            selectedRequest={selectedRequest}
-            onSave={handleSaveRequest}
-            isSaving={createMutation.isPending || updateMutation.isPending}
-          />
-        )}
-
-        {viewRequest && (
-          <StockRequestViewDialog
-            open={!!viewRequest}
-            onOpenChange={(open) => {
-              if (!open) {
-                setViewRequest(null);
-              }
-            }}
-            request={viewRequest}
-          />
-        )}
 
         {/* Delete Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

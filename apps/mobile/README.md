@@ -17,6 +17,14 @@ The app loads its public Supabase Realtime configuration from the authenticated 
 translation dependencies. Keep this transform enabled for Android development bundles. Restart
 Metro with `--clear` after changing Babel configuration.
 
+Run mobile unit tests with the repository's existing Vitest installation, from the repository root:
+
+```sh
+npm test -- --config apps/mobile/vitest.config.ts
+```
+
+The mobile test configuration uses this app's module aliases, separate from the Next.js application.
+
 ## Android Builds
 
 Run EAS from this `apps/mobile` directory so it uses this app's Expo project and credentials:
