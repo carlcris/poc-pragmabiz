@@ -590,7 +590,7 @@ const NavItem = ({
       accessibilityState={{ disabled, selected: isActive }}
       onPress={onPress}
     >
-      {renderIcon(color, isActive)}
+      <View style={styles.navIcon}>{renderIcon(color, isActive)}</View>
       <Text
         style={[
           styles.navText,
@@ -908,10 +908,18 @@ export const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
+    gap: 2
+  },
+  // Fixed boxes keep Android font padding on icon glyphs and labels from pushing them apart.
+  navIcon: {
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center"
   },
   navText: {
     fontSize: 11,
+    lineHeight: 14,
+    includeFontPadding: false,
     color: colors.navInactive,
     fontWeight: typography.fontWeights.medium
   },
