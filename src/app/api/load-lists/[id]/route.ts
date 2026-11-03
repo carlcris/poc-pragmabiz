@@ -37,9 +37,6 @@ type LoadListItemRow = {
   unit_name: string;
   qty_per_unit: number | string;
   load_list_qty: number | string;
-  received_qty: number | string;
-  damaged_qty: number | string;
-  shortage_qty: number | string;
   unit_price: number | string;
   total_price: number | string;
   notes: string | null;
@@ -115,9 +112,6 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
           unit_name,
           qty_per_unit,
           load_list_qty,
-          received_qty,
-          damaged_qty,
-          shortage_qty,
           unit_price,
           total_price,
           notes,
@@ -263,9 +257,6 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
               }
             : null,
           loadListQty,
-          receivedQty: parseFloat(String(item.received_qty)),
-          damagedQty: parseFloat(String(item.damaged_qty)),
-          shortageQty: parseFloat(String(item.shortage_qty)),
           unitPrice,
           totalPrice: loadListQty * qtyPerUnit * unitPrice,
           notes: item.notes,

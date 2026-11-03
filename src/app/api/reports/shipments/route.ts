@@ -28,9 +28,6 @@ type LoadListReportRow = {
   load_list_items?:
     | {
         load_list_qty: number | string | null;
-        received_qty: number | string | null;
-        shortage_qty: number | string | null;
-        damaged_qty: number | string | null;
         total_price: number | string | null;
       }[]
     | null;
@@ -107,9 +104,6 @@ async function GETHandler(request: NextRequest) {
         destination_business_unit:business_units!load_lists_destination_business_unit_id_fkey(name),
         load_list_items(
           load_list_qty,
-          received_qty,
-          shortage_qty,
-          damaged_qty,
           total_price
         )
       `,
@@ -170,9 +164,6 @@ async function GETHandler(request: NextRequest) {
         itemCount: items.length,
         totalQuantity: items.reduce((sum, item) => sum + toNumber(item.load_list_qty), 0),
         totalValue: items.reduce((sum, item) => sum + toNumber(item.total_price), 0),
-        receivedQuantity: items.reduce((sum, item) => sum + toNumber(item.received_qty), 0),
-        shortageQuantity: items.reduce((sum, item) => sum + toNumber(item.shortage_qty), 0),
-        damagedQuantity: items.reduce((sum, item) => sum + toNumber(item.damaged_qty), 0),
         createdAt: row.created_at,
       };
     });

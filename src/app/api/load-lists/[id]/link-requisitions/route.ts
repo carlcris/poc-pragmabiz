@@ -71,9 +71,10 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       const safeErrors: Record<string, { error: string; status: number; code?: string }> = {
         Unauthorized: { error: "Unauthorized", status: 403 },
         "Load list not found": { error: "Load list not found", status: 404 },
-        "Only draft or confirmed load lists can be modified": {
-          error: "Only draft or confirmed load lists can be modified",
-          status: 400,
+        "Links can only be added to draft, confirmed, or in-transit load lists": {
+          error: "Links can only be added to draft, confirmed, or in-transit load lists",
+          status: 409,
+          code: "LOAD_LIST_LINK_STATUS_CONFLICT",
         },
         "One or more selected links already exist": {
           error: "One or more selected links already exist",

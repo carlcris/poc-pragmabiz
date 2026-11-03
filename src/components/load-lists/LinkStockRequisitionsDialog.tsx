@@ -136,6 +136,8 @@ export function LinkStockRequisitionsDialog({
   const canModifyLinks =
     loadList.isSourceBusinessUnit &&
     (loadList.status === "draft" || loadList.status === "confirmed");
+  const canAddLinks =
+    canModifyLinks || (loadList.isSourceBusinessUnit && loadList.status === "in_transit");
   const existingLinkedQtyByLLItem = existingLinks.reduce((totals, link) => {
     const loadListItemId = link.loadListItem?.id;
     if (!loadListItemId) return totals;
@@ -147,19 +149,28 @@ export function LinkStockRequisitionsDialog({
     return totals;
   }, new Map<string, number>());
 
-  // Get selected LL item details
-  const selectedLLItem = loadList.items?.find((item) => item.id === selectedLLItemId);
+  const availableLLItems = (loadList.items ?? [])
+    .map((item) => ({
+      ...item,
+      remainingQty: Math.max(
+        0,
+        Number(
+          (
+            item.loadListQty -
+            (existingLinkedQtyByLLItem.get(item.id) || 0) -
+            (pendingLinkedQtyByLLItem.get(item.id) || 0)
+          ).toFixed(2)
+        )
+      ),
+    }))
+    .filter((item) => item.remainingQty > 0);
+
+  // Use the same remaining balance for the options and quantity validation.
+  const selectedLLItem = availableLLItems.find((item) => item.id === selectedLLItemId);
   const matchingSRItems = selectedLLItem
     ? availableSRItems.filter((item) => item.item?.id === selectedLLItem.itemId)
     : [];
-  const selectedLLItemAvailableQty = selectedLLItem
-    ? Math.max(
-        0,
-        selectedLLItem.loadListQty -
-          (existingLinkedQtyByLLItem.get(selectedLLItem.id) || 0) -
-          (pendingLinkedQtyByLLItem.get(selectedLLItem.id) || 0)
-      )
-    : 0;
+  const selectedLLItemAvailableQty = selectedLLItem?.remainingQty ?? 0;
 
   // Get selected SR item details
   const selectedSRItem = matchingSRItems.find((item) => item.id === selectedSRItemId);
@@ -191,13 +202,13 @@ export function LinkStockRequisitionsDialog({
     // Clear previous error
     setAddLinkError("");
 
-    if (!canModifyLinks) {
+    if (!canAddLinks) {
       setAddLinkError(t("loadListNotModifiable"));
       return;
     }
 
     // Validation
-    if (!selectedLLItemId || !selectedSRItemId || !linkQuantity) {
+    if (!selectedLLItem || !selectedSRItemId || !linkQuantity) {
       setAddLinkError(t("addLinkError"));
       return;
     }
@@ -226,7 +237,7 @@ export function LinkStockRequisitionsDialog({
     }
 
     // Validate quantity doesn't exceed remaining LL item qty after existing and pending links
-    if (selectedLLItem && qty > selectedLLItemAvailableQty) {
+    if (qty > selectedLLItemAvailableQty) {
       setAddLinkError(t("exceedAvailableLoadListQty", { qty: selectedLLItemAvailableQty }));
       return;
     }
@@ -268,7 +279,7 @@ export function LinkStockRequisitionsDialog({
   };
 
   const handleSubmit = async () => {
-    if (!canModifyLinks) {
+    if (!canAddLinks) {
       toast.error(t("loadListNotModifiable"));
       return;
     }
@@ -301,6 +312,11 @@ export function LinkStockRequisitionsDialog({
         typeof cause.code === "string"
           ? cause.code
           : null;
+
+      if (errorCode === "LOAD_LIST_LINK_STATUS_CONFLICT") {
+        toast.error(t("loadListNotModifiable"));
+        return;
+      }
 
       if (errorCode === "LOAD_LIST_ITEMS_NOT_FOUND") {
         setSelectedLLItemId("");
@@ -577,10 +593,10 @@ export function LinkStockRequisitionsDialog({
                         <SelectValue placeholder={t("selectLoadListItem")} />
                       </SelectTrigger>
                       <SelectContent>
-                        {loadList.items?.map((item) => (
+                        {availableLLItems.map((item) => (
                           <SelectItem key={item.id} value={item.id}>
                             {item.item?.code} - {item.item?.name} (
-                            {t("loadListQtyPrefix", { qty: item.loadListQty })})
+                            {t("remainingQtyPrefix", { qty: item.remainingQty })})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -655,7 +671,7 @@ export function LinkStockRequisitionsDialog({
                     <Button
                       type="button"
                       onClick={handleAddLink}
-                      disabled={!canModifyLinks}
+                      disabled={!canAddLinks}
                       className="h-10 w-full bg-gradient-to-r from-purple-600 to-violet-600 text-sm font-semibold shadow-lg hover:from-purple-700 hover:to-violet-700"
                     >
                       <Plus className="mr-2 h-4 w-4" />
@@ -806,7 +822,7 @@ export function LinkStockRequisitionsDialog({
               <Button
                 type="button"
                 onClick={handleSubmit}
-                disabled={!canModifyLinks || linkMutation.isPending || links.length === 0}
+                disabled={!canAddLinks || linkMutation.isPending || links.length === 0}
                 className="h-10 min-w-[140px] bg-gradient-to-r from-purple-600 to-violet-600 text-sm font-semibold shadow-lg hover:from-purple-700 hover:to-violet-700"
               >
                 {linkMutation.isPending ? (

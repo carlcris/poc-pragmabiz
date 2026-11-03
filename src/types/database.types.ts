@@ -3907,7 +3907,6 @@ export type Database = {
       load_list_items: {
         Row: {
           created_at: string;
-          damaged_qty: number;
           id: string;
           item_id: string;
           item_unit_option_id: string | null;
@@ -3915,8 +3914,6 @@ export type Database = {
           load_list_qty: number;
           notes: string | null;
           qty_per_unit: number;
-          received_qty: number;
-          shortage_qty: number | null;
           total_price: number | null;
           unit_name: string;
           unit_price: number;
@@ -3925,7 +3922,6 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
-          damaged_qty?: number;
           id?: string;
           item_id: string;
           item_unit_option_id?: string | null;
@@ -3933,8 +3929,6 @@ export type Database = {
           load_list_qty: number;
           notes?: string | null;
           qty_per_unit: number;
-          received_qty?: number;
-          shortage_qty?: number | null;
           total_price?: number | null;
           unit_name: string;
           unit_price?: number;
@@ -3943,7 +3937,6 @@ export type Database = {
         };
         Update: {
           created_at?: string;
-          damaged_qty?: number;
           id?: string;
           item_id?: string;
           item_unit_option_id?: string | null;
@@ -3951,8 +3944,6 @@ export type Database = {
           load_list_qty?: number;
           notes?: string | null;
           qty_per_unit?: number;
-          received_qty?: number;
-          shortage_qty?: number | null;
           total_price?: number | null;
           unit_name?: string;
           unit_price?: number;

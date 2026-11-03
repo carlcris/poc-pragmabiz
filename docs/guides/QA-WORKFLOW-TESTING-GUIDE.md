@@ -946,11 +946,14 @@ For each line, choose either **Existing Batch** or **Create New Batch**. Creatin
 1. **Create** → status Draft. Select the destination business unit; there is no warehouse field.
 2. **Confirm** → status Confirmed.
 3. **Link Stock Requisitions** (optional) — attaches one or more purchasing requisitions (section 17b) to this shipment's line items, marking those requisitions as fully or partially fulfilled.
+   - Verify a load-list item with quantity 50 shows 40 remaining after adding a link for 10, then disappears after adding another link for 40 to a different requisition item. Removing either pending link makes the item available again. Save with **Create Links**, reopen the dialog, and verify saved allocations also reduce the available quantity; removing a saved link restores that quantity.
 4. **Mark In Transit** → status In Transit. Captures an estimated arrival date and carrier name.
+   - In the source business unit, verify **Add Link** and **Create Links** remain available with unallocated quantities. Received load lists must reject new links in both the UI and API. Saved-link removal remains limited to Draft and Confirmed. Run `supabase/tests/in-transit-load-list-links.sql` for status, allocation, scope, and rollback checks.
 5. In the destination business-unit context, **Mark Arrived** → status Arrived. **This is the key trigger: it automatically creates the linked Goods Receipt Note** (section 18) without assigning a warehouse — you never manually create one from scratch. The confirmation will show the new receipt's number.
    - **Reverse Arrival** is available to the destination business unit immediately after, to undo an accidental click — puts it back to In Transit.
 6. From here, Receiving and Pending Approval are driven entirely by progress on the linked Goods Receipt Note, not by any button on the Load List itself.
 7. **Received** can only happen by confirming the linked Goods Receipt Note — trying to set a Load List straight to Received from this screen is explicitly refused with a message pointing you to the receipt.
+   - Verify load-list item tables and detail responses omit Received, Damaged, and Shortage. Verify GRNs preserve full, partial, damaged, and over-received quantities after confirmation, while the load list status becomes Received. Run `supabase/tests/grn-confirmation.sql` against local data for confirmation and forced-failure rollback coverage. The obsolete tablet card shows total item count without a received-item count or progress bar.
 8. **Cancel** — only available to the source business unit up through In Transit. Once Arrived or later, the destination business unit must reverse arrival first; no warehouse inventory has been assigned before receiving starts.
 
 **Who can do it**: edit access to Load Lists; Mark In Transit and Mark Arrived each require their own separate, more specific permission on top of that.

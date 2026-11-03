@@ -28,8 +28,6 @@ export function LoadListReceivingCard({
   const statusColor = statusColors[loadList.status] || "bg-gray-100 text-gray-700";
 
   const totalItems = loadList.items?.length || 0;
-  const receivedItems = loadList.items?.filter((item) => (item.receivedQty || 0) > 0).length || 0;
-  const progress = totalItems > 0 ? (receivedItems / totalItems) * 100 : 0;
 
   const handleMarkArrived = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -89,26 +87,8 @@ export function LoadListReceivingCard({
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Items</span>
-            <span className="font-semibold text-gray-900">
-              {receivedItems > 0 ? `${receivedItems} / ` : ""}
-              {totalItems} items
-            </span>
+            <span className="font-semibold text-gray-900">{totalItems} items</span>
           </div>
-          {receivedItems > 0 && (
-            <div className="h-2 w-full rounded-full bg-gray-200">
-              <div
-                className={cn(
-                  "h-2 rounded-full transition-all",
-                  receivedItems === totalItems
-                    ? "bg-emerald-500"
-                    : receivedItems > 0
-                      ? "bg-amber-500"
-                      : "bg-gray-400"
-                )}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          )}
         </div>
       )}
 

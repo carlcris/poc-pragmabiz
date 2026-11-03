@@ -22,14 +22,3 @@ export const LOAD_LIST_STATUS_LABEL_KEYS = {
   received: "statusReceived",
   cancelled: "statusCancelled",
 } as const satisfies Record<LoadListStatus, string>;
-
-// Receipt quantities only carry meaning once the shipment has reached the destination.
-const RECEIPT_TRACKING_STATUSES: readonly LoadListStatus[] = [
-  "arrived",
-  "receiving",
-  "pending_approval",
-  "received",
-];
-
-export const showsLoadListReceiptQuantities = (status: LoadListStatus) =>
-  RECEIPT_TRACKING_STATUSES.includes(status);

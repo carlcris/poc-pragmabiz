@@ -33,9 +33,6 @@ export type ShipmentsReportRow = {
   itemCount: number;
   totalQuantity: number;
   totalValue: number;
-  receivedQuantity: number;
-  shortageQuantity: number;
-  damagedQuantity: number;
   createdAt: string;
 };
 

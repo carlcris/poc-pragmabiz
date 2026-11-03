@@ -10,10 +10,7 @@ import { DocumentDetailField } from "@/components/document-page/DocumentDetailFi
 import { DocumentLinesTable } from "@/components/document-page/DocumentLinesTable";
 import { DocumentSection } from "@/components/document-page/DocumentSection";
 import { DocumentSummaryPanel } from "@/components/document-page/DocumentSummaryPanel";
-import {
-  getDocumentLineColumns,
-  type DocumentTrackingColumn,
-} from "@/components/document-page/document-line-columns";
+import { getDocumentLineColumns } from "@/components/document-page/document-line-columns";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusText } from "@/components/shared/StatusText";
 import {
@@ -49,7 +46,6 @@ import {
 import {
   LOAD_LIST_STATUS_LABEL_KEYS,
   LOAD_LIST_STATUS_TONES,
-  showsLoadListReceiptQuantities,
 } from "@/lib/load-lists/load-list-display";
 import type { LoadList, LoadListStatus } from "@/types/load-list";
 
@@ -64,11 +60,6 @@ const STOCK_REQUISITION_LINK_STATUSES: readonly LoadListStatus[] = [
   "arrived",
 ];
 const PRE_TRANSIT_STATUSES: readonly LoadListStatus[] = ["draft", "confirmed", "cancelled"];
-const RECEIPT_COLUMNS: readonly DocumentTrackingColumn[] = [
-  "receivedQty",
-  "damagedQty",
-  "shortageQty",
-];
 
 export function LoadListDetails({ loadList }: LoadListDetailsProps) {
   const t = useTranslations("loadListPage");
@@ -109,7 +100,7 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
     STOCK_REQUISITION_LINK_STATUSES.includes(status);
 
   const columns = getDocumentLineColumns({
-    trackingColumns: showsLoadListReceiptQuantities(status) ? RECEIPT_COLUMNS : [],
+    trackingColumns: [],
     showUnitCost: canViewUnitPrice,
     showLineTotal: canViewTotalAmount,
     showAction: false,
@@ -318,11 +309,6 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
                     quantity: item.loadListQty,
                     unitPrice: item.unitPrice,
                     lineTotal: item.totalPrice,
-                    tracking: {
-                      receivedQty: item.receivedQty,
-                      damagedQty: item.damagedQty,
-                      shortageQty: item.shortageQty,
-                    },
                   }))}
                   columns={columns}
                   currency={currency}

@@ -26,9 +26,6 @@ export type LoadListItem = {
     name: string;
   };
   loadListQty: number;
-  receivedQty: number;
-  damagedQty: number;
-  shortageQty: number;
   unitPrice: number | null;
   totalPrice: number | null;
   notes?: string;
