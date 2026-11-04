@@ -14,13 +14,13 @@ async function GETHandler() {
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) {
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !publishableKey) {
     console.error("Mobile Realtime configuration is unavailable");
     return NextResponse.json({ error: "Realtime is unavailable" }, { status: 503 });
   }
 
-  return NextResponse.json({ url, anonKey });
+  return NextResponse.json({ url, publishableKey });
 }
 
 export const GET = withActivityLogging(GETHandler, {

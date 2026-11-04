@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { subscribeWarehouseQueue, type WarehouseQueueAccess } from "./warehouse-queue-realtime";
 
 const mocks = vi.hoisted(() => ({
-  getConfig: vi.fn<() => Promise<{ url: string; anonKey: string }>>(),
+  getConfig: vi.fn<() => Promise<{ url: string; publishableKey: string }>>(),
   getClient: vi.fn(),
   channel: vi.fn(),
   on: vi.fn(),
@@ -30,7 +30,7 @@ beforeEach(() => {
   mocks.event = null;
   mocks.events.clear();
   mocks.status = null;
-  mocks.getConfig.mockResolvedValue({ url: "https://example.test", anonKey: "public-key" });
+  mocks.getConfig.mockResolvedValue({ url: "https://example.test", publishableKey: "public-key" });
   mocks.getClient.mockReturnValue({ channel: mocks.channel, removeChannel: mocks.removeChannel });
   mocks.channel.mockReturnValue(channel);
   mocks.on.mockImplementation((_event: string, filter: { table: string }, callback: () => void) => {
@@ -72,7 +72,7 @@ describe("mobile warehouse queue realtime", () => {
     await start();
 
     expect(mocks.getClient).toHaveBeenCalledWith(
-      { url: "https://example.test", anonKey: "public-key" },
+      { url: "https://example.test", publishableKey: "public-key" },
       "user-token"
     );
     expect(mocks.on).toHaveBeenCalledWith(
@@ -124,7 +124,7 @@ describe("mobile warehouse queue realtime", () => {
   });
 
   it("does not open a stale subscription if setup finishes after a scope change", async () => {
-    let resolveConfig: ((config: { url: string; anonKey: string }) => void) | undefined;
+    let resolveConfig: ((config: { url: string; publishableKey: string }) => void) | undefined;
     mocks.getConfig.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveConfig = resolve;
@@ -133,7 +133,7 @@ describe("mobile warehouse queue realtime", () => {
     await start();
     unsubscribe?.();
     unsubscribe = undefined;
-    resolveConfig?.({ url: "https://example.test", anonKey: "public-key" });
+    resolveConfig?.({ url: "https://example.test", publishableKey: "public-key" });
     await vi.advanceTimersByTimeAsync(0);
     expect(mocks.channel).not.toHaveBeenCalled();
   });

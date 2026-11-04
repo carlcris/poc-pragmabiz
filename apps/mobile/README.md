@@ -11,7 +11,13 @@ EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:3000 CI=1 npx expo start --port 8082 --
 ```
 
 Use `10.0.2.2` for Android emulator access to the host machine.
-The app loads its public Supabase Realtime configuration from the authenticated API. `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` remain optional build-time overrides.
+The app loads its public Supabase Realtime configuration from the authenticated API. `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` remain optional build-time overrides.
+
+The API response is `{ url: string, publishableKey: string }`. Deploy this mobile client
+together with the matching API; the former `anonKey` response field is no longer supported.
+When overriding configuration, set both variables and use an `sb_publishable_...` key.
+Rebuild the mobile bundle after changing overrides. Never include a Supabase secret key
+in the mobile app.
 
 `babel.config.cts` uses the Expo preset and transforms class static blocks used by the shared
 translation dependencies. Keep this transform enabled for Android development bundles. Restart

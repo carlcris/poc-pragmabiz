@@ -200,7 +200,7 @@
 #### 6.2 Update Environment Variables
 
 - [ ] ⬜ Verify `frontend/.env.local` has NEXT_PUBLIC_SUPABASE_URL
-- [ ] ⬜ Verify `frontend/.env.local` has NEXT_PUBLIC_SUPABASE_ANON_KEY
+- [ ] ⬜ Verify `frontend/.env.local` has NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 - [ ] ⬜ Test Supabase client connection
 
 **Estimated Time:** 1-2 hours

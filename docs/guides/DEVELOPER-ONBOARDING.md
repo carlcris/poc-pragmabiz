@@ -107,11 +107,34 @@ Add the following (use values from `supabase start` output):
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key-from-supabase-start>
-SUPABASE_SERVICE_ROLE_KEY=<service-role-key-from-supabase-start>
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key-from-supabase-start>
+SUPABASE_SECRET_KEY=<secret-key-from-supabase-start>
 # Disable application email delivery during local development
 EMAIL_ENABLED=false
 ```
+
+For hosted environments, set `NEXT_PUBLIC_SUPABASE_URL` to your project's HTTPS URL,
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to its `sb_publishable_...` key, and
+`SUPABASE_SECRET_KEY` to its `sb_secret_...` key from Supabase Settings > API Keys.
+Keep the secret key server-only; never use a `NEXT_PUBLIC_` or `EXPO_PUBLIC_` prefix for it.
+The application no longer reads the legacy anon/service-role environment variable names.
+Rebuild and redeploy after changing public variables because Next.js embeds them at build time.
+Set the secret key in the server runtime environment as well.
+
+Use a local Supabase version that supplies publishable and secret keys. The older standalone
+`docker-compose.yml` infrastructure still has service-specific legacy key settings; those are
+not application variables and renaming them does not upgrade that stack to support new keys.
+Its app environment mapping uses the new names, but its referenced `Dockerfile` is absent;
+use the CLI development workflow above rather than treating Compose as a verified deployment.
+
+The authenticated `GET /api/mobile/realtime-config` response is
+`{ url: string, publishableKey: string }`. It never returns the secret key.
+Deploy the matching mobile client with this API contract change: older clients expecting
+`anonKey` cannot consume this response. Mobile builds may optionally set both
+`EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to override the API
+configuration; otherwise neither is required. Rebuild mobile bundles when changing overrides.
+Verify sign-in, session refresh, admin operations, and mobile Realtime before disabling legacy
+keys in Supabase. This change does not rotate user JWT signing keys or change RLS policies.
 
 `EMAIL_ENABLED=false` disables all email sent through the application's shared email utility,
 including supplier stock requisitions and test emails. Stock requisitions can still be submitted;

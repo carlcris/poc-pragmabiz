@@ -6,7 +6,7 @@ let clientUrl: string | null = null;
 
 export const getRealtimeClient = (config: RealtimeConfig, accessToken: string) => {
   if (!client || clientUrl !== config.url) {
-    client = createClient(config.url, config.anonKey, {
+    client = createClient(config.url, config.publishableKey, {
       auth: {
         autoRefreshToken: false,
         detectSessionInUrl: false,
