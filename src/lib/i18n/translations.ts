@@ -3223,6 +3223,11 @@ export type TranslationKeys = {
     sourceWarehouseLabel: string;
     destinationWarehouseLabel: string;
     moveQuantityHelp: string;
+    moveUnitLabel: string;
+    moveSourceAvailable: string;
+    moveAvailabilityUnavailable: string;
+    moveTotalQuantity: string;
+    moveQuantityInvalid: string;
     moveUnauthorized: string;
     moveForbidden: string;
     moveContextInvalid: string;
@@ -7164,8 +7169,15 @@ export const translations: Record<Locale, TranslationKeys> = {
       moveDialogDescription: "Move stock between racks or warehouses in the same business unit.",
       sourceWarehouseLabel: "Source Warehouse",
       destinationWarehouseLabel: "Destination Warehouse",
+      moveUnitLabel: "Unit",
+      moveSourceAvailable: "Available at source: {quantity} {unit}",
+      moveAvailabilityUnavailable:
+        "Source stock is unavailable. Refresh the Locations tab before moving stock.",
+      moveTotalQuantity: "Total quantity: {quantity} {unit}",
+      moveQuantityInvalid:
+        "Enter a positive quantity with at most two decimal places. The converted base quantity must also have at most two decimal places and cannot exceed 1,000,000,000.",
       moveQuantityHelp:
-        "Quantity is in the base unit ({unit}), with up to two decimal places. Stock moves immediately using available FIFO batches.",
+        "Enter quantity in the selected unit. Stock moves in base units ({unit}) using available FIFO batches.",
       moveUnauthorized: "Sign in again before moving stock.",
       moveForbidden:
         "You do not have permission to move stock in this business unit. Ask an administrator for access.",
@@ -13823,8 +13835,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       moveDialogDescription: "在同一业务单元内的库位或仓库之间移动库存。",
       sourceWarehouseLabel: "来源仓库",
       destinationWarehouseLabel: "目标仓库",
+      moveUnitLabel: "单位",
+      moveSourceAvailable: "来源可用库存：{quantity} {unit}",
+      moveAvailabilityUnavailable: "无法获取来源库存。请刷新库位标签页后再移动库存。",
+      moveTotalQuantity: "总数量：{quantity} {unit}",
+      moveQuantityInvalid:
+        "请输入最多两位小数的正数。换算后的基本单位数量也必须最多保留两位小数，且不能超过1,000,000,000。",
       moveQuantityHelp:
-        "数量以基本单位（{unit}）计，最多保留两位小数。库存将按可用批次先进先出顺序立即移动。",
+        "按所选单位输入数量。库存将以基本单位（{unit}）按可用批次先进先出顺序移动。",
       moveUnauthorized: "请重新登录后再移动库存。",
       moveForbidden: "您没有在此业务单元移动库存的权限。请联系管理员申请权限。",
       moveContextInvalid: "请先选择有效的业务单元，再移动库存。",

@@ -223,6 +223,50 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_INSUFFICIENT_STOCK' THEN RAISE; END IF; END;
   IF v_before IS DISTINCT FROM pg_temp.stock_move_snapshot() THEN RAISE EXCEPTION 'Rejected move left partial writes'; END IF;
 
+  -- Regression: 1 box of 144 cannot move from a rack with 58 base units,
+  -- even when another rack makes the warehouse total large enough.
+  BEGIN
+    UPDATE public.item_warehouse SET current_stock = 205
+    WHERE item_id = v_context.item_id AND warehouse_id = v_context.source_warehouse_id;
+    UPDATE public.item_batches SET qty_on_hand = 200, qty_reserved = 0 WHERE id = v_context.old_batch_id;
+    UPDATE public.item_batches SET qty_on_hand = 0, qty_reserved = 0 WHERE id = v_context.new_batch_id;
+    UPDATE public.item_batch_locations SET qty_on_hand = 58, qty_reserved = 0
+    WHERE item_batch_id = v_context.old_batch_id AND location_id = v_context.source_location_id;
+    UPDATE public.item_batch_locations SET qty_on_hand = 0, qty_reserved = 0
+    WHERE item_batch_id = v_context.new_batch_id AND location_id = v_context.source_location_id;
+    INSERT INTO public.item_batch_locations (
+      company_id, item_id, warehouse_id, location_id, item_batch_id,
+      qty_on_hand, qty_reserved, created_by, updated_by
+    ) VALUES (
+      v_context.company_id, v_context.item_id, v_context.source_warehouse_id,
+      v_context.other_location_id, v_context.old_batch_id, 142, 0,
+      v_context.actor_id, v_context.actor_id
+    );
+    v_before := pg_temp.stock_move_snapshot();
+    BEGIN
+      PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
+        v_context.source_warehouse_id, v_context.destination_warehouse_id,
+        v_context.source_location_id, v_context.destination_location_id, 144);
+      RAISE EXCEPTION 'TEST_EXPECTED_144_FROM_58_REJECTION';
+    EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_INSUFFICIENT_STOCK' THEN RAISE; END IF; END;
+    IF v_before IS DISTINCT FROM pg_temp.stock_move_snapshot() THEN
+      RAISE EXCEPTION 'Oversized warehouse move left partial writes';
+    END IF;
+    BEGIN
+      PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
+        v_context.source_warehouse_id, v_context.source_warehouse_id,
+        v_context.source_location_id, v_context.other_location_id, 144);
+      RAISE EXCEPTION 'TEST_EXPECTED_144_FROM_58_RACK_REJECTION';
+    EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_INSUFFICIENT_STOCK' THEN RAISE; END IF; END;
+    IF v_before IS DISTINCT FROM pg_temp.stock_move_snapshot() THEN
+      RAISE EXCEPTION 'Oversized rack move left partial writes';
+    END IF;
+    -- Restore the original fixtures for the remaining success/rollback checks.
+    RAISE EXCEPTION USING ERRCODE = 'ZX058', MESSAGE = 'Restore oversized move fixtures';
+  EXCEPTION WHEN SQLSTATE 'ZX058' THEN NULL;
+  END;
+  v_before := pg_temp.stock_move_snapshot();
+
   v_result := public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
     v_context.source_warehouse_id, v_context.destination_warehouse_id,
     v_context.source_location_id, v_context.destination_location_id, 9);

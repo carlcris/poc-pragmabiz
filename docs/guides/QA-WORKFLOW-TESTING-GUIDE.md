@@ -187,10 +187,13 @@ These are the records everything else in the app is built on. Before testing any
 ### Move Stock from the Item Locations tab
 
 Open an item's **Locations** tab and click **Move Stock**. Choose source and destination
-warehouses/racks in the current business unit, then enter a positive quantity in the item's base
-unit with at most two decimal places. The move posts immediately. `create` access to both Stock
+warehouses/racks in the current business unit, then enter a positive quantity and select its unit.
+The base unit is selected initially. Entered and converted quantities allow at most two decimal places. The move posts immediately. `create` access to both Stock
 Transactions and Location Transfers is required; the button is hidden without either permission.
 
+- Select BOX (144) and enter 2: confirm the total and submitted movement are 288 base units.
+  Switch to the base unit and enter 5: confirm 5 base units. Verify inactive units are unavailable,
+  converted totals over 1,000,000,000 are blocked, and fractional base stock is not silently rounded.
 - Move to another warehouse in the same business unit, including a warehouse that does not yet
   hold the item. Confirm source decreases, destination increases, and total on-hand is conserved.
 - Move between two racks in the same warehouse and confirm warehouse and batch totals are unchanged.
@@ -203,7 +206,11 @@ Transactions and Location Transfers is required; the button is hidden without ei
   selections and loads warehouse options for the new unit.
 - Try the same source/destination rack, a nonpositive quantity, more than two decimal places, and
   quantities above 1,000,000,000. Submission must remain disabled with applicable validation guidance.
-- Submit more than the available source-rack quantity. Confirm actionable inline guidance, an open
+- With 58 available sticks at the source, select BOX (144) and enter 1. Confirm the 144-stick
+  total, 58-stick availability, inline guidance, and disabled Move Stock button. Switch to sticks:
+  5 and 58 must be allowed. Stock in other racks and reserved quantities must not increase the limit.
+  If source stock cannot load, submission must remain disabled.
+- Submit more than the available source-rack quantity through the API. Confirm actionable inline guidance, an open
   dialog, and no partial movement, destination balance, batch, or stock history.
 - Try a destination with the same batch code and a different receipt date. Confirm the move fails
   without merging those batch identities or changing source inventory.

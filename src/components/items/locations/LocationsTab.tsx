@@ -676,6 +676,8 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
           key={`${itemId}:${currentBusinessUnitId}`}
           itemId={itemId}
           baseUnit={item.uom}
+          unitOptions={item.unitOptions ?? []}
+          sourceLocations={error || isLoading ? undefined : data?.data}
           onOpenChange={setMoveDialogOpen}
         />
       ) : null}

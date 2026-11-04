@@ -6,6 +6,15 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { ItemLocation } from "@/types/inventory-location";
+import type { ItemUnitOption } from "@/types/item";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -25,10 +34,18 @@ import { STOCK_MOVE_ERROR_CODES } from "@/types/stock-move";
 type MoveStockDialogProps = {
   itemId: string;
   baseUnit: string;
+  unitOptions: ItemUnitOption[];
+  sourceLocations: ItemLocation[] | undefined;
   onOpenChange: (open: boolean) => void;
 };
 
-export function MoveStockDialog({ itemId, baseUnit, onOpenChange }: MoveStockDialogProps) {
+export function MoveStockDialog({
+  itemId,
+  baseUnit,
+  unitOptions,
+  sourceLocations,
+  onOpenChange,
+}: MoveStockDialogProps) {
   const t = useTranslations("itemLocationsTab");
   const moveStock = useMoveStock();
   const [sourceWarehouseId, setSourceWarehouseId] = useState("");
@@ -36,9 +53,36 @@ export function MoveStockDialog({ itemId, baseUnit, onOpenChange }: MoveStockDia
   const [fromLocationId, setFromLocationId] = useState("");
   const [toLocationId, setToLocationId] = useState("");
   const [quantity, setQuantity] = useState("");
-  const quantityIsValid = stockMoveSchema.shape.items.element.shape.quantity.safeParse(
-    Number(quantity)
-  ).success;
+  const [unitOptionId, setUnitOptionId] = useState("base");
+  const alternateUnits = unitOptions.filter(
+    (option) =>
+      !option.isBase &&
+      option.isActive &&
+      Number.isFinite(option.qtyPerUnit) &&
+      option.qtyPerUnit > 0
+  );
+  const conversionFactor =
+    unitOptionId === "base"
+      ? 1
+      : alternateUnits.find((option) => option.id === unitOptionId)?.qtyPerUnit;
+  // Remove floating-point multiplication noise without rounding fractional base stock.
+  const baseQuantity = Number((Number(quantity) * (conversionFactor ?? NaN)).toPrecision(15));
+  const quantityIsValid =
+    stockMoveSchema.shape.items.element.shape.quantity.safeParse(Number(quantity)).success &&
+    stockMoveSchema.shape.items.element.shape.quantity.safeParse(baseQuantity).success;
+  const sourceAvailable =
+    sourceLocations === undefined
+      ? undefined
+      : (sourceLocations.find(
+          (location) =>
+            location.itemId === itemId &&
+            location.warehouseId === sourceWarehouseId &&
+            location.locationId === fromLocationId
+        )?.qtyAvailable ?? 0);
+  const hasSufficientStock =
+    sourceAvailable !== undefined &&
+    Number.isFinite(sourceAvailable) &&
+    baseQuantity <= sourceAvailable;
   const payload = stockMoveSchema.safeParse({
     transactionType: "transfer",
     warehouseId: sourceWarehouseId,
@@ -46,7 +90,7 @@ export function MoveStockDialog({ itemId, baseUnit, onOpenChange }: MoveStockDia
     fromLocationId,
     toLocationId,
     transactionDate: format(new Date(), "yyyy-MM-dd"),
-    items: [{ itemId, quantity: Number(quantity) }],
+    items: [{ itemId, quantity: baseQuantity }],
   });
 
   const errorMessage = () => {
@@ -144,6 +188,29 @@ export function MoveStockDialog({ itemId, baseUnit, onOpenChange }: MoveStockDia
             />
           </fieldset>
           <div className="space-y-2">
+            <Label htmlFor="move-stock-unit">{t("moveUnitLabel")}</Label>
+            <Select
+              value={unitOptionId}
+              disabled={moveStock.isPending}
+              onValueChange={(value) => {
+                setUnitOptionId(value);
+                moveStock.reset();
+              }}
+            >
+              <SelectTrigger id="move-stock-unit">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="base">{baseUnit}</SelectItem>
+                {alternateUnits.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.displayLabel}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="move-stock-quantity">{t("quantityLabel")}</Label>
             <Input
               id="move-stock-quantity"
@@ -163,9 +230,32 @@ export function MoveStockDialog({ itemId, baseUnit, onOpenChange }: MoveStockDia
             <p id="move-stock-quantity-help" className="text-sm text-muted-foreground">
               {t("moveQuantityHelp", { unit: baseUnit })}
             </p>
+            {quantity && Number.isFinite(baseQuantity) ? (
+              <p className="text-sm font-medium" aria-live="polite">
+                {t("moveTotalQuantity", { quantity: baseQuantity, unit: baseUnit })}
+              </p>
+            ) : null}
+            {fromLocationId && sourceAvailable !== undefined ? (
+              <p className="text-sm text-muted-foreground" aria-live="polite">
+                {t("moveSourceAvailable", { quantity: sourceAvailable, unit: baseUnit })}
+              </p>
+            ) : null}
+            {fromLocationId && sourceAvailable === undefined ? (
+              <p role="alert" className="text-sm text-destructive">
+                {t("moveAvailabilityUnavailable")}
+              </p>
+            ) : null}
+            {fromLocationId &&
+            quantityIsValid &&
+            sourceAvailable !== undefined &&
+            !hasSufficientStock ? (
+              <p role="alert" className="text-sm text-destructive">
+                {t("moveInsufficientStock")}
+              </p>
+            ) : null}
             {quantity && !quantityIsValid ? (
               <p role="alert" className="text-sm text-destructive">
-                {t("enterValidQuantity")}
+                {t("moveQuantityInvalid")}
               </p>
             ) : null}
           </div>
@@ -189,9 +279,17 @@ export function MoveStockDialog({ itemId, baseUnit, onOpenChange }: MoveStockDia
             {t("cancel")}
           </Button>
           <Button
-            disabled={moveStock.isPending || !payload.success}
+            disabled={
+              moveStock.isPending || !quantityIsValid || !hasSufficientStock || !payload.success
+            }
             onClick={() => {
-              if (!payload.success) return;
+              if (
+                moveStock.isPending ||
+                !quantityIsValid ||
+                !hasSufficientStock ||
+                !payload.success
+              )
+                return;
               moveStock.mutate(payload.data, {
                 onSuccess: () => {
                   toast.success(t("stockMoved"));

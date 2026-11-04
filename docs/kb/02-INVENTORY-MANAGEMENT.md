@@ -162,7 +162,14 @@ highlighted on the selected floor plan. The viewer reports missing floor maps an
 
 **Move Stock** on the item's **Locations** tab moves available stock between racks in one warehouse
 or between two warehouses in the current business unit. Users select the source warehouse/rack,
-destination warehouse/rack, and quantity in the item's base unit (up to two decimal places). The
+destination warehouse/rack, quantity, and unit. The base unit is selected initially; active item unit
+options show their conversion factor. The dialog previews the total in base units (for example,
+2 boxes of 144 transfers 288 base units) and sends only that converted quantity. Both entered and
+converted quantities must be positive with at most two decimal places; the base total cannot exceed
+1,000,000,000. Conversion does not silently round fractional base stock. The dialog shows the selected
+source rack’s available base quantity and blocks a converted total above it (1 box of 144 cannot
+move from a source with 58). Reserved stock is excluded. Submission is blocked if location stock
+cannot be loaded; the database rechecks availability transactionally to handle concurrent changes. The
 warehouse and rack selectors search the server and initially return at most five options. The
 destination warehouse need not already hold the item. Both warehouses must be active and belong
 to the current business unit, and both racks must be active storage locations. Submission posts
