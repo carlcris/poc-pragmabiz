@@ -517,10 +517,24 @@ export default function StockRequestsPage() {
                         <TableCell>{formatDate(request.request_date)}</TableCell>
                         <TableCell>{formatDate(request.required_date)}</TableCell>
                         <TableCell>
-                          {request.requesting_business_unit?.code || t("noBusinessUnit")}
+                          <div className="font-medium">
+                            {request.requesting_business_unit?.name || t("noBusinessUnit")}
+                          </div>
+                          {request.requesting_business_unit && (
+                            <div className="text-xs text-muted-foreground">
+                              {request.requesting_business_unit.code}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
-                          {request.fulfilling_business_unit?.code || t("noBusinessUnit")}
+                          <div className="font-medium">
+                            {request.fulfilling_business_unit?.name || t("noBusinessUnit")}
+                          </div>
+                          {request.fulfilling_business_unit && (
+                            <div className="text-xs text-muted-foreground">
+                              {request.fulfilling_business_unit.code}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>{getPriorityBadge(request.priority)}</TableCell>
                         <TableCell>{getStatusBadge(request.status)}</TableCell>

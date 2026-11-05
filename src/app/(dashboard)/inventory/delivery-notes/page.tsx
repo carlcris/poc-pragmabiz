@@ -32,7 +32,6 @@ import {
 import { useCreatePickList } from "@/hooks/usePickLists";
 import { useStockRequests } from "@/hooks/useStockRequests";
 import { useUsers } from "@/hooks/useUsers";
-import { useWarehouses } from "@/hooks/useWarehouses";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
@@ -78,9 +77,9 @@ import type {
   DeliveryNoteAllocationAvailability,
   DeliveryNoteFulfillmentMode,
   DeliveryNotePickListSummary,
+  DeliveryNoteWarehouse,
 } from "@/types/delivery-note";
 import type { CreatePickListPayload } from "@/types/pick-list";
-import type { Warehouse } from "@/types/warehouse";
 import { toProperCase } from "@/lib/string";
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
@@ -197,7 +196,6 @@ export default function DeliveryNotesPage() {
   });
   const { data: stockRequestsData } = useStockRequests({ page: 1, limit: 50 });
   const { data: usersData } = useUsers();
-  const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
   const { data: actionDn, isLoading: isLoadingActionDn } = useDeliveryNote(actionDnId);
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
   const availableBusinessUnits = useBusinessUnitStore((state) => state.availableBusinessUnits);
@@ -244,21 +242,10 @@ export default function DeliveryNotesPage() {
     [availabilityBySrItemId, draftLines]
   );
 
-  const warehouseLabelById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const warehouse of warehousesData?.data || []) {
-      map.set(warehouse.id, `${warehouse.code} - ${warehouse.name}`);
-    }
-    return map;
-  }, [warehousesData?.data]);
-
-  const warehouseById = useMemo(() => {
-    const map = new Map<string, Warehouse>();
-    for (const warehouse of warehousesData?.data || []) {
-      map.set(warehouse.id, warehouse);
-    }
-    return map;
-  }, [warehousesData?.data]);
+  const businessUnitById = useMemo(
+    () => new Map(availableBusinessUnits.map((businessUnit) => [businessUnit.id, businessUnit])),
+    [availableBusinessUnits]
+  );
 
   const businessUnitLabelById = useMemo(
     () =>
@@ -307,10 +294,8 @@ export default function DeliveryNotesPage() {
     return pickerUsers.filter((user) => user.label.toLowerCase().includes(q));
   }, [pickerUsers, queuePickerSearch]);
 
-  const resolveWarehouseLabel = (warehouseId?: string | null) => {
-    if (!warehouseId) return t("unknownWarehouse");
-    return warehouseLabelById.get(warehouseId) || t("unknownWarehouse");
-  };
+  const resolveWarehouseLabel = (warehouse?: DeliveryNoteWarehouse | null) =>
+    warehouse ? `${warehouse.warehouse_code} - ${warehouse.warehouse_name}` : t("unknownWarehouse");
 
   const statusLabel = useCallback(
     (status: string) => {
@@ -348,16 +333,14 @@ export default function DeliveryNotesPage() {
     return dn.fulfilling_business_unit_id === currentBusinessUnit.id;
   };
 
-  const formatWarehouseAddress = (warehouseId?: string | null) => {
-    if (!warehouseId) return "";
-    const warehouse = warehouseById.get(warehouseId);
+  const formatWarehouseAddress = (warehouse?: DeliveryNoteWarehouse | null) => {
     if (!warehouse) return "";
 
     const parts = [
-      warehouse.address,
+      [warehouse.address_line1, warehouse.address_line2].filter(Boolean).join(" "),
       warehouse.city,
       warehouse.state,
-      warehouse.postalCode,
+      warehouse.postal_code,
       warehouse.country,
     ]
       .map((part) => part?.trim())
@@ -378,15 +361,15 @@ export default function DeliveryNotesPage() {
       const blob = await pdf(
         <DeliveryNotePDFDocument
           deliveryNote={fullDn}
-          sourceLabel={resolveWarehouseLabel(fullDn.fulfilling_warehouse_id)}
-          sourceAddress={formatWarehouseAddress(fullDn.fulfilling_warehouse_id)}
+          sourceLabel={resolveWarehouseLabel(fullDn.fulfilling_warehouse)}
+          sourceAddress={formatWarehouseAddress(fullDn.fulfilling_warehouse)}
           destinationLabel={
             fullDn.requesting_warehouse_id
-              ? resolveWarehouseLabel(fullDn.requesting_warehouse_id)
+              ? resolveWarehouseLabel(fullDn.requesting_warehouse)
               : businessUnitLabelById.get(fullDn.requesting_business_unit_id) ||
                 t("receivingWarehousePending")
           }
-          destinationAddress={formatWarehouseAddress(fullDn.requesting_warehouse_id)}
+          destinationAddress={formatWarehouseAddress(fullDn.requesting_warehouse)}
           logoUrl={logoUrl}
         />
       ).toBlob();
@@ -948,6 +931,8 @@ export default function DeliveryNotesPage() {
               </TableHeader>
               <TableBody>
                 {deliveryNotes.map((dn) => {
+                  const requestingBusinessUnit = businessUnitById.get(dn.requesting_business_unit_id);
+                  const fulfillingBusinessUnit = businessUnitById.get(dn.fulfilling_business_unit_id);
                   const linkedPickList = resolveActivePickList(dn);
                   const detailsHref = `/inventory/delivery-notes/${dn.id}`;
                   const primaryAction = getPrimaryRowAction(dn, linkedPickList);
@@ -977,10 +962,16 @@ export default function DeliveryNotesPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
-                        {businessUnitLabelById.get(dn.requesting_business_unit_id) || t("noValue")}
+                        <div className="font-medium">{requestingBusinessUnit?.name || t("noValue")}</div>
+                        {requestingBusinessUnit && (
+                          <div className="text-xs text-muted-foreground">{requestingBusinessUnit.code}</div>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {resolveWarehouseLabel(dn.fulfilling_warehouse_id)}
+                        <div className="font-medium">{fulfillingBusinessUnit?.name || t("noValue")}</div>
+                        {fulfillingBusinessUnit && (
+                          <div className="text-xs text-muted-foreground">{fulfillingBusinessUnit.code}</div>
+                        )}
                       </TableCell>
                       <TableCell>
                         {linkedPickList ? (
@@ -1361,14 +1352,14 @@ export default function DeliveryNotesPage() {
                 <div>
                   <div className="text-xs text-muted-foreground">{t("source")}</div>
                   <div className="font-medium">
-                    {resolveWarehouseLabel(actionDn.fulfilling_warehouse_id)}
+                    {resolveWarehouseLabel(actionDn.fulfilling_warehouse)}
                   </div>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">{t("destination")}</div>
                   <div className="font-medium">
                     {actionDn.requesting_warehouse_id
-                      ? resolveWarehouseLabel(actionDn.requesting_warehouse_id)
+                      ? resolveWarehouseLabel(actionDn.requesting_warehouse)
                       : businessUnitLabelById.get(actionDn.requesting_business_unit_id) ||
                         t("receivingWarehousePending")}
                   </div>

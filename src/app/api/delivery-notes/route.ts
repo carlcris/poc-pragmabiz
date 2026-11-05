@@ -3,7 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { requireDeliveryNoteReceivingAccess } from "@/lib/delivery-notes/permissions";
-import { fetchDeliveryNote, getAuthContext, mapDeliveryNoteRecord } from "./_lib";
+import {
+  fetchDeliveryNote,
+  getAuthContext,
+  mapDeliveryNoteRecord,
+} from "./_lib";
 
 type CreateDeliveryNoteBody = {
   fulfillmentMode?: "transfer_to_store" | "customer_pickup_from_warehouse";

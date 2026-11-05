@@ -178,12 +178,26 @@ export type DeliveryNoteBusinessUnitSummary = {
   name: string;
 };
 
+export type DeliveryNoteWarehouse = {
+  id: string;
+  warehouse_code: string;
+  warehouse_name: string;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+};
+
 export type DeliveryNote = {
   id: string;
   company_id: string;
   business_unit_id: string | null;
   requesting_business_unit_id: string;
   fulfilling_business_unit_id: string;
+  fulfilling_warehouse?: DeliveryNoteWarehouse | null;
+  requesting_warehouse?: DeliveryNoteWarehouse | null;
   fulfilling_business_unit?: DeliveryNoteBusinessUnitSummary | null;
   requesting_business_unit?: DeliveryNoteBusinessUnitSummary | null;
   dn_no: string;

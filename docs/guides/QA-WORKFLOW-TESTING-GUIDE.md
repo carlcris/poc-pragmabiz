@@ -560,6 +560,10 @@ workflows.
 
 ## 12. Stock Requests
 
+The Stock Transfers list displays business-unit names on the primary line in **Requesting BU**
+and **Fulfilling BU**, with codes as muted secondary text underneath.
+Verify these match the request’s business units, not warehouse names or codes.
+
 **What it's for**: requesting stock from another business unit. Warehouses are inventory locations
 chosen internally during fulfillment and receiving; this is not a customer sale.
 
@@ -632,6 +636,18 @@ requires the granular delivery-note receiving capability.
 ---
 
 ## 13. Delivery Notes
+
+The list’s **Requested By** and **Fulfilled By** columns show the requesting and fulfilling
+business-unit name on the primary line and code as muted secondary text underneath.
+Verify **Fulfilled By** identifies the business unit, not one
+of its warehouses.
+
+Warehouse labels in the detail dialog and PDF come from the Delivery Note API's
+`fulfilling_warehouse` and `requesting_warehouse` relations, including PDF address fields.
+They do not depend on the current business unit's first page of warehouses. Verify a note
+whose warehouse is outside the first 50 results and a cross-business-unit note where the
+user has warehouse read access. Warehouse RLS still applies; inaccessible relations remain
+unavailable rather than bypassing access controls.
 
 **What it's for**: the actual dispatch-and-receive workflow — physically moving goods out of one warehouse and into another warehouse or to a customer.
 
