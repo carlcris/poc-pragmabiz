@@ -3520,6 +3520,8 @@ export type TranslationKeys = {
     searchByBatchOrQr: string;
     noBatches: string;
     loadingBatches: string;
+    receivedDateLabel: string;
+    receivedDateHint: string;
     manualBatchCodeLabel: string;
     manualBatchCodePlaceholder: string;
     manualBatchCodeHint: string;
@@ -3556,6 +3558,25 @@ export type TranslationKeys = {
     newBatchIncreaseOnly: string;
     newBatchPositiveQuantity: string;
     batchAlreadyExistsAtLocation: string;
+    saveFailed: string;
+    receivedDateInvalid: string;
+    receivedDateConflict: string;
+    saveNotFound: string;
+    saveNotDraft: string;
+    saveBusinessUnitRequired: string;
+    saveFieldsRequired: string;
+    saveItemsRequired: string;
+    saveWarehouseInvalid: string;
+    saveItemInvalid: string;
+    saveItemMissing: string;
+    saveUomInvalid: string;
+    saveBatchLocationInvalid: string;
+    saveBatchRequired: string;
+    saveLocationRequired: string;
+    saveLocationInvalid: string;
+    saveForbidden: string;
+    saveWarehouseImmutable: string;
+
     batchAvailabilityCheckFailed: string;
   };
   deliveryNotesPage: Record<string, string>;
@@ -4204,6 +4225,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       goToLastPage: "Go to last page",
     },
     navigation: {
+      loadingDestination: "Loading {destination}…",
       Home: "Home",
       Dashboard: "Dashboard",
       Inventory: "Inventory",
@@ -7483,6 +7505,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       searchByBatchOrQr: "Search by batch or QR...",
       noBatches: "No batches found",
       loadingBatches: "Loading batches...",
+      receivedDateLabel: "Received Date",
+      receivedDateHint:
+        "Enter when the stock originally arrived. Past dates are allowed for initial inventory; this date determines batch age.",
       manualBatchCodeLabel: "New Batch Code",
       manualBatchCodePlaceholder: "Enter batch code",
       manualBatchCodeHint:
@@ -7521,6 +7546,32 @@ export const translations: Record<Locale, TranslationKeys> = {
       newBatchPositiveQuantity: "Enter a quantity greater than zero for the new batch",
       batchAlreadyExistsAtLocation:
         "This batch already exists at the selected location. Use Existing Batch instead.",
+      saveNotFound:
+        "This adjustment is no longer available. Refresh the list and select another draft.",
+      saveNotDraft: "This adjustment is no longer a draft. Refresh the list before making changes.",
+      saveBusinessUnitRequired: "Select a business unit, then try saving again.",
+      saveFieldsRequired:
+        "Complete the adjustment type, date, warehouse, and reason before saving.",
+      saveItemsRequired: "Add at least one item before saving.",
+      saveWarehouseInvalid: "Select a warehouse belonging to the current business unit.",
+      saveItemInvalid: "Review each adjustment item and its quantities and cost, then try again.",
+      saveItemMissing: "An item is no longer available. Remove it and select an available item.",
+      saveUomInvalid:
+        "A unit of measure is no longer available. Reselect the unit for the affected item.",
+      saveBatchLocationInvalid:
+        "The selected batch location is no longer valid. Reselect a batch in this warehouse.",
+      saveBatchRequired: "Select an existing batch or enter a batch code for every item.",
+      saveLocationRequired: "Select a warehouse location before adding a new batch.",
+      saveLocationInvalid:
+        "The selected location is not valid for this warehouse. Select another location.",
+      saveForbidden:
+        "You cannot save this adjustment. Check your business unit or ask an administrator for access.",
+      saveWarehouseImmutable:
+        "The warehouse cannot be changed. Create a new adjustment for the other warehouse.",
+      saveFailed: "Could not save the stock adjustment. Review the details and try again.",
+      receivedDateInvalid: "Enter a valid received date for each new batch.",
+      receivedDateConflict:
+        "This batch already has a different received date. Use its original date or a different batch code.",
       batchAvailabilityCheckFailed:
         "The batch code could not be verified. Check your connection or change the code to retry.",
     },
@@ -7545,6 +7596,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       dnNo: "DN No",
       requestedBy: "Requested By",
       fulfilledBy: "Fulfilled By",
+      otherBusinessUnit: "Business Unit",
       pickList: "Pick List",
       status: "Status",
       actions: "Actions",
@@ -7702,9 +7754,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       queuePicking: "Queue Picking",
       void: "Void",
       status: "Status",
-      sourceBusinessUnit: "Source Business Unit",
-      destinationBusinessUnit: "Destination Business Unit",
+      fulfillingBusinessUnit: "Fulfilling Business Unit",
+      requestingBusinessUnit: "Requesting Business Unit",
       linkedPickList: "Linked Pick List",
+      otherBusinessUnit: "Other Business Unit",
       noValue: "--",
       totalItems: "Total Items",
       totalAllocated: "Total Allocated",
@@ -7801,8 +7854,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectQtyToAdd: "Qty to Add",
       addSelectedItems: "Add Items and Create Pick List",
       creatingReplacementPickList: "Creating pick list...",
-      unknownSourceBusinessUnit: "Unknown source business unit",
-      unknownDestinationBusinessUnit: "Unknown destination business unit",
       receivingReviewPendingReview: "Pending Review",
       receivingReviewAccepted: "Accepted",
       receivingReviewRejected: "Rejected",
@@ -10952,6 +11003,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       goToLastPage: "转到最后一页",
     },
     navigation: {
+      loadingDestination: "正在加载{destination}…",
       Home: "首页",
       Dashboard: "仪表板",
       Inventory: "库存",
@@ -14136,6 +14188,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       searchByBatchOrQr: "按批次或二维码搜索...",
       noBatches: "未找到批次",
       loadingBatches: "正在加载批次...",
+      receivedDateLabel: "收货日期",
+      receivedDateHint:
+        "请输入库存最初到货的日期。期初库存可填写过去的日期；此日期用于确定批次库龄。",
       manualBatchCodeLabel: "新批次编码",
       manualBatchCodePlaceholder: "输入批次编码",
       manualBatchCodeHint: "保存草稿时，将在所选调整库位创建此批次。",
@@ -14172,6 +14227,24 @@ export const translations: Record<Locale, TranslationKeys> = {
       newBatchIncreaseOnly: "新批次只能增加库存",
       newBatchPositiveQuantity: "请输入大于零的新批次数量",
       batchAlreadyExistsAtLocation: "该批次已存在于所选库位，请改用“现有批次”。",
+      saveNotFound: "此调整已不可用。请刷新列表并选择其他草稿。",
+      saveNotDraft: "此调整已不是草稿。请刷新列表后再操作。",
+      saveBusinessUnitRequired: "请选择业务单元后重新保存。",
+      saveFieldsRequired: "请填写调整类型、日期、仓库和原因后保存。",
+      saveItemsRequired: "请至少添加一个物料后保存。",
+      saveWarehouseInvalid: "请选择属于当前业务单元的仓库。",
+      saveItemInvalid: "请检查各调整物料的数量和成本后重试。",
+      saveItemMissing: "某物料已不可用。请移除并选择可用物料。",
+      saveUomInvalid: "某计量单位已不可用。请为相关物料重新选择单位。",
+      saveBatchLocationInvalid: "所选批次库位已无效。请重新选择此仓库中的批次。",
+      saveBatchRequired: "请为每个物料选择现有批次或输入批次编码。",
+      saveLocationRequired: "添加新批次前请选择仓库库位。",
+      saveLocationInvalid: "所选库位不属于此仓库。请选择其他库位。",
+      saveForbidden: "您无法保存此调整。请检查业务单元或联系管理员获取权限。",
+      saveWarehouseImmutable: "无法更改仓库。请为其他仓库创建新的调整。",
+      saveFailed: "无法保存库存调整。请检查详细信息后重试。",
+      receivedDateInvalid: "请为每个新批次输入有效的收货日期。",
+      receivedDateConflict: "此批次已有不同的收货日期。请使用原收货日期或其他批次编码。",
       batchAvailabilityCheckFailed: "无法验证批次编码。请检查网络连接，或修改编码后重试。",
     },
     deliveryNotesPage: {
@@ -14195,6 +14268,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       dnNo: "送货单号",
       requestedBy: "申请方",
       fulfilledBy: "履行方",
+      otherBusinessUnit: "业务单元",
       pickList: "拣货单",
       status: "状态",
       actions: "操作",
@@ -14336,9 +14410,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       queuePicking: "加入拣货",
       void: "作废",
       status: "状态",
-      sourceBusinessUnit: "来源业务单元",
-      destinationBusinessUnit: "目标业务单元",
+      fulfillingBusinessUnit: "履行业务单元",
+      requestingBusinessUnit: "请求业务单元",
       linkedPickList: "关联拣货单",
+      otherBusinessUnit: "对方业务单元",
       noValue: "--",
       totalItems: "商品总数",
       totalAllocated: "已分配总数",
@@ -14431,8 +14506,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectQtyToAdd: "添加数量",
       addSelectedItems: "添加商品并创建拣货单",
       creatingReplacementPickList: "正在创建拣货单...",
-      unknownSourceBusinessUnit: "未知来源业务单元",
-      unknownDestinationBusinessUnit: "未知目标业务单元",
       receivingReviewPendingReview: "待审核",
       receivingReviewAccepted: "已接受",
       receivingReviewRejected: "已拒绝",

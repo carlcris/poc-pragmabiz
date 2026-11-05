@@ -41,12 +41,18 @@ npm run build:android:apk:local
 eas build --platform android --profile local-apk --local
 ```
 
+APK builds use the Android `versionCode` configured in EAS without automatically increasing it.
+Set the exact code with `eas build:version:set --platform android --profile apk` before rebuilding.
+Set the displayed app version in `app.json` and keep this app's `package.json` and
+`package-lock.json` versions aligned before building a release. Android blocks normal updates to
+an APK with a lower `versionCode` than the installed app.
+
 The `local-apk` profile embeds the private LAN API address configured in `eas.json` and enables
 Android cleartext traffic only for that HTTP build. Confirm that the address belongs to the API
 server on the current network before building. The device and API server must be on the same LAN,
 and the API server must listen on a non-loopback interface.
 
-All other EAS profiles use the public HTTPS API at `https://stagingachlers.netlify.app` and retain
+All other EAS profiles use the public HTTPS API at `https://achlers.app` and retain
 Android's default cleartext-traffic restriction.
 
 ### Launcher Icon

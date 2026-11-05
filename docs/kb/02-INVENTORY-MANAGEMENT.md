@@ -251,7 +251,7 @@ Company Level
 - **In Transit**: Supplier load-list quantities moving to a business unit, shown on the separate Stock In Transit page
 - **Reorder Alert Basis**: Total available stock across all company warehouses compared to the effective item reorder point
 
-Stock-aware item lists subscribe to `item_warehouse` realtime changes and invalidate when putaway tasks change. Stock movement screens also subscribe to `stock_transactions` and `stock_transaction_items` realtime changes. Posted stock adjustments, GRN receiving submissions, putaway postings, and other stock movements invalidate the loaded items, item statistics, stock transaction, stock balance, dashboard, and reorder queries so on-hand, reserved, putaway, available, and movement history refresh without leaving the page. Putaway posting also invalidates item-location and batch selectors, delivery-note allocation availability, stock requests, reorder notifications, and inventory, batch-location, aging, stock-movement, product-movement, and ledger reports because final placement makes staged stock available at a specific batch and location.
+Stock-aware item lists subscribe to `item_warehouse` realtime changes and invalidate when putaway tasks change. Stock movement screens also subscribe to `stock_transactions` and `stock_transaction_items` realtime changes. Stock adjustment draft saves invalidate item Locations so newly created batches appear when returning to the tab. Posting also invalidates the separate item-stock and Locations caches, so quantities refresh without a full page reload. Posted stock adjustments, GRN receiving submissions, putaway postings, and other stock movements invalidate the loaded items, item statistics, stock transaction, stock balance, dashboard, and reorder queries so on-hand, reserved, putaway, available, and movement history refresh without leaving the page. Putaway posting also invalidates item-location and batch selectors, delivery-note allocation availability, stock requests, reorder notifications, and inventory, batch-location, aging, stock-movement, product-movement, and ledger reports because final placement makes staged stock available at a specific batch and location.
 
 Putaway tasks store their own source-unit name and quantity-per-unit conversion when they are created. Supplier GRN tasks remain scoped only to their destination business unit until posting; the operator selects the warehouse and then a storable rack at the Putaway Station, where the warehouse stock and final batch/location quantities are written atomically. Warehouse-bound production tasks retain their assigned warehouse. The Putaway Station derives source quantities and every printed label's quantity from the immutable task snapshot rather than re-reading a live item unit option or upstream GRN line. Users enter the posting quantity in the task's source unit, and the Putaway Station converts it to base units before submission. Label copies default to that source-unit posting quantity, update when it changes, remain independently editable, and are applied directly to every applicable posted batch/location label without redistribution based on source count or posted quantity.
 
@@ -861,6 +861,11 @@ Get all inventory in a warehouse.
 
 ### Stock Adjustments
 
+Draft save failures preserve safe, actionable guidance for invalid items, units, batches, locations,
+warehouse selection, lost access, and drafts that are no longer editable. Create and update use
+shared stable error codes and translated recovery messages. The form stays open after failure;
+unknown backend errors remain generic.
+
 #### POST /api/stock-adjustments
 
 Create a stock adjustment draft for an explicitly selected active warehouse in the current business
@@ -895,7 +900,7 @@ before writing the draft.
 
 Each adjustment line explicitly chooses **Existing Batch** or **Create New Batch**. The existing-batch selector is server-filtered by item, the selected warehouse, optional location, and batch/QR search text. The selected batch-location row supplies the current quantity and QR label metadata.
 
-Creating a new batch requires an adjustment location, a batch code, and a positive stock increase. New batches start at zero, so stock removal is unavailable in this mode. The form checks whether the same batch already exists at the selected location and directs the user to the existing-batch path when it does. Saving the draft creates or reuses the `item_batches` row and creates its missing `item_batch_locations` row for the selected warehouse/location inside the same database transaction as the adjustment header and lines. If any part of the save fails, no manual batch, batch-location, header, or line write remains committed.
+Creating a new batch requires an adjustment location, a batch code, a valid Received Date, and a positive stock increase. Received Date defaults to today and accepts past dates for initial inventory. New-batch API lines send `batchReceivedDate` as `YYYY-MM-DD` (also when adding a new batch to an existing draft); existing-batch lines omit it. The date is stored at midnight in `item_batches.received_at`, which drives batch age and oldest-first allocation, independently of the adjustment date and record creation time. Reusing a batch code at another location requires the same received date; it never changes the original batch date. Invalid dates return HTTP 400 with `STOCK_ADJUSTMENT_RECEIVED_DATE_INVALID`; conflicting dates return HTTP 409 with `STOCK_ADJUSTMENT_RECEIVED_DATE_CONFLICT`. New batches start at zero, so stock removal is unavailable in this mode. The form checks whether the same batch already exists at the selected location and directs the user to the existing-batch path when it does. Saving the draft creates or reuses the `item_batches` row and creates its missing `item_batch_locations` row for the selected warehouse/location inside the same database transaction as the adjustment header and lines. If any part of the save fails, no manual batch, batch-location, header, or line write remains committed.
 
 #### POST /api/stock-adjustments/[id]/post
 
@@ -1306,6 +1311,23 @@ class LocationService {
 - Only drafts from the requesting business unit can be edited, and only with stock request edit permission; other transfers show a message linking back to the view page
 - The view page shows each line's batch, delivered quantity once fulfillment starts, and linked delivery notes. The requesting side can Submit, Edit, Cancel, or Delete a draft; the fulfilling side can Approve or Reject a submitted transfer. Reject and Cancel require a reason
 - Save errors for unavailable or insufficient batches show their own messages instead of the generic save failure
+
+#### Delivery-note list and detail
+
+**Location**: `src/app/(dashboard)/inventory/delivery-notes/page.tsx` and `src/app/(dashboard)/inventory/delivery-notes/[id]/page.tsx`
+
+The **Business Unit** column shows only the transfer's other party relative to the currently
+selected BU: **Fulfilled By** for requesting BUs and **Requested By** for fulfilling BUs. Each row
+shows that party's name and code; incoming and outgoing notes can share the same list. The detail
+summary likewise shows only Fulfilling Business Unit for a requesting BU or Requesting Business Unit
+for a fulfilling BU, alongside Status and Linked Pick List. The selected BU's own label is omitted,
+even when the user has membership in both BUs.
+
+`GET /api/delivery-notes` includes both summaries (`id`, `code`, `name`) in each paginated record,
+using the same relationships as the detail endpoint. Labels therefore remain available when the
+user belongs to only one side of a transfer or the business-unit switcher list has not loaded.
+Document access stays scoped to the company and selected business unit; receiving details remain
+restricted to the requesting side.
 
 #### ReorderAlerts
 

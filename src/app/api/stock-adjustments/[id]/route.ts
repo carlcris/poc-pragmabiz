@@ -1,3 +1,8 @@
+import { getStockAdjustmentSaveError } from "@/lib/stock-adjustments/save-errors";
+import {
+  batchReceivedDateSchema,
+  getBatchReceivedDateError,
+} from "@/lib/stock-adjustments/batch-received-date";
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -27,6 +32,7 @@ type StockAdjustmentItemInput = {
   itemId: string;
   itemBatchLocationId?: string | null;
   batchCode?: string | null;
+  batchReceivedDate?: string;
   currentQty: number;
   adjustedQty: number;
   unitCost: number;
@@ -119,84 +125,6 @@ const STOCK_ADJUSTMENT_ITEM_COLUMNS = `
 
 const toOne = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
-
-type RpcErrorLike = {
-  code?: string;
-  message?: string;
-};
-
-const STOCK_ADJUSTMENT_UPDATE_ERROR_RESPONSES = new Map<
-  string,
-  { message: string; status: number }
->([
-  ["Stock adjustment not found", { message: "Stock adjustment not found", status: 404 }],
-  [
-    "Only draft adjustments can be updated",
-    { message: "Only draft adjustments can be updated", status: 400 },
-  ],
-  ["Business unit context required", { message: "Business unit context required", status: 400 }],
-  [
-    "Missing required stock adjustment fields",
-    { message: "Missing required stock adjustment fields", status: 400 },
-  ],
-  ["At least one item is required", { message: "At least one item is required", status: 400 }],
-  [
-    "Selected warehouse is not valid for the current business unit",
-    { message: "Selected warehouse is not valid for the current business unit", status: 400 },
-  ],
-  [
-    "Stock adjustment is not valid for the current business unit",
-    { message: "Stock adjustment not found", status: 404 },
-  ],
-  ["Invalid stock adjustment item", { message: "Invalid stock adjustment item", status: 400 }],
-  [
-    "Stock adjustment item does not exist",
-    { message: "Stock adjustment item does not exist", status: 400 },
-  ],
-  [
-    "Stock adjustment unit of measure does not exist",
-    { message: "Stock adjustment unit of measure does not exist", status: 400 },
-  ],
-  [
-    "Selected batch location is not valid for the adjustment",
-    { message: "Selected batch location is not valid for the adjustment", status: 400 },
-  ],
-  ["Batch code is required", { message: "Batch code is required", status: 400 }],
-  [
-    "Location is required for a new batch",
-    { message: "Location is required for a new batch", status: 400 },
-  ],
-  [
-    "Selected location is not valid for the warehouse",
-    { message: "Selected location is not valid for the warehouse", status: 400 },
-  ],
-  ["User context mismatch", { message: "Not authorized to update stock adjustment", status: 403 }],
-  [
-    "User is not valid for the company",
-    { message: "Not authorized to update stock adjustment", status: 403 },
-  ],
-  [
-    "User does not have access to the business unit",
-    { message: "Not authorized to update stock adjustment", status: 403 },
-  ],
-]);
-
-const getStockAdjustmentUpdateErrorResponse = (error: RpcErrorLike | null | undefined) => {
-  const mapped = error?.message ? STOCK_ADJUSTMENT_UPDATE_ERROR_RESPONSES.get(error.message) : null;
-
-  if (mapped) {
-    return NextResponse.json({ error: mapped.message }, { status: mapped.status });
-  }
-
-  if (error?.code === "42501") {
-    return NextResponse.json(
-      { error: "Not authorized to update stock adjustment" },
-      { status: 403 }
-    );
-  }
-
-  return null;
-};
 
 // GET /api/stock-adjustments/[id] - Get single stock adjustment
 async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -383,7 +311,13 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
   try {
     // Require 'stock_adjustments' edit permission
     const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, "edit");
-    if (unauthorized) return unauthorized;
+    if (unauthorized) {
+      if (unauthorized.status === 403) {
+        const failure = getStockAdjustmentSaveError({ code: "42501" })!;
+        return NextResponse.json({ error: failure.error, code: failure.code }, { status: 403 });
+      }
+      return unauthorized;
+    }
 
     const { id } = await params;
     const body = (await request.json()) as StockAdjustmentPatchBody;
@@ -392,12 +326,22 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
     const { supabase, companyId, currentBusinessUnitId, userId } = context;
 
     if (!currentBusinessUnitId) {
-      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Select a business unit, then try saving again.",
+          code: "STOCK_ADJUSTMENT_BU_REQUIRED",
+        },
+        { status: 400 }
+      );
     }
 
     if ("warehouseId" in body) {
       return NextResponse.json(
-        { error: "The warehouse cannot be changed after an adjustment is created" },
+        {
+          error:
+            "The warehouse cannot be changed. Create a new adjustment for the other warehouse.",
+          code: "STOCK_ADJUSTMENT_WAREHOUSE_IMMUTABLE",
+        },
         { status: 400 }
       );
     }
@@ -405,10 +349,24 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
     if (body.items) {
       if (body.items.some((item) => !item.itemBatchLocationId && !item.batchCode?.trim())) {
         return NextResponse.json(
-          { error: "Batch selection or batch code is required for every adjustment item" },
+          {
+            error: "Select an existing batch or enter a batch code for every item.",
+            code: "STOCK_ADJUSTMENT_BATCH_REQUIRED",
+          },
           { status: 400 }
         );
       }
+    }
+
+    if (
+      body.items?.some(
+        (item) =>
+          !item.itemBatchLocationId &&
+          !batchReceivedDateSchema.safeParse(item.batchReceivedDate).success
+      )
+    ) {
+      const error = getBatchReceivedDateError("SA001")!;
+      return NextResponse.json({ error: error.error, code: error.code }, { status: error.status });
     }
 
     const { data: savedAdjustments, error: updateError } = await supabase.rpc(
@@ -433,8 +391,12 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
 
     if (updateError) {
       console.error("Error updating stock adjustment:", updateError);
-      const errorResponse = getStockAdjustmentUpdateErrorResponse(updateError);
-      if (errorResponse) return errorResponse;
+      const saveFailure = getStockAdjustmentSaveError(updateError);
+      if (saveFailure)
+        return NextResponse.json(
+          { error: saveFailure.error, code: saveFailure.code },
+          { status: saveFailure.status }
+        );
 
       return NextResponse.json({ error: "Failed to update stock adjustment" }, { status: 500 });
     }
@@ -458,7 +420,10 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
 
     if (updatedAdjustmentError || !updatedAdjustment) {
       console.error("Error fetching updated stock adjustment:", updatedAdjustmentError);
-      return NextResponse.json({ error: "Failed to load updated stock adjustment" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to load updated stock adjustment" },
+        { status: 500 }
+      );
     }
 
     const updatedLocationId = updatedAdjustment?.custom_fields?.locationId;
@@ -539,7 +504,14 @@ async function DELETEHandler(
       .single();
 
     if (fetchError || !adjustment) {
-      return NextResponse.json({ error: "Stock adjustment not found" }, { status: 404 });
+      return NextResponse.json(
+        {
+          error:
+            "This adjustment is no longer available. Refresh the list and select another draft.",
+          code: "STOCK_ADJUSTMENT_NOT_FOUND",
+        },
+        { status: 404 }
+      );
     }
 
     if (adjustment.status !== "draft") {

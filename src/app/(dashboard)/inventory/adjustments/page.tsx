@@ -1,5 +1,6 @@
 "use client";
 
+import { getStockAdjustmentSaveErrorMessage } from "@/lib/stock-adjustments/save-error-message";
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
@@ -97,6 +98,7 @@ const StockAdjustmentFormDialog = dynamic(
 export default function StockAdjustmentsPage() {
   const t = useTranslations("stockAdjustmentsPage");
   const tForm = useTranslations("stockAdjustmentForm");
+  const tValidation = useTranslations("stockAdjustmentLineItemValidation");
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const [searchInput, setSearchInput] = useState("");
@@ -283,27 +285,33 @@ export default function StockAdjustmentsPage() {
       itemId: item.itemId,
       itemBatchLocationId: item.itemBatchLocationId,
       batchCode: item.batchCode,
+      ...(!item.itemBatchLocationId ? { batchReceivedDate: item.batchReceivedAt } : {}),
       currentQty: item.currentQty,
       adjustedQty: item.adjustedQty,
       unitCost: item.unitCost,
       uomId: item.uomId,
     }));
 
-    if (payload.selectedAdjustment) {
-      await updateMutation.mutateAsync({
-        id: payload.selectedAdjustment.id,
-        data: {
+    try {
+      if (payload.selectedAdjustment) {
+        await updateMutation.mutateAsync({
+          id: payload.selectedAdjustment.id,
+          data: {
+            ...values,
+            items,
+          },
+        });
+      } else {
+        await createMutation.mutateAsync({
           ...values,
+          companyId,
+          warehouseId,
           items,
-        },
-      });
-    } else {
-      await createMutation.mutateAsync({
-        ...values,
-        companyId,
-        warehouseId,
-        items,
-      });
+        });
+      }
+    } catch (error) {
+      toast.error(getStockAdjustmentSaveErrorMessage(error, tValidation));
+      throw error;
     }
   };
 
@@ -742,7 +750,7 @@ export default function StockAdjustmentsPage() {
                                 {item.batchCode || item.batchLocationSku || t("noLocation")}
                               </div>
                               {item.batchLocationSku && (
-                                <div className="tabular-nums text-xs text-muted-foreground">
+                                <div className="text-xs tabular-nums text-muted-foreground">
                                   {item.batchLocationSku}
                                 </div>
                               )}

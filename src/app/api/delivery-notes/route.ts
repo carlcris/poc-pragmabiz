@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { requireDeliveryNoteReceivingAccess } from "@/lib/delivery-notes/permissions";
 import {
+  DELIVERY_NOTE_BUSINESS_UNIT_SELECT,
   fetchDeliveryNote,
   getAuthContext,
   mapDeliveryNoteRecord,
@@ -64,6 +65,7 @@ const DELIVERY_NOTE_LIST_SELECT = `
   created_at,
   updated_by,
   updated_at,
+  ${DELIVERY_NOTE_BUSINESS_UNIT_SELECT},
   delivery_note_items(
     sr_item_id,
     allocated_qty,

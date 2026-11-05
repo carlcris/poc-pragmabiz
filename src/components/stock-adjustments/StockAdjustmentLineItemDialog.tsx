@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
+import { format } from "date-fns";
+import { batchReceivedDateSchema } from "@/lib/stock-adjustments/batch-received-date";
 import { Check } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -45,6 +47,7 @@ import type { StockAdjustmentBatchLocation } from "@/types/stock-adjustment";
 const createLineItemSchema = (
   tValidation: (
     key:
+      | "receivedDateInvalid"
       | "itemRequired"
       | "batchRequired"
       | "uomRequired"
@@ -84,6 +87,17 @@ const createLineItemSchema = (
           code: z.ZodIssueCode.custom,
           message: tValidation("batchRequired"),
           path: ["itemBatchLocationId"],
+        });
+      }
+
+      if (
+        value.batchEntryMode === "new" &&
+        !batchReceivedDateSchema.safeParse(value.batchReceivedAt).success
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: tValidation("receivedDateInvalid"),
+          path: ["batchReceivedAt"],
         });
       }
 
@@ -375,7 +389,7 @@ export function StockAdjustmentLineItemDialog({
     form.setValue("itemBatchLocationId", "");
     form.setValue("batchLocationSku", "");
     form.setValue("batchCode", "");
-    form.setValue("batchReceivedAt", "");
+    form.setValue("batchReceivedAt", value === "new" ? format(new Date(), "yyyy-MM-dd") : "");
     form.setValue("batchWarehouseLocationId", value === "new" ? locationId || "" : "");
     form.setValue("batchLocationCode", "");
     form.setValue("batchLocationName", "");
@@ -540,7 +554,7 @@ export function StockAdjustmentLineItemDialog({
                             <Check
                               className={`h-4 w-4 ${selected ? "opacity-100" : "opacity-0"}`}
                             />
-                            <span className="tabular-nums text-xs text-gray-500">{entry.code}</span>
+                            <span className="text-xs tabular-nums text-gray-500">{entry.code}</span>
                             <span>•</span>
                             <span>{entry.name}</span>
                           </div>
@@ -654,7 +668,6 @@ export function StockAdjustmentLineItemDialog({
                             form.clearErrors("batchCode");
                             form.setValue("itemBatchLocationId", "");
                             form.setValue("batchLocationSku", "");
-                            form.setValue("batchReceivedAt", "");
                             form.setValue("batchWarehouseLocationId", locationId || "");
                             form.setValue("batchLocationCode", "");
                             form.setValue("batchLocationName", "");
@@ -665,6 +678,25 @@ export function StockAdjustmentLineItemDialog({
                         />
                       </FormControl>
                       <p className="text-xs text-muted-foreground">{t("manualBatchCodeHint")}</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {batchEntryMode === "new" && (
+                <FormField
+                  control={form.control}
+                  name="batchReceivedAt"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t("receivedDateLabel")} <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} value={field.value || ""} />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">{t("receivedDateHint")}</p>
                       <FormMessage />
                     </FormItem>
                   )}

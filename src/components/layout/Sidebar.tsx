@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { SidebarNavigationLink } from "@/components/layout/SidebarNavigationLink";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
@@ -453,20 +453,14 @@ export function Sidebar({
                           {visibleChildren.map((child) => {
                             const ChildIcon = child.icon;
                             return (
-                              <Link
+                              <SidebarNavigationLink
                                 key={child.href}
                                 href={child.href}
-                                onClick={() => setIsMobileOpen(false)}
-                                className={cn(
-                                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                                  pathname === child.href
-                                    ? "bg-white/20 font-medium text-white"
-                                    : "text-gray-300 hover:bg-white/10 hover:text-white"
-                                )}
-                              >
-                                {ChildIcon && <ChildIcon className="h-4 w-4" />}
-                                {t(child.title)}
-                              </Link>
+                                label={t(child.title)}
+                                icon={ChildIcon}
+                                active={pathname === child.href}
+                                onNavigate={() => setIsMobileOpen(false)}
+                              />
                             );
                           })}
                         </div>
@@ -476,20 +470,14 @@ export function Sidebar({
 
                   if (canViewResource(item.resource!)) {
                     return (
-                      <Link
+                      <SidebarNavigationLink
                         key={item.href}
                         href={item.href}
-                        onClick={() => setIsMobileOpen(false)}
-                        className={cn(
-                          "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                          isParentActive
-                            ? "bg-white/20 font-medium text-white"
-                            : "text-gray-300 hover:bg-white/10 hover:text-white"
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                        {t(item.title)}
-                      </Link>
+                        label={t(item.title)}
+                        icon={Icon}
+                        active={isParentActive}
+                        onNavigate={() => setIsMobileOpen(false)}
+                      />
                     );
                   }
 
@@ -519,19 +507,14 @@ export function Sidebar({
                       if (!ChildIcon) return null;
 
                       return (
-                        <Link
+                        <SidebarNavigationLink
                           key={child.href}
                           href={child.href}
-                          title={t(child.title)}
-                          className={cn(
-                            "flex h-10 w-10 items-center justify-center rounded-md transition-colors",
-                            pathname === child.href
-                              ? "bg-white/20 text-white"
-                              : "text-gray-300 hover:bg-white/10 hover:text-white"
-                          )}
-                        >
-                          <ChildIcon className="h-5 w-5" />
-                        </Link>
+                          label={t(child.title)}
+                          icon={ChildIcon}
+                          active={pathname === child.href}
+                          collapsed
+                        />
                       );
                     });
                   }
@@ -539,19 +522,14 @@ export function Sidebar({
                   if (canViewResource(item.resource!)) {
                     const isActive = pathname === item.href;
                     return (
-                      <Link
+                      <SidebarNavigationLink
                         key={item.href}
                         href={item.href}
-                        title={t(item.title)}
-                        className={cn(
-                          "flex h-10 w-10 items-center justify-center rounded-md transition-colors",
-                          isActive
-                            ? "bg-white/20 text-white"
-                            : "text-gray-300 hover:bg-white/10 hover:text-white"
-                        )}
-                      >
-                        <Icon className="h-5 w-5" />
-                      </Link>
+                        label={t(item.title)}
+                        icon={Icon}
+                        active={isActive}
+                        collapsed
+                      />
                     );
                   }
 

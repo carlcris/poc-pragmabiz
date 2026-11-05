@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getApiErrorCode } from "@/lib/api";
+import { resolveDeliveryNoteCounterparty } from "@/lib/delivery-notes/delivery-note-counterparty";
 import {
   useAddDeliveryNoteItems,
   useAdjustDispatchedDeliveryNoteItem,
@@ -295,14 +296,10 @@ export default function DeliveryNoteDetailPage() {
   const one = <T,>(value: T | T[] | null | undefined): T | null =>
     Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
-  const fulfillingBusinessUnit = one(dn?.fulfilling_business_unit);
-  const sourceBusinessUnitLabel =
-    [fulfillingBusinessUnit?.code, fulfillingBusinessUnit?.name].filter(Boolean).join(" - ") ||
-    t("unknownSourceBusinessUnit");
-  const requestingBusinessUnit = one(dn?.requesting_business_unit);
-  const destinationBusinessUnitLabel =
-    [requestingBusinessUnit?.code, requestingBusinessUnit?.name].filter(Boolean).join(" - ") ||
-    t("unknownDestinationBusinessUnit");
+  const counterparty = dn ? resolveDeliveryNoteCounterparty(dn, currentBusinessUnit?.id) : null;
+  const counterpartyLabel = counterparty?.businessUnit
+    ? `${counterparty.businessUnit.code} - ${counterparty.businessUnit.name}`
+    : t("noValue");
 
   const canConfirmReceive =
     !!dn &&
@@ -754,7 +751,7 @@ export default function DeliveryNoteDetailPage() {
         actions={pageActions}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-lg border bg-card p-4">
           <div className="text-xs text-muted-foreground">{t("status")}</div>
           <div className="mt-1 text-sm font-semibold">
@@ -768,15 +765,15 @@ export default function DeliveryNoteDetailPage() {
           </div>
         </div>
         <div className="rounded-lg border bg-card p-4">
-          <div className="text-xs text-muted-foreground">{t("sourceBusinessUnit")}</div>
-          <div className="mt-1 text-sm font-medium">
-            {dn ? sourceBusinessUnitLabel : <Skeleton className="h-5 w-40" />}
+          <div className="text-xs text-muted-foreground">
+            {counterparty?.side === "fulfilling"
+              ? t("fulfillingBusinessUnit")
+              : counterparty?.side === "requesting"
+                ? t("requestingBusinessUnit")
+                : t("otherBusinessUnit")}
           </div>
-        </div>
-        <div className="rounded-lg border bg-card p-4">
-          <div className="text-xs text-muted-foreground">{t("destinationBusinessUnit")}</div>
           <div className="mt-1 text-sm font-medium">
-            {dn ? destinationBusinessUnitLabel : <Skeleton className="h-5 w-40" />}
+            {dn ? counterpartyLabel : <Skeleton className="h-5 w-40" />}
           </div>
         </div>
         <div className="rounded-lg border bg-card p-4">

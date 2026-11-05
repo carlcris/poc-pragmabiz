@@ -95,6 +95,7 @@ export interface CreateStockAdjustmentRequest {
     itemId: string;
     itemBatchLocationId?: string | null;
     batchCode?: string | null;
+    batchReceivedDate?: string;
     currentQty: number;
     adjustedQty: number;
     unitCost: number;
@@ -114,6 +115,7 @@ export interface UpdateStockAdjustmentRequest {
     itemId: string;
     itemBatchLocationId?: string | null;
     batchCode?: string | null;
+    batchReceivedDate?: string;
     currentQty: number;
     adjustedQty: number;
     unitCost: number;

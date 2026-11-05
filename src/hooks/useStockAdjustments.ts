@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import {
   ITEMS_QUERY_KEY,
   ITEMS_STATS_QUERY_KEY,
+  ITEMS_STOCK_QUERY_KEY,
+  ITEM_LOCATIONS_QUERY_KEY,
   STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY,
   WAREHOUSE_DASHBOARD_QUERY_KEY,
   REORDER_ALERTS_QUERY_KEY,
@@ -55,10 +57,8 @@ export function useCreateStockAdjustment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ITEM_LOCATIONS_QUERY_KEY] });
       toast.success("Stock adjustment created successfully");
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to create stock adjustment"));
     },
   });
 }
@@ -75,10 +75,8 @@ export function useUpdateStockAdjustment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ITEM_LOCATIONS_QUERY_KEY] });
       toast.success("Stock adjustment updated successfully");
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to update stock adjustment"));
     },
   });
 }
@@ -116,7 +114,9 @@ export function usePostStockAdjustment() {
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
       queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [ITEMS_STATS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ITEMS_STOCK_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ITEM_LOCATIONS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [REORDER_ALERTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });

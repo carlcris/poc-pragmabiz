@@ -121,6 +121,11 @@ The sidebar orders its sections as Dashboard, Inventory, Purchasing, Manufacturi
 and Admin, with Purchasing immediately after Inventory. Expanded desktop, collapsed desktop, and
 mobile menus share this order; each user sees only the entries allowed by their permissions.
 
+Sidebar links show a spinner and a subtle pending outline while navigation is in progress, while
+the current page retains its active highlight. On mobile, the menu closes during navigation and a
+top loading indicator names the destination. Feedback follows the router transition and clears
+when it settles; subsequent page data loading is handled by the destination page.
+
 ## Desktop Quick Actions
 
 The protected desktop dashboard shell includes a compact quick-action rail on the right side of the

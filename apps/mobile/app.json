@@ -2,7 +2,7 @@
   "expo": {
     "name": "Pragmabiz Warehouse",
     "slug": "pragmabiz-warehouse-mobile",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "icon": "./assets/achlers_logo.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",

@@ -36,6 +36,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
 import { getApiErrorCode } from "@/lib/api";
+import { resolveDeliveryNoteCounterparty } from "@/lib/delivery-notes/delivery-note-counterparty";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -240,11 +241,6 @@ export default function DeliveryNotesPage() {
         return !availability || availability.remainingRequestQty > 0;
       }),
     [availabilityBySrItemId, draftLines]
-  );
-
-  const businessUnitById = useMemo(
-    () => new Map(availableBusinessUnits.map((businessUnit) => [businessUnit.id, businessUnit])),
-    [availableBusinessUnits]
   );
 
   const businessUnitLabelById = useMemo(
@@ -865,8 +861,7 @@ export default function DeliveryNotesPage() {
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
                   <TableHead>{t("dnNo")}</TableHead>
-                  <TableHead>{t("requestedBy")}</TableHead>
-                  <TableHead>{t("fulfilledBy")}</TableHead>
+                  <TableHead>{t("otherBusinessUnit")}</TableHead>
                   <TableHead>{t("pickList")}</TableHead>
                   <TableHead>{t("status")}</TableHead>
                   <TableHead className="text-right">{t("actions")}</TableHead>
@@ -880,12 +875,6 @@ export default function DeliveryNotesPage() {
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-32" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-32" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-28" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-28" />
@@ -922,8 +911,7 @@ export default function DeliveryNotesPage() {
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
                   <TableHead>{t("dnNo")}</TableHead>
-                  <TableHead>{t("requestedBy")}</TableHead>
-                  <TableHead>{t("fulfilledBy")}</TableHead>
+                  <TableHead>{t("otherBusinessUnit")}</TableHead>
                   <TableHead>{t("pickList")}</TableHead>
                   <TableHead>{t("status")}</TableHead>
                   <TableHead className="text-right">{t("actions")}</TableHead>
@@ -931,8 +919,7 @@ export default function DeliveryNotesPage() {
               </TableHeader>
               <TableBody>
                 {deliveryNotes.map((dn) => {
-                  const requestingBusinessUnit = businessUnitById.get(dn.requesting_business_unit_id);
-                  const fulfillingBusinessUnit = businessUnitById.get(dn.fulfilling_business_unit_id);
+                  const counterparty = resolveDeliveryNoteCounterparty(dn, currentBusinessUnit?.id);
                   const linkedPickList = resolveActivePickList(dn);
                   const detailsHref = `/inventory/delivery-notes/${dn.id}`;
                   const primaryAction = getPrimaryRowAction(dn, linkedPickList);
@@ -962,15 +949,20 @@ export default function DeliveryNotesPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
-                        <div className="font-medium">{requestingBusinessUnit?.name || t("noValue")}</div>
-                        {requestingBusinessUnit && (
-                          <div className="text-xs text-muted-foreground">{requestingBusinessUnit.code}</div>
+                        {counterparty && (
+                          <div className="text-xs text-muted-foreground">
+                            {counterparty.side === "requesting"
+                              ? t("requestedBy")
+                              : t("fulfilledBy")}
+                          </div>
                         )}
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        <div className="font-medium">{fulfillingBusinessUnit?.name || t("noValue")}</div>
-                        {fulfillingBusinessUnit && (
-                          <div className="text-xs text-muted-foreground">{fulfillingBusinessUnit.code}</div>
+                        <div className="font-medium">
+                          {counterparty?.businessUnit?.name || t("noValue")}
+                        </div>
+                        {counterparty?.businessUnit && (
+                          <div className="text-xs text-muted-foreground">
+                            {counterparty.businessUnit.code}
+                          </div>
                         )}
                       </TableCell>
                       <TableCell>
@@ -1226,7 +1218,7 @@ export default function DeliveryNotesPage() {
                               onCheckedChange={(checked) => toggleLine(line, checked === true)}
                             />
                           </TableCell>
-                          <TableCell className="tabular-nums text-xs">{line.requestCode}</TableCell>
+                          <TableCell className="text-xs tabular-nums">{line.requestCode}</TableCell>
                           <TableCell className="w-48 max-w-48 whitespace-normal text-sm">
                             <div className="break-words font-medium leading-snug">
                               {line.itemName}

@@ -637,10 +637,17 @@ requires the granular delivery-note receiving capability.
 
 ## 13. Delivery Notes
 
-The list’s **Requested By** and **Fulfilled By** columns show the requesting and fulfilling
-business-unit name on the primary line and code as muted secondary text underneath.
-Verify **Fulfilled By** identifies the business unit, not one
-of its warehouses.
+The list's **Business Unit** column shows only the transfer's other party, with its name and
+code. From the requesting BU, the row is labeled **Fulfilled By** and shows the fulfilling BU.
+From the fulfilling BU, it is labeled **Requested By** and shows the requesting BU. The selected
+BU's own name and code are omitted. Verify incoming and outgoing notes together in the same list.
+The detail summary follows the same perspective: requesting users see only **Fulfilling Business Unit**;
+fulfilling users see only **Requesting Business Unit**. Status and Linked Pick List remain visible.
+Test both single-BU memberships and a user who can switch between both BUs: the currently selected
+BU determines the perspective. Labels must come from the note even before the switcher's membership
+list loads. Confirm loading keeps the same table/card footprint, notes unrelated to the selected
+BU remain excluded, and receiving details remain hidden from fulfilling-only users. Repeat in
+English and Chinese.
 
 Warehouse labels in the detail dialog and PDF come from the Delivery Note API's
 `fulfilling_warehouse` and `requesting_warehouse` relations, including PDF address fields.
@@ -929,6 +936,14 @@ multiple warehouse-specific delivery notes from one action.
 
 ## 16. Stock Adjustments
 
+Save-error regression checks: create and edit failures must explain the corrective action for a
+missing item or unit, invalid warehouse/batch/location, missing batch code/location, a draft that
+has already changed status, or unavailable access. Confirm the dialog stays open with entered
+values intact, and the save button prevents duplicate submissions while pending. Verify the same
+failure has the same `STOCK_ADJUSTMENT_*` code in preflight and RPC responses, with English and
+Chinese guidance. Received-date errors retain their specific messages; unexpected failures show
+only the generic save message without internal database details.
+
 **What it's for**: correcting inventory counts (damage, loss, physical count corrections, found stock, etc.) outside of a normal transaction.
 
 **How a record starts**: click **New Adjustment**, pick a reason (physical count, damage, loss, found, quality issue, other), and enter current vs. adjusted quantity per line.
@@ -941,7 +956,7 @@ multiple warehouse-specific delivery notes from one action.
 1. **Create** → status Draft. Freely editable.
 2. **Post** → records a stock movement, updates stock levels and the stock ledger, then changes the status to Posted. It does not create an accounting journal or General Ledger entry. This directly changes on-hand inventory — there is no approval step in between today.
 
-For each line, choose either **Existing Batch** or **Create New Batch**. Creating a new batch requires a selected adjustment location, a unique batch code at that location, and a positive stock increase. Saving the draft creates the zero-quantity batch/location identity transactionally; posting applies the entered increase to inventory.
+For each line, choose either **Existing Batch** or **Create New Batch**. Creating a new batch requires a selected adjustment location, a unique batch code at that location, a Received Date, and a positive stock increase. Received Date defaults to today and can be backdated for initial inventory; it determines batch age. Verify a historical date survives saving and reopening the draft, and that a later draft edit preserves it. Reusing a batch code from another location with a different received date must show a conflict and leave existing dates unchanged. Saving the draft creates the zero-quantity batch/location identity transactionally; posting applies the entered increase to inventory.
 
 **Who can do it**: edit access to Stock Adjustments (posting uses the same permission as editing).
 

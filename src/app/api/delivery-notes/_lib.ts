@@ -135,6 +135,15 @@ type DeliveryNoteWithRelations = {
   [key: string]: unknown;
 };
 
+export const DELIVERY_NOTE_BUSINESS_UNIT_SELECT = `
+  requesting_business_unit:business_units!delivery_notes_requesting_business_unit_id_fkey(
+    id, code, name
+  ),
+  fulfilling_business_unit:business_units!delivery_notes_fulfilling_business_unit_id_fkey(
+    id, code, name
+  )
+`;
+
 // Resolve only warehouses referenced by the selected notes, under the caller's RLS.
 export const DELIVERY_NOTE_WAREHOUSE_SELECT = `
   fulfilling_warehouse:warehouses!delivery_notes_fulfilling_warehouse_id_fkey(
@@ -250,16 +259,7 @@ export const fetchDeliveryNote = async (
       `
       ${DELIVERY_NOTE_HEADER_COLUMNS},
       ${DELIVERY_NOTE_WAREHOUSE_SELECT},
-      fulfilling_business_unit:business_units!delivery_notes_fulfilling_business_unit_id_fkey(
-        id,
-        code,
-        name
-      ),
-      requesting_business_unit:business_units!delivery_notes_requesting_business_unit_id_fkey(
-        id,
-        code,
-        name
-      ),
+      ${DELIVERY_NOTE_BUSINESS_UNIT_SELECT},
       delivery_note_sources(company_id, dn_id, sr_id, created_at),
       delivery_note_items(
         ${DELIVERY_NOTE_ITEM_COLUMNS},

@@ -1,3 +1,8 @@
+import { getStockAdjustmentSaveError } from "@/lib/stock-adjustments/save-errors";
+import {
+  batchReceivedDateSchema,
+  getBatchReceivedDateError,
+} from "@/lib/stock-adjustments/batch-received-date";
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -50,6 +55,7 @@ type StockAdjustmentItemInput = {
   itemId: string;
   itemBatchLocationId?: string | null;
   batchCode?: string | null;
+  batchReceivedDate?: string;
   currentQty: number;
   adjustedQty: number;
   unitCost: number;
@@ -515,7 +521,13 @@ async function POSTHandler(request: NextRequest) {
   try {
     // Require 'stock_adjustments' create permission
     const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, "create");
-    if (unauthorized) return unauthorized;
+    if (unauthorized) {
+      if (unauthorized.status === 403) {
+        const failure = getStockAdjustmentSaveError({ code: "42501" })!;
+        return NextResponse.json({ error: failure.error, code: failure.code }, { status: 403 });
+      }
+      return unauthorized;
+    }
 
     const context = await requireRequestContext();
     if ("status" in context) return context;
@@ -524,24 +536,39 @@ async function POSTHandler(request: NextRequest) {
 
     // Validate business unit context
     if (!currentBusinessUnitId) {
-      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Select a business unit, then try saving again.",
+          code: "STOCK_ADJUSTMENT_BU_REQUIRED",
+        },
+        { status: 400 }
+      );
     }
 
     // Validate required fields
     if (!body.warehouseId || !body.adjustmentType || !body.adjustmentDate || !body.reason) {
       return NextResponse.json(
-        { error: "Missing required fields: warehouseId, adjustmentType, adjustmentDate, reason" },
+        {
+          error: "Complete the adjustment type, date, warehouse, and reason before saving.",
+          code: "STOCK_ADJUSTMENT_FIELDS_REQUIRED",
+        },
         { status: 400 }
       );
     }
 
     if (!body.items || body.items.length === 0) {
-      return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Add at least one item before saving.", code: "STOCK_ADJUSTMENT_ITEMS_REQUIRED" },
+        { status: 400 }
+      );
     }
 
     if (body.items.some((item) => !item.itemBatchLocationId && !item.batchCode?.trim())) {
       return NextResponse.json(
-        { error: "Batch selection or batch code is required for every adjustment item" },
+        {
+          error: "Select an existing batch or enter a batch code for every item.",
+          code: "STOCK_ADJUSTMENT_BATCH_REQUIRED",
+        },
         { status: 400 }
       );
     }
@@ -555,9 +582,24 @@ async function POSTHandler(request: NextRequest) {
 
     if (!warehouseValidation.valid) {
       return NextResponse.json(
-        { error: warehouseValidation.error || "Invalid warehouse for current business unit" },
+        {
+          error: warehouseValidation.error || "Invalid warehouse for current business unit",
+          code: getStockAdjustmentSaveError({ message: warehouseValidation.error ?? undefined })
+            ?.code,
+        },
         { status: 400 }
       );
+    }
+
+    if (
+      body.items?.some(
+        (item) =>
+          !item.itemBatchLocationId &&
+          !batchReceivedDateSchema.safeParse(item.batchReceivedDate).success
+      )
+    ) {
+      const error = getBatchReceivedDateError("SA001")!;
+      return NextResponse.json({ error: error.error, code: error.code }, { status: error.status });
     }
 
     const { data: savedAdjustments, error: saveError } = await supabase.rpc(
@@ -579,6 +621,12 @@ async function POSTHandler(request: NextRequest) {
 
     if (saveError || !savedAdjustment) {
       console.error("Error creating stock adjustment:", saveError);
+      const saveFailure = getStockAdjustmentSaveError(saveError);
+      if (saveFailure)
+        return NextResponse.json(
+          { error: saveFailure.error, code: saveFailure.code },
+          { status: saveFailure.status }
+        );
       return NextResponse.json({ error: "Failed to create stock adjustment" }, { status: 500 });
     }
 
@@ -598,7 +646,10 @@ async function POSTHandler(request: NextRequest) {
 
     if (completeAdjustmentError || !completeAdjustment) {
       console.error("Error fetching created stock adjustment:", completeAdjustmentError);
-      return NextResponse.json({ error: "Failed to load created stock adjustment" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to load created stock adjustment" },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
