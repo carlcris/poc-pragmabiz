@@ -26,19 +26,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .eq("id", user.id)
     .maybeSingle();
 
-  const firstName =
-    (typeof user.user_metadata?.first_name === "string" ? user.user_metadata.first_name : "") ||
-    userProfile?.first_name ||
-    "";
-  const lastName =
-    (typeof user.user_metadata?.last_name === "string" ? user.user_metadata.last_name : "") ||
-    userProfile?.last_name ||
-    "";
-  const fullName =
-    [firstName, lastName].filter(Boolean).join(" ") ||
-    (typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : "") ||
-    user.email ||
-    "User";
+  const firstName = userProfile?.first_name ?? "";
+  const lastName = userProfile?.last_name ?? "";
+  const fullName = [firstName, lastName].filter(Boolean).join(" ") || user.email || "User";
 
   const initialUser: AppUser = {
     id: user.id,

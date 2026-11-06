@@ -41,8 +41,10 @@ npm run build:android:apk:local
 eas build --platform android --profile local-apk --local
 ```
 
-APK builds use the Android `versionCode` configured in EAS without automatically increasing it.
-Set the exact code with `eas build:version:set --platform android --profile apk` before rebuilding.
+The `apk` profile enables `autoIncrement`, and `local-apk` inherits it. Builds increment the
+Android `versionCode` managed remotely by EAS. Use
+`eas build:version:set --platform android --profile apk` to set the remote starting value when
+needed; the build increments that value, so it does not preserve an exact code set beforehand.
 Set the displayed app version in `app.json` and keep this app's `package.json` and
 `package-lock.json` versions aligned before building a release. Android blocks normal updates to
 an APK with a lower `versionCode` than the installed app.

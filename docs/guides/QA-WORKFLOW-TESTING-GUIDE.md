@@ -25,6 +25,34 @@
 - On the mobile-browser van-sales login, an account without a van warehouse should be directed to
   its supervisor for assignment.
 
+## My Profile
+
+- From the web dashboard, open the user menu and choose My Profile. Confirm `/profile` shows the
+  username, email, company, member-since and last-login details as read-only, and lists assigned
+  roles with their business unit (a role with no business unit shows All Business Units).
+- Edit first name, last name, and phone, then save. Confirm the success toast, that the user-menu
+  name updates without a reload, and that the values persist after refresh. Clearing last name or
+  phone saves them as empty; an empty first name is rejected.
+- `PATCH /api/users/me` accepts only `firstName`, `lastName`, and `phone`. Confirm a payload with any
+  other field (for example `email` or `company_id`) is rejected with 400.
+
+## Change Password
+
+- Save a changed first name and clear the surname on an account whose auth metadata still has
+  the old names. Reload the dashboard and restore the session; the user menu must retain the saved
+  name and empty surname. Profile names come from `public.users`, not auth metadata.
+- From the user menu choose Change Password (`/profile/change-password`). Enter the current
+  password, a new password of at least 8 characters, and the same value in Confirm New Password.
+- A wrong current password shows "Current password is incorrect" on that field and leaves the
+  password unchanged. Reusing the current password, a short password, or a mismatched confirmation
+  is rejected before anything changes.
+- After a successful change, confirm the old password no longer signs in, the new one does, the
+  current browser stays signed in, and any other signed-in browser or device is signed out on its
+  next request.
+- `POST /api/auth/change-password` accepts only `currentPassword` and `newPassword` and returns a
+  safe `code` (`PASSWORD_CHANGE_*`) on failure; it never returns 401 for a wrong current password,
+  so the user is not logged out by a typo. Passwords appear as `[redacted]` in activity logs.
+
 ## Sign-out Cleanup
 
 - From the web dashboard, open the user menu and log out. Confirm the sign-in screen appears and no

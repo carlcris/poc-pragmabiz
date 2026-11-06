@@ -8,9 +8,10 @@ Public HTTPS builds use `https://achlers.app` as `EXPO_PUBLIC_API_BASE_URL`, con
 `apps/mobile/eas.json`. The `local-apk` profile uses its explicit LAN API override. Rebuild the app
 after changing this setting because the API URL is embedded in the mobile bundle.
 
-APK builds use the Android `versionCode` managed in EAS without automatic increments. Set the
-exact code before rebuilding; the displayed app version comes from `expo.version` in
-`apps/mobile/app.json`. Android blocks normal updates to a lower `versionCode`.
+The `apk` profile enables automatic increments of the Android `versionCode` managed remotely
+in EAS; `local-apk` inherits this setting. Setting a remote version code establishes the starting
+value, not an exact code preserved by the next build. The displayed app version comes from
+`expo.version` in `apps/mobile/app.json`. Android blocks normal updates to a lower `versionCode`.
 
 ## Key Features
 

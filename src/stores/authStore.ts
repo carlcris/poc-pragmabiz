@@ -230,28 +230,17 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
       }
 
       const tokenCompanyId = decodeCompanyIdFromToken(session.access_token);
-      let firstName = user.user_metadata?.first_name || "";
-      let lastName = user.user_metadata?.last_name || "";
-      let companyId = tokenCompanyId;
+      const { data: userData } = await supabase
+        .from("users")
+        .select("company_id, first_name, last_name")
+        .eq("id", user.id)
+        .maybeSingle();
 
-      if (!companyId || (!firstName && !lastName)) {
-        const { data: userData } = await supabase
-          .from("users")
-          .select("company_id, first_name, last_name")
-          .eq("id", user.id)
-          .maybeSingle();
-
-        if (operationVersion !== authOperationVersion) return;
-        companyId = companyId || userData?.company_id || "";
-        firstName = firstName || userData?.first_name || "";
-        lastName = lastName || userData?.last_name || "";
-      }
-
-      // Map Supabase user to our User type
-      const fullName =
-        [firstName, lastName].filter(Boolean).join(" ") ||
-        user.user_metadata?.full_name ||
-        user.email!;
+      if (operationVersion !== authOperationVersion) return;
+      const companyId = tokenCompanyId || userData?.company_id || "";
+      const firstName = userData?.first_name ?? "";
+      const lastName = userData?.last_name ?? "";
+      const fullName = [firstName, lastName].filter(Boolean).join(" ") || user.email!;
 
       const mappedUser: User = {
         id: user.id,

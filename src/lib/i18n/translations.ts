@@ -867,6 +867,58 @@ export type TranslationKeys = {
     changePassword: string;
     logOut: string;
   };
+  profilePage: {
+    title: string;
+    subtitle: string;
+    loadErrorTitle: string;
+    loadError: string;
+    accountTitle: string;
+    accountDescription: string;
+    username: string;
+    email: string;
+    company: string;
+    memberSince: string;
+    lastLogin: string;
+    notAvailable: string;
+    personalTitle: string;
+    personalDescription: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    saveChanges: string;
+    saveSuccess: string;
+    saveError: string;
+    firstNameRequired: string;
+    firstNameTooLong: string;
+    lastNameTooLong: string;
+    phoneTooLong: string;
+    rolesTitle: string;
+    rolesDescription: string;
+    allBusinessUnits: string;
+    noRoles: string;
+  };
+  changePasswordPage: {
+    title: string;
+    subtitle: string;
+    formTitle: string;
+    formDescription: string;
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+    newPasswordHint: string;
+    submit: string;
+    saveSuccess: string;
+    currentPasswordRequired: string;
+    newPasswordTooShort: string;
+    newPasswordTooLong: string;
+    confirmPasswordMismatch: string;
+    errorInvalidInput: string;
+    errorCurrentIncorrect: string;
+    errorSamePassword: string;
+    errorWeakPassword: string;
+    errorRateLimited: string;
+    errorUnavailable: string;
+  };
   preferencesPage: {
     title: string;
     subtitle: string;
@@ -4299,6 +4351,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       "load-lists": "Load Lists",
       grns: "Goods Receipt Notes",
       reports: "Reports",
+      profile: "My Profile",
+      "change-password": "Change Password",
+      preferences: "My Preferences",
       admin: "Admin",
       users: "Users",
       roles: "Roles",
@@ -4697,6 +4752,60 @@ export const translations: Record<Locale, TranslationKeys> = {
       myPreferences: "My Preferences",
       changePassword: "Change Password",
       logOut: "Log out",
+    },
+    profilePage: {
+      title: "My Profile",
+      subtitle: "View your account details and update your personal information",
+      loadErrorTitle: "Unable To Load Profile",
+      loadError: "Your profile could not be loaded. Refresh the page to try again.",
+      accountTitle: "Account",
+      accountDescription: "Sign-in details managed by your administrator",
+      username: "Username",
+      email: "Email",
+      company: "Company",
+      memberSince: "Member Since",
+      lastLogin: "Last Login",
+      notAvailable: "Not available",
+      personalTitle: "Personal Information",
+      personalDescription: "Update the name and phone number shown to your team",
+      firstName: "First Name",
+      lastName: "Last Name",
+      phone: "Phone",
+      saveChanges: "Save Changes",
+      saveSuccess: "Profile updated",
+      saveError: "Your profile could not be saved. Please try again.",
+      firstNameRequired: "First name is required",
+      firstNameTooLong: "First name must be 100 characters or less",
+      lastNameTooLong: "Last name must be 100 characters or less",
+      phoneTooLong: "Phone must be 50 characters or less",
+      rolesTitle: "Roles",
+      rolesDescription: "Roles assigned to you and the business units they apply to",
+      allBusinessUnits: "All Business Units",
+      noRoles: "No roles are assigned to you yet.",
+    },
+    changePasswordPage: {
+      title: "Change Password",
+      subtitle: "Update the password you use to sign in",
+      formTitle: "New Password",
+      formDescription:
+        "Enter your current password, then choose a new one. Other signed-in devices will be signed out.",
+      currentPassword: "Current Password",
+      newPassword: "New Password",
+      confirmPassword: "Confirm New Password",
+      newPasswordHint: "Use at least {min} characters.",
+      submit: "Change Password",
+      saveSuccess: "Password changed",
+      currentPasswordRequired: "Current password is required",
+      newPasswordTooShort: "New password must be at least {min} characters",
+      newPasswordTooLong: "New password must be {max} characters or less",
+      confirmPasswordMismatch: "Passwords do not match",
+      errorInvalidInput: "Check the password fields and try again.",
+      errorCurrentIncorrect: "Current password is incorrect",
+      errorSamePassword: "New password must be different from your current password",
+      errorWeakPassword:
+        "New password is too weak. Use a longer password with a mix of characters.",
+      errorRateLimited: "Too many attempts. Wait a few minutes and try again.",
+      errorUnavailable: "Your password could not be changed. Please try again.",
     },
     preferencesPage: {
       title: "My Preferences",
@@ -11077,6 +11186,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       "load-lists": "装载单",
       grns: "收货单",
       reports: "报表",
+      profile: "我的资料",
+      "change-password": "修改密码",
+      preferences: "我的偏好设置",
       admin: "管理",
       users: "用户",
       roles: "角色",
@@ -11460,6 +11572,58 @@ export const translations: Record<Locale, TranslationKeys> = {
       myPreferences: "我的偏好设置",
       changePassword: "修改密码",
       logOut: "退出登录",
+    },
+    profilePage: {
+      title: "我的资料",
+      subtitle: "查看账户信息并更新个人资料",
+      loadErrorTitle: "无法加载资料",
+      loadError: "无法加载您的资料，请刷新页面重试。",
+      accountTitle: "账户",
+      accountDescription: "由管理员管理的登录信息",
+      username: "用户名",
+      email: "邮箱",
+      company: "公司",
+      memberSince: "注册时间",
+      lastLogin: "最近登录",
+      notAvailable: "暂无",
+      personalTitle: "个人信息",
+      personalDescription: "更新团队可见的姓名和电话",
+      firstName: "名",
+      lastName: "姓",
+      phone: "电话",
+      saveChanges: "保存更改",
+      saveSuccess: "资料已更新",
+      saveError: "无法保存您的资料，请重试。",
+      firstNameRequired: "名为必填项",
+      firstNameTooLong: "名不能超过 100 个字符",
+      lastNameTooLong: "姓不能超过 100 个字符",
+      phoneTooLong: "电话不能超过 50 个字符",
+      rolesTitle: "角色",
+      rolesDescription: "分配给您的角色及其适用的业务单元",
+      allBusinessUnits: "所有业务单元",
+      noRoles: "您尚未被分配任何角色。",
+    },
+    changePasswordPage: {
+      title: "修改密码",
+      subtitle: "更新您的登录密码",
+      formTitle: "新密码",
+      formDescription: "请输入当前密码，然后设置新密码。其他已登录的设备将被退出登录。",
+      currentPassword: "当前密码",
+      newPassword: "新密码",
+      confirmPassword: "确认新密码",
+      newPasswordHint: "至少使用 {min} 个字符。",
+      submit: "修改密码",
+      saveSuccess: "密码已修改",
+      currentPasswordRequired: "请输入当前密码",
+      newPasswordTooShort: "新密码至少需要 {min} 个字符",
+      newPasswordTooLong: "新密码不能超过 {max} 个字符",
+      confirmPasswordMismatch: "两次输入的密码不一致",
+      errorInvalidInput: "请检查密码字段后重试。",
+      errorCurrentIncorrect: "当前密码不正确",
+      errorSamePassword: "新密码不能与当前密码相同",
+      errorWeakPassword: "新密码强度不足，请使用更长且字符组合更丰富的密码。",
+      errorRateLimited: "尝试次数过多，请稍等几分钟后重试。",
+      errorUnavailable: "无法修改您的密码，请重试。",
     },
     preferencesPage: {
       title: "我的偏好设置",

@@ -100,6 +100,16 @@ beforeEach(() => {
   });
   mocks.getSession.mockResolvedValue({ data: { session: { access_token: accessToken } } });
   mocks.getUser.mockResolvedValue({ data: { user: verifiedUser }, error: null });
+  mocks.from.mockReturnValue({
+    select: () => ({
+      eq: () => ({
+        maybeSingle: async () => ({
+          data: { company_id: "company", first_name: "Test", last_name: "User" },
+          error: null,
+        }),
+      }),
+    }),
+  });
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   setQueryClient(queryClient);
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json(payload)));
@@ -403,4 +413,28 @@ describe("authentication checks across logout", () => {
       isAuthenticated: false,
     });
   });
+});
+
+describe("saved profile names during session restoration", () => {
+  it.each(["Updated surname", null, ""])(
+    "uses the saved surname %s even when JWT metadata has old names",
+    async (lastName) => {
+      const maybeSingle = vi.fn().mockResolvedValue({
+        data: { company_id: "company", first_name: "Updated", last_name: lastName },
+        error: null,
+      });
+      mocks.from.mockReturnValue({ select: () => ({ eq: () => ({ maybeSingle }) }) });
+      await useAuthStore.getState().checkAuth();
+      expect(mocks.from).toHaveBeenCalledExactlyOnceWith("users");
+      expect(useAuthStore.getState()).toMatchObject({
+        isAuthenticated: true,
+        user: {
+          firstName: "Updated",
+          lastName: lastName ?? "",
+          name: lastName ? `Updated ${lastName}` : "Updated",
+          companyId: "company",
+        },
+      });
+    }
+  );
 });
