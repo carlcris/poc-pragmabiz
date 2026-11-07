@@ -1,5 +1,6 @@
 "use client";
 
+import { ExpandedLocationTree } from "./ExpandedLocationTree";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronRight, ListCollapse, ListTree, Warehouse } from "lucide-react";
@@ -246,42 +247,58 @@ export function WarehouseLocationTree({
           {t("collapseAll")}
         </Button>
       </div>
-      <ul
-        ref={treeRef}
-        role="tree"
-        aria-label={t("structureLabel")}
-        className="space-y-0.5"
-        onKeyDown={handleKeyDown}
-      >
-        <li
-          role="treeitem"
-          aria-level={1}
-          aria-expanded
-          aria-selected={selectedId === null}
-          data-tree-id={ROOT_ID}
-          data-tree-expanded="true"
-          tabIndex={focusId === ROOT_ID ? 0 : -1}
-          onClick={() => onSelect(null)}
+      {expansion.isAllExpanded ? (
+        <>
+          <Button variant="ghost" size="sm" onClick={() => onSelect(null)}>
+            {warehouseLabel}
+          </Button>
+          <ExpandedLocationTree
+            warehouseId={warehouseId}
+            label={t("structureLabel")}
+            selectedId={selectedId}
+            disabledId={disabledId}
+            expansion={expansion}
+            onSelect={onSelect}
+          />
+        </>
+      ) : (
+        <ul
+          ref={treeRef}
+          role="tree"
+          aria-label={t("structureLabel")}
+          className="space-y-0.5"
+          onKeyDown={handleKeyDown}
         >
-          <div className={cn(itemClassName(selectedId === null), "pl-2")}>
-            <Warehouse className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-            <span className="min-w-0 flex-1 truncate">{warehouseLabel}</span>
-          </div>
-          <ul role="group">
-            <TreeLevel
-              warehouseId={warehouseId}
-              parentId={null}
-              level={2}
-              selectedId={selectedId}
-              expansion={expansion}
-              focusId={focusId}
-              onSelect={onSelect}
-              disabledId={disabledId}
-              onShowAll={onShowAll}
-            />
-          </ul>
-        </li>
-      </ul>
+          <li
+            role="treeitem"
+            aria-level={1}
+            aria-expanded
+            aria-selected={selectedId === null}
+            data-tree-id={ROOT_ID}
+            data-tree-expanded="true"
+            tabIndex={0}
+            onClick={() => onSelect(null)}
+          >
+            <div className={cn(itemClassName(selectedId === null), "pl-2")}>
+              <Warehouse className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="min-w-0 flex-1 truncate">{warehouseLabel}</span>
+            </div>
+            <ul role="group">
+              <TreeLevel
+                warehouseId={warehouseId}
+                parentId={null}
+                level={2}
+                selectedId={selectedId}
+                expansion={expansion}
+                focusId={focusId}
+                onSelect={onSelect}
+                disabledId={disabledId}
+                onShowAll={onShowAll}
+              />
+            </ul>
+          </li>
+        </ul>
+      )}
     </div>
   );
 }

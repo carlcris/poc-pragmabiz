@@ -126,8 +126,9 @@ stock including sublocations, and sublocation count. A **Structure** tree loads 
 table on screens at least 1536 px wide and opens as a dialog from the **Structure** button on
 smaller screens. Each tree row shows an icon for its location type (zone, aisle, rack, shelf,
 bin, crate). The tree supports arrow keys, Home/End, and Enter. **Expand All** opens every
-branch, each loading its own first page of children as it appears, and **Collapse All** closes
-them; the same buttons appear in the **Browse** picker. Address search inside an open
+branch, loading the complete lightweight hierarchy in sequential pages of 500 locations.
+Only visible rows are rendered, with no cap on how many locations can be expanded. Loading progress
+is shown; **Collapse All** cancels pending loading and closes every branch; the same buttons appear in the **Browse** picker. Address search inside an open
 location defaults to **This Branch** (its descendants only); **Whole Warehouse** searches all
 levels, and each search result offers **Show in Hierarchy** to open its parent. At warehouse level the header action is **Add
 Location**; inside an opened location it becomes **Add Sublocation**, and each active row's actions
@@ -206,7 +207,11 @@ location, so a rack's total equals stock on the rack itself plus its bins; when 
 stock directly and also has stocked sublocations, a first child line labelled "-" (announced as
 "On … itself") shows the direct part. Each line shows its location-type icon, and **Expand All** /
 **Collapse All** beside the location search open or close every warehouse's tree (Expand All also
-reopens collapsed warehouse sections); both are disabled while search results are shown.
+reopens collapsed warehouse sections); both are disabled while search results are shown. Expand All
+uses the same paginated, virtualized hierarchy loading as warehouse management, with server-computed
+stock totals. Across warehouse sections only one hierarchy page request runs at a time. Batches and
+action eligibility still load only when a location is selected. A failed batch shows Retry; partial
+results are not presented as a complete hierarchy.
 Posting stock adjustments or putaway invalidates warehouse location details and hierarchy queries,
 so quantities and structural-edit restrictions refresh without waiting for cache expiry. Saving a
 floor map invalidates item stock overlays for that map and business unit, refreshing rack highlights

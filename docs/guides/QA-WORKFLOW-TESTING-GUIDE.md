@@ -1654,7 +1654,16 @@ Location Not Found with Back to Warehouse Level. At 1536 px and wider the Struct
 the table; below that the Structure button opens it as a dialog. Drive the tree with ↑/↓, →
 (expand, then enter), ← (collapse, then parent), Home/End, and Enter. Expand All must open every
 level and then disable itself; Collapse All must close every branch and then disable itself, and a
-branch toggled by hand after Expand All must stay as toggled. Inside a location, This Branch
+branch toggled by hand after Expand All must stay as toggled. With 8,420 locations, expect 17
+warehouse-wide requests of at most 500 nodes, not a request per expanded parent. Include a level
+with more than 50 siblings: all must appear after expansion. Check that only the viewport plus
+overscan is rendered (at most 17 rows), and End/Home and arrow keys navigate beyond mounted rows.
+Collapse All during loading and switch warehouses: the active request must abort and queued pages
+must not start. Across multiple item warehouse sections, page requests must remain serialized.
+A failed page must show Retry rather than a complete-looking partial tree. Verify preferred labels,
+subtree/direct stock totals, disabled branches in Browse, and location detail selection still work.
+Run `supabase/tests/batched-location-tree.sql` against the seeded local database for rollback-only
+8,420-node, authenticated scope, pagination, and stock-total parity checks. Inside a location, This Branch
 search returns only its descendants and Whole Warehouse returns all matches; Show in Hierarchy opens
 the result's parent with the search cleared. Move an empty bin to another rack and back: the dialog
 excludes the bin and its subtree, previews both addresses, and updates the breadcrumb. Open Move on

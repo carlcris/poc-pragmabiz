@@ -1,5 +1,6 @@
 "use client";
 
+import { ExpandedLocationTree } from "@/components/warehouses/ExpandedLocationTree";
 import { useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -25,7 +26,7 @@ type ItemLocationStockTreeProps = {
   warehouseLabel: string;
   selectedLocationId: string | null;
   expansion: WarehouseLocationTreeExpansion;
-  onSelect: (node: ItemLocationStockNode) => void;
+  onSelect: (node: Pick<ItemLocationStockNode, "locationId">) => void;
 };
 
 type TreeLevelProps = Omit<ItemLocationStockTreeProps, "warehouseLabel"> & {
@@ -244,21 +245,32 @@ export function ItemLocationStockTree({
         <span className="text-right">{t("onHand")}</span>
         <span className="text-right">{t("available")}</span>
       </div>
-      <ul
-        ref={treeRef}
-        role="tree"
-        aria-label={t("stockTreeLabel", { warehouse: warehouseLabel })}
-        className="space-y-0.5 p-2"
-        onKeyDown={handleKeyDown}
-      >
-        <TreeLevel
-          {...props}
-          selectedLocationId={selectedLocationId}
-          parent={null}
-          level={1}
-          focusId={focusedId ?? selectedLocationId}
+      {props.expansion.isAllExpanded ? (
+        <ExpandedLocationTree
+          warehouseId={props.warehouseId}
+          itemId={props.itemId}
+          label={t("stockTreeLabel", { warehouse: warehouseLabel })}
+          selectedId={selectedLocationId}
+          expansion={props.expansion}
+          onSelect={(locationId) => props.onSelect({ locationId })}
         />
-      </ul>
+      ) : (
+        <ul
+          ref={treeRef}
+          role="tree"
+          aria-label={t("stockTreeLabel", { warehouse: warehouseLabel })}
+          className="space-y-0.5 p-2"
+          onKeyDown={handleKeyDown}
+        >
+          <TreeLevel
+            {...props}
+            selectedLocationId={selectedLocationId}
+            parent={null}
+            level={1}
+            focusId={props.expansion.canCollapseAll ? focusedId : null}
+          />
+        </ul>
+      )}
     </div>
   );
 }

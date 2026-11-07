@@ -723,6 +723,8 @@ export type TranslationKeys = {
     structure: string;
     structureLabel: string;
     structureDescription: string;
+    treeLoadingProgress: string;
+    treeRetry: string;
     expandAll: string;
     collapseAll: string;
     viewAllInTable: string;
@@ -4786,6 +4788,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       structure: "Structure",
       structureLabel: "Location structure",
       structureDescription: "Choose a location to open it.",
+      treeLoadingProgress: "Loading locations: {loaded} of {total}",
+      treeRetry: "Retry",
       expandAll: "Expand All",
       collapseAll: "Collapse All",
       viewAllInTable: "View all {count} in table",
@@ -11828,6 +11832,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       structure: "库位结构",
       structureLabel: "库位结构",
       structureDescription: "选择库位以打开。",
+      treeLoadingProgress: "正在加载库位：{loaded} / {total}",
+      treeRetry: "重试",
       expandAll: "全部展开",
       collapseAll: "全部收起",
       viewAllInTable: "在表格中查看全部 {count} 个",

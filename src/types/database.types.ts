@@ -13107,6 +13107,17 @@ export type Database = {
           warehouse_id: string;
         }[];
       };
+      get_warehouse_location_tree_page: {
+        Args: {
+          p_business_unit_id: string;
+          p_company_id: string;
+          p_item_id?: string;
+          p_limit?: number;
+          p_page?: number;
+          p_warehouse_id: string;
+        };
+        Returns: Json;
+      };
       get_warehouses: {
         Args: {
           p_business_unit_id: string;

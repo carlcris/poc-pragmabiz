@@ -10,6 +10,7 @@ type TreeExpansionState = {
 
 export type WarehouseLocationTreeExpansion = {
   isExpanded: (locationId: string) => boolean;
+  isAllExpanded: boolean;
   canExpandAll: boolean;
   canCollapseAll: boolean;
   toggle: (locationId: string) => void;
@@ -21,9 +22,8 @@ export type WarehouseLocationTreeExpansion = {
 const COLLAPSED: TreeExpansionState = { isAllExpanded: false, exceptionIds: new Set() };
 
 /**
- * Expansion state for the lazily loaded location tree. Expand-all cannot list branch ids up
- * front because deeper levels load only when opened, so it flips the default instead: every
- * branch renders open and loads its own children page as it appears.
+ * Individual branches load lazily; expand-all switches consumers to the batched hierarchy.
+ * Exceptions retain manual collapse/expand choices without enumerating every branch.
  */
 export function useWarehouseLocationTreeExpansion(): WarehouseLocationTreeExpansion {
   const [state, setState] = useState<TreeExpansionState>(COLLAPSED);
@@ -54,8 +54,14 @@ export function useWarehouseLocationTreeExpansion(): WarehouseLocationTreeExpans
 
   const collapseAll = useCallback(() => setState(COLLAPSED), []);
 
+  const isExpanded = useCallback(
+    (locationId: string) => state.isAllExpanded !== state.exceptionIds.has(locationId),
+    [state]
+  );
+
   return {
-    isExpanded: (locationId) => state.isAllExpanded !== state.exceptionIds.has(locationId),
+    isAllExpanded: state.isAllExpanded,
+    isExpanded,
     canExpandAll: !state.isAllExpanded || state.exceptionIds.size > 0,
     canCollapseAll: state.isAllExpanded || state.exceptionIds.size > 0,
     toggle,
