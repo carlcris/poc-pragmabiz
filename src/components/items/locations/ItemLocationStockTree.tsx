@@ -5,11 +5,13 @@ import { useFormatter, useTranslations } from "next-intl";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useItemLocationStockTree } from "@/hooks/useItemLocationStockTree";
 import { useTreeKeyboardNavigation } from "@/hooks/useTreeKeyboardNavigation";
+import type { WarehouseLocationTreeExpansion } from "@/hooks/useWarehouseLocationTreeExpansion";
 import {
   getWarehouseLocationDisplayName,
   isWarehouseLocationType,
   warehouseLocationTypeLabelKeys,
 } from "@/lib/warehouse-location-form";
+import { WarehouseLocationTypeIcon } from "@/components/warehouses/WarehouseLocationTypeIcon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { ItemLocationStockNode } from "@/types/inventory-location";
@@ -22,8 +24,7 @@ type ItemLocationStockTreeProps = {
   warehouseId: string;
   warehouseLabel: string;
   selectedLocationId: string | null;
-  expandedIds: ReadonlySet<string>;
-  onToggle: (locationId: string) => void;
+  expansion: WarehouseLocationTreeExpansion;
   onSelect: (node: ItemLocationStockNode) => void;
 };
 
@@ -47,7 +48,7 @@ function TreeLevelPage({
   onLoadMore,
   ...props
 }: TreeLevelProps & { page: number; isLastLoaded: boolean; onLoadMore: () => void }) {
-  const { itemId, warehouseId, parent, level, selectedLocationId, expandedIds, focusId } = props;
+  const { itemId, warehouseId, parent, level, selectedLocationId, expansion, focusId } = props;
   const t = useTranslations("itemLocationsTab");
   const tLocations = useTranslations("warehouseLocationsPage");
   const format = useFormatter();
@@ -83,7 +84,7 @@ function TreeLevelPage({
     <>
       {nodes.map((node, index) => {
         const isExpandable = node.hasStockedChildren;
-        const isExpanded = isExpandable && expandedIds.has(node.locationId);
+        const isExpanded = isExpandable && expansion.isExpanded(node.locationId);
         const isSelected = selectedLocationId === node.locationId;
         const focusable = focusId
           ? focusId === node.locationId
@@ -121,7 +122,7 @@ function TreeLevelPage({
                   )}
                   onClick={(event) => {
                     event.stopPropagation();
-                    props.onToggle(node.locationId);
+                    expansion.toggle(node.locationId);
                   }}
                 >
                   {isExpanded ? (
@@ -130,6 +131,7 @@ function TreeLevelPage({
                     <ChevronRight className="h-3.5 w-3.5" />
                   )}
                 </button>
+                <WarehouseLocationTypeIcon locationType={node.locationType} />
                 <span className="flex min-w-0 flex-col">
                   <span
                     className={cn(
@@ -224,13 +226,12 @@ function TreeLevel(props: TreeLevelProps) {
 export function ItemLocationStockTree({
   warehouseLabel,
   selectedLocationId,
-  onToggle,
   ...props
 }: ItemLocationStockTreeProps) {
   const t = useTranslations("itemLocationsTab");
   const { treeRef, focusedId, handleKeyDown } = useTreeKeyboardNavigation<HTMLUListElement>({
     onToggle: (id) => {
-      if (!id.endsWith(DIRECT_STOCK_SUFFIX)) onToggle(id);
+      if (!id.endsWith(DIRECT_STOCK_SUFFIX)) props.expansion.toggle(id);
     },
     onActivate: (id) =>
       treeRef.current?.querySelector<HTMLElement>(`[data-tree-id="${CSS.escape(id)}"]`)?.click(),
@@ -253,7 +254,6 @@ export function ItemLocationStockTree({
         <TreeLevel
           {...props}
           selectedLocationId={selectedLocationId}
-          onToggle={onToggle}
           parent={null}
           level={1}
           focusId={focusedId ?? selectedLocationId}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ListTree } from "lucide-react";
 import { WarehouseLocationTree } from "@/components/warehouses/WarehouseLocationTree";
+import { useWarehouseLocationTreeExpansion } from "@/hooks/useWarehouseLocationTreeExpansion";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -31,7 +32,7 @@ export function WarehouseLocationBrowseButton({
 }: WarehouseLocationBrowseButtonProps) {
   const t = useTranslations("warehouseLocationsPage");
   const [open, setOpen] = useState(false);
-  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(new Set());
+  const treeExpansion = useWarehouseLocationTreeExpansion();
 
   return (
     <>
@@ -49,16 +50,8 @@ export function WarehouseLocationBrowseButton({
             warehouseId={warehouseId}
             warehouseLabel={warehouseLabel}
             selectedId={value || null}
-            expandedIds={expandedIds}
+            expansion={treeExpansion}
             disabledId={disabledId}
-            onToggle={(locationId) =>
-              setExpandedIds((current) => {
-                const next = new Set(current);
-                if (next.has(locationId)) next.delete(locationId);
-                else next.add(locationId);
-                return next;
-              })
-            }
             onSelect={(locationId) => {
               onPick(locationId ?? "");
               setOpen(false);

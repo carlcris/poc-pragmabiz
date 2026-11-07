@@ -39,6 +39,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useWarehouse } from "@/hooks/useWarehouses";
 import { useInvalidateWarehouseLocations } from "@/hooks/useInvalidateWarehouseLocations";
 import { useWarehouseLocationDetail } from "@/hooks/useWarehouseLocationDetail";
+import { useWarehouseLocationTreeExpansion } from "@/hooks/useWarehouseLocationTreeExpansion";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -157,7 +158,7 @@ export default function WarehouseLocationsPage() {
   const [copyKey, setCopyKey] = useState(0);
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchKey, setBatchKey] = useState(0);
-  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(new Set());
+  const treeExpansion = useWarehouseLocationTreeExpansion();
   const [structureOpen, setStructureOpen] = useState(false);
 
   const { data: warehouseResponse } = useWarehouse(canViewWarehouse ? warehouseId : "");
@@ -175,10 +176,11 @@ export default function WarehouseLocationsPage() {
   const selectedPathKey = selected
     ? [...selected.ancestors.map((ancestor) => ancestor.id), selected.id].join("/")
     : "";
+  const { expandPath } = treeExpansion;
   useEffect(() => {
     if (!selectedPathKey) return;
-    setExpandedIds((current) => new Set([...current, ...selectedPathKey.split("/")]));
-  }, [selectedPathKey]);
+    expandPath(selectedPathKey.split("/"));
+  }, [selectedPathKey, expandPath]);
   useEffect(() => {
     setPage(1);
   }, [selectedId]);
@@ -329,15 +331,6 @@ export default function WarehouseLocationsPage() {
     setStructureOpen(false);
   };
 
-  const toggleExpanded = (locationId: string) => {
-    setExpandedIds((current) => {
-      const next = new Set(current);
-      if (next.has(locationId)) next.delete(locationId);
-      else next.add(locationId);
-      return next;
-    });
-  };
-
   const openLocationDialog = (nextState: LocationDialogState) => {
     setDialogState(nextState);
     setDialogKey((key) => key + 1);
@@ -377,8 +370,7 @@ export default function WarehouseLocationsPage() {
       warehouseId={warehouseId}
       warehouseLabel={warehouseLabel}
       selectedId={selectedId}
-      expandedIds={expandedIds}
-      onToggle={toggleExpanded}
+      expansion={treeExpansion}
       onSelect={goToLocation}
       onShowAll={goToLocation}
     />

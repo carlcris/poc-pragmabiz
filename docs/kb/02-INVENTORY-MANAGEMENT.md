@@ -124,7 +124,10 @@ open location shows a summary with its type, use, status, address, stock stored 
 stock including sublocations, and sublocation count. A **Structure** tree loads one level at a time
 (50 children per expanded location, with **View all in table** beyond that); it sits beside the
 table on screens at least 1536 px wide and opens as a dialog from the **Structure** button on
-smaller screens. The tree supports arrow keys, Home/End, and Enter. Address search inside an open
+smaller screens. Each tree row shows an icon for its location type (zone, aisle, rack, shelf,
+bin, crate). The tree supports arrow keys, Home/End, and Enter. **Expand All** opens every
+branch, each loading its own first page of children as it appears, and **Collapse All** closes
+them; the same buttons appear in the **Browse** picker. Address search inside an open
 location defaults to **This Branch** (its descendants only); **Whole Warehouse** searches all
 levels, and each search result offers **Show in Hierarchy** to open its parent. At warehouse level the header action is **Add
 Location**; inside an opened location it becomes **Add Sublocation**, and each active row's actions
@@ -201,7 +204,9 @@ the locations whose branch holds the item, loaded one level at a time (50 per le
 for the rest). Each line's on-hand and available quantities include everything inside that
 location, so a rack's total equals stock on the rack itself plus its bins; when a container holds
 stock directly and also has stocked sublocations, a first child line labelled "-" (announced as
-"On … itself") shows the direct part.
+"On … itself") shows the direct part. Each line shows its location-type icon, and **Expand All** /
+**Collapse All** beside the location search open or close every warehouse's tree (Expand All also
+reopens collapsed warehouse sections); both are disabled while search results are shown.
 Posting stock adjustments or putaway invalidates warehouse location details and hierarchy queries,
 so quantities and structural-edit restrictions refresh without waiting for cache expiry. Saving a
 floor map invalidates item stock overlays for that map and business unit, refreshing rack highlights

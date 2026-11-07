@@ -1652,7 +1652,9 @@ Navigation checks: open a nested location, refresh, and use browser Back; the su
 and expanded tree must be restored. A `?location=` link to a removed or foreign location shows
 Location Not Found with Back to Warehouse Level. At 1536 px and wider the Structure tree sits beside
 the table; below that the Structure button opens it as a dialog. Drive the tree with ↑/↓, →
-(expand, then enter), ← (collapse, then parent), Home/End, and Enter. Inside a location, This Branch
+(expand, then enter), ← (collapse, then parent), Home/End, and Enter. Expand All must open every
+level and then disable itself; Collapse All must close every branch and then disable itself, and a
+branch toggled by hand after Expand All must stay as toggled. Inside a location, This Branch
 search returns only its descendants and Whole Warehouse returns all matches; Show in Hierarchy opens
 the result's parent with the search cleared. Move an empty bin to another rack and back: the dialog
 excludes the bin and its subtree, previews both addresses, and updates the breadcrumb. Open Move on
@@ -1680,7 +1682,8 @@ Change) and for Move.
 
 Item Locations tab checks: for an item stored on a rack and in a bin inside it, the warehouse header
 shows total on-hand and the preferred location by name. The tree shows the rack with the combined
-total; expanding it shows a "-" line (read as "On … itself") for stock on the rack and the bin with its own
+total; Expand All opens every stocked branch in every warehouse section (reopening collapsed ones)
+and Collapse All closes them, both disabled during a location search. Expanding the rack shows a "-" line (read as "On … itself") for stock on the rack and the bin with its own
 total. Selecting the rack shows Including Sublocations, Stored Here, the bin under "Inside", and the
 rack's own batches; selecting the bin shows its batches with Print QR. Move Stock From Here opens
 Move Stock with that warehouse and location as the source. Change in the header opens a picker with

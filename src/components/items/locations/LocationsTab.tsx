@@ -23,7 +23,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronDown, ChevronRight, Loader2, MapPinned, Printer } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  ListCollapse,
+  ListTree,
+  Loader2,
+  MapPinned,
+  Printer,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useItem } from "@/hooks/useItems";
 import { ITEM_LOCATIONS_QUERY_KEY } from "@/hooks/queryKeys";
@@ -35,6 +43,7 @@ import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { RESOURCES } from "@/constants/resources";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useWarehouseLocationTreeExpansion } from "@/hooks/useWarehouseLocationTreeExpansion";
 import { ItemLocationMapDialog } from "@/components/items/locations/ItemLocationMapDialog";
 import { ItemLocationStockPanel } from "@/components/items/locations/ItemLocationStockPanel";
 import { ItemLocationStockTree } from "@/components/items/locations/ItemLocationStockTree";
@@ -88,6 +97,7 @@ const createBatchLabelId = (batchLocationId: string, labelNumber: number) => {
 
 export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   const t = useTranslations("itemLocationsTab");
+  const tLocations = useTranslations("warehouseLocationsPage");
   const locale = useLocale();
   const queryClient = useQueryClient();
   const [warehousePage, setWarehousePage] = useState(1);
@@ -95,7 +105,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   const [locationSearch, setLocationSearch] = useState("");
   const debouncedLocationSearch = useDebouncedValue(locationSearch.trim(), 300);
   const [collapsedWarehouses, setCollapsedWarehouses] = useState<ReadonlySet<string>>(new Set());
-  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(new Set());
+  const treeExpansion = useWarehouseLocationTreeExpansion();
   const [selected, setSelected] = useState<SelectedLocation | null>(null);
   const [moveDialogSource, setMoveDialogSource] = useState<{
     warehouseId: string;
@@ -334,7 +344,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
           onPrint={openBatchPrintDialog}
           onSelect={(node) => {
             setSelected({ warehouseId: warehouse.warehouseId, locationId: node.locationId });
-            setExpandedIds((current) => new Set([...current, node.locationId]));
+            treeExpansion.expandPath([node.locationId]);
           }}
           onSetPreferred={(node) =>
             setDefaultLocation.mutate({
@@ -382,15 +392,48 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Input
-          value={locationSearch}
-          placeholder={t("searchLocations")}
-          aria-label={t("searchLocations")}
-          onChange={(event) => {
-            setLocationSearch(event.target.value);
-            setSearchPage(1);
-          }}
-        />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Input
+            value={locationSearch}
+            placeholder={t("searchLocations")}
+            aria-label={t("searchLocations")}
+            className="sm:flex-1"
+            onChange={(event) => {
+              setLocationSearch(event.target.value);
+              setSearchPage(1);
+            }}
+          />
+          <div className="flex flex-wrap justify-end gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={
+                isSearching ||
+                warehouses.length === 0 ||
+                (!treeExpansion.canExpandAll && collapsedWarehouses.size === 0)
+              }
+              onClick={() => {
+                // Reopen collapsed warehouse sections so the expanded trees are visible.
+                setCollapsedWarehouses(new Set());
+                treeExpansion.expandAll();
+              }}
+            >
+              <ListTree className="mr-2 h-4 w-4" aria-hidden />
+              {tLocations("expandAll")}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isSearching || !treeExpansion.canCollapseAll}
+              onClick={treeExpansion.collapseAll}
+            >
+              <ListCollapse className="mr-2 h-4 w-4" aria-hidden />
+              {tLocations("collapseAll")}
+            </Button>
+          </div>
+        </div>
 
         {isSearching ? (
           searchQuery.isLoading ? (
@@ -553,10 +596,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                               ? selected.locationId
                               : null
                           }
-                          expandedIds={expandedIds}
-                          onToggle={(locationId) =>
-                            setExpandedIds((current) => toggleSet(current, locationId))
-                          }
+                          expansion={treeExpansion}
                           onSelect={(node) =>
                             setSelected({
                               warehouseId: warehouse.warehouseId,

@@ -723,6 +723,8 @@ export type TranslationKeys = {
     structure: string;
     structureLabel: string;
     structureDescription: string;
+    expandAll: string;
+    collapseAll: string;
     viewAllInTable: string;
     treeLoadError: string;
     searchScope: string;
@@ -4784,6 +4786,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       structure: "Structure",
       structureLabel: "Location structure",
       structureDescription: "Choose a location to open it.",
+      expandAll: "Expand All",
+      collapseAll: "Collapse All",
       viewAllInTable: "View all {count} in table",
       treeLoadError: "Could not load these locations.",
       searchScope: "Search scope",
@@ -11824,6 +11828,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       structure: "库位结构",
       structureLabel: "库位结构",
       structureDescription: "选择库位以打开。",
+      expandAll: "全部展开",
+      collapseAll: "全部收起",
       viewAllInTable: "在表格中查看全部 {count} 个",
       treeLoadError: "无法加载这些库位。",
       searchScope: "搜索范围",
