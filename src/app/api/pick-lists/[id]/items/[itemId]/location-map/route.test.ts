@@ -40,6 +40,7 @@ const query = (data: unknown) => ({
   is: vi.fn().mockReturnThis(),
   order: vi.fn().mockReturnThis(),
   limit: vi.fn().mockResolvedValue({ data: [rack], error: null }),
+  in: vi.fn().mockResolvedValue({ data: [], error: null }),
   maybeSingle: vi.fn().mockResolvedValue({ data, error: null }),
 });
 const pickQuery = query({
@@ -47,7 +48,12 @@ const pickQuery = query({
   pick_list: { business_unit_id: "bu", dn_id: "dn" },
 });
 const dnQuery = query({ fulfilling_warehouse_id: "warehouse" });
-const locationQuery = query({ id: "second-floor-rack", code: "R2", name: "Second rack" });
+const locationQuery = query({
+  id: "second-floor-rack",
+  code: "R2",
+  name: "Second rack",
+  path_ids: ["second-floor-rack"],
+});
 const rackQuery = query({ floor_map_id: "second-floor-map" });
 const mapQuery = query({
   id: "second-floor-map",
@@ -115,7 +121,7 @@ describe("mobile picking across warehouse floors", () => {
     expect(await response.json()).toMatchObject({
       data: {
         map: { id: "second-floor-map", floorNumber: 2, name: "Upper floor" },
-        location: { id: "second-floor-rack" },
+        location: { id: "second-floor-rack", name: "Second rack" },
         racks: [{ warehouseLocationId: "second-floor-rack" }],
       },
     });
@@ -152,14 +158,26 @@ describe("mobile picking across warehouse floors", () => {
   );
   it("highlights a mapped ancestor while retaining the exact nested destination", async () => {
     locationQuery.maybeSingle.mockResolvedValueOnce({
-      data: { id: "bin", code: "B1", location_path: "R2 / Shelf 1 / B1" },
+      data: {
+        id: "bin",
+        code: "B1",
+        name: "Bin 1",
+        path_ids: ["second-floor-rack", "shelf", "bin"],
+      },
+      error: null,
+    });
+    locationQuery.in.mockResolvedValueOnce({
+      data: [
+        { id: "second-floor-rack", code: "R2", name: "Second rack" },
+        { id: "shelf", code: "S1", name: "Shelf 1" },
+      ],
       error: null,
     });
     const response = await GET(request(), context);
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
       data: {
-        location: { id: "bin", name: "R2 / Shelf 1 / B1" },
+        location: { id: "bin", name: "Second rack / Shelf 1 / Bin 1" },
         highlight: { xBasisPoints: rack.x_basis_points },
       },
     });

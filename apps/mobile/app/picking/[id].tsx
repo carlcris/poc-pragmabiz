@@ -151,18 +151,18 @@ const extractScannedSource = (rawScan: string) => {
 const defaultPickSource = (item: PickListItem): PickSource => ({
   batchLocationSku: item.sourceSku,
   locationId: item.sourceLocationId,
-  locationName: item.locationPath,
+  locationName: item.locationNamePath,
   batchCode: item.batchNumber,
   batchReceivedAt: item.sourceBatchReceivedAt,
   isMismatch: false,
 });
 
-const getAssignedLocationAddress = (item: PickListItem) => item.locationPath;
+const getAssignedLocationAddress = (item: PickListItem) => item.locationNamePath;
 
-// Sort configured addresses naturally to keep nearby storage locations together.
+// Sort coded addresses naturally to keep nearby storage locations together.
 const compareByPickLocation = (left: PickListItem, right: PickListItem) => {
-  const leftCode = getAssignedLocationAddress(left);
-  const rightCode = getAssignedLocationAddress(right);
+  const leftCode = left.locationPath;
+  const rightCode = right.locationPath;
   if (leftCode && rightCode) {
     const byLocation = leftCode.localeCompare(rightCode, undefined, { numeric: true });
     if (byLocation !== 0) return byLocation;
@@ -373,7 +373,7 @@ export default function PickingDetailScreen() {
     setCurrentPickSource({
       batchLocationSku: pendingConfirmation.payload.batchLocationSku || item.sourceSku,
       locationId: pendingConfirmation.payload.pickedLocationId || item.sourceLocationId,
-      locationName: item.locationPath,
+      locationName: item.locationNamePath,
       batchCode: pendingConfirmation.payload.pickedBatchCode || item.batchNumber,
       batchReceivedAt:
         pendingConfirmation.payload.pickedBatchReceivedAt || item.sourceBatchReceivedAt,

@@ -5,6 +5,7 @@ import { withActivityLogging } from "@/lib/activity-logging/route-activity-logge
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isCompleteRackRectangle } from "@/lib/warehouse-floor-map-geometry";
 import { ensurePickListActorAuthorized, getPickListAuthContext } from "../../../../_lib";
+import { fetchWarehouseLocationNamePaths } from "@/lib/warehouse-location-name-path";
 
 type RouteContext = {
   params: Promise<{ id: string; itemId: string }>;
@@ -112,7 +113,7 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
     const admin = createAdminClient();
     const { data: location, error: locationError } = await admin
       .from("warehouse_locations")
-      .select("id, warehouse_id, code, name, location_path")
+      .select("id, warehouse_id, code, name, path_ids")
       .eq("company_id", auth.companyId)
       .eq("warehouse_id", deliveryNote.fulfilling_warehouse_id)
       .eq("id", pickItem.suggested_pick_location_id)
@@ -135,6 +136,15 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
       return safeError("Failed to load pick location", "PICK_LOCATION_LOAD_FAILED", 500);
     }
     if (!location) return safeError("Pick location not found", "PICK_LOCATION_NOT_FOUND", 404);
+    const { data: namePaths, error: namePathError } = await fetchWarehouseLocationNamePaths(
+      admin,
+      auth.companyId,
+      [location]
+    );
+    if (namePathError) {
+      console.error("Failed to load pick location names", namePathError);
+      return safeError("Failed to load pick location", "PICK_LOCATION_LOAD_FAILED", 500);
+    }
     if (!rackMap) {
       const { data: configuredFloor, error: configuredFloorError } = await admin
         .from("warehouse_floor_maps")
@@ -276,7 +286,7 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
         location: {
           id: location.id,
           code: location.code,
-          name: location.location_path,
+          name: namePaths.get(location.id) ?? location.code,
         },
         map: {
           id: map.id,

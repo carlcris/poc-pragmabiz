@@ -185,7 +185,9 @@ export const PickLocationMapModal = ({ visible, pickListId, pickListItemId, onCl
           <View style={styles.headerCopy}>
             <Text style={styles.title}>Pick Location</Text>
             <Text style={styles.subtitle}>
-              {data ? `${data.warehouse.name} · ${data.location.code}` : "Warehouse floor map"}
+              {data
+                ? `${data.warehouse.name} · ${data.location.name || data.location.code}`
+                : "Warehouse floor map"}
             </Text>
           </View>
           <Pressable
@@ -227,10 +229,7 @@ export const PickLocationMapModal = ({ visible, pickListId, pickListItemId, onCl
               </View>
               <View style={styles.locationCopy}>
                 <Text style={styles.locationLabel}>GO TO RACK</Text>
-                <Text style={styles.locationValue}>
-                  {data.location.code}
-                  {data.location.name ? ` · ${data.location.name}` : ""}
-                </Text>
+                <Text style={styles.locationValue}>{data.location.name || data.location.code}</Text>
               </View>
               <Text style={styles.mapName}>{`${data.map.floorNumber} · ${data.map.name}`}</Text>
             </View>

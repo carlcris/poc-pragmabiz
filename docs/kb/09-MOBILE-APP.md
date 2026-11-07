@@ -138,7 +138,7 @@ apps/mobile/
   configured warehouse/rack rule, and quantity all pass; all other mismatches are hard failures
 - Picking requires Pick Lists access. When `pick_lists.operation.view_only_assigned_pick_lists.view` is enabled, list, detail, claim, and progress operations are restricted to pick lists assigned to the current user; when disabled, the user can access all pick lists in the selected business unit
 - Selecting a line creates a two-minute server-enforced claim that is renewed while the picker is entering quantity; other assigned pickers receive claim and progress changes through Supabase Realtime and cannot confirm the claimed line
-- Claims are released on cancel, navigation, or successful confirmation; a local nearest-expiry timer and foreground refresh remove expired disconnected-picker claims even when no Realtime event occurs
+- Claims are released on cancel, navigation, or successful confirmation. Successful confirmation releases the line claim inside the same database transaction as saved quantities, so Finish unlocks immediately when no other claims remain; a local nearest-expiry timer and foreground refresh remove expired disconnected-picker claims even when no Realtime event occurs
 - Pause and Complete are unavailable while any line has an active claim, and the database rejects completion if a claim appears concurrently
 - Confirm Pick persists a quantity increment and scanned source transactionally with a client operation ID, so retries are idempotent while separate physical picks remain distinct
 - Pick-list creation reserves the assigned batch and rack in base units. A picker claim owns the
@@ -770,7 +770,7 @@ Search items for mobile (autocomplete).
 
 - Scan-first layout: status text and line progress ("7 of 12 lines") replace unit totals, because units differ per line
 - A scanner bar shows whether the Sunmi hardware scanner is ready (blue with a spinner while a scan is being checked), with icon-only camera and keypad buttons as fallbacks (keypad opens 10-digit entry on a number pad); scan errors stay in a banner until the next scan
-- A Next pick card shows the first remaining unreserved line in location-code order (natural sort of zone/aisle/bay codes as a walking-path proxy), with its location code as the largest text; Up next lists the rest in the same order, and picked lines collapse behind "N picked"
+- A Next pick card shows the first remaining unreserved line in location-code order (natural sort of zone/aisle/bay codes as a walking-path proxy), with its names-only location address (for example `Zone 1 / Shelf 1 / Bin 2`) as the largest text; Up next lists the rest in the same order, and picked lines collapse behind "N picked"
 - After a valid scan the screen shows a match banner (or an amber different-batch banner with assigned vs scanned values), the scanned location, and a quantity stepper; Cancel and Confirm are pinned in the footer above the keyboard
 - Scan results vibrate: one short pulse for a match, two pulses for a different batch, one long pulse for an error. Re-scanning the verified QR code confirms an exact-match pick at the shown quantity; a different-batch pick must be confirmed with the button
 - Pause and Finish (or Start/Resume picking) sit in the pinned footer, whose note shows open lines, who holds a blocking reservation, or the last status/completion error
@@ -879,8 +879,10 @@ or scanning returns an open pick list to the overview
 
 ### Configured picking addresses
 
-Native mobile picking uses the full configured `suggested_pick_location.location_path` address,
-including any zone/rack/shelf/bin/crate levels. The next-pick address wraps rather than truncating
-at one line. Location IDs and batch-location SKUs remain exact stock-source identities. The map
+Native mobile picking shows the full configured address from
+`suggested_pick_location.location_name_path`, which lists location names only (falling back to the
+code for an unnamed level) across any zone/rack/shelf/bin/crate levels. Lines are still ordered by
+the coded `location_path`. The scan-source `locationName` and the map endpoint's `location.name`
+use the same names-only address. The next-pick address wraps rather than truncating at one line. Location IDs and batch-location SKUs remain exact stock-source identities. The map
 endpoint highlights the nearest mapped rack ancestor and retains the exact destination address;
 locations without a mapped rack ancestor still have usable address and QR instructions.

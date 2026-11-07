@@ -199,6 +199,7 @@ const normalizePickItem = (value: unknown, pickedQtyOverride?: number): PickList
     pickedQty: pickedQtyOverride ?? num(record.pickedQty || record.picked_qty),
     locationName: maybeStr(record.locationName || location.name || location.code),
     locationPath: maybeStr(location.location_path),
+    locationNamePath: maybeStr(location.location_name_path),
     batchNumber:
       maybeStr(record.batchNumber || record.batch_number || batch.batch_number) ||
       maybeStr(

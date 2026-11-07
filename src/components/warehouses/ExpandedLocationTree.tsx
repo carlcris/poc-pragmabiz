@@ -12,6 +12,7 @@ import {
   warehouseLocationTypeLabelKeys,
 } from "@/lib/warehouse-location-form";
 import { cn } from "@/lib/utils";
+import { observeLocationTreeLayout } from "@/lib/warehouse-location-tree-layout";
 import {
   flattenLocationTree,
   locationTreeWindow,
@@ -74,23 +75,23 @@ export function ExpandedLocationTree({
     const measure = () => {
       const treeTop = tree.getBoundingClientRect().top;
       const { top, bottom } = visibleBounds(container);
-      setViewport({
+      const next = {
         top: Math.max(0, top - treeTop),
         height: Math.max(0, bottom - Math.max(top, treeTop)),
-      });
+      };
+      setViewport((current) =>
+        current.top === next.top && current.height === next.height ? current : next
+      );
     };
     measure();
     const scrollTarget = container ?? window;
     scrollTarget.addEventListener("scroll", measure, { passive: true });
     window.addEventListener("resize", measure);
-    // Collapsing or expanding branches changes the tree height and therefore the visible slice.
-    const resizeObserver = new ResizeObserver(measure);
-    resizeObserver.observe(tree);
-    if (container) resizeObserver.observe(container);
+    const stopObservingLayout = observeLocationTreeLayout(tree, container, measure);
     return () => {
       scrollTarget.removeEventListener("scroll", measure);
       window.removeEventListener("resize", measure);
-      resizeObserver.disconnect();
+      stopObservingLayout();
     };
   }, [isLoaded]);
   const focusedIndex = Math.max(

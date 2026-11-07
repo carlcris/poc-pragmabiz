@@ -3,6 +3,7 @@ import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { canAccessCapability } from "@/services/permissions/permissionResolver";
 import { getAuthContext } from "../delivery-notes/_lib";
 import { notifyBusinessUnits } from "@/app/api/_lib/workflow-notifications";
+import { fetchWarehouseLocationNamePaths } from "@/lib/warehouse-location-name-path";
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"];
 
@@ -55,6 +56,13 @@ export const isPickListAssignee = async (
     .maybeSingle();
 
   return data !== null;
+};
+
+type PickLocationRow = {
+  id: string;
+  code: string;
+  name: string | null;
+  path_ids: string[];
 };
 
 export const fetchPickList = async (supabase: SupabaseClient, companyId: string, id: string) => {
@@ -160,6 +168,7 @@ export const fetchPickList = async (supabase: SupabaseClient, companyId: string,
           code,
           name,
           location_path,
+          path_ids,
           warehouse:warehouses!warehouse_locations_warehouse_id_fkey(
             id,
             warehouse_code
@@ -192,7 +201,35 @@ export const fetchPickList = async (supabase: SupabaseClient, companyId: string,
     .single();
 
   if (error || !data) return null;
-  return mapPickListRecord(data as Record<string, unknown>);
+
+  // Pickers show names-only addresses; codes stay in location_path for sorting and scanning.
+  const items = (data.pick_list_items ?? []).map(({ suggested_pick_location, ...item }) => ({
+    item,
+    // The untyped client reports this to-one embed as an array.
+    location: (Array.isArray(suggested_pick_location)
+      ? (suggested_pick_location[0] ?? null)
+      : (suggested_pick_location ?? null)) as unknown as PickLocationRow | null,
+  }));
+  const locations = items.flatMap(({ location }) => (location ? [location] : []));
+  const { data: namePaths, error: namePathError } = await fetchWarehouseLocationNamePaths(
+    supabase,
+    companyId,
+    locations
+  );
+  if (namePathError) {
+    console.error("Failed to fetch pick list location names:", namePathError);
+    throw new Error("Failed to fetch pick list location names");
+  }
+
+  return mapPickListRecord({
+    ...data,
+    pick_list_items: items.map(({ item, location }) => ({
+      ...item,
+      suggested_pick_location: location
+        ? { ...location, location_name_path: namePaths.get(location.id) ?? location.code }
+        : null,
+    })),
+  } as Record<string, unknown>);
 };
 
 export const mapPickListRecord = <T extends Record<string, unknown>>(record: T) => {

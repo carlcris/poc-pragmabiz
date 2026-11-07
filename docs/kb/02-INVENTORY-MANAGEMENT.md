@@ -127,7 +127,9 @@ table on screens at least 1536 px wide and opens as a dialog from the **Structur
 smaller screens. Each tree row shows an icon for its location type (zone, aisle, rack, shelf,
 bin, crate). The tree supports arrow keys, Home/End, and Enter. **Expand All** opens every
 branch, loading the complete lightweight hierarchy in sequential pages of 500 locations.
-Only visible rows are rendered, with no cap on how many locations can be expanded. Loading progress
+Only visible rows are rendered, with no cap on how many locations can be expanded. The visible
+rows refresh automatically when earlier warehouse sections expand, collapse, or are removed; no
+scroll or page reload is needed. Loading progress
 is shown; **Collapse All** cancels pending loading and closes every branch; the same buttons appear in the **Browse** picker. Address search inside an open
 location defaults to **This Branch** (its descendants only); **Whole Warehouse** searches all
 levels, and each search result offers **Show in Hierarchy** to open its parent. At warehouse level the header action is **Add

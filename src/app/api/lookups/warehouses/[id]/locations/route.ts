@@ -4,6 +4,7 @@ import { requireLookupDataAccess } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchWarehouseLocationNamePaths } from "@/lib/warehouse-location-name-path";
 
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 5;
@@ -37,13 +38,9 @@ type LocationOptionRow = {
   updated_at: string;
 };
 
-type LocationLabel = { code: string; name: string | null };
-
-const getLocationLabel = (location: LocationLabel) => location.name?.trim() || location.code;
-
 const mapLocationOption = (
   location: LocationOptionRow,
-  ancestorsById: ReadonlyMap<string, LocationLabel>
+  namePaths: ReadonlyMap<string, string>
 ) => ({
   id: location.id,
   companyId: location.company_id,
@@ -52,12 +49,7 @@ const mapLocationOption = (
   name: location.name,
   parentId: location.parent_id,
   locationPath: location.location_path,
-  // Names only, for pickers: ancestors come from one batched read of the page's paths.
-  locationNamePath: location.path_ids
-    .map((id) => (id === location.id ? location : ancestorsById.get(id)))
-    .filter((segment): segment is LocationLabel => Boolean(segment))
-    .map(getLocationLabel)
-    .join(" / "),
+  locationNamePath: namePaths.get(location.id) ?? location.code,
   locationType: location.location_type,
   isPickable: location.is_pickable ?? false,
   isStorable: location.is_storable ?? false,
@@ -169,27 +161,19 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       ...(data || []),
       ...(selected && !data?.includes(selected) ? [selected] : []),
     ];
-    const ancestorIds = [
-      ...new Set(rows.flatMap((row) => row.path_ids.filter((id) => id !== row.id))),
-    ];
-    const ancestorsById = new Map<string, LocationLabel>();
-    if (ancestorIds.length > 0) {
-      const { data: ancestors, error: ancestorsError } = await adminSupabase
-        .from("warehouse_locations")
-        .select("id, code, name")
-        .eq("company_id", companyId)
-        .eq("warehouse_id", warehouseId)
-        .in("id", ancestorIds);
-      if (ancestorsError) {
-        console.error("Failed to fetch warehouse location lookup ancestors:", ancestorsError);
-        return NextResponse.json({ error: "Failed to fetch warehouse locations" }, { status: 500 });
-      }
-      for (const ancestor of ancestors || []) ancestorsById.set(ancestor.id, ancestor);
+    const { data: namePaths, error: namePathError } = await fetchWarehouseLocationNamePaths(
+      adminSupabase,
+      companyId,
+      rows
+    );
+    if (namePathError) {
+      console.error("Failed to fetch warehouse location lookup ancestors:", namePathError);
+      return NextResponse.json({ error: "Failed to fetch warehouse locations" }, { status: 500 });
     }
 
     return NextResponse.json({
-      data: (data || []).map((row) => mapLocationOption(row, ancestorsById)),
-      selected: selected ? mapLocationOption(selected, ancestorsById) : null,
+      data: (data || []).map((row) => mapLocationOption(row, namePaths)),
+      selected: selected ? mapLocationOption(selected, namePaths) : null,
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

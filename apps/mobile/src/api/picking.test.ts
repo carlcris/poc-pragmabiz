@@ -6,7 +6,7 @@ vi.mock("@/api/client", () => ({ apiRequest: mocks.request }));
 
 describe("configured picking addresses", () => {
   it.each(["Zone 1 / Crate 1", "Rack 1 / Bin 1", "Rack 1 / Shelf 2 / Bin 1"])(
-    "keeps the full %s address and exact source identity",
+    "keeps the full %s name address and exact source identity",
     async (locationPath) => {
       mocks.request.mockResolvedValue({
         id: "pick-list",
@@ -25,14 +25,16 @@ describe("configured picking addresses", () => {
               id: "exact-location",
               code: "B1",
               name: "Bin 1",
-              location_path: locationPath,
+              location_path: `CODE / ${locationPath}`,
+              location_name_path: locationPath,
             },
           },
         ],
       });
       const list = await getPickList("pick-list");
       expect(list.items[0]).toMatchObject({
-        locationPath,
+        locationPath: `CODE / ${locationPath}`,
+        locationNamePath: locationPath,
         sourceLocationId: "exact-location",
         sourceLocationCode: "B1",
         sourceSku: "1234567890",

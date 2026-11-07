@@ -8,6 +8,7 @@ import {
   fetchPickListHeader,
   getPickListAuthContext,
 } from "../../_lib";
+import { fetchWarehouseLocationNamePaths } from "@/lib/warehouse-location-name-path";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -104,7 +105,7 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
             is_active,
             is_pickable,
             is_storable,
-            location_path
+            path_ids
           ),
           item_batch:item_batches!item_batch_locations_item_batch_id_fkey(
             id,
@@ -341,6 +342,20 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
     const selectedLine = policyEligibleLines[0];
     const isMismatch = selectedLine.suggestedBatchLocationSku !== batchLocationSku;
 
+    const { data: namePaths, error: namePathError } = await fetchWarehouseLocationNamePaths(
+      auth.supabase,
+      auth.companyId,
+      [location]
+    );
+    if (namePathError) {
+      console.error("Failed to fetch scanned source location names:", namePathError);
+      return scanValidationError(
+        "Failed to load scanned source",
+        "PICK_SOURCE_LOCATION_LOOKUP_FAILED",
+        500
+      );
+    }
+
     return NextResponse.json({
       data: {
         batchLocationSku,
@@ -350,7 +365,7 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
           warehouseId: sourceRow.warehouse_id,
           locationId: sourceRow.location_id,
           locationCode: location.code || null,
-          locationName: location.location_path || null,
+          locationName: namePaths.get(location.id) || null,
           batchCode: itemBatch.batch_code,
           batchReceivedAt: itemBatch.received_at,
           qtyOnHand: toNumber(sourceRow.qty_on_hand),

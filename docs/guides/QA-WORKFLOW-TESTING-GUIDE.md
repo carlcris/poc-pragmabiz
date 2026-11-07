@@ -837,6 +837,11 @@ multiple warehouse-specific delivery notes from one action.
   units and confirm the previous unit's rows disappear before the new request completes. A role
   without Inventory Reservations view permission must see neither the menu entry nor either API's
   data, while a view-only role must have no reservation mutation control.
+- Confirm the final mobile pick and verify **Finish** becomes enabled immediately without a
+  refresh or waiting for claim expiry. Partial confirmations must also release their line claim.
+  Run `supabase/tests/pick-progress-claim-release.sql` against a local database with an active
+  allocated pick list to verify claim release, retry safety, completion, and rollback on a forced
+  release failure; all test changes are rolled back.
 - Let a claim sit idle past its expiry and confirm it becomes available to claim again.
 - Try to Complete Picking first while the current picker still holds an active claim, then while another picker holds one — both attempts should be refused with a clear error, not silently completed.
 - Cancel a pick list mid-way with a blank reason and confirm cancellation succeeds, no reason is stored, and the Delivery Note's status and picked-quantity totals both roll back correctly.
@@ -1657,7 +1662,10 @@ level and then disable itself; Collapse All must close every branch and then dis
 branch toggled by hand after Expand All must stay as toggled. With 8,420 locations, expect 17
 warehouse-wide requests of at most 500 nodes, not a request per expanded parent. Include a level
 with more than 50 siblings: all must appear after expansion. Check that only the viewport plus
-overscan is rendered (at most 17 rows), and End/Home and arrow keys navigate beyond mounted rows.
+overscan is rendered (the visible viewport plus eight rows), and End/Home and arrow keys navigate beyond mounted rows.
+After expanding multiple warehouses, collapse or expand an earlier section without scrolling: later
+trees must immediately render their newly visible rows, with no blank gaps. Repeat when an earlier
+section is removed or inserted, and when the surrounding content height remains fixed.
 Collapse All during loading and switch warehouses: the active request must abort and queued pages
 must not start. Across multiple item warehouse sections, page requests must remain serialized.
 A failed page must show Retry rather than a complete-looking partial tree. Verify preferred labels,
