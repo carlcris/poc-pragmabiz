@@ -1,5 +1,9 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+import { ITEM_LOCATIONS_QUERY_KEY } from "@/hooks/queryKeys";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
+import { apiClient } from "@/lib/api";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { format } from "date-fns";
@@ -36,6 +40,8 @@ type MoveStockDialogProps = {
   baseUnit: string;
   unitOptions: ItemUnitOption[];
   sourceLocations: ItemLocation[] | undefined;
+  // Pre-fills the source when moving from a selected location.
+  initialSource?: { warehouseId: string; locationId: string };
   onOpenChange: (open: boolean) => void;
 };
 
@@ -44,13 +50,14 @@ export function MoveStockDialog({
   baseUnit,
   unitOptions,
   sourceLocations,
+  initialSource,
   onOpenChange,
 }: MoveStockDialogProps) {
   const t = useTranslations("itemLocationsTab");
   const moveStock = useMoveStock();
-  const [sourceWarehouseId, setSourceWarehouseId] = useState("");
+  const [sourceWarehouseId, setSourceWarehouseId] = useState(initialSource?.warehouseId ?? "");
   const [destinationWarehouseId, setDestinationWarehouseId] = useState("");
-  const [fromLocationId, setFromLocationId] = useState("");
+  const [fromLocationId, setFromLocationId] = useState(initialSource?.locationId ?? "");
   const [toLocationId, setToLocationId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unitOptionId, setUnitOptionId] = useState("base");
@@ -70,15 +77,31 @@ export function MoveStockDialog({
   const quantityIsValid =
     stockMoveSchema.shape.items.element.shape.quantity.safeParse(Number(quantity)).success &&
     stockMoveSchema.shape.items.element.shape.quantity.safeParse(baseQuantity).success;
+  const businessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
+  const loadedSource = sourceLocations?.find(
+    (location) =>
+      location.itemId === itemId &&
+      location.warehouseId === sourceWarehouseId &&
+      location.locationId === fromLocationId
+  );
+  const sourceQuery = useQuery<{ data: ItemLocation[] }>({
+    queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId, businessUnitId, "move-source", fromLocationId],
+    queryFn: () =>
+      apiClient.get(`/api/items/${itemId}/locations`, {
+        params: { locationId: fromLocationId, limit: 1 },
+      }),
+    enabled: Boolean(fromLocationId && sourceWarehouseId && !loadedSource),
+  });
   const sourceAvailable =
-    sourceLocations === undefined
-      ? undefined
-      : (sourceLocations.find(
+    loadedSource?.qtyAvailable ??
+    (sourceQuery.data
+      ? (sourceQuery.data.data.find(
           (location) =>
-            location.itemId === itemId &&
             location.warehouseId === sourceWarehouseId &&
-            location.locationId === fromLocationId
-        )?.qtyAvailable ?? 0);
+            location.locationId === fromLocationId &&
+            location.itemId === itemId
+        )?.qtyAvailable ?? 0)
+      : undefined);
   const hasSufficientStock =
     sourceAvailable !== undefined &&
     Number.isFinite(sourceAvailable) &&

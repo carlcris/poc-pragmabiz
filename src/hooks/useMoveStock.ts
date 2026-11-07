@@ -26,6 +26,7 @@ const AFFECTED_QUERY_KEYS = new Set<string>([
   queryKeys.PRODUCT_MOVEMENT_REPORT_QUERY_KEY,
   queryKeys.STOCK_LEDGER_QUERY_KEY,
   "warehouses",
+  "warehouse-locations",
   "stock-valuation-report",
 ]);
 

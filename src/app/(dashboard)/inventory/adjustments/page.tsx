@@ -491,9 +491,9 @@ export default function StockAdjustmentsPage() {
                         <TableCell>{formatDate(adjustment.adjustmentDate)}</TableCell>
                         <TableCell>{adjustment.warehouseName}</TableCell>
                         <TableCell>
-                          {adjustment.locationCode && adjustment.locationName
-                            ? `${adjustment.locationCode} - ${adjustment.locationName}`
-                            : adjustment.locationCode || adjustment.locationName || t("noLocation")}
+                          {adjustment.locationName?.trim() ||
+                            adjustment.locationCode ||
+                            t("noLocation")}
                         </TableCell>
                         <TableCell>
                           <div className="max-w-[200px] truncate">{adjustment.reason}</div>
@@ -677,11 +677,9 @@ export default function StockAdjustmentsPage() {
                       {t("location")}
                     </div>
                     <div className="mt-1">
-                      {adjustmentToView.locationCode && adjustmentToView.locationName
-                        ? `${adjustmentToView.locationCode} - ${adjustmentToView.locationName}`
-                        : adjustmentToView.locationCode ||
-                          adjustmentToView.locationName ||
-                          t("noLocation")}
+                      {adjustmentToView.locationName?.trim() ||
+                        adjustmentToView.locationCode ||
+                        t("noLocation")}
                     </div>
                   </div>
                   <div>

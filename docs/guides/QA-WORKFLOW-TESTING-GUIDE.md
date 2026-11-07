@@ -225,6 +225,9 @@ Transactions and Location Transfers is required; the button is hidden without ei
 - Move to another warehouse in the same business unit, including a warehouse that does not yet
   hold the item. Confirm source decreases, destination increases, and total on-hand is conserved.
 - Move between two racks in the same warehouse and confirm warehouse and batch totals are unchanged.
+- Load the warehouse Locations list, tree, and bin details, then move all 500 units from Bin 1
+  to an empty Bin 2 using the item's Move Stock dialog. Return to warehouse Locations without
+  reloading the browser: confirm Bin 1 shows 0 and Bin 2 shows 500, including their detail totals.
 - Use multiple source batches and confirm FIFO consumption and original batch codes and receipt
   dates. A warehouse move posts linked Out and In entries, with one line per consumed batch at each
   warehouse; confirm both warehouses' ledger totals and closing balances. A rack move posts one
@@ -1602,3 +1605,117 @@ These apply across _every_ module above, so check them once per module rather th
 5. **No consistent "in use" protection across master data.** Suppliers and Roles correctly block deletion when something else depends on them; Items, Customers, Warehouses, and Warehouse Locations do not — treat every master-data delete as its own test rather than assuming the app protects itself consistently.
 6. **Several master-data types can't be created from inside the app at all** — Item Categories, Units of Measure, Business Units, and new User accounts all have to be set up ahead of time by whoever administers the test environment. Confirm this setup is done before test cycles start, since there's no in-app fallback if one is missing.
 7. **Newer vs. older modules behave differently on failure.** The newer modules (goods receiving, load lists, deliveries, transformations, job orders, manufacturing, putaway) are built so a failure partway through leaves nothing half-done. Some older modules (legacy purchase-order receiving and invoice sending) do their work in several separate steps — these are worth extra stress-testing for partial-failure states, e.g. what happens if the connection drops mid-action.
+
+## Flexible warehouse-location hierarchy
+
+Run the following rollback-only SQL checks against a seeded local database with `psql -v ON_ERROR_STOP=1`:
+
+- `supabase/tests/warehouse-location-hierarchy.sql`: mixed and skipped levels, address refresh,
+  cycle and cross-warehouse rejection, stocked-subtree edits, reservations, and rollback after an earlier write.
+- `supabase/tests/warehouse-location-allocation.sql`: authenticated FIFO allocation across nested
+  bins/crates, optional subtree scope, non-pickable exclusion, exact reservation totals, strict picking, allowed source substitution,
+  cancellation release, failure rollback, paginated location/batch reads, subtree totals, and unauthorized read rejection.
+- `supabase/tests/warehouse-location-detail.sql`: authenticated detail read with ordered ancestors,
+  subtree stock/reservation counts, branch-scoped search, agreement between the move gate and the
+  trigger, and no rows for an unauthorized caller.
+- `supabase/tests/warehouse-location-batch.sql`: range expansion and padding, server preview,
+  batch create with parent and flags, conflict blocking and skipping, an all-existing range, a
+  forced failure on the third inserted row that must leave no batch rows, inactive-parent and
+  flag validation, and unauthorized rejection.
+- `supabase/tests/warehouse-location-copy.sql`: copy plan addresses, copied parent links and
+  settings, rejection of copies into the source branch, conflicting or colliding codes, and branches
+  over 200 locations, a forced failure on a third-level row that must leave no copied rows, and
+  unauthorized rejection.
+- `supabase/tests/item-location-stock-tree.sql`: item stock rollups per tree level, stock held
+  directly on a container, nested name paths, top-level totals matching the warehouse summary,
+  foreign-parent and unauthorized scope.
+- `supabase/tests/warehouse-location-query-plans.sql`: authenticated RLS-enabled lookup with 2,000
+  temporary locations and a bounded item-stock query. Fixtures roll back; PostgreSQL sequence
+  values consumed by workflow tests may advance normally.
+
+UI checks: create `Zone → Crate` and `Rack → Shelf → Bin` alongside `Rack → Bin`; verify parent
+selection excludes the edited subtree, search finds descendant addresses, child navigation and
+pagination work, and grouping versus direct-stock quantities remain distinguishable. Configure
+Organize Only parents and Store & Pick or Store Only children. Check English and Chinese.
+
+Add-location dialog checks: at warehouse level the button reads Add Location and Inside shows
+Warehouse Level; after opening a location it reads Add Sublocation and Inside shows that location's
+full address; row Add Inside (active rows only) uses the row as parent. With existing bins listed,
+the type defaults to Bin with a suggestion hint; switching to Zone moves Use to Organize Only until a
+Use is chosen manually, and Organize Only hides capacity. The address preview must equal the saved
+address. Submit with an empty code, a duplicate code, and capacity `0`: each error appears under its
+field and the dialog stays open. Save & Add Another on `A1-B09`/`Bin 9` must create it, keep the
+dialog open with `A1-B10`/`Bin 10`, and focus Code. Labels must announce Parent, Type, Code, Use
+options, Maximum Capacity, and Active to a screen reader.
+
+Navigation checks: open a nested location, refresh, and use browser Back; the summary, breadcrumb,
+and expanded tree must be restored. A `?location=` link to a removed or foreign location shows
+Location Not Found with Back to Warehouse Level. At 1536 px and wider the Structure tree sits beside
+the table; below that the Structure button opens it as a dialog. Drive the tree with ↑/↓, →
+(expand, then enter), ← (collapse, then parent), Home/End, and Enter. Inside a location, This Branch
+search returns only its descendants and Whole Warehouse returns all matches; Show in Hierarchy opens
+the result's parent with the search cleared. Move an empty bin to another rack and back: the dialog
+excludes the bin and its subtree, previews both addresses, and updates the breadcrumb. Open Move on
+a branch with stock: it lists on-hand, reserved, and pending putaway counts and offers no
+destination. Edit a location with direct stock and active sublocations: Organize Only and the
+Active switch are disabled with their reasons, and changing the code notes how many sublocation
+addresses change.
+
+Add Multiple checks: inside a rack with bins, Add Multiple pre-fills Bin, the parent code prefix, and
+a `Bin ` name prefix. Range 1–10 with 2 digits previews `…-01` to `…-10` with full addresses. Include
+an existing code: it is marked Already exists and Create stays disabled until Skip is checked; the
+toast then reports created and skipped counts and the table, tree, and sublocation count refresh.
+A range where every code exists keeps Create disabled. A To value 100 or more above From shows the
+range error and no preview. Switching to Zone sets Organize Only and hides capacity. Verify the
+dialog in Chinese.
+
+Copy Structure checks: from a rack with bins, Copy Structure defaults to the rack's parent and
+replaces the rack code with its incremented form; a code without a number shows every row as
+Already exists and keeps Copy disabled. Replace `RACK-A` with `RACK-Z` and `Rack A` with `Rack Z`:
+the preview shows the new rack and indented bins with full addresses. Browse shows the source rack
+disabled; choosing another rack updates every preview address. Copying opens the new rack with
+copied names, types, and capacities and no stock. Choosing a destination inside the source branch
+is impossible in both the list and Browse. Browse also appears for Add Location's parent (after
+Change) and for Move.
+
+Item Locations tab checks: for an item stored on a rack and in a bin inside it, the warehouse header
+shows total on-hand and the preferred location by name. The tree shows the rack with the combined
+total; expanding it shows a "-" line (read as "On … itself") for stock on the rack and the bin with its own
+total. Selecting the rack shows Including Sublocations, Stored Here, the bin under "Inside", and the
+rack's own batches; selecting the bin shows its batches with Print QR. Move Stock From Here opens
+Move Stock with that warehouse and location as the source. Change in the header opens a picker with
+the current preferred location and Save disabled until a different one is chosen; Set as Preferred
+in the panel updates the header and the Preferred label. Select an Organize Only parent and confirm
+Set as Preferred is absent. PATCH a non-storable or inactive location to the default-location endpoint
+and verify HTTP 409 with `LOCATION_STORAGE_UNAVAILABLE`, with no preferred-location change. An
+active storage location must still save, and a stale selection must show translated recovery guidance. Address search lists matches and opening
+one selects it in its warehouse. Check that a level with more than 50 stocked locations shows Show
+more, and verify the tab in Chinese and at phone width.
+
+Regression checks for the selected stock panel:
+
+- Open an item's Locations tab and the Item Location Batch / Stock Aging reports, then rename a
+  parent location in warehouse management. Return before their normal cache expiry: tree labels,
+  descendant addresses, preferred-location names, and report addresses must refresh without a
+  browser reload. Active views refresh immediately; inactive cached views refresh when reopened.
+  Repeat for a permitted hierarchy move. Other warehouses' tree/detail caches and unrelated
+  query families must remain fresh.
+
+- With 20 exhausted batches followed by a newer stocked batch, verify Next opens page 2 and the
+  stocked batch can be printed. Pagination uses the batch endpoint's total, including exhausted batches.
+- Move stock from a selected location and verify its on-hand, reserved, and available values refresh
+  without selecting it again. If it becomes empty while the warehouse remains visible, Move Stock
+  From Here disappears.
+- Search for a rack holding 2 units directly and 10 in a child bin. Opening it must show 12 including
+  sublocations, 2 stored here, and the child under Inside, matching selection from the tree.
+
+Allocate ten units from an older batch split four/three across different depths plus a newer batch:
+expect three exact source lines (4 + 3 + 3). Narrowing scope to an insufficient child must leave no
+pick-list header or reservation behind. Verify strict source validation rejects a sibling bin;
+allowed source substitution must move reservations atomically. Verify short/cancel/dispatch paths.
+
+Check full picking addresses and nearest mapped ancestors, including a floor with no mapped ancestor.
+Verify item floor-map highlights are independent of the current table page. Exercise second location
+and batch pages, QR printing, putaway, adjustments, counts, movements, and preferred-location selection.
+Existing stock must be moved explicitly into newly created children; hierarchy edits must not silently
+redistribute stock. Concurrent allocation or location edits must not create duplicate reservations or cycles.

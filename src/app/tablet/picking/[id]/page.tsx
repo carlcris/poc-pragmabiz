@@ -186,8 +186,8 @@ export default function TabletPickingDetailPage() {
       const suggestedPickLocation = one(
         (item as { suggested_pick_location?: unknown } | null | undefined)
           ?.suggested_pick_location as
-          | { id: string; code: string | null; name: string | null }
-          | { id: string; code: string | null; name: string | null }[]
+          | { id: string; code: string | null; name: string | null; location_path: string }
+          | { id: string; code: string | null; name: string | null; location_path: string }[]
           | null
           | undefined
       );
@@ -223,7 +223,7 @@ export default function TabletPickingDetailPage() {
         pickedQty: pickedValue,
         status,
         suggestedPickLocationId: item.suggested_pick_location_id || null,
-        suggestedPickLocationCode: suggestedPickLocation?.code || null,
+        suggestedPickLocationCode: suggestedPickLocation?.location_path || null,
         suggestedPickBatchCode: item.suggested_pick_batch_code || null,
         suggestedPickBatchReceivedAt: item.suggested_pick_batch_received_at || null,
       };
@@ -772,7 +772,7 @@ export default function TabletPickingDetailPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Barcode</span>
-                      <span className="tabular-nums font-medium">
+                      <span className="font-medium tabular-nums">
                         {currentItem.barcode || currentItem.matchedScanCode}
                       </span>
                     </div>

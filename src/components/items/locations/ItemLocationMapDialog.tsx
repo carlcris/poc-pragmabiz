@@ -13,32 +13,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { Skeleton } from "@/components/ui/skeleton";
 import { WarehouseFloorSelect } from "@/components/warehouses/WarehouseFloorSelect";
 import { useWarehouseFloorMap, useWarehouseFloors } from "@/hooks/useWarehouseFloorMap";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api";
+import { ITEM_LOCATIONS_QUERY_KEY } from "@/hooks/queryKeys";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import { cn } from "@/lib/utils";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
-import type { ItemLocation } from "@/types/inventory-location";
 import type { WarehouseFloorMapRack, WarehouseFloorSummary } from "@/types/warehouse-floor-map";
 
 type ItemLocationMapWarehouse = {
   id: string;
   code: string;
   name: string;
-  locations: ItemLocation[];
 };
 
 type ItemLocationMapDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   warehouses: ItemLocationMapWarehouse[];
+  itemId: string;
   itemCode: string;
   itemName: string;
 };
@@ -50,6 +47,7 @@ export const ItemLocationMapDialog = ({
   open,
   onOpenChange,
   warehouses,
+  itemId,
   itemCode,
   itemName,
 }: ItemLocationMapDialogProps) => {
@@ -65,7 +63,7 @@ export const ItemLocationMapDialog = ({
 
   const selectedWarehouse =
     warehouses.find((warehouse) => warehouse.id === selectedWarehouseId) ?? warehouses[0] ?? null;
-  const activeWarehouseId = selectedWarehouse?.id ?? "";
+  const activeWarehouseId = selectedWarehouseId || selectedWarehouse?.id || "";
   const floorScope = `${businessUnitId}:${activeWarehouseId}`;
   const floorsQuery = useWarehouseFloors(
     open ? businessUnitId : "",
@@ -80,22 +78,19 @@ export const ItemLocationMapDialog = ({
     activeFloor?.floorNumber ?? 0
   );
   const floorMap = mapQuery.data?.data ?? null;
-  const stockedLocations = useMemo(
-    () => (selectedWarehouse?.locations ?? []).filter((location) => location.qtyOnHand > 0),
-    [selectedWarehouse]
-  );
+  const stockQuery = useQuery<{ data: { rackIds: string[]; offFloorLocationCount: number } }>({
+    queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId, "floor", businessUnitId, floorMap?.id],
+    queryFn: () =>
+      apiClient.get(`/api/items/${itemId}/location-map-stock`, {
+        params: { floorMapId: floorMap!.id },
+      }),
+    enabled: open && Boolean(floorMap),
+  });
   const itemLocationIds = useMemo(
-    () => new Set(stockedLocations.map((location) => location.locationId)),
-    [stockedLocations]
+    () => new Set(stockQuery.data?.data.rackIds ?? []),
+    [stockQuery.data]
   );
-  const mappedLocationIds = useMemo(
-    () => new Set((floorMap?.racks ?? []).map((rack) => rack.warehouseLocationId)),
-    [floorMap?.racks]
-  );
-  const offFloorStockedLocations = useMemo(
-    () => stockedLocations.filter((location) => !mappedLocationIds.has(location.locationId)),
-    [mappedLocationIds, stockedLocations]
-  );
+  const offFloorLocationCount = stockQuery.data?.data.offFloorLocationCount ?? 0;
   const imageReady = floorMap !== null && loadedImageUrl === floorMap.imageUrl;
   const imageFailed = floorMap !== null && failedImageUrl === floorMap.imageUrl;
 
@@ -124,18 +119,21 @@ export const ItemLocationMapDialog = ({
           <div className="grid gap-4 sm:max-w-3xl sm:grid-cols-2">
             <div className="min-w-0 space-y-2">
               <label className="block text-sm font-medium">{t("locationMapWarehouse")}</label>
-              <Select value={activeWarehouseId} onValueChange={setSelectedWarehouseId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("selectWarehouse")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {warehouses.map((warehouse) => (
-                    <SelectItem key={warehouse.id} value={warehouse.id}>
-                      {warehouse.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <WarehouseSelect
+                scope="current_business_unit"
+                value={activeWarehouseId}
+                onValueChange={setSelectedWarehouseId}
+                selectedOption={
+                  selectedWarehouse?.id === activeWarehouseId
+                    ? {
+                        id: selectedWarehouse.id,
+                        code: selectedWarehouse.code,
+                        name: selectedWarehouse.name,
+                        isActive: true,
+                      }
+                    : null
+                }
+              />
             </div>
 
             <div className="min-w-0">
@@ -149,12 +147,13 @@ export const ItemLocationMapDialog = ({
             </div>
           </div>
 
-          {floorsQuery.isPending || (activeFloor !== null && mapQuery.isPending) ? (
+          {floorsQuery.isPending ||
+          (activeFloor !== null && (mapQuery.isPending || stockQuery.isLoading)) ? (
             <div className="space-y-3" aria-label={t("locationMapLoading")}>
               <Skeleton className="h-5 w-40" />
               <Skeleton className="h-96 w-full" />
             </div>
-          ) : floorsQuery.isError || mapQuery.isError ? (
+          ) : floorsQuery.isError || mapQuery.isError || stockQuery.isError ? (
             <div className="flex min-h-80 flex-col items-center justify-center gap-3 rounded-md border px-6 py-10 text-center">
               <AlertCircle className="h-10 w-10 text-destructive" />
               <div>
@@ -167,7 +166,10 @@ export const ItemLocationMapDialog = ({
                 variant="outline"
                 onClick={() => {
                   void floorsQuery.refetch();
-                  if (activeFloor) void mapQuery.refetch();
+                  if (activeFloor) {
+                    void mapQuery.refetch();
+                    void stockQuery.refetch();
+                  }
                 }}
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
@@ -187,7 +189,6 @@ export const ItemLocationMapDialog = ({
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="font-medium">{floorMap.name}</p>
-                  <p className="text-sm text-muted-foreground">{selectedWarehouse?.name ?? ""}</p>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span className="h-3 w-3 rounded-sm border-2 border-destructive bg-destructive/30" />
@@ -195,15 +196,11 @@ export const ItemLocationMapDialog = ({
                 </div>
               </div>
 
-              {offFloorStockedLocations.length > 0 ? (
+              {offFloorLocationCount > 0 ? (
                 <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200 [&>svg]:text-amber-700 dark:[&>svg]:text-amber-400">
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription className="font-medium text-inherit">
-                    {t("locationMapNoMappedLocations", {
-                      locations: offFloorStockedLocations
-                        .map((location) => location.locationCode)
-                        .join(", "),
-                    })}
+                    {t("locationMapOffFloorCount", { count: offFloorLocationCount })}
                   </AlertDescription>
                 </Alert>
               ) : null}

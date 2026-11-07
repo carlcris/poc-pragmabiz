@@ -32,6 +32,8 @@ import {
 } from "@/hooks/useDeliveryNotes";
 import type { ItemUnitOption } from "@/types/item";
 import type { DeliveryNoteStatus } from "@/types/delivery-note";
+import { getPickAllocationErrorMessage } from "@/lib/pick-allocation-errors";
+import { PickAllocationScope } from "@/components/warehouses/PickAllocationScope";
 import { useCreatePickList } from "@/hooks/usePickLists";
 import { useUsers } from "@/hooks/useUsers";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
@@ -139,6 +141,8 @@ export default function DeliveryNoteDetailPage() {
 
   const [queueOpen, setQueueOpen] = useState(false);
   const [queuePickerSearch, setQueuePickerSearch] = useState("");
+  const tAllocation = useTranslations("pickAllocationScope");
+  const [queueLocationScopeId, setQueueLocationScopeId] = useState("");
   const [queueNotes, setQueueNotes] = useState("");
   const [selectedQueuePickerIds, setSelectedQueuePickerIds] = useState<Set<string>>(new Set());
 
@@ -630,15 +634,17 @@ export default function DeliveryNoteDetailPage() {
     setQueueOpen(false);
     setQueuePickerSearch("");
     setQueueNotes("");
+    setQueueLocationScopeId("");
     setSelectedQueuePickerIds(new Set());
   };
 
   const createPickListWithAllocationHandling = async (payload: CreatePickListPayload) => {
     try {
       await createPickListMutation.mutateAsync(payload);
+      toast.success(tAllocation("created"));
       resetQueueState();
     } catch (error) {
-      toast.error(getMutationErrorMessage(error, "Failed to create pick list"));
+      toast.error(getPickAllocationErrorMessage(error, tAllocation));
     }
   };
 
@@ -651,6 +657,7 @@ export default function DeliveryNoteDetailPage() {
       dnId: dn.id,
       pickerUserIds,
       notes: queueNotes.trim() || undefined,
+      locationScopeId: queueLocationScopeId || undefined,
     });
   };
 
@@ -1633,6 +1640,12 @@ export default function DeliveryNoteDetailPage() {
 
             <div className="space-y-4">
               <div className="space-y-2">
+                <PickAllocationScope
+                  warehouseId={dn.fulfilling_warehouse_id}
+                  value={queueLocationScopeId}
+                  onValueChange={setQueueLocationScopeId}
+                  disabled={createPickListMutation.isPending}
+                />
                 <Label className="text-sm font-medium">{t("assignPickers")}</Label>
                 <Input
                   placeholder={t("searchNameOrEmail")}

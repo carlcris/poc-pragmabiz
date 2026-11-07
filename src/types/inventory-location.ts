@@ -17,6 +17,13 @@ export type ItemLocation = {
   locationCode: string;
   locationName: string;
   locationType: string;
+  locationPath: string;
+  locationNamePath: string;
+  pathIds: string[];
+  warehouseOnHand: number;
+  batchCount: number;
+  batchPage: number;
+  batchPageSize: number;
   qtyOnHand: number;
   qtyReserved: number;
   qtyAvailable: number;
@@ -26,6 +33,128 @@ export type ItemLocation = {
   batches?: ItemLocationBatch[];
 };
 
+export type ItemStockPagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+export type ItemWarehouseStock = {
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  qtyOnHand: number;
+  qtyReserved: number;
+  qtyAvailable: number;
+  locationCount: number;
+  maxQuantity: number | null;
+  defaultLocationId: string | null;
+  defaultLocationName: string | null;
+  defaultLocationNamePath: string | null;
+};
+
+// One location in an item's stock tree: branch totals plus stock held directly on it.
+export type ItemLocationStockNode = {
+  locationId: string;
+  warehouseId: string;
+  code: string;
+  name: string | null;
+  locationType: string;
+  isStorable: boolean;
+  namePath: string;
+  isDefault: boolean;
+  subtreeOnHand: number;
+  subtreeReserved: number;
+  subtreeAvailable: number;
+  directOnHand: number;
+  directReserved: number;
+  directAvailable: number;
+  directBatchCount: number;
+  hasStockedChildren: boolean;
+};
+
+export type WarehouseLocationAncestor = {
+  id: string;
+  code: string;
+  name: string | null;
+  locationPath: string;
+  isActive: boolean;
+};
+
+export type WarehouseLocationDetail = {
+  id: string;
+  warehouseId: string;
+  code: string;
+  name: string | null;
+  parentId: string | null;
+  locationType: string;
+  isPickable: boolean;
+  isStorable: boolean;
+  isActive: boolean;
+  maxCapacity: number | null;
+  locationPath: string;
+  ancestors: WarehouseLocationAncestor[];
+  childCount: number;
+  activeChildCount: number;
+  descendantCount: number;
+  directOnHand: number;
+  directReserved: number;
+  subtreeOnHand: number;
+  subtreeReserved: number;
+  stockedLocationCount: number;
+  directPendingPutaway: number;
+  subtreePendingPutaway: number;
+};
+
+export type WarehouseLocationBatchRange = {
+  parentId: string | null;
+  codePrefix: string;
+  from: number;
+  to: number;
+  digits: number;
+  namePrefix: string | null;
+};
+
+export type WarehouseLocationBatchPreview = {
+  rows: Array<{
+    code: string;
+    name: string | null;
+    locationPath: string;
+    alreadyExists: boolean;
+  }>;
+};
+
+export type WarehouseLocationBatchResult = {
+  createdCount: number;
+  skippedCount: number;
+};
+
+export type WarehouseLocationCopyRequest = {
+  destinationParentId: string | null;
+  codeFind: string;
+  codeReplace: string;
+  nameFind: string | null;
+  nameReplace: string | null;
+};
+
+export type WarehouseLocationCopyPreview = {
+  rows: Array<{
+    sourceId: string;
+    depth: number;
+    code: string;
+    name: string | null;
+    locationPath: string;
+    locationType: string;
+    alreadyExists: boolean;
+  }>;
+};
+
+export type WarehouseLocationCopyResult = {
+  rootId: string;
+  createdCount: number;
+};
+
 export type WarehouseLocation = {
   id: string;
   companyId: string;
@@ -33,6 +162,9 @@ export type WarehouseLocation = {
   code: string;
   name?: string | null;
   parentId?: string | null;
+  locationPath: string;
+  childCount?: number;
+  subtreeQuantity?: number;
   locationType: string;
   isPickable: boolean;
   isStorable: boolean;

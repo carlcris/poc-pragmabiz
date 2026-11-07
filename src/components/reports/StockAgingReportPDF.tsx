@@ -254,11 +254,7 @@ export const StockAgingReportPDF = ({
                       " - " +
                       (row.warehouseName || noValueLabel)}
                   </Text>
-                  <Text style={styles.cellMuted}>
-                    {(row.locationCode || noValueLabel) +
-                      " - " +
-                      (row.locationName || noValueLabel)}
-                  </Text>
+                  <Text style={styles.cellMuted}>{row.locationPath || noValueLabel}</Text>
                 </View>
                 <View style={[styles.cell, styles.colBatch]}>
                   <Text style={styles.cellText}>{row.batchCode || noValueLabel}</Text>

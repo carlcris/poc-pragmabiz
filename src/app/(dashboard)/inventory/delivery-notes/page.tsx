@@ -29,6 +29,8 @@ import {
   useStartReceivingDeliveryNote,
   useVoidDeliveryNote,
 } from "@/hooks/useDeliveryNotes";
+import { getPickAllocationErrorMessage } from "@/lib/pick-allocation-errors";
+import { PickAllocationScope } from "@/components/warehouses/PickAllocationScope";
 import { useCreatePickList } from "@/hooks/usePickLists";
 import { useStockRequests } from "@/hooks/useStockRequests";
 import { useUsers } from "@/hooks/useUsers";
@@ -171,6 +173,8 @@ export default function DeliveryNotesPage() {
   >("");
   const [actionDnId, setActionDnId] = useState<string>("");
   const [queuePickerSearch, setQueuePickerSearch] = useState("");
+  const tAllocation = useTranslations("pickAllocationScope");
+  const [queueLocationScopeId, setQueueLocationScopeId] = useState("");
   const [queueNotes, setQueueNotes] = useState("");
   const [selectedQueuePickerIds, setSelectedQueuePickerIds] = useState<Set<string>>(new Set());
   const [driverName, setDriverName] = useState("");
@@ -512,6 +516,7 @@ export default function DeliveryNotesPage() {
     setActionType("");
     setQueuePickerSearch("");
     setQueueNotes("");
+    setQueueLocationScopeId("");
     setSelectedQueuePickerIds(new Set());
     setDriverName("");
     setHelperName("");
@@ -525,9 +530,10 @@ export default function DeliveryNotesPage() {
   const createPickListWithAllocationHandling = async (payload: CreatePickListPayload) => {
     try {
       await createPickListMutation.mutateAsync(payload);
+      toast.success(tAllocation("created"));
       return true;
     } catch (error) {
-      toast.error(getMutationErrorMessage(error, "Failed to create pick list"));
+      toast.error(getPickAllocationErrorMessage(error, tAllocation));
       return false;
     }
   };
@@ -717,6 +723,7 @@ export default function DeliveryNotesPage() {
         dnId: actionDn.id,
         pickerUserIds,
         notes: queueNotes.trim() || undefined,
+        locationScopeId: queueLocationScopeId || undefined,
       });
       if (!created) {
         return;
@@ -1396,6 +1403,12 @@ export default function DeliveryNotesPage() {
               {actionType === "queue_picking" && (
                 <div className="space-y-4 rounded-lg border bg-muted/20 p-4">
                   <div className="space-y-2">
+                    <PickAllocationScope
+                      warehouseId={actionDn.fulfilling_warehouse_id}
+                      value={queueLocationScopeId}
+                      onValueChange={setQueueLocationScopeId}
+                      disabled={createPickListMutation.isPending}
+                    />
                     <Label className="text-sm font-medium">{t("assignPickers")}</Label>
                     <Input
                       placeholder={t("searchNameOrEmail")}

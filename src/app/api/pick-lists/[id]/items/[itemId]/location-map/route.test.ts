@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   authorize: vi.fn(),
   permission: vi.fn(),
   from: vi.fn(),
+  rpc: vi.fn(),
   signedUrl: vi.fn(),
 }));
 vi.mock("@/lib/activity-logging/route-activity-logger", () => ({
@@ -20,6 +21,7 @@ vi.mock("@/app/api/pick-lists/_lib", () => ({
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
     from: mocks.from,
+    rpc: mocks.rpc,
     storage: { from: () => ({ createSignedUrl: mocks.signedUrl }) },
   }),
 }));
@@ -70,6 +72,10 @@ beforeEach(() => {
     supabase: { from: mocks.from },
   });
   mocks.permission.mockResolvedValue(true);
+  mocks.rpc.mockResolvedValue({
+    data: [{ floor_map_id: "second-floor-map", warehouse_location_id: "second-floor-rack" }],
+    error: null,
+  });
   mocks.authorize.mockResolvedValue({ ok: true });
   mocks.from.mockImplementation(
     (table: string) =>
@@ -113,7 +119,10 @@ describe("mobile picking across warehouse floors", () => {
         racks: [{ warehouseLocationId: "second-floor-rack" }],
       },
     });
-    expect(rackQuery.eq).toHaveBeenCalledWith("warehouse_location_id", "second-floor-rack");
+    expect(mocks.rpc).toHaveBeenCalledWith("get_location_mapped_ancestor", {
+      p_company_id: "company",
+      p_location_id: "second-floor-rack",
+    });
     expect(mapQuery.eq).toHaveBeenCalledWith("id", "second-floor-map");
     expect(mapQuery.eq).toHaveBeenCalledWith("warehouse_id", "warehouse");
     expect(rackQuery.eq).toHaveBeenCalledWith("floor_map_id", "second-floor-map");
@@ -127,7 +136,7 @@ describe("mobile picking across warehouse floors", () => {
   it.each([true, false])(
     "preserves missing-map versus unmapped-rack states (configured=%s)",
     async (configured) => {
-      rackQuery.maybeSingle.mockResolvedValue({ data: null, error: null });
+      mocks.rpc.mockResolvedValue({ data: [], error: null });
       mapQuery.maybeSingle.mockResolvedValue({
         data: configured ? { id: "floor1" } : null,
         error: null,
@@ -141,6 +150,20 @@ describe("mobile picking across warehouse floors", () => {
       expect(mocks.signedUrl).not.toHaveBeenCalled();
     }
   );
+  it("highlights a mapped ancestor while retaining the exact nested destination", async () => {
+    locationQuery.maybeSingle.mockResolvedValueOnce({
+      data: { id: "bin", code: "B1", location_path: "R2 / Shelf 1 / B1" },
+      error: null,
+    });
+    const response = await GET(request(), context);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      data: {
+        location: { id: "bin", name: "R2 / Shelf 1 / B1" },
+        highlight: { xBasisPoints: rack.x_basis_points },
+      },
+    });
+  });
   it("retains picker authorization before reading floor assets", async () => {
     mocks.authorize.mockResolvedValue({ ok: false });
     expect((await GET(request(), context)).status).toBe(403);

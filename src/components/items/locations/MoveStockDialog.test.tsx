@@ -7,6 +7,7 @@ import { translations } from "@/lib/i18n/translations";
 import { MoveStockDialog } from "./MoveStockDialog";
 
 const state = vi.hoisted(() => ({
+  sourceData: undefined as { data: ItemLocation[] } | undefined,
   error: null as Error | null,
   isPending: false,
   values: [] as string[],
@@ -14,6 +15,8 @@ const state = vi.hoisted(() => ({
   mutate: vi.fn(),
   submit: undefined as (() => void) | undefined,
 }));
+vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: state.sourceData }) }));
+vi.mock("@/stores/businessUnitStore", () => ({ useBusinessUnitStore: () => "bu" }));
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react")>();
   return {
@@ -90,6 +93,13 @@ const sourceLocation: ItemLocation = {
   warehouseCode: "WH",
   warehouseName: "Warehouse",
   locationCode: "FROM",
+  locationPath: "FROM - Source",
+  locationNamePath: "Source",
+  warehouseOnHand: 58,
+  batchCount: 1,
+  batchPage: 1,
+  batchPageSize: 20,
+  pathIds: ["11111111-1111-4111-8111-111111111114"],
   locationName: "Source",
   locationType: "rack",
   qtyOnHand: 1000,
@@ -125,6 +135,7 @@ beforeEach(() => {
   state.values = [];
   state.mutate.mockClear();
   state.submit = undefined;
+  state.sourceData = undefined;
   state.error = null;
   state.isPending = false;
 });
@@ -162,6 +173,13 @@ describe("Move Stock dialog", () => {
     );
     state.submit?.();
     expect(state.mutate).not.toHaveBeenCalled();
+  });
+  it("loads availability for a source outside the visible location page", () => {
+    setQuantity("5");
+    state.sourceData = { data: [{ ...sourceLocation, qtyAvailable: 58 }] };
+    renderDialog([box], []);
+    state.submit?.();
+    expect(state.mutate).toHaveBeenCalled();
   });
   it("blocks submission when source availability cannot be loaded", () => {
     setQuantity("5");

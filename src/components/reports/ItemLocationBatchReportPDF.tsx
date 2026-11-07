@@ -124,7 +124,7 @@ export const ItemLocationBatchReportPDF = ({
             </View>
             <View style={[styles.cell, styles.wLocation]}>
               <Text style={styles.cellText}>{row.warehouseCode || noValueLabel}</Text>
-              <Text style={styles.muted}>{row.locationCode || noValueLabel}</Text>
+              <Text style={styles.muted}>{row.locationPath || noValueLabel}</Text>
             </View>
             <View style={[styles.cell, styles.wBatch]}>
               <Text style={styles.cellText}>{row.batchCode || noValueLabel}</Text>

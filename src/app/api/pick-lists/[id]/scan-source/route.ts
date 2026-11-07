@@ -43,11 +43,7 @@ const sameTimestamp = (left: string, right: string) =>
   new Date(left).getTime() === new Date(right).getTime();
 
 const normalizePickingPolicy = (value: unknown): PickingValidationPolicy => {
-  if (
-    value === "batch_and_warehouse" ||
-    value === "batch_and_rack" ||
-    value === "batch_only"
-  ) {
+  if (value === "batch_and_warehouse" || value === "batch_and_rack" || value === "batch_only") {
     return value;
   }
   return "batch_only";
@@ -106,7 +102,9 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
             code,
             name,
             is_active,
-            is_pickable
+            is_pickable,
+            is_storable,
+            location_path
           ),
           item_batch:item_batches!item_batch_locations_item_batch_id_fkey(
             id,
@@ -138,10 +136,17 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
 
     if (sourceResult.error) {
       console.error("Failed to resolve pick-list scan source", sourceResult.error);
-      return scanValidationError("Failed to resolve scanned source", "PICK_SOURCE_LOOKUP_FAILED", 500);
+      return scanValidationError(
+        "Failed to resolve scanned source",
+        "PICK_SOURCE_LOOKUP_FAILED",
+        500
+      );
     }
     if (deliveryNoteResult.error || !deliveryNoteResult.data?.fulfilling_business_unit_id) {
-      console.error("Failed to resolve pick-list fulfilling business unit", deliveryNoteResult.error);
+      console.error(
+        "Failed to resolve pick-list fulfilling business unit",
+        deliveryNoteResult.error
+      );
       return scanValidationError(
         "Failed to resolve the picking business unit",
         "PICKING_BUSINESS_UNIT_LOOKUP_FAILED",
@@ -176,6 +181,7 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
       !warehouse?.is_active ||
       !location?.is_active ||
       !location.is_pickable ||
+      !location.is_storable ||
       !itemBatch?.batch_code ||
       !itemBatch.received_at ||
       !sourceRow.location_id
@@ -290,9 +296,7 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const exactLine = eligible.find(
-      (row) => row.suggestedBatchLocationSku === batchLocationSku
-    );
+    const exactLine = eligible.find((row) => row.suggestedBatchLocationSku === batchLocationSku);
     const sameBatchLines = eligible.filter(
       (row) =>
         row.suggestedBatchCode === itemBatch.batch_code &&
@@ -346,7 +350,7 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
           warehouseId: sourceRow.warehouse_id,
           locationId: sourceRow.location_id,
           locationCode: location.code || null,
-          locationName: location.name || null,
+          locationName: location.location_path || null,
           batchCode: itemBatch.batch_code,
           batchReceivedAt: itemBatch.received_at,
           qtyOnHand: toNumber(sourceRow.qty_on_hand),
@@ -365,7 +369,11 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
     });
   } catch (error) {
     console.error("Unexpected error resolving pick-list scan source", error);
-    return scanValidationError("Failed to resolve scanned source", "PICK_SOURCE_LOOKUP_FAILED", 500);
+    return scanValidationError(
+      "Failed to resolve scanned source",
+      "PICK_SOURCE_LOOKUP_FAILED",
+      500
+    );
   }
 }
 

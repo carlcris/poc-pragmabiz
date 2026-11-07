@@ -876,3 +876,11 @@ or scanning returns an open pick list to the overview
 - **Mobile stock adjustments** for field adjustments
 - **Multi-language** support
 - **Dark mode** for mobile app
+
+### Configured picking addresses
+
+Native mobile picking uses the full configured `suggested_pick_location.location_path` address,
+including any zone/rack/shelf/bin/crate levels. The next-pick address wraps rather than truncating
+at one line. Location IDs and batch-location SKUs remain exact stock-source identities. The map
+endpoint highlights the nearest mapped rack ancestor and retains the exact destination address;
+locations without a mapped rack ancestor still have usable address and QR instructions.

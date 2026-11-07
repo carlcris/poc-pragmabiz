@@ -20,6 +20,7 @@ export type PickListItem = {
     | {
         id: string;
         warehouse_id: string;
+        location_path: string;
         code: string | null;
         name: string | null;
         warehouse?:
@@ -36,6 +37,7 @@ export type PickListItem = {
     | {
         id: string;
         warehouse_id: string;
+        location_path: string;
         code: string | null;
         name: string | null;
         warehouse?:
@@ -152,6 +154,7 @@ export type CreatePickListPayload = {
   pickerUserIds: string[];
   notes?: string;
   batchAllocationMode?: PickListBatchAllocationMode;
+  locationScopeId?: string;
 };
 
 export type UpdatePickListStatusPayload = {

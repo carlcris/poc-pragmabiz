@@ -27,6 +27,7 @@ const mapLocationOption = (location: {
   code: string;
   name: string | null;
   parent_id: string | null;
+  location_path: string;
   location_type: string;
   is_pickable: boolean | null;
   is_storable: boolean | null;
@@ -40,6 +41,7 @@ const mapLocationOption = (location: {
   code: location.code,
   name: location.name,
   parentId: location.parent_id,
+  locationPath: location.location_path,
   locationType: location.location_type,
   isPickable: location.is_pickable ?? false,
   isStorable: location.is_storable ?? false,
@@ -66,6 +68,11 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     if (selectedId && !UUID_PATTERN.test(selectedId)) {
       return NextResponse.json({ error: "Invalid selected location" }, { status: 400 });
     }
+    const excludeSubtreeId = searchParams.get("excludeSubtreeId") || null;
+    if (excludeSubtreeId && !UUID_PATTERN.test(excludeSubtreeId)) {
+      return NextResponse.json({ error: "Invalid excluded location" }, { status: 400 });
+    }
+    const pickableOnly = searchParams.get("pickableOnly") === "true";
     const includeInactive = searchParams.get("includeInactive") === "true";
     const storableOnly = searchParams.get("storableOnly") === "true";
     const locationType = searchParams.get("locationType")?.trim() || null;
@@ -94,7 +101,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     let query = adminSupabase
       .from("warehouse_locations")
       .select(
-        "id, company_id, warehouse_id, code, name, parent_id, location_type, is_pickable, is_storable, is_active, created_at, updated_at"
+        "id, company_id, warehouse_id, code, name, parent_id, location_path, location_type, is_pickable, is_storable, is_active, created_at, updated_at"
       )
       .eq("company_id", companyId)
       .eq("warehouse_id", warehouseId)
@@ -103,9 +110,11 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       .limit(limit);
 
     if (!includeInactive) query = query.eq("is_active", true);
+    if (excludeSubtreeId) query = query.not("path_ids", "cs", `{${excludeSubtreeId}}`);
+    if (pickableOnly) query = query.eq("is_pickable", true);
     if (storableOnly) query = query.eq("is_storable", true);
     if (locationType) query = query.eq("location_type", locationType);
-    if (search) query = query.or(`code.ilike.%${search}%,name.ilike.%${search}%`);
+    if (search) query = query.ilike("location_path", `%${search}%`);
 
     const { data, error } = await query;
     if (error) {
@@ -118,7 +127,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       let selectedQuery = adminSupabase
         .from("warehouse_locations")
         .select(
-          "id, company_id, warehouse_id, code, name, parent_id, location_type, is_pickable, is_storable, is_active, created_at, updated_at"
+          "id, company_id, warehouse_id, code, name, parent_id, location_path, location_type, is_pickable, is_storable, is_active, created_at, updated_at"
         )
         .eq("id", selectedId)
         .eq("company_id", companyId)
@@ -126,16 +135,16 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
         .is("deleted_at", null);
 
       if (!includeInactive) selectedQuery = selectedQuery.eq("is_active", true);
+      if (excludeSubtreeId)
+        selectedQuery = selectedQuery.not("path_ids", "cs", `{${excludeSubtreeId}}`);
+      if (pickableOnly) selectedQuery = selectedQuery.eq("is_pickable", true);
       if (storableOnly) selectedQuery = selectedQuery.eq("is_storable", true);
       if (locationType) selectedQuery = selectedQuery.eq("location_type", locationType);
 
       const { data: selectedLocation, error: selectedError } = await selectedQuery.maybeSingle();
       if (selectedError) {
         console.error("Failed to fetch selected warehouse location option:", selectedError);
-        return NextResponse.json(
-          { error: "Failed to fetch warehouse locations" },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: "Failed to fetch warehouse locations" }, { status: 500 });
       }
       selected = selectedLocation;
     }

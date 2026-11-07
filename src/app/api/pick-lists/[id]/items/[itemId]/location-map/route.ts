@@ -99,7 +99,11 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
       return safeError("Failed to load pick location", "PICK_LOCATION_LOAD_FAILED", 500);
     }
     if (!pickItem.suggested_pick_location_id) {
-      return safeError("No rack is assigned to this pick item", "PICK_LOCATION_NOT_ASSIGNED", 404);
+      return safeError(
+        "No location is assigned to this pick item",
+        "PICK_LOCATION_NOT_ASSIGNED",
+        404
+      );
     }
     if (!deliveryNote?.fulfilling_warehouse_id) {
       return safeError("No picking warehouse is assigned", "PICK_WAREHOUSE_NOT_ASSIGNED", 404);
@@ -108,18 +112,20 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
     const admin = createAdminClient();
     const { data: location, error: locationError } = await admin
       .from("warehouse_locations")
-      .select("id, warehouse_id, code, name")
+      .select("id, warehouse_id, code, name, location_path")
       .eq("company_id", auth.companyId)
       .eq("warehouse_id", deliveryNote.fulfilling_warehouse_id)
       .eq("id", pickItem.suggested_pick_location_id)
       .is("deleted_at", null)
       .maybeSingle();
-    const { data: rackMap, error: rackMapError } = await admin
-      .from("warehouse_floor_map_racks")
-      .select("floor_map_id")
-      .eq("company_id", auth.companyId)
-      .eq("warehouse_location_id", pickItem.suggested_pick_location_id)
-      .maybeSingle();
+    const { data: mappedAncestors, error: rackMapError } = await admin.rpc(
+      "get_location_mapped_ancestor",
+      {
+        p_company_id: auth.companyId,
+        p_location_id: pickItem.suggested_pick_location_id,
+      }
+    );
+    const rackMap = mappedAncestors?.[0];
     if (rackMapError) {
       console.error("Failed to resolve rack floor", rackMapError);
       return safeError("Failed to load pick location", "PICK_LOCATION_LOAD_FAILED", 500);
@@ -142,11 +148,7 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
         return safeError("Failed to load pick location", "PICK_LOCATION_LOAD_FAILED", 500);
       }
       return configuredFloor
-        ? safeError(
-            "This rack is not marked on a warehouse floor map",
-            "WAREHOUSE_RACK_NOT_MAPPED",
-            404
-          )
+        ? safeError("This location has no mapped rack ancestor", "WAREHOUSE_RACK_NOT_MAPPED", 404)
         : safeError(
             "No floor map is configured for this warehouse",
             "WAREHOUSE_FLOOR_MAP_NOT_CONFIGURED",
@@ -215,7 +217,9 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
     }
 
     const mappedRacks = racks || [];
-    const rack = mappedRacks.find((candidate) => candidate.warehouse_location_id === location.id);
+    const rack = mappedRacks.find(
+      (candidate) => candidate.warehouse_location_id === rackMap.warehouse_location_id
+    );
 
     if (!rack) {
       return safeError(
@@ -272,7 +276,7 @@ async function GETHandler(_request: NextRequest, context: RouteContext) {
         location: {
           id: location.id,
           code: location.code,
-          name: location.name,
+          name: location.location_path,
         },
         map: {
           id: map.id,

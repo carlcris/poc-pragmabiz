@@ -39,8 +39,8 @@ type BatchPrintRow = {
       })[]
     | null;
   location?:
-    | (RelatedRow & { code: string | null })
-    | (RelatedRow & { code: string | null })[]
+    | (RelatedRow & { code: string | null; location_path: string })
+    | (RelatedRow & { code: string | null; location_path: string })[]
     | null;
 };
 
@@ -101,6 +101,7 @@ async function GETHandler(_request: Request, routeContext: RouteContext) {
         ),
         location:warehouse_locations!item_batch_locations_location_id_fkey(
           code,
+          location_path,
           company_id,
           deleted_at
         )
@@ -159,7 +160,7 @@ async function GETHandler(_request: Request, routeContext: RouteContext) {
         itemName: item.item_name,
         warehouseCode: warehouse.warehouse_code,
         locationId: row.location_id,
-        locationCode: location.code,
+        locationCode: location.location_path,
       },
     });
   } catch (error) {

@@ -26,6 +26,7 @@ export type ItemLocationBatchReportRow = {
   locationId: string;
   locationCode: string | null;
   locationName: string | null;
+  locationPath: string | null;
   itemBatchId: string;
   batchCode: string | null;
   batchReceivedAt: string | null;

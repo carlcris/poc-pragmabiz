@@ -159,6 +159,7 @@ export const fetchPickList = async (supabase: SupabaseClient, companyId: string,
           warehouse_id,
           code,
           name,
+          location_path,
           warehouse:warehouses!warehouse_locations_warehouse_id_fkey(
             id,
             warehouse_code
@@ -272,10 +273,7 @@ export const notifyPickListReadyForDispatch = async (
     supabase,
     companyId,
     actorUserId,
-    businessUnitIds: [
-      dnDetails.requesting_business_unit_id,
-      dnDetails.fulfilling_business_unit_id,
-    ],
+    businessUnitIds: [dnDetails.requesting_business_unit_id, dnDetails.fulfilling_business_unit_id],
     title: "Ready for dispatch",
     message: `Delivery note ${dnDetails.dn_no} is ready for dispatch.`,
     type: "delivery_note_workflow",
@@ -289,245 +287,6 @@ export const notifyPickListReadyForDispatch = async (
   });
 };
 
-type RelatedRow<T> = T | T[] | null | undefined;
-
-type AllocationSource = {
-  batchLocationSku: string | null;
-  locationId: string;
-  locationCode: string | null;
-  locationName: string | null;
-  batchCode: string;
-  batchReceivedAt: string;
-  availableQty: number;
-  availableBaseQty: number;
-};
-
-export type PickListAllocationChoiceLine = {
-  deliveryNoteItemId: string;
-  itemId: string;
-  itemLabel: string;
-  unitLabel: string;
-  requiredQty: number;
-  requiredBaseQty: number;
-  suggestedSource: AllocationSource | null;
-  singleSource: AllocationSource | null;
-  splitSources: AllocationSource[];
-  totalAvailableQty: number;
-  totalAvailableBaseQty: number;
-};
-
-export type PickListAllocationChoice = {
-  lines: PickListAllocationChoiceLine[];
-  insufficientLines: PickListAllocationChoiceLine[];
-};
-
-const toNumber = (value: unknown) => {
-  if (value == null) return 0;
-  const parsed = typeof value === "number" ? value : parseFloat(String(value));
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const one = <T>(value: RelatedRow<T>) =>
-  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
-
-const toText = (value: unknown) =>
-  typeof value === "string" && value.trim() ? value.trim() : null;
-
-const sortAllocationSources = (a: AllocationSource, b: AllocationSource) => {
-  const receivedCompare = a.batchReceivedAt.localeCompare(b.batchReceivedAt);
-  if (receivedCompare !== 0) return receivedCompare;
-  return (a.batchLocationSku || "").localeCompare(b.batchLocationSku || "");
-};
-
-export const getPickListAllocationChoice = async (
-  supabase: SupabaseClient,
-  companyId: string,
-  dnId: string
-): Promise<PickListAllocationChoice> => {
-  const { data: dnItems, error: dnItemsError } = await supabase
-    .from("delivery_note_items")
-    .select(
-      `
-      id,
-      item_id,
-      item_unit_option_id,
-      uom_id,
-      sr_item_id,
-      allocated_qty,
-      picked_qty,
-      fulfilling_warehouse_id,
-      items!delivery_note_items_item_id_fkey(item_name, item_code),
-      units_of_measure!delivery_note_items_uom_id_fkey(code, symbol, name),
-      item_unit_options!delivery_note_items_item_unit_option_id_fkey(option_label, qty_per_unit)
-    `
-    )
-    .eq("company_id", companyId)
-    .eq("dn_id", dnId)
-    .eq("is_voided", false)
-    .gt("allocated_qty", 0)
-    .order("created_at", { ascending: true });
-
-  if (dnItemsError) {
-    throw new Error(dnItemsError.message);
-  }
-
-  const dnItemRows = (dnItems || []) as Array<Record<string, unknown>>;
-  const lines: PickListAllocationChoiceLine[] = [];
-  const insufficientLines: PickListAllocationChoiceLine[] = [];
-
-  for (const rawLine of dnItemRows) {
-    const allocatedQty = toNumber(rawLine.allocated_qty);
-    const pickedQty = toNumber(rawLine.picked_qty);
-    const requiredQty = Math.max(0, allocatedQty - pickedQty);
-    if (requiredQty <= 0) continue;
-
-    const unitOption = one(
-      rawLine.item_unit_options as RelatedRow<{
-        option_label?: string | null;
-        qty_per_unit?: number | string | null;
-      }>
-    );
-    const uom = one(
-      rawLine.units_of_measure as RelatedRow<{
-        code?: string | null;
-        symbol?: string | null;
-        name?: string | null;
-      }>
-    );
-    const item = one(
-      rawLine.items as RelatedRow<{
-        item_name?: string | null;
-        item_code?: string | null;
-      }>
-    );
-    const qtyPerUnit = Math.max(1, toNumber(unitOption?.qty_per_unit) || 1);
-    const requiredBaseQty = requiredQty * qtyPerUnit;
-    const itemId = String(rawLine.item_id || "");
-    const warehouseId = String(rawLine.fulfilling_warehouse_id || "");
-    const sourceQuery = supabase
-      .from("item_batch_locations")
-      .select(
-        `
-        id,
-        location_id,
-        batch_location_sku,
-        qty_on_hand,
-        qty_reserved,
-        warehouse_location:warehouse_locations!item_batch_locations_location_id_fkey(id, code, name),
-        item_batch:item_batches!item_batch_locations_item_batch_id_fkey(
-          id,
-          batch_code,
-          received_at,
-          qty_on_hand,
-          qty_reserved
-        )
-      `
-      )
-      .eq("company_id", companyId)
-      .eq("item_id", itemId)
-      .eq("warehouse_id", warehouseId)
-      .is("deleted_at", null);
-
-    const { data: sourceRows, error: sourceError } = await sourceQuery.limit(100);
-
-    if (sourceError) {
-      throw new Error(sourceError.message);
-    }
-
-    const sources = ((sourceRows || []) as Array<Record<string, unknown>>)
-      .map((row): AllocationSource | null => {
-        const batch = one(
-          row.item_batch as RelatedRow<{
-            batch_code?: string | null;
-            id?: string | null;
-            received_at?: string | null;
-            qty_on_hand?: number | string | null;
-            qty_reserved?: number | string | null;
-          }>
-        );
-        const location = one(
-          row.warehouse_location as RelatedRow<{
-            code?: string | null;
-            name?: string | null;
-          }>
-        );
-        const batchCode = toText(batch?.batch_code);
-        const receivedAt = toText(batch?.received_at);
-        const locationId = toText(row.location_id);
-        if (!batchCode || !receivedAt || !locationId) return null;
-
-        const locationAvailable = Math.max(
-          0,
-          toNumber(row.qty_on_hand) - toNumber(row.qty_reserved)
-        );
-        const batchAvailable = Math.max(
-          0,
-          toNumber(batch?.qty_on_hand) - toNumber(batch?.qty_reserved)
-        );
-        const availableBaseQty = Math.max(0, Math.min(locationAvailable, batchAvailable));
-        const availableQty = Math.floor(availableBaseQty / qtyPerUnit);
-        const usableBaseQty = availableQty * qtyPerUnit;
-        if (availableQty <= 0 || usableBaseQty <= 0) return null;
-
-        return {
-          batchLocationSku: toText(row.batch_location_sku),
-          locationId,
-          locationCode: toText(location?.code),
-          locationName: toText(location?.name),
-          batchCode,
-          batchReceivedAt: receivedAt,
-          availableQty,
-          availableBaseQty: usableBaseQty,
-        };
-      })
-      .filter((source): source is AllocationSource => source !== null)
-      .sort(sortAllocationSources);
-
-    const suggestedSource = sources[0] || null;
-
-    if (suggestedSource && suggestedSource.availableBaseQty >= requiredBaseQty) {
-      continue;
-    }
-
-    const singleSource =
-      sources.find((source) => source.availableBaseQty >= requiredBaseQty) || null;
-    const totalAvailableBaseQty = sources.reduce(
-      (total, source) => total + source.availableBaseQty,
-      0
-    );
-    const totalAvailableQty = sources.reduce((total, source) => total + source.availableQty, 0);
-    const splitSources: AllocationSource[] = [];
-    let remainingQty = requiredQty;
-    for (const source of sources) {
-      if (remainingQty <= 0) break;
-      splitSources.push(source);
-      remainingQty -= source.availableQty;
-    }
-
-    const choiceLine: PickListAllocationChoiceLine = {
-      deliveryNoteItemId: String(rawLine.id || ""),
-      itemId,
-      itemLabel: item?.item_name || item?.item_code || itemId,
-      unitLabel: unitOption?.option_label || uom?.symbol || uom?.code || uom?.name || "Unit",
-      requiredQty,
-      requiredBaseQty,
-      suggestedSource,
-      singleSource,
-      splitSources: remainingQty <= 0 ? splitSources : [],
-      totalAvailableQty,
-      totalAvailableBaseQty,
-    };
-
-    if (totalAvailableBaseQty < requiredBaseQty) {
-      insufficientLines.push(choiceLine);
-    } else {
-      lines.push(choiceLine);
-    }
-  }
-
-  return { lines, insufficientLines };
-};
-
 type CreatePickListForDnArgs = {
   supabase: SupabaseClient;
   companyId: string;
@@ -539,6 +298,7 @@ type CreatePickListForDnArgs = {
   pickerUserIds: string[];
   notes?: string | null;
   batchAllocationMode?: BatchAllocationMode | null;
+  locationScopeId?: string | null;
 };
 
 export const createPickListForDn = async ({
@@ -552,6 +312,7 @@ export const createPickListForDn = async ({
   pickerUserIds,
   notes,
   batchAllocationMode,
+  locationScopeId,
 }: CreatePickListForDnArgs) => {
   const uniquePickers = Array.from(new Set(pickerUserIds.map((id) => id.trim()).filter(Boolean)));
   if (uniquePickers.length === 0) {
@@ -569,6 +330,7 @@ export const createPickListForDn = async ({
     p_notes: notes?.trim() || null,
     p_current_business_unit_id: currentBusinessUnitId,
     p_batch_allocation_mode: batchAllocationMode || null,
+    p_location_scope_id: locationScopeId || null,
   });
 
   if (error) {

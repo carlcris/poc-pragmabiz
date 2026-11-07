@@ -115,6 +115,8 @@ export function useLookupWarehouseLocations(
     includeInactive?: boolean;
     storableOnly?: boolean;
     locationType?: string;
+    excludeSubtreeId?: string;
+    pickableOnly?: boolean;
   }
 ) {
   return useQuery({
@@ -128,6 +130,8 @@ export function useLookupWarehouseLocations(
       params?.includeInactive ?? false,
       params?.storableOnly ?? false,
       params?.locationType ?? null,
+      params?.excludeSubtreeId ?? null,
+      params?.pickableOnly ?? false,
     ],
     enabled: !!warehouseId,
     queryFn: () =>
@@ -141,6 +145,8 @@ export function useLookupWarehouseLocations(
             includeInactive: params?.includeInactive ? "true" : "false",
             storableOnly: params?.storableOnly ? "true" : "false",
             locationType: params?.locationType,
+            excludeSubtreeId: params?.excludeSubtreeId,
+            pickableOnly: params?.pickableOnly ? "true" : "false",
           },
         }
       ),

@@ -36,8 +36,8 @@ type ItemLocationBatchRow = {
     | { id: string; warehouse_code: string | null; warehouse_name: string | null }[]
     | null;
   location?:
-    | { id: string; code: string | null; name: string | null }
-    | { id: string; code: string | null; name: string | null }[]
+    | { id: string; code: string | null; name: string | null; location_path: string }
+    | { id: string; code: string | null; name: string | null; location_path: string }[]
     | null;
 };
 
@@ -123,6 +123,7 @@ async function GETHandler(request: NextRequest) {
         location:warehouse_locations!item_batch_locations_location_id_fkey(
           id,
           code,
+          location_path,
           name
         )
       `,
@@ -195,6 +196,7 @@ async function GETHandler(request: NextRequest) {
         locationId: row.location_id,
         locationCode: location?.code || null,
         locationName: location?.name || null,
+        locationPath: location?.location_path || null,
         itemBatchId: row.item_batch_id,
         batchCode: batch?.batch_code || null,
         batchReceivedAt: receivedAt,

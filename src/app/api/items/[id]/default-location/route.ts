@@ -50,17 +50,34 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
     }
 
     if (body.locationId) {
-      const { data: location } = await supabase
+      const { data: location, error: locationError } = await supabase
         .from("warehouse_locations")
-        .select("id")
+        .select("id, is_storable, is_active")
         .eq("id", body.locationId)
         .eq("company_id", userData.company_id)
         .eq("warehouse_id", body.warehouseId)
         .is("deleted_at", null)
         .maybeSingle();
 
+      if (locationError) {
+        console.error("Failed to validate preferred location", locationError);
+        return NextResponse.json(
+          { error: "Failed to validate preferred location" },
+          { status: 500 }
+        );
+      }
+
       if (!location) {
         return NextResponse.json({ error: "Location not found in warehouse" }, { status: 400 });
+      }
+      if (!location.is_storable || !location.is_active) {
+        return NextResponse.json(
+          {
+            error: "Choose an active location that allows stock storage.",
+            code: "LOCATION_STORAGE_UNAVAILABLE",
+          },
+          { status: 409 }
+        );
       }
     }
 
@@ -84,10 +101,8 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
         .eq("id", itemWarehouse.id);
 
       if (updateError) {
-        return NextResponse.json(
-          { error: updateError.message || "Failed to update default location" },
-          { status: 500 }
-        );
+        console.error("Failed to update default location", updateError);
+        return NextResponse.json({ error: "Failed to update default location" }, { status: 500 });
       }
     } else {
       if (!body.locationId) {
@@ -108,10 +123,8 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       });
 
       if (insertError) {
-        return NextResponse.json(
-          { error: insertError.message || "Failed to set default location" },
-          { status: 500 }
-        );
+        console.error("Failed to set default location", insertError);
+        return NextResponse.json({ error: "Failed to set default location" }, { status: 500 });
       }
     }
 

@@ -11511,10 +11511,12 @@ export type Database = {
           is_active: boolean | null;
           is_pickable: boolean | null;
           is_storable: boolean | null;
+          location_path: string;
           location_type: string;
           max_capacity: number | null;
           name: string | null;
           parent_id: string | null;
+          path_ids: string[];
           updated_at: string;
           updated_by: string | null;
           version: number;
@@ -11530,10 +11532,12 @@ export type Database = {
           is_active?: boolean | null;
           is_pickable?: boolean | null;
           is_storable?: boolean | null;
+          location_path?: string;
           location_type?: string;
           max_capacity?: number | null;
           name?: string | null;
           parent_id?: string | null;
+          path_ids?: string[];
           updated_at?: string;
           updated_by?: string | null;
           version?: number;
@@ -11549,10 +11553,12 @@ export type Database = {
           is_active?: boolean | null;
           is_pickable?: boolean | null;
           is_storable?: boolean | null;
+          location_path?: string;
           location_type?: string;
           max_capacity?: number | null;
           name?: string | null;
           parent_id?: string | null;
+          path_ids?: string[];
           updated_at?: string;
           updated_by?: string | null;
           version?: number;
@@ -12114,6 +12120,21 @@ export type Database = {
         };
         Returns: Json;
       };
+      copy_warehouse_location_structure: {
+        Args: {
+          p_business_unit_id: string;
+          p_code_find: string;
+          p_code_replace: string;
+          p_destination_parent_id?: string;
+          p_name_find?: string;
+          p_name_replace?: string;
+          p_source_id: string;
+        };
+        Returns: {
+          created_count: number;
+          root_id: string;
+        }[];
+      };
       create_delivery_notes_transactionally: {
         Args: {
           p_business_unit_id: string;
@@ -12201,6 +12222,7 @@ export type Database = {
           p_company_id: string;
           p_current_business_unit_id?: string;
           p_dn_id: string;
+          p_location_scope_id?: string;
           p_notes?: string;
           p_picker_user_ids: string[];
           p_user_id: string;
@@ -12407,6 +12429,28 @@ export type Database = {
         };
         Returns: string;
       };
+      create_warehouse_locations_batch: {
+        Args: {
+          p_business_unit_id: string;
+          p_code_prefix: string;
+          p_digits: number;
+          p_from: number;
+          p_is_active: boolean;
+          p_is_pickable: boolean;
+          p_is_storable: boolean;
+          p_location_type: string;
+          p_max_capacity?: number;
+          p_name_prefix?: string;
+          p_parent_id?: string;
+          p_skip_existing: boolean;
+          p_to: number;
+          p_warehouse_id: string;
+        };
+        Returns: {
+          created_count: number;
+          skipped_count: number;
+        }[];
+      };
       custom_access_token_hook: { Args: { event: Json }; Returns: Json };
       delete_item_custom_field: {
         Args: { p_item_id: string; p_key: string; p_updated_by?: string };
@@ -12431,6 +12475,20 @@ export type Database = {
       ensure_user_activity_log_partitions: {
         Args: { p_months_ahead?: number; p_months_before?: number };
         Returns: undefined;
+      };
+      expand_warehouse_location_batch: {
+        Args: {
+          p_code_prefix: string;
+          p_digits: number;
+          p_from: number;
+          p_name_prefix: string;
+          p_to: number;
+        };
+        Returns: {
+          code: string;
+          name: string;
+          sequence_number: number;
+        }[];
       };
       finalize_frame_job_order_completion_transaction: {
         Args: { p_job_order_id: string };
@@ -12684,6 +12742,50 @@ export type Database = {
         };
         Returns: Json;
       };
+      get_item_floor_stock: {
+        Args: {
+          p_company_id: string;
+          p_floor_map_id: string;
+          p_item_id: string;
+        };
+        Returns: Json;
+      };
+      get_item_location_stock_page: {
+        Args: {
+          p_batch_page?: number;
+          p_business_unit_id?: string;
+          p_company_id: string;
+          p_item_id: string;
+          p_limit?: number;
+          p_location_id?: string;
+          p_page?: number;
+          p_search?: string;
+        };
+        Returns: Json;
+      };
+      get_item_location_stock_tree: {
+        Args: {
+          p_business_unit_id?: string;
+          p_company_id: string;
+          p_item_id: string;
+          p_limit?: number;
+          p_location_id?: string;
+          p_page?: number;
+          p_parent_id?: string;
+          p_warehouse_id: string;
+        };
+        Returns: Json;
+      };
+      get_item_warehouse_stock_summary: {
+        Args: {
+          p_business_unit_id?: string;
+          p_company_id: string;
+          p_item_id: string;
+          p_limit?: number;
+          p_page?: number;
+        };
+        Returns: Json;
+      };
       get_items_enhanced_page: {
         Args: {
           p_business_unit_id?: string;
@@ -12739,6 +12841,13 @@ export type Database = {
           out_of_stock_count: number;
           total_available_value: number;
           total_count: number;
+        }[];
+      };
+      get_location_mapped_ancestor: {
+        Args: { p_company_id: string; p_location_id: string };
+        Returns: {
+          floor_map_id: string;
+          warehouse_location_id: string;
         }[];
       };
       get_product_movement_report: {
@@ -12942,10 +13051,15 @@ export type Database = {
           p_business_unit_id: string;
           p_limit?: number;
           p_page?: number;
+          p_parent_id?: string;
+          p_roots_only?: boolean;
+          p_scope_id?: string;
+          p_search?: string;
           p_warehouse_id: string;
         };
         Returns: {
           capacity_status: string;
+          child_count: number;
           code: string;
           company_id: string;
           created_at: string;
@@ -12953,14 +13067,43 @@ export type Database = {
           is_active: boolean;
           is_pickable: boolean;
           is_storable: boolean;
+          location_path: string;
           location_type: string;
           max_capacity: number;
           name: string;
           parent_id: string;
+          subtree_quantity: number;
           total_count: number;
           updated_at: string;
           used_capacity: number;
           utilization_percent: number;
+          warehouse_id: string;
+        }[];
+      };
+      get_warehouse_location_detail: {
+        Args: { p_business_unit_id: string; p_location_id: string };
+        Returns: {
+          active_child_count: number;
+          ancestors: Json;
+          child_count: number;
+          code: string;
+          descendant_count: number;
+          direct_on_hand: number;
+          direct_pending_putaway: number;
+          direct_reserved: number;
+          id: string;
+          is_active: boolean;
+          is_pickable: boolean;
+          is_storable: boolean;
+          location_path: string;
+          location_type: string;
+          max_capacity: number;
+          name: string;
+          parent_id: string;
+          stocked_location_count: number;
+          subtree_on_hand: number;
+          subtree_pending_putaway: number;
+          subtree_reserved: number;
           warehouse_id: string;
         }[];
       };
@@ -13220,6 +13363,31 @@ export type Database = {
         Args: { p_company_id: string; p_grn_id: string; p_user_id: string };
         Returns: undefined;
       };
+      plan_warehouse_location_copy: {
+        Args: {
+          p_business_unit_id: string;
+          p_code_find: string;
+          p_code_replace: string;
+          p_destination_parent_id?: string;
+          p_name_find?: string;
+          p_name_replace?: string;
+          p_source_id: string;
+        };
+        Returns: {
+          already_exists: boolean;
+          code: string;
+          depth: number;
+          is_active: boolean;
+          is_pickable: boolean;
+          is_storable: boolean;
+          location_path: string;
+          location_type: string;
+          max_capacity: number;
+          name: string;
+          source_id: string;
+          source_parent_id: string;
+        }[];
+      };
       post_delivery_note_dispatch:
         | {
             Args: {
@@ -13298,6 +13466,24 @@ export type Database = {
       prepare_sales_order_draft_item: {
         Args: { p_company_id: string; p_customer_id: string; p_item: Json };
         Returns: Json;
+      };
+      preview_warehouse_locations_batch: {
+        Args: {
+          p_business_unit_id: string;
+          p_code_prefix: string;
+          p_digits: number;
+          p_from: number;
+          p_name_prefix?: string;
+          p_parent_id?: string;
+          p_to: number;
+          p_warehouse_id: string;
+        };
+        Returns: {
+          already_exists: boolean;
+          code: string;
+          location_path: string;
+          name: string;
+        }[];
       };
       recalculate_sales_order_linked_quotation_statuses: {
         Args: { p_sales_order_id: string };
@@ -13482,6 +13668,19 @@ export type Database = {
           p_warehouse_id: string;
         };
         Returns: string;
+      };
+      resolve_warehouse_location_batch_scope: {
+        Args: {
+          p_business_unit_id: string;
+          p_lock: boolean;
+          p_parent_id: string;
+          p_warehouse_id: string;
+        };
+        Returns: {
+          company_id: string;
+          parent_active: boolean;
+          parent_path: string;
+        }[];
       };
       reverse_load_list_arrival: {
         Args: {

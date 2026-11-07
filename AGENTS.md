@@ -156,6 +156,26 @@ Hard stop:
 - Pages and components should decide how mutation success/error states are shown.
 - Hooks and screens must not orchestrate dependent mutation chains for one business operation. Use one mutation endpoint for the operation and let the server/DB transaction own the sequence.
 
+### Mutation Cache Consistency
+
+- Before adding or changing a mutation, trace every query family that reads the affected records
+  or derived totals across modules. Inspect actual query keys and consumers; do not assume that
+  refreshing the initiating screen or a similarly named query refreshes related views.
+- On success, invalidate or update all affected query families, including lists, trees, selected
+  details, summaries, stock-aware selectors, dashboards, and reports where their data changes.
+  Cover source and destination entities and parent aggregates. Active queries must refresh and
+  inactive cached queries must be marked stale so returning to a view loads current data.
+- When adding a new query family over mutable data, update the relevant existing mutation
+  invalidation paths in the same change. Prefer shared query-key constants or factories when
+  available, and keep invalidation scoped to affected data rather than clearing the entire cache.
+- For stock moves, explicitly check item Locations and warehouse Locations list, tree, and detail
+  quantities for both source and destination, including ancestor totals. A correct database write
+  alone does not establish that the user-facing workflow is complete.
+- Add focused regression coverage for changed invalidation behavior using primed caches: verify
+  active affected queries refetch, inactive affected queries become stale, and unrelated queries
+  remain untouched. Verify the affected view updates without a browser reload; do not rely on
+  default stale times, window focus, polling, or navigation to conceal missing invalidation.
+
 ### Dashboard Pages
 
 - Render a stable dashboard shell first: breadcrumb, page header, toolbar/filter row, then content region.

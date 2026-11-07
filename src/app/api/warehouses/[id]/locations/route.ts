@@ -1,3 +1,4 @@
+import { warehouseLocationErrorResponse } from "@/lib/warehouse-location-errors";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { RESOURCES } from "@/constants/resources";
@@ -9,14 +10,14 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LOCATION_COLUMNS =
-  "id, company_id, warehouse_id, code, name, parent_id, location_type, is_pickable, is_storable, is_active, max_capacity, created_at, updated_at";
+  "id, company_id, warehouse_id, code, name, parent_id, location_type, is_pickable, is_storable, is_active, max_capacity, location_path, created_at, updated_at";
 
 const createLocationSchema = z
   .object({
     code: z.string().trim().min(1).max(100),
     name: z.string().trim().max(200).nullable().optional(),
     parentId: z.string().uuid().nullable().optional(),
-    locationType: z.string().trim().min(1).max(50).optional(),
+    locationType: z.enum(["zone", "aisle", "rack", "shelf", "bin", "crate"]).optional(),
     isPickable: z.boolean().optional(),
     isStorable: z.boolean().optional(),
     isActive: z.boolean().optional(),
@@ -76,6 +77,9 @@ const mapLocation = (location: {
   is_storable: boolean | null;
   is_active: boolean | null;
   max_capacity: number | null;
+  location_path: string;
+  child_count?: number;
+  subtree_quantity?: number;
   created_at: string;
   updated_at: string;
   used_capacity?: number;
@@ -88,6 +92,9 @@ const mapLocation = (location: {
   code: location.code,
   name: location.name,
   parentId: location.parent_id,
+  locationPath: location.location_path,
+  childCount: location.child_count ?? 0,
+  subtreeQuantity: location.subtree_quantity ?? 0,
   locationType: location.location_type,
   isPickable: location.is_pickable ?? false,
   isStorable: location.is_storable ?? false,
@@ -134,6 +141,20 @@ async function GETHandler(request: NextRequest, { params }: RouteContext) {
     if (!warehouse) return warehouseNotFound();
 
     const { searchParams } = new URL(request.url);
+    const parentId = searchParams.get("parentId") || null;
+    const rootsOnly = searchParams.get("rootsOnly") === "true";
+    const search = searchParams.get("search")?.trim() || null;
+    const scopeId = searchParams.get("scopeId") || null;
+    if (
+      (parentId && !UUID_REGEX.test(parentId)) ||
+      (scopeId && !UUID_REGEX.test(scopeId)) ||
+      (search && search.length > 200)
+    ) {
+      return NextResponse.json(
+        { error: "Invalid location filter", code: "INVALID_LOCATION" },
+        { status: 400 }
+      );
+    }
     const page = parsePositiveInteger(searchParams.get("page"), 1, 1_000_000);
     const limit = parsePositiveInteger(searchParams.get("limit"), 20, 100);
     const { data, error } = await supabase.rpc("get_warehouse_location_capacities", {
@@ -141,6 +162,10 @@ async function GETHandler(request: NextRequest, { params }: RouteContext) {
       p_warehouse_id: id,
       p_page: page,
       p_limit: limit,
+      p_parent_id: parentId,
+      p_roots_only: rootsOnly,
+      p_search: search,
+      p_scope_id: scopeId,
     });
 
     if (error) {
@@ -153,12 +178,17 @@ async function GETHandler(request: NextRequest, { params }: RouteContext) {
 
     let total = data?.[0]?.total_count;
     if (total == null) {
-      const { count, error: countError } = await supabase
+      let countQuery = supabase
         .from("warehouse_locations")
         .select("id", { count: "exact", head: true })
         .eq("company_id", companyId)
         .eq("warehouse_id", id)
         .is("deleted_at", null);
+      if (parentId) countQuery = countQuery.eq("parent_id", parentId);
+      if (rootsOnly) countQuery = countQuery.is("parent_id", null);
+      if (search) countQuery = countQuery.ilike("location_path", `%${search}%`);
+      if (scopeId) countQuery = countQuery.contains("path_ids", [scopeId]).neq("id", scopeId);
+      const { count, error: countError } = await countQuery;
 
       if (countError) {
         console.error("Failed to count warehouse locations", countError);
@@ -275,6 +305,8 @@ async function POSTHandler(request: NextRequest, { params }: RouteContext) {
 
     if (insertError || !created) {
       console.error("Failed to create warehouse location", insertError);
+      const hierarchyError = insertError && warehouseLocationErrorResponse(insertError);
+      if (hierarchyError) return hierarchyError;
       if (insertError?.code === "23505") {
         return NextResponse.json(
           {

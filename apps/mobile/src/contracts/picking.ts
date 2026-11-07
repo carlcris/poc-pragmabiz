@@ -34,6 +34,7 @@ export type PickListItem = {
   requiredQty: number;
   pickedQty: number;
   locationName: string | null;
+  locationPath: string | null;
   batchNumber: string | null;
 };
 

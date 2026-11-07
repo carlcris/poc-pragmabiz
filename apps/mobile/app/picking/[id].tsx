@@ -49,7 +49,6 @@ import { canAccessPicking } from "@/utils/permissions";
 import { createTranslator } from "use-intl/core";
 import { translations } from "../../../../src/lib/i18n/translations";
 
-
 // The native app currently uses English; reuse the web source of truth for new pick detail copy.
 const tPickDetail = createTranslator({ locale: "en", messages: translations.en.mobilePickDetail });
 const getStatusMeta = (status: string) => {
@@ -152,19 +151,18 @@ const extractScannedSource = (rawScan: string) => {
 const defaultPickSource = (item: PickListItem): PickSource => ({
   batchLocationSku: item.sourceSku,
   locationId: item.sourceLocationId,
-  locationName: item.locationName,
+  locationName: item.locationPath,
   batchCode: item.batchNumber,
   batchReceivedAt: item.sourceBatchReceivedAt,
   isMismatch: false,
 });
 
-const getAssignedLocationCode = (item: PickListItem) =>
-  item.sourceLocationCode || item.locationName;
+const getAssignedLocationAddress = (item: PickListItem) => item.locationPath;
 
-// Location codes encode zone, aisle and bay, so natural ordering approximates the walking path.
+// Sort configured addresses naturally to keep nearby storage locations together.
 const compareByPickLocation = (left: PickListItem, right: PickListItem) => {
-  const leftCode = getAssignedLocationCode(left);
-  const rightCode = getAssignedLocationCode(right);
+  const leftCode = getAssignedLocationAddress(left);
+  const rightCode = getAssignedLocationAddress(right);
   if (leftCode && rightCode) {
     const byLocation = leftCode.localeCompare(rightCode, undefined, { numeric: true });
     if (byLocation !== 0) return byLocation;
@@ -375,7 +373,7 @@ export default function PickingDetailScreen() {
     setCurrentPickSource({
       batchLocationSku: pendingConfirmation.payload.batchLocationSku || item.sourceSku,
       locationId: pendingConfirmation.payload.pickedLocationId || item.sourceLocationId,
-      locationName: item.locationName,
+      locationName: item.locationPath,
       batchCode: pendingConfirmation.payload.pickedBatchCode || item.batchNumber,
       batchReceivedAt:
         pendingConfirmation.payload.pickedBatchReceivedAt || item.sourceBatchReceivedAt,
@@ -1000,8 +998,11 @@ const NextPickCard = ({
   remainingLineCount: number;
   onViewLocation: () => void;
 }) => {
-  const locationCode = getAssignedLocationCode(item);
-  const sourceMeta = [item.sourceWarehouseCode, item.batchNumber ? `Batch ${item.batchNumber}` : null]
+  const locationAddress = getAssignedLocationAddress(item);
+  const sourceMeta = [
+    item.sourceWarehouseCode,
+    item.batchNumber ? `Batch ${item.batchNumber}` : null,
+  ]
     .filter((segment): segment is string => Boolean(segment))
     .join(" · ");
   const remainingQty = getRemainingQty(item);
@@ -1021,10 +1022,8 @@ const NextPickCard = ({
         </View>
         <View style={styles.flexFill}>
           <Text style={styles.nextPickMeta}>{tPickDetail("location")}</Text>
-          {locationCode ? (
-            <Text style={styles.nextPickLocation} numberOfLines={1}>
-              {locationCode}
-            </Text>
+          {locationAddress ? (
+            <Text style={styles.nextPickLocation}>{locationAddress}</Text>
           ) : (
             <Text style={styles.nextPickLocationMissing}>Location not recorded</Text>
           )}
@@ -1037,7 +1036,10 @@ const NextPickCard = ({
         {item.sourceLocationId ? (
           <Pressable
             accessibilityRole="button"
-            style={({ pressed }) => [styles.nextPickMapButton, pressed && styles.scannerActionPressed]}
+            style={({ pressed }) => [
+              styles.nextPickMapButton,
+              pressed && styles.scannerActionPressed,
+            ]}
             onPress={onViewLocation}
           >
             <Ionicons name="map-outline" size={16} color={colors.primaryDark} />
@@ -1090,7 +1092,7 @@ const UpNextList = ({
         const rowContent = (
           <>
             <Text style={styles.rowLocation} numberOfLines={1}>
-              {getAssignedLocationCode(item) ?? "—"}
+              {getAssignedLocationAddress(item) ?? "—"}
             </Text>
             <Text style={styles.rowItemName} numberOfLines={2}>
               {item.name}
@@ -1154,15 +1156,12 @@ const PickedItemsSection = ({
     {expanded ? (
       <View style={styles.listSurface}>
         {items.map((item, index) => (
-          <View
-            key={item.id}
-            style={[styles.listRow, index > 0 ? styles.listRowDivider : null]}
-          >
+          <View key={item.id} style={[styles.listRow, index > 0 ? styles.listRowDivider : null]}>
             <Ionicons name="checkmark-circle" size={18} color={colors.statusSuccess} />
             <View style={styles.flexFill}>
               <Text style={styles.pickedItemName}>{item.name}</Text>
               <Text style={styles.secondaryText}>
-                {getAssignedLocationCode(item) ?? "—"} · {item.pickedQty} / {item.requiredQty}{" "}
+                {getAssignedLocationAddress(item) ?? "—"} · {item.pickedQty} / {item.requiredQty}{" "}
                 {item.uom}
               </Text>
             </View>
@@ -1235,8 +1234,7 @@ const PickConfirmationPanel = ({
           {receivedDate ? ` · received ${receivedDate}` : ""}
         </Text>
         <Text style={styles.secondaryText}>
-          QR code{" "}
-          <RecordedValue value={source.batchLocationSku} missingLabel="not recorded" />
+          QR code <RecordedValue value={source.batchLocationSku} missingLabel="not recorded" />
         </Text>
         <Text style={[styles.itemNameLarge, styles.confirmItemName]}>{item.name}</Text>
         <Pressable accessibilityRole="button" style={styles.mapButton} onPress={onViewLocation}>
@@ -1250,7 +1248,7 @@ const PickConfirmationPanel = ({
           <View style={styles.comparisonColumn}>
             <Text style={styles.sectionLabel}>Assigned</Text>
             <Text style={styles.comparisonValue}>
-              <RecordedValue value={getAssignedLocationCode(item)} missingLabel="Not recorded" />
+              <RecordedValue value={getAssignedLocationAddress(item)} missingLabel="Not recorded" />
             </Text>
             <Text style={styles.secondaryText}>
               <RecordedValue
@@ -1309,7 +1307,11 @@ const PickConfirmationPanel = ({
             style={styles.stepperButton}
             onPress={() => onAdjustPickedQty(1)}
           >
-            <Ionicons name="add" size={28} color={canIncrease ? colors.text : colors.textDisabled} />
+            <Ionicons
+              name="add"
+              size={28}
+              color={canIncrease ? colors.text : colors.textDisabled}
+            />
           </Pressable>
         </View>
         <Text style={styles.secondaryText}>
@@ -1411,7 +1413,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     ...primaryGlow,
   },
-  verifyButtonDisabled: { backgroundColor: colors.backgroundSecondary, shadowOpacity: 0, elevation: 0 },
+  verifyButtonDisabled: {
+    backgroundColor: colors.backgroundSecondary,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
   verifyButtonText: {
     fontSize: 16,
     fontWeight: typography.fontWeights.semibold,

@@ -13,6 +13,7 @@ export type WarehouseLocationOption = {
   warehouseId?: string;
   code: string;
   name?: string | null;
+  locationPath?: string;
 };
 
 type WarehouseLocationSelectProps = {
@@ -22,11 +23,17 @@ type WarehouseLocationSelectProps = {
   selectedOption?: WarehouseLocationOption | null;
   onOptionChange?: (option: WarehouseLocationOption | null) => void;
   allowNone?: boolean;
+  noneLabel?: string;
   includeInactive?: boolean;
   storableOnly?: boolean;
   locationType?: string;
+  excludeSubtreeId?: string;
+  pickableOnly?: boolean;
   disabled?: boolean;
   buttonClassName?: string;
+  triggerId?: string;
+  invalid?: boolean;
+  describedBy?: string;
 };
 
 export function WarehouseLocationSelect({
@@ -36,18 +43,27 @@ export function WarehouseLocationSelect({
   selectedOption = null,
   onOptionChange,
   allowNone = false,
+  noneLabel,
   includeInactive = false,
   storableOnly = false,
   locationType,
+  excludeSubtreeId,
+  pickableOnly,
   disabled = false,
   buttonClassName,
+  triggerId,
+  invalid,
+  describedBy,
 }: WarehouseLocationSelectProps) {
   const t = useTranslations("warehouseLocationSelect");
   const [search, setSearch] = useState("");
-  const [lastSelectedOption, setLastSelectedOption] =
-    useState<WarehouseLocationOption | null>(selectedOption);
+  const [lastSelectedOption, setLastSelectedOption] = useState<WarehouseLocationOption | null>(
+    selectedOption
+  );
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
-  const selectedOptionMissing = Boolean(value && lastSelectedOption?.id !== value);
+  const selectedOptionMissing = Boolean(
+    value && (lastSelectedOption?.id !== value || !lastSelectedOption.locationPath)
+  );
   const { data, isLoading } = useLookupWarehouseLocations(warehouseId, {
     search: debouncedSearch || undefined,
     limit: 5,
@@ -55,6 +71,8 @@ export function WarehouseLocationSelect({
     includeInactive,
     storableOnly,
     locationType,
+    excludeSubtreeId,
+    pickableOnly,
   });
   const locationOptions = useMemo<WarehouseLocationOption[]>(() => data?.data ?? [], [data?.data]);
   const selectedFromResults =
@@ -62,10 +80,6 @@ export function WarehouseLocationSelect({
     (data?.selected?.id === value ? data.selected : null);
 
   useEffect(() => {
-    if (selectedOption?.id === value) {
-      setLastSelectedOption(selectedOption);
-      return;
-    }
     if (selectedFromResults) {
       setLastSelectedOption(selectedFromResults);
       if (lastSelectedOption?.id !== selectedFromResults.id) {
@@ -73,12 +87,28 @@ export function WarehouseLocationSelect({
       }
       return;
     }
+    if (
+      selectedOption?.id === value &&
+      (!lastSelectedOption?.locationPath ||
+        (selectedOption.locationPath &&
+          selectedOption.locationPath !== lastSelectedOption.locationPath))
+    ) {
+      setLastSelectedOption(selectedOption);
+      return;
+    }
     if (!value) setLastSelectedOption(null);
-  }, [lastSelectedOption?.id, onOptionChange, selectedFromResults, selectedOption, value]);
+  }, [
+    lastSelectedOption?.id,
+    lastSelectedOption?.locationPath,
+    onOptionChange,
+    selectedFromResults,
+    selectedOption,
+    value,
+  ]);
 
   const noLocationOption = useMemo<WarehouseLocationOption>(
-    () => ({ id: NO_LOCATION_VALUE, code: t("noLocation"), name: null }),
-    [t]
+    () => ({ id: NO_LOCATION_VALUE, code: noneLabel ?? t("noLocation"), name: null }),
+    [noneLabel, t]
   );
   const options = allowNone ? [noLocationOption, ...locationOptions] : locationOptions;
   const effectiveValue = allowNone && !value ? NO_LOCATION_VALUE : value;
@@ -86,8 +116,8 @@ export function WarehouseLocationSelect({
     allowNone && !value
       ? noLocationOption
       : selectedFromResults ||
-        (selectedOption?.id === value ? selectedOption : null) ||
-        (lastSelectedOption?.id === value ? lastSelectedOption : null);
+        (lastSelectedOption?.id === value ? lastSelectedOption : null) ||
+        (selectedOption?.id === value ? selectedOption : null);
 
   return (
     <AsyncSearchCombobox
@@ -96,7 +126,7 @@ export function WarehouseLocationSelect({
         const isNoLocation = nextValue === NO_LOCATION_VALUE;
         const nextLocation = isNoLocation
           ? null
-          : locationOptions.find((location) => location.id === nextValue) ?? null;
+          : (locationOptions.find((location) => location.id === nextValue) ?? null);
         setLastSelectedOption(nextLocation);
         onOptionChange?.(nextLocation);
         onValueChange(isNoLocation ? "" : nextValue);
@@ -109,7 +139,7 @@ export function WarehouseLocationSelect({
       getOptionLabel={(location) =>
         location.id === NO_LOCATION_VALUE
           ? location.code
-          : `${location.code}${location.name ? ` - ${location.name}` : ""}`
+          : location.locationPath || `${location.code}${location.name ? ` - ${location.name}` : ""}`
       }
       getOptionSearchValue={(location) => `${location.code} ${location.name ?? ""}`}
       placeholder={warehouseId ? t("selectLocation") : t("selectWarehouseFirst")}
@@ -119,6 +149,9 @@ export function WarehouseLocationSelect({
       isLoading={isLoading}
       disabled={disabled || !warehouseId}
       buttonClassName={buttonClassName}
+      triggerId={triggerId}
+      invalid={invalid}
+      describedBy={describedBy}
     />
   );
 }

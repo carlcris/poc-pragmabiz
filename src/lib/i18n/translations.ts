@@ -612,7 +612,39 @@ export type TranslationKeys = {
     notFoundError: string;
     contextRequiredError: string;
   };
+  pickAllocationScope: {
+    scopeInvalid: string;
+    insufficient: string;
+    sourceUnavailable: string;
+    alreadyActive: string;
+    forbidden: string;
+    failed: string;
+    created: string;
+    title: string;
+    description: string;
+  };
   warehouseLocationsPage: {
+    editConflict: string;
+    parentLocation: string;
+    parentHelp: string;
+    locationPath: string;
+    warehouseRoot: string;
+    searchLocations: string;
+    hierarchyHelp: string;
+    subtreeQuantity: string;
+    openLocation: string;
+    parentInvalid: string;
+    hierarchyCycle: string;
+    hasChildren: string;
+    locationInUse: string;
+    ownershipImmutable: string;
+    typeZone: string;
+    typeAisle: string;
+    typeRack: string;
+    typeShelf: string;
+    typeBin: string;
+    typeCrate: string;
+
     title: string;
     subtitle: string;
     addLocation: string;
@@ -623,14 +655,10 @@ export type TranslationKeys = {
     code: string;
     name: string;
     type: string;
-    pickable: string;
-    storable: string;
     capacity: string;
     occupancy: string;
     status: string;
     actions: string;
-    yes: string;
-    no: string;
     active: string;
     inactive: string;
     edit: string;
@@ -647,8 +675,6 @@ export type TranslationKeys = {
     maxCapacity: string;
     maxCapacityPlaceholder: string;
     maxCapacityHelp: string;
-    pickableHelp: string;
-    storableHelp: string;
     activeHelp: string;
     cancel: string;
     saving: string;
@@ -670,6 +696,129 @@ export type TranslationKeys = {
     capacityOver: string;
     capacityNotConfigured: string;
     capacityNotStorable: string;
+    addSublocation: string;
+    addInside: string;
+    addSublocationTitle: string;
+    addSublocationDescription: string;
+    insideLabel: string;
+    warehouseLevel: string;
+    changeParent: string;
+    typeSuggested: string;
+    typeHelp: string;
+    use: string;
+    useStoreAndPick: string;
+    useStoreAndPickHelp: string;
+    useStoreOnly: string;
+    useStoreOnlyHelp: string;
+    useOrganizeOnly: string;
+    useOrganizeOnlyHelp: string;
+    addressPreview: string;
+    addressPreviewHelp: string;
+    addressPreviewEmpty: string;
+    addressPreviewLoading: string;
+    saveAndAddAnother: string;
+    createSublocation: string;
+    emptyChildrenTitle: string;
+    emptyChildrenDescription: string;
+    structure: string;
+    structureLabel: string;
+    structureDescription: string;
+    viewAllInTable: string;
+    treeLoadError: string;
+    searchScope: string;
+    searchThisBranch: string;
+    searchWholeWarehouse: string;
+    searchInBranch: string;
+    showInHierarchy: string;
+    move: string;
+    moreActionsFor: string;
+    stockHere: string;
+    includingSublocations: string;
+    sublocationCount: string;
+    moveUnavailable: string;
+    reasonBranchInUse: string;
+    reasonActiveChildren: string;
+    reasonParentInactive: string;
+    reasonUsedHere: string;
+    reasonReservedHere: string;
+    moveTitle: string;
+    moveDescription: string;
+    moveInto: string;
+    moveExcludedHelp: string;
+    moveBlockedTitle: string;
+    moveBlockedDescription: string;
+    blockedOnHand: string;
+    blockedReserved: string;
+    blockedPutaway: string;
+    blockedAlternative: string;
+    moveSublocationsImpact: string;
+    moveStockUnchanged: string;
+    moveSubmit: string;
+    moveSuccess: string;
+    moveError: string;
+    close: string;
+    useMoveToChangeParent: string;
+    renameImpact: string;
+    locationMissingTitle: string;
+    locationMissingDescription: string;
+    backToWarehouseLevel: string;
+    emptySearchTitle: string;
+    emptySearchDescription: string;
+    addMultiple: string;
+    addMultipleTitle: string;
+    addMultipleSublocationsTitle: string;
+    addMultipleDescription: string;
+    batchNumbering: string;
+    batchCodePrefix: string;
+    batchFrom: string;
+    batchTo: string;
+    batchNamePrefix: string;
+    batchDigits: string;
+    batchDigitsOption: string;
+    batchCapacityEach: string;
+    batchCreateActive: string;
+    batchPreview: string;
+    batchPreviewSummary: string;
+    batchPreviewRange: string;
+    batchPreviewError: string;
+    batchResult: string;
+    batchNew: string;
+    batchAlreadyExists: string;
+    batchSkipExisting: string;
+    batchAllOrNothing: string;
+    batchCreateButton: string;
+    batchCreateError: string;
+    batchRangeWholeNumbers: string;
+    batchRangeLimit: string;
+    batchInvalid: string;
+    batchEmpty: string;
+    batchCreated: string;
+    batchCreatedWithSkipped: string;
+    copyStructure: string;
+    copyTitle: string;
+    copyDescription: string;
+    copyInto: string;
+    copyDestinationHelp: string;
+    copyRename: string;
+    copyCodeFind: string;
+    copyCodeReplace: string;
+    copyNameFind: string;
+    copyNameReplace: string;
+    copyRenameHelp: string;
+    copyPreviewSummary: string;
+    copyPreviewError: string;
+    copyFindRequired: string;
+    copyConflicts: string;
+    copyNotCopied: string;
+    copyButton: string;
+    copyError: string;
+    copyCreated: string;
+    copyInvalid: string;
+    copyTooLarge: string;
+    browse: string;
+    browseTitle: string;
+    browseDescription: string;
+    showMoreLocations: string;
   };
   warehouseFloorMap: {
     floor: string;
@@ -3212,6 +3361,9 @@ export type TranslationKeys = {
     reorderQtyMin: string;
   };
   itemLocationsTab: {
+    searchLocations: string;
+    locationMapOffFloorCount: string;
+
     title: string;
     description: string;
     moveStock: string;
@@ -3232,17 +3384,12 @@ export type TranslationKeys = {
     loadError: string;
     empty: string;
     warehouse: string;
-    location: string;
-    type: string;
     onHand: string;
     reserved: string;
     available: string;
     maxStock: string;
     inTransit: string;
     estArrival: string;
-    preferredRackBadge: string;
-    setPreferredRack: string;
-    currentPreferredRack: string;
     editMaxStock: string;
     printBatchQr: string;
     printingBatchQr: string;
@@ -3259,6 +3406,7 @@ export type TranslationKeys = {
     selectBatchPrintUnit: string;
     batchPrintUnitHelp: string;
     preferredRackUpdated: string;
+    preferredLocationUnavailable: string;
     updatePreferredRackError: string;
     maxStockUpdated: string;
     maxStockError: string;
@@ -3305,6 +3453,28 @@ export type TranslationKeys = {
     cancel: string;
     saving: string;
     moving: string;
+    preferredBadge: string;
+    whereStored: string;
+    stockTreeLabel: string;
+    onLocationItself: string;
+    treeLoadError: string;
+    showMoreLocations: string;
+    includingSublocations: string;
+    storedHere: string;
+    setAsPreferred: string;
+    moveFromHere: string;
+    insideLocation: string;
+    moreInTree: string;
+    storedDirectlyOn: string;
+    batchesIn: string;
+    selectLocationHint: string;
+    locationsHoldingItem: string;
+    preferredLocation: string;
+    preferredNotSet: string;
+    changePreferredLocation: string;
+    preferredDialogTitle: string;
+    preferredDialogDescription: string;
+    savePreferred: string;
   };
   itemPricesTab: {
     title: string;
@@ -4485,7 +4655,46 @@ export const translations: Record<Locale, TranslationKeys> = {
       notFoundError: "This warehouse is not available in the active business unit.",
       contextRequiredError: "Select a business unit before managing warehouses.",
     },
+    pickAllocationScope: {
+      scopeInvalid: "Choose an active location in the fulfilling warehouse.",
+      insufficient:
+        "There is not enough eligible stock in this scope. Choose a wider scope or reduce the requested quantity.",
+      sourceUnavailable: "A stock source changed. Refresh availability and retry.",
+      alreadyActive:
+        "This delivery note already has an active pick list. Open that pick list to continue.",
+      forbidden: "You do not have permission to allocate this stock.",
+      failed: "The pick list could not be created. Refresh and try again.",
+      created: "Pick list created",
+
+      title: "Allocation location (optional)",
+      description:
+        "Leave empty to use the whole warehouse. Selecting a location includes its eligible descendants; FIFO still applies across all selected sources.",
+    },
     warehouseLocationsPage: {
+      editConflict: "The location changed during this operation. Refresh and retry.",
+      parentLocation: "Parent location",
+      parentHelp:
+        "Optional. Leave empty for a warehouse-level location. Any location type can contain other types.",
+      locationPath: "Location address",
+      warehouseRoot: "Warehouse locations",
+      searchLocations: "Search location addresses",
+      hierarchyHelp:
+        "Open a location to manage its children. Capacity measures direct stock; subtree quantity includes all descendants and is not additional stock.",
+      subtreeQuantity: "Stocks",
+      openLocation: "Open {location}",
+      parentInvalid: "Choose an active parent in the same warehouse.",
+      hierarchyCycle:
+        "A location cannot be inside itself or its descendants. Choose another parent.",
+      hasChildren: "Manage child locations before disabling or deleting this location.",
+      locationInUse: "Move stock and finish or cancel open work before changing this location.",
+      ownershipImmutable: "Use Move Stock to transfer inventory to another warehouse.",
+      typeZone: "Zone",
+      typeAisle: "Aisle",
+      typeRack: "Rack",
+      typeShelf: "Shelf",
+      typeBin: "Bin",
+      typeCrate: "Crate",
+
       title: "Warehouse Locations",
       subtitle: "Manage storage locations and their quantity capacity for this warehouse.",
       addLocation: "Add Location",
@@ -4497,14 +4706,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       code: "Code",
       name: "Name",
       type: "Type",
-      pickable: "Pickable",
-      storable: "Storable",
-      capacity: "Used / Maximum",
+      capacity: "Used / Max",
       occupancy: "Occupancy",
       status: "Status",
       actions: "Actions",
-      yes: "Yes",
-      no: "No",
       active: "Active",
       inactive: "Inactive",
       edit: "Edit",
@@ -4522,8 +4727,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       maxCapacityPlaceholder: "Enter maximum quantity",
       maxCapacityHelp:
         "Maximum total on-hand quantity this location can hold. Leave blank when not configured.",
-      pickableHelp: "Allow picking stock from this location.",
-      storableHelp: "Allow storing stock in this location.",
       activeHelp: "Inactive locations are hidden from selection.",
       cancel: "Cancel",
       saving: "Saving...",
@@ -4543,8 +4746,153 @@ export const translations: Record<Locale, TranslationKeys> = {
       capacityPartial: "Partially occupied",
       capacityFull: "Full",
       capacityOver: "Over capacity",
-      capacityNotConfigured: "Not configured",
+      capacityNotConfigured: "—",
       capacityNotStorable: "Not storable",
+      addSublocation: "Add Sublocation",
+      addInside: "Add Inside",
+      addSublocationTitle: "Add Sublocation",
+      addSublocationDescription: "Create a location inside the selected parent.",
+      insideLabel: "Inside",
+      warehouseLevel: "Warehouse Level",
+      changeParent: "Change",
+      typeSuggested: "Suggested from other locations at this level.",
+      typeHelp: "Type is a label only. Any type can contain any other type.",
+      use: "Use",
+      useStoreAndPick: "Store & Pick",
+      useStoreAndPickHelp: "Stock can be put away here and picked for orders.",
+      useStoreOnly: "Store Only",
+      useStoreOnlyHelp: "Keeps stock, such as reserve or overflow, but is never used for picking.",
+      useOrganizeOnly: "Organize Only",
+      useOrganizeOnlyHelp: "Groups other locations and holds no stock itself.",
+      addressPreview: "Full Address",
+      addressPreviewHelp: "Shown on pick lists, labels, and reports.",
+      addressPreviewEmpty: "Enter a code to preview the address.",
+      addressPreviewLoading: "Loading the parent address...",
+      saveAndAddAnother: "Save & Add Another",
+      createSublocation: "Create Sublocation",
+      emptyChildrenTitle: "No Sublocations in {location}",
+      emptyChildrenDescription:
+        "Add a sublocation here. Existing stock stays on {location}; use Move Stock to place it in a new sublocation.",
+      structure: "Structure",
+      structureLabel: "Location structure",
+      structureDescription: "Choose a location to open it.",
+      viewAllInTable: "View all {count} in table",
+      treeLoadError: "Could not load these locations.",
+      searchScope: "Search scope",
+      searchThisBranch: "This Branch",
+      searchWholeWarehouse: "Whole Warehouse",
+      searchInBranch: "Search addresses in {location}",
+      showInHierarchy: "Show in Hierarchy",
+      move: "Move",
+      moreActionsFor: "More actions for {code}",
+      stockHere: "Stock Here",
+      includingSublocations: "Including Sublocations",
+      sublocationCount: "Sublocations",
+      moveUnavailable: "Move is unavailable: {reason}",
+      reasonBranchInUse: "This branch holds stock or has open work.",
+      reasonActiveChildren:
+        "Disable its {count, plural, one {# active sublocation} other {# active sublocations}} first.",
+      reasonParentInactive: "Enable {code} first.",
+      reasonUsedHere: "Stock or pending putaway is at this location.",
+      reasonReservedHere: "Stock here is reserved for open pick lists.",
+      moveTitle: "Move {location}",
+      moveDescription: "Choose where this location and its sublocations belong.",
+      moveInto: "Move Into",
+      moveExcludedHelp: "This location and its sublocations are hidden from the list.",
+      moveBlockedTitle: "This branch can't be moved yet",
+      moveBlockedDescription:
+        "A location can only change parent when nothing inside it holds stock or has open work.",
+      blockedOnHand: "{quantity} on hand in {count, plural, one {# location} other {# locations}}",
+      blockedReserved: "{quantity} reserved for open pick lists",
+      blockedPutaway:
+        "{count, plural, one {# pending putaway task} other {# pending putaway tasks}}",
+      blockedAlternative:
+        "Create the new structure, then use Move Stock to relocate inventory. Existing stock is never redistributed automatically.",
+      moveSublocationsImpact:
+        "{count, plural, =0 {No sublocations move with it.} one {# sublocation moves with it and gets a new address.} other {# sublocations move with it and get new addresses.}}",
+      moveStockUnchanged:
+        "Stock stays on the same locations; pick lists and labels show the new address.",
+      moveSubmit: "Move Location",
+      moveSuccess: "Location moved",
+      moveError: "Failed to move location",
+      close: "Close",
+      useMoveToChangeParent: "Use Move to change where this location belongs.",
+      renameImpact:
+        "This also updates the address of {count, plural, one {# sublocation} other {# sublocations}}.",
+      locationMissingTitle: "Location Not Found",
+      locationMissingDescription:
+        "It may have been removed, or it belongs to another business unit.",
+      backToWarehouseLevel: "Back to Warehouse Level",
+      emptySearchTitle: "No Matching Locations",
+      emptySearchDescription: "Try another code, name, or address, or search the whole warehouse.",
+      addMultiple: "Add Multiple",
+      addMultipleTitle: "Add Multiple Locations",
+      addMultipleSublocationsTitle: "Add Multiple Sublocations",
+      addMultipleDescription:
+        "Create up to {max} numbered locations at once, such as Bin 1 to Bin 20.",
+      batchNumbering: "Numbering",
+      batchCodePrefix: "Code Prefix",
+      batchFrom: "From",
+      batchTo: "To",
+      batchNamePrefix: "Name Prefix",
+      batchDigits: "Digits",
+      batchDigitsOption: "{count, plural, one {# digit} other {# digits}} ({example})",
+      batchCapacityEach: "Maximum Capacity Each",
+      batchCreateActive: "Create as active",
+      batchPreview: "Preview",
+      batchPreviewSummary: "{newCount} new · {existingCount} already exist",
+      batchPreviewRange: "Codes {first} to {last}",
+      batchPreviewError: "Could not preview these locations. Try again.",
+      batchResult: "Result",
+      batchNew: "New",
+      batchAlreadyExists: "Already exists",
+      batchSkipExisting:
+        "Skip {count, plural, one {# code that already exists} other {# codes that already exist}}",
+      batchAllOrNothing: "All or nothing: if any location fails, none are created.",
+      batchCreateButton:
+        "{count, plural, =0 {Create Locations} one {Create # Location} other {Create # Locations}}",
+      batchCreateError: "Failed to create locations",
+      batchRangeWholeNumbers: "Enter whole numbers from 0 to 999999.",
+      batchRangeLimit: "Enter a range of up to {max} numbers, with To not smaller than From.",
+      batchInvalid:
+        "Check the range: up to 100 numbers, codes up to 100 characters, and names up to 200 characters.",
+      batchEmpty: "Every code in this range already exists. Change the prefix or range.",
+      batchCreated: "{count, plural, one {Created # location} other {Created # locations}}",
+      batchCreatedWithSkipped:
+        "{count, plural, one {Created # location} other {Created # locations}}; skipped {skipped} existing.",
+      copyStructure: "Copy Structure",
+      copyTitle: "Copy {location}",
+      copyDescription:
+        "Copy this location and all its sublocations with new codes. Use this to repeat a rack, shelf, or zone layout.",
+      copyInto: "Copy Into",
+      copyDestinationHelp:
+        "The copy keeps the same layout below the location you choose. This location's own branch is not available.",
+      copyRename: "New Codes and Names",
+      copyCodeFind: "Replace in Codes",
+      copyCodeReplace: "With",
+      copyNameFind: "Replace in Names (Optional)",
+      copyNameReplace: "With",
+      copyRenameHelp:
+        "Every copied code must change, because codes are unique in this warehouse. Leave the name field empty to keep names.",
+      copyPreviewSummary:
+        "{count, plural, one {# location} other {# locations}} · {conflicts, plural, =0 {no conflicts} one {# conflict} other {# conflicts}}",
+      copyPreviewError: "Could not preview this copy. Try again.",
+      copyFindRequired: "Enter the text to replace in codes.",
+      copyConflicts:
+        "Some new codes already exist. Change the replacement text so every code is new.",
+      copyNotCopied:
+        "Type, use, capacity, and active settings are copied. Stock, reservations, and floor-map positions are not.",
+      copyButton:
+        "{count, plural, =0 {Copy Locations} one {Copy # Location} other {Copy # Locations}}",
+      copyError: "Failed to copy locations",
+      copyCreated: "{count, plural, one {Copied # location} other {Copied # locations}}",
+      copyInvalid:
+        "The replacement must give every copied location a distinct code of 100 characters or fewer.",
+      copyTooLarge: "Copy at most 200 locations at a time. Copy a smaller branch instead.",
+      browse: "Browse",
+      browseTitle: "Choose a Location",
+      browseDescription: "Expand levels and choose where this belongs.",
+      showMoreLocations: "Show {count} more",
     },
     warehouseFloorMap: {
       floor: "Floor",
@@ -5431,12 +5779,12 @@ export const translations: Record<Locale, TranslationKeys> = {
         allowNegativeStockDescription: "Allow stock levels to go negative",
         pickingPolicyTitle: "Picking Validation",
         pickingPolicyDescription:
-          "Control how strictly mobile picking must follow the allocated warehouse and rack",
+          "Control how strictly mobile picking must follow the allocated warehouse and exact storage location",
         pickingPolicy: "Picking Policy",
         pickingPolicyPlaceholder: "Select a picking policy",
         pickingPolicyBatchOnly: "Batch only",
         pickingPolicyBatchAndWarehouse: "Batch and warehouse",
-        pickingPolicyBatchAndRack: "Batch, warehouse, and rack",
+        pickingPolicyBatchAndRack: "Batch, warehouse, and exact location",
         pickingPolicyHelp:
           "The item, batch code, and original received timestamp are always required. A valid alternative source requires confirmation.",
         stockRequisitionDocumentTitle: "Stock Requisition PDF",
@@ -6972,7 +7320,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     inventoryReservationsPage: {
       title: "Inventory Reservations",
       description:
-        "Audit warehouse commitments and the physical batch and rack allocations that fulfill them.",
+        "Audit warehouse commitments and the physical batch and location allocations that fulfill them.",
       searchLabel: "Search source reference or item",
       searchPlaceholder: "Search source reference or item...",
       warehouseFilter: "Warehouse",
@@ -7009,7 +7357,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       allocated: "Allocated",
       allocationsLoadError: "Unable to load physical allocations.",
       retry: "Retry",
-      noAllocations: "No physical batch or rack allocations have been recorded yet.",
+      noAllocations: "No physical batch or location allocations have been recorded yet.",
       loadErrorTitle: "Unable to load inventory reservations",
       loadErrorDescription: "The reservation ledger could not be loaded. Please try again.",
       emptyTitle: "No inventory reservations found",
@@ -7230,9 +7578,13 @@ export const translations: Record<Locale, TranslationKeys> = {
       reorderQtyMin: "Reorder quantity must be 0 or greater",
     },
     itemLocationsTab: {
+      searchLocations: "Search location addresses",
+      locationMapOffFloorCount:
+        "{count} stock locations are outside this floor or have no mapped rack ancestor.",
+
       title: "Locations",
       description:
-        "Stock by warehouse location. Each warehouse has one preferred rack for this item.",
+        "Stock by warehouse location. Each warehouse has one preferred storage location for this item.",
       moveStock: "Move Stock",
       locationMap: "Location Map",
       locationMapTitle: "Item Location Map",
@@ -7255,17 +7607,12 @@ export const translations: Record<Locale, TranslationKeys> = {
       loadError: "Failed to load item locations.",
       empty: "No location stock found.",
       warehouse: "Warehouse",
-      location: "Location",
-      type: "Type",
       onHand: "On Hand",
       reserved: "Reserved",
       available: "Available",
       maxStock: "Max Stock",
       inTransit: "In Transit",
       estArrival: "Est Arrival",
-      preferredRackBadge: "Preferred rack",
-      setPreferredRack: "Set as preferred rack",
-      currentPreferredRack: "Current preferred rack",
       editMaxStock: "Set Max",
       printBatchQr: "Print QR",
       printingBatchQr: "Printing...",
@@ -7283,8 +7630,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectBatchPrintUnit: "Select a unit",
       batchPrintUnitHelp:
         "Each label's Qty uses the selected unit's Qty / Unit. Current on-hand is not divided.",
-      preferredRackUpdated: "Preferred rack updated",
-      updatePreferredRackError: "Failed to update preferred rack",
+      preferredRackUpdated: "Preferred location updated",
+      preferredLocationUnavailable:
+        "This location cannot store stock. Choose an active storage location as the preferred location.",
+      updatePreferredRackError: "Failed to update preferred location",
       maxStockUpdated: "Max stock level updated",
       maxStockError: "Failed to update max stock level",
       selectWarehouseForMaxStock: "Select a warehouse to update max stock.",
@@ -7297,7 +7646,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       batchCode: "Batch Code",
       receivedDate: "Received Date",
       moveDialogTitle: "Move Stock",
-      moveDialogDescription: "Move stock between racks or warehouses in the same business unit.",
+      moveDialogDescription:
+        "Move stock between storage locations or warehouses in the same business unit.",
       sourceWarehouseLabel: "Source Warehouse",
       destinationWarehouseLabel: "Destination Warehouse",
       moveUnitLabel: "Unit",
@@ -7341,6 +7691,29 @@ export const translations: Record<Locale, TranslationKeys> = {
       cancel: "Cancel",
       saving: "Saving...",
       moving: "Moving...",
+      preferredBadge: "Preferred",
+      whereStored: "Where It's Stored",
+      stockTreeLabel: "Stock by location in {warehouse}",
+      onLocationItself: "On {location} itself",
+      treeLoadError: "Could not load these locations.",
+      showMoreLocations: "Show {count} more",
+      includingSublocations: "Including Sublocations",
+      storedHere: "Stored Here",
+      setAsPreferred: "Set as Preferred",
+      moveFromHere: "Move Stock From Here",
+      insideLocation: "Inside {location}",
+      moreInTree: "{count} more in the tree",
+      storedDirectlyOn: "Stored directly on {location}",
+      batchesIn: "Batches in {location}",
+      selectLocationHint: "Select a location to see its batches and actions.",
+      locationsHoldingItem:
+        "{count, plural, one {# location holds} other {# locations hold}} this item",
+      preferredLocation: "Preferred Location",
+      preferredNotSet: "Not set",
+      changePreferredLocation: "Change",
+      preferredDialogTitle: "Preferred Location",
+      preferredDialogDescription: "Choose where new stock of this item is put away in {warehouse}.",
+      savePreferred: "Save",
     },
     itemPricesTab: {
       title: "Item Prices",
@@ -11317,7 +11690,42 @@ export const translations: Record<Locale, TranslationKeys> = {
       notFoundError: "当前业务单位中无法使用此仓库。",
       contextRequiredError: "管理仓库前，请先选择业务单位。",
     },
+    pickAllocationScope: {
+      scopeInvalid: "请选择履约仓库中的有效库位。",
+      insufficient: "此范围内可分配库存不足。请选择更大的范围或减少申请数量。",
+      sourceUnavailable: "库存来源已变更。请刷新可用库存后重试。",
+      alreadyActive: "此送货单已有进行中的拣货单，请打开该拣货单继续。",
+      forbidden: "您无权分配此库存。",
+      failed: "无法创建拣货单。请刷新后重试。",
+      created: "拣货单已创建",
+
+      title: "分配库位（可选）",
+      description:
+        "留空使用整个仓库。选择库位后会包含符合条件的下级库位；所有选定来源仍遵循先进先出。",
+    },
     warehouseLocationsPage: {
+      editConflict: "操作期间库位已发生变更。请刷新后重试。",
+      parentLocation: "上级库位",
+      parentHelp: "可选。留空表示仓库直属库位；任意库位类型均可包含其他类型。",
+      locationPath: "库位地址",
+      warehouseRoot: "仓库库位",
+      searchLocations: "搜索库位地址",
+      hierarchyHelp:
+        "打开库位可管理下级库位。容量仅计直接库存；总量包含所有下级库存，并非额外库存。",
+      subtreeQuantity: "库存",
+      openLocation: "打开 {location}",
+      parentInvalid: "请选择同一仓库中的有效上级库位。",
+      hierarchyCycle: "库位不能位于自身或其下级之内。请选择其他上级库位。",
+      hasChildren: "停用或删除此库位前，请先处理下级库位。",
+      locationInUse: "更改此库位前，请先移走库存并完成或取消未完成的作业。",
+      ownershipImmutable: "请使用库存移动功能将库存转移至其他仓库。",
+      typeZone: "区域",
+      typeAisle: "通道",
+      typeRack: "货架",
+      typeShelf: "层板",
+      typeBin: "储位",
+      typeCrate: "货箱",
+
       title: "仓库库位",
       subtitle: "管理此仓库的存储库位及其数量容量。",
       addLocation: "添加库位",
@@ -11328,14 +11736,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       code: "代码",
       name: "名称",
       type: "类型",
-      pickable: "可拣货",
-      storable: "可存储",
       capacity: "已用 / 最大",
       occupancy: "占用情况",
       status: "状态",
       actions: "操作",
-      yes: "是",
-      no: "否",
       active: "启用",
       inactive: "停用",
       edit: "编辑",
@@ -11352,8 +11756,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       maxCapacity: "最大容量",
       maxCapacityPlaceholder: "输入最大数量",
       maxCapacityHelp: "此库位可容纳的最大在手数量。未配置时请留空。",
-      pickableHelp: "允许从此库位拣取库存。",
-      storableHelp: "允许在此库位存储库存。",
       activeHelp: "停用的库位不会显示在选择列表中。",
       cancel: "取消",
       saving: "保存中...",
@@ -11373,8 +11775,133 @@ export const translations: Record<Locale, TranslationKeys> = {
       capacityPartial: "部分占用",
       capacityFull: "已满",
       capacityOver: "超出容量",
-      capacityNotConfigured: "未配置",
+      capacityNotConfigured: "—",
       capacityNotStorable: "不可存储",
+      addSublocation: "添加下级库位",
+      addInside: "在此内添加",
+      addSublocationTitle: "添加下级库位",
+      addSublocationDescription: "在所选上级库位内创建库位。",
+      insideLabel: "所属上级",
+      warehouseLevel: "仓库直属",
+      changeParent: "更改",
+      typeSuggested: "根据此层级的其他库位推荐。",
+      typeHelp: "类型仅为标签，任意类型均可包含其他类型。",
+      use: "用途",
+      useStoreAndPick: "存储并拣货",
+      useStoreAndPickHelp: "可在此上架库存并为订单拣货。",
+      useStoreOnly: "仅存储",
+      useStoreOnlyHelp: "存放库存（如备货或溢出），但不用于拣货。",
+      useOrganizeOnly: "仅用于归组",
+      useOrganizeOnlyHelp: "用于归组其他库位，自身不存放库存。",
+      addressPreview: "完整地址",
+      addressPreviewHelp: "显示在拣货单、标签和报表中。",
+      addressPreviewEmpty: "输入代码以预览地址。",
+      addressPreviewLoading: "正在加载上级库位地址...",
+      saveAndAddAnother: "保存并继续添加",
+      createSublocation: "创建下级库位",
+      emptyChildrenTitle: "{location} 暂无下级库位",
+      emptyChildrenDescription:
+        "在此添加下级库位。现有库存仍保留在 {location}；请使用库存移动将其放入新的下级库位。",
+      structure: "库位结构",
+      structureLabel: "库位结构",
+      structureDescription: "选择库位以打开。",
+      viewAllInTable: "在表格中查看全部 {count} 个",
+      treeLoadError: "无法加载这些库位。",
+      searchScope: "搜索范围",
+      searchThisBranch: "当前分支",
+      searchWholeWarehouse: "整个仓库",
+      searchInBranch: "在 {location} 中搜索地址",
+      showInHierarchy: "在层级中显示",
+      move: "移动",
+      moreActionsFor: "{code} 的更多操作",
+      stockHere: "本库位库存",
+      includingSublocations: "含下级库存",
+      sublocationCount: "下级库位",
+      moveUnavailable: "无法移动：{reason}",
+      reasonBranchInUse: "此分支存有库存或有未完成的作业。",
+      reasonActiveChildren: "请先停用其 {count} 个启用中的下级库位。",
+      reasonParentInactive: "请先启用 {code}。",
+      reasonUsedHere: "此库位存有库存或待上架任务。",
+      reasonReservedHere: "此处库存已被未完成的拣货单预留。",
+      moveTitle: "移动 {location}",
+      moveDescription: "选择此库位及其下级库位的归属位置。",
+      moveInto: "移入",
+      moveExcludedHelp: "此库位及其下级库位不会出现在列表中。",
+      moveBlockedTitle: "此分支暂时无法移动",
+      moveBlockedDescription: "只有当库位内没有库存或未完成作业时，才能更改其上级库位。",
+      blockedOnHand: "{count} 个库位共有在手 {quantity}",
+      blockedReserved: "{quantity} 已被未完成的拣货单预留",
+      blockedPutaway: "{count} 个待上架任务",
+      blockedAlternative: "请先创建新结构，再使用库存移动转移库存。现有库存不会自动重新分配。",
+      moveSublocationsImpact:
+        "{count, plural, =0 {没有下级库位随之移动。} other {# 个下级库位将随之移动并更新地址。}}",
+      moveStockUnchanged: "库存仍保留在原库位；拣货单和标签将显示新地址。",
+      moveSubmit: "移动库位",
+      moveSuccess: "库位已移动",
+      moveError: "移动库位失败",
+      close: "关闭",
+      useMoveToChangeParent: "如需更改此库位的归属位置，请使用移动功能。",
+      renameImpact: "这也会更新 {count} 个下级库位的地址。",
+      locationMissingTitle: "未找到库位",
+      locationMissingDescription: "该库位可能已被移除，或属于其他业务单元。",
+      backToWarehouseLevel: "返回仓库层级",
+      emptySearchTitle: "没有匹配的库位",
+      emptySearchDescription: "请尝试其他代码、名称或地址，或在整个仓库中搜索。",
+      addMultiple: "批量添加",
+      addMultipleTitle: "批量添加库位",
+      addMultipleSublocationsTitle: "批量添加下级库位",
+      addMultipleDescription: "一次最多创建 {max} 个编号库位，例如储位 1 至储位 20。",
+      batchNumbering: "编号",
+      batchCodePrefix: "代码前缀",
+      batchFrom: "起始",
+      batchTo: "结束",
+      batchNamePrefix: "名称前缀",
+      batchDigits: "位数",
+      batchDigitsOption: "{count} 位（{example}）",
+      batchCapacityEach: "每个库位最大容量",
+      batchCreateActive: "创建为启用状态",
+      batchPreview: "预览",
+      batchPreviewSummary: "新建 {newCount} 个 · 已存在 {existingCount} 个",
+      batchPreviewRange: "代码 {first} 至 {last}",
+      batchPreviewError: "无法预览这些库位，请重试。",
+      batchResult: "结果",
+      batchNew: "新建",
+      batchAlreadyExists: "已存在",
+      batchSkipExisting: "跳过 {count} 个已存在的代码",
+      batchAllOrNothing: "全部成功或全部不创建：任一库位失败时，不会创建任何库位。",
+      batchCreateButton: "{count, plural, =0 {创建库位} other {创建 # 个库位}}",
+      batchCreateError: "创建库位失败",
+      batchRangeWholeNumbers: "请输入 0 至 999999 之间的整数。",
+      batchRangeLimit: "请输入最多 {max} 个数字的范围，且结束值不小于起始值。",
+      batchInvalid: "请检查范围：最多 100 个数字，代码不超过 100 个字符，名称不超过 200 个字符。",
+      batchEmpty: "此范围内的所有代码均已存在。请更改前缀或范围。",
+      batchCreated: "已创建 {count} 个库位",
+      batchCreatedWithSkipped: "已创建 {count} 个库位；跳过 {skipped} 个已存在的代码。",
+      copyStructure: "复制结构",
+      copyTitle: "复制 {location}",
+      copyDescription: "以新代码复制此库位及其所有下级库位。可用于重复货架、层板或区域的布局。",
+      copyInto: "复制到",
+      copyDestinationHelp: "副本会在所选库位下保持相同布局。不可选择此库位自身的分支。",
+      copyRename: "新代码和名称",
+      copyCodeFind: "代码中替换",
+      copyCodeReplace: "替换为",
+      copyNameFind: "名称中替换（可选）",
+      copyNameReplace: "替换为",
+      copyRenameHelp: "由于代码在仓库内唯一，每个复制的代码都必须改变。名称留空则保持不变。",
+      copyPreviewSummary: "{count} 个库位 · {conflicts} 个冲突",
+      copyPreviewError: "无法预览此复制，请重试。",
+      copyFindRequired: "请输入代码中要替换的文本。",
+      copyConflicts: "部分新代码已存在。请修改替换文本，使所有代码均为新代码。",
+      copyNotCopied: "会复制类型、用途、容量和启用设置；不会复制库存、预留和平面图位置。",
+      copyButton: "{count, plural, =0 {复制库位} other {复制 # 个库位}}",
+      copyError: "复制库位失败",
+      copyCreated: "已复制 {count} 个库位",
+      copyInvalid: "替换后每个复制的库位必须有不同的代码，且不超过 100 个字符。",
+      copyTooLarge: "每次最多复制 200 个库位。请改为复制较小的分支。",
+      browse: "浏览",
+      browseTitle: "选择库位",
+      browseDescription: "展开层级并选择归属位置。",
+      showMoreLocations: "再显示 {count} 个",
     },
     warehouseFloorMap: {
       floor: "楼层",
@@ -12229,12 +12756,12 @@ export const translations: Record<Locale, TranslationKeys> = {
         allowNegativeStock: "允许负库存",
         allowNegativeStockDescription: "允许库存数量变为负数",
         pickingPolicyTitle: "拣货验证",
-        pickingPolicyDescription: "控制移动端拣货必须遵循已分配仓库和货架的严格程度",
+        pickingPolicyDescription: "控制移动端拣货必须遵循已分配仓库和准确库位的严格程度",
         pickingPolicy: "拣货策略",
         pickingPolicyPlaceholder: "选择拣货策略",
         pickingPolicyBatchOnly: "仅批次",
         pickingPolicyBatchAndWarehouse: "批次和仓库",
-        pickingPolicyBatchAndRack: "批次、仓库和货架",
+        pickingPolicyBatchAndRack: "批次、仓库和准确库位",
         pickingPolicyHelp:
           "始终验证商品、批次代码和原始收货时间。使用有效的替代库存来源时需要确认。",
         stockRequisitionDocumentTitle: "库存请购 PDF",
@@ -13988,8 +14515,11 @@ export const translations: Record<Locale, TranslationKeys> = {
       reorderQtyMin: "补货数量必须大于或等于0",
     },
     itemLocationsTab: {
+      searchLocations: "搜索库位地址",
+      locationMapOffFloorCount: "有 {count} 个库存库位不在此楼层或没有已标记的上级货架。",
+
       title: "库位",
-      description: "按仓库库位显示库存。每个仓库均为此商品设置一个首选货架。",
+      description: "按仓库库位显示库存。每个仓库均为此商品设置一个首选库位。",
       moveStock: "移动库存",
       locationMap: "库位地图",
       locationMapTitle: "商品库位地图",
@@ -14009,17 +14539,12 @@ export const translations: Record<Locale, TranslationKeys> = {
       loadError: "加载商品库位失败。",
       empty: "未找到库位库存。",
       warehouse: "仓库",
-      location: "库位",
-      type: "类型",
       onHand: "现有库存",
       reserved: "已预留",
       available: "可用数量",
       maxStock: "最高库存",
       inTransit: "在途",
       estArrival: "预计到达",
-      preferredRackBadge: "首选货架",
-      setPreferredRack: "设为首选货架",
-      currentPreferredRack: "当前首选货架",
       editMaxStock: "设置最高",
       printBatchQr: "打印二维码",
       printingBatchQr: "正在打印...",
@@ -14035,8 +14560,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       batchPrintUnit: "单位",
       selectBatchPrintUnit: "选择单位",
       batchPrintUnitHelp: "每个标签的数量采用所选单位的每单位数量。不会拆分当前现有数量。",
-      preferredRackUpdated: "首选货架已更新",
-      updatePreferredRackError: "更新首选货架失败",
+      preferredRackUpdated: "首选库位已更新",
+      preferredLocationUnavailable:
+        "此库位无法存放库存。请选择启用且允许存放库存的库位作为首选库位。",
+      updatePreferredRackError: "更新首选库位失败",
       maxStockUpdated: "最高库存水平已更新",
       maxStockError: "更新最高库存水平失败",
       selectWarehouseForMaxStock: "请选择要更新最高库存的仓库。",
@@ -14085,6 +14612,28 @@ export const translations: Record<Locale, TranslationKeys> = {
       cancel: "取消",
       saving: "保存中...",
       moving: "移动中...",
+      preferredBadge: "首选",
+      whereStored: "存放位置",
+      stockTreeLabel: "{warehouse} 中按库位划分的库存",
+      onLocationItself: "直接存放在 {location}",
+      treeLoadError: "无法加载这些库位。",
+      showMoreLocations: "再显示 {count} 个",
+      includingSublocations: "含下级库存",
+      storedHere: "本库位存放",
+      setAsPreferred: "设为首选",
+      moveFromHere: "从此处移动库存",
+      insideLocation: "{location} 内",
+      moreInTree: "树中还有 {count} 个",
+      storedDirectlyOn: "直接存放在 {location}",
+      batchesIn: "{location} 中的批次",
+      selectLocationHint: "选择一个库位以查看其批次和操作。",
+      locationsHoldingItem: "{count} 个库位存有此物料",
+      preferredLocation: "首选库位",
+      preferredNotSet: "未设置",
+      changePreferredLocation: "更改",
+      preferredDialogTitle: "首选库位",
+      preferredDialogDescription: "选择此物料在 {warehouse} 中的新库存上架位置。",
+      savePreferred: "保存",
     },
     itemPricesTab: {
       title: "商品价格",

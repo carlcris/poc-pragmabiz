@@ -19,6 +19,7 @@ type CreatePickListBody = {
   pickerUserIds?: string[];
   notes?: string;
   batchAllocationMode?: BatchAllocationMode;
+  locationScopeId?: string;
 };
 type PickListApiRecord = Record<string, unknown>;
 
@@ -33,6 +34,18 @@ const parsePositiveInt = (value: string | null, fallback: number) => {
 const BATCH_ALLOCATION_MODES = new Set<BatchAllocationMode>(["single_sufficient", "split"]);
 
 const CREATE_PICK_LIST_ERROR: Record<string, { message: string; status: number }> = {
+  PICK_ALLOCATION_SCOPE_INVALID: {
+    message: "Select an active allocation location in the fulfilling warehouse",
+    status: 400,
+  },
+  LOCATION_PICKING_UNAVAILABLE: {
+    message: "The source is no longer available for picking. Refresh and retry.",
+    status: 409,
+  },
+  LOCATION_STORAGE_UNAVAILABLE: {
+    message: "The source is no longer available. Refresh and retry.",
+    status: 409,
+  },
   PICK_LIST_UNAUTHORIZED: { message: "Not authorized to create pick list", status: 403 },
   PICK_LIST_DELIVERY_NOTE_NOT_FOUND: { message: "Delivery note not found", status: 404 },
   PICK_LIST_INVALID_DELIVERY_NOTE_STATUS: {
@@ -67,7 +80,9 @@ const CREATE_PICK_LIST_ERROR: Record<string, { message: string; status: number }
 const toCreatePickListError = (error: unknown) => {
   const rawMessage = error instanceof Error ? error.message : "";
   const mapped = CREATE_PICK_LIST_ERROR[rawMessage];
-  return mapped || { message: "Failed to create pick list", status: 400 };
+  return mapped
+    ? { ...mapped, code: rawMessage }
+    : { message: "Failed to create pick list", status: 500, code: "PICK_LIST_CREATE_FAILED" };
 };
 
 // GET /api/pick-lists
@@ -280,6 +295,15 @@ async function POSTHandler(request: NextRequest) {
       return NextResponse.json({ error: "At least one picker must be assigned" }, { status: 400 });
     }
 
+    if (
+      body.locationScopeId &&
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.locationScopeId)
+    ) {
+      return NextResponse.json(
+        { error: "Invalid allocation location", code: "PICK_ALLOCATION_SCOPE_INVALID" },
+        { status: 400 }
+      );
+    }
     const batchAllocationMode = body.batchAllocationMode ?? "split";
     if (!BATCH_ALLOCATION_MODES.has(batchAllocationMode)) {
       return NextResponse.json({ error: "Invalid batch allocation mode" }, { status: 400 });
@@ -310,11 +334,15 @@ async function POSTHandler(request: NextRequest) {
         pickerUserIds: uniquePickers,
         notes: body.notes?.trim() || null,
         batchAllocationMode,
+        locationScopeId: body.locationScopeId,
       });
     } catch (createPickListError) {
       console.error("Failed to create pick list", createPickListError);
       const mapped = toCreatePickListError(createPickListError);
-      return NextResponse.json({ error: mapped.message }, { status: mapped.status });
+      return NextResponse.json(
+        { error: mapped.message, code: mapped.code },
+        { status: mapped.status }
+      );
     }
 
     try {

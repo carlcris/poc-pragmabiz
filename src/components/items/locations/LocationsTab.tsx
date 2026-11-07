@@ -1,14 +1,13 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { apiClient } from "@/lib/api";
+import { apiClient, getApiErrorCode } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -24,31 +23,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { ChevronDown, ChevronRight, Loader2, MapPinned, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { useItem } from "@/hooks/useItems";
 import { ITEM_LOCATIONS_QUERY_KEY } from "@/hooks/queryKeys";
 import { useCanCreate, useCanView } from "@/hooks/usePermissions";
 import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
+import { useItemLocationStockNode } from "@/hooks/useItemLocationStockNode";
+import { useItemWarehouseStock } from "@/hooks/useItemWarehouseStock";
 import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { RESOURCES } from "@/constants/resources";
+import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { ItemLocationMapDialog } from "@/components/items/locations/ItemLocationMapDialog";
+import { ItemLocationStockPanel } from "@/components/items/locations/ItemLocationStockPanel";
+import { ItemLocationStockTree } from "@/components/items/locations/ItemLocationStockTree";
 import { MoveStockDialog } from "@/components/items/locations/MoveStockDialog";
+import { WarehouseLocationSelect } from "@/components/warehouses/WarehouseLocationSelect";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import type { BarcodeData } from "@/lib/barcode";
-import type { ItemLocation, ItemLocationBatch } from "@/types/inventory-location";
-
-type ItemLocationsResponse = {
-  data: ItemLocation[];
-};
+import { getWarehouseLocationDisplayName } from "@/lib/warehouse-location-form";
+import type {
+  ItemLocation,
+  ItemLocationBatch,
+  ItemStockPagination,
+  ItemWarehouseStock,
+} from "@/types/inventory-location";
 
 type BatchPrintLabelResponse = {
   data: {
@@ -70,6 +70,8 @@ type LocationsTabProps = {
   itemId: string;
 };
 
+type SelectedLocation = { warehouseId: string; locationId: string };
+
 const MAX_BATCH_LABEL_COUNT = 100;
 
 const formatQty = (value: number, locale: string) =>
@@ -86,17 +88,25 @@ const createBatchLabelId = (batchLocationId: string, labelNumber: number) => {
 
 export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   const t = useTranslations("itemLocationsTab");
-  const tCommon = useTranslations("common");
   const locale = useLocale();
   const queryClient = useQueryClient();
+  const [warehousePage, setWarehousePage] = useState(1);
+  const [searchPage, setSearchPage] = useState(1);
+  const [locationSearch, setLocationSearch] = useState("");
+  const debouncedLocationSearch = useDebouncedValue(locationSearch.trim(), 300);
+  const [collapsedWarehouses, setCollapsedWarehouses] = useState<ReadonlySet<string>>(new Set());
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(new Set());
+  const [selected, setSelected] = useState<SelectedLocation | null>(null);
+  const [moveDialogSource, setMoveDialogSource] = useState<{
+    warehouseId: string;
+    locationId: string;
+  } | null>(null);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [locationMapDialogOpen, setLocationMapDialogOpen] = useState(false);
-  const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());
-  const [maxStockDialogOpen, setMaxStockDialogOpen] = useState(false);
-  const [selectedMaxStockLocation, setSelectedMaxStockLocation] = useState<ItemLocation | null>(
-    null
-  );
+  const [maxStockWarehouse, setMaxStockWarehouse] = useState<ItemWarehouseStock | null>(null);
   const [maxStockInput, setMaxStockInput] = useState("");
+  const [preferredWarehouse, setPreferredWarehouse] = useState<ItemWarehouseStock | null>(null);
+  const [preferredDraftId, setPreferredDraftId] = useState("");
   const [printingBatchLocationId, setPrintingBatchLocationId] = useState<string | null>(null);
   const [batchToPrint, setBatchToPrint] = useState<ItemLocationBatch | null>(null);
   const [batchLabelCount, setBatchLabelCount] = useState("1");
@@ -113,10 +123,33 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   ]);
   const canPrintBatchQr =
     canViewItems && granularCapabilities[GRANULAR_CAPABILITIES.ITEM_BATCH_QR_PRINT] === true;
-  const { data, isLoading, error } = useQuery<ItemLocationsResponse>({
-    queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId, currentBusinessUnitId ?? null],
-    queryFn: async () => apiClient.get<ItemLocationsResponse>(`/api/items/${itemId}/locations`),
+
+  const selectedStock = useItemLocationStockNode(
+    itemId,
+    selected?.warehouseId,
+    selected?.locationId
+  );
+  const selectedNode = selectedStock.data?.data[0];
+  const warehouseStock = useItemWarehouseStock(itemId, warehousePage);
+  const warehouses = useMemo(() => warehouseStock.data?.data ?? [], [warehouseStock.data]);
+  const isSearching = Boolean(debouncedLocationSearch);
+  const searchQuery = useQuery({
+    queryKey: [
+      ITEM_LOCATIONS_QUERY_KEY,
+      itemId,
+      currentBusinessUnitId ?? null,
+      "search",
+      debouncedLocationSearch,
+      searchPage,
+    ],
+    queryFn: () =>
+      apiClient.get<{ data: ItemLocation[]; pagination: ItemStockPagination }>(
+        `/api/items/${itemId}/locations`,
+        { params: { page: searchPage, limit: 20, search: debouncedLocationSearch } }
+      ),
+    enabled: isSearching,
   });
+
   const { data: itemResponse } = useItem(itemId);
   const item = itemResponse?.data;
   const batchPrintUnitOptions = useMemo(
@@ -136,70 +169,31 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   );
   const selectedBatchPrintUnit =
     batchPrintUnitOptions.find((option) => option.id === batchPrintUnitId) || null;
+  const printDisabled = batchPrintUnitOptions.length === 0 || printingBatchLocationId !== null;
 
-  const toggleLocation = (locationId: string) => {
-    setExpandedLocations((prev) => {
-      const next = new Set(prev);
-      if (next.has(locationId)) {
-        next.delete(locationId);
-      } else {
-        next.add(locationId);
-      }
-      return next;
-    });
+  const toggleSet = (current: ReadonlySet<string>, id: string) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
   };
 
-  const locations = useMemo(() => data?.data || [], [data]);
-  const warehouseGroups = useMemo(() => {
-    const map = new Map<
-      string,
-      { id: string; code: string; name: string; locations: ItemLocation[] }
-    >();
-
-    locations.forEach((loc) => {
-      if (!map.has(loc.warehouseId)) {
-        map.set(loc.warehouseId, {
-          id: loc.warehouseId,
-          code: loc.warehouseCode,
-          name: loc.warehouseName,
-          locations: [],
-        });
-      }
-
-      map.get(loc.warehouseId)?.locations.push(loc);
-    });
-
-    return Array.from(map.values())
-      .sort((left, right) => left.code.localeCompare(right.code))
-      .map((warehouse) => ({
-        ...warehouse,
-        locations: warehouse.locations.sort((left, right) =>
-          left.locationCode.localeCompare(right.locationCode)
-        ),
-      }));
-  }, [locations]);
-  const stockedWarehouseGroups = useMemo(
-    () =>
-      warehouseGroups
-        .map((warehouse) => ({
-          ...warehouse,
-          locations: warehouse.locations.filter((location) => location.qtyOnHand > 0),
-        }))
-        .filter((warehouse) => warehouse.locations.length > 0),
-    [warehouseGroups]
-  );
+  const invalidateItemLocations = () =>
+    queryClient.invalidateQueries({ queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId] });
 
   const setDefaultLocation = useMutation({
-    mutationFn: async (location: ItemLocation) =>
-      apiClient.patch(`/api/items/${itemId}/default-location`, {
-        warehouseId: location.warehouseId,
-        locationId: location.locationId,
-      }),
+    mutationFn: async ({ warehouseId, locationId }: { warehouseId: string; locationId: string }) =>
+      apiClient.patch(`/api/items/${itemId}/default-location`, { warehouseId, locationId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId] });
+      invalidateItemLocations();
+      setPreferredWarehouse(null);
       toast.success(t("preferredRackUpdated"));
     },
     onError: (mutationError) => {
+      if (getApiErrorCode(mutationError, ["LOCATION_STORAGE_UNAVAILABLE"] as const)) {
+        toast.error(t("preferredLocationUnavailable"));
+        return;
+      }
       const message =
         mutationError instanceof Error ? mutationError.message : t("updatePreferredRackError");
       toast.error(message);
@@ -208,7 +202,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
 
   const updateMaxStock = useMutation({
     mutationFn: async () => {
-      if (!selectedMaxStockLocation) {
+      if (!maxStockWarehouse) {
         throw new Error(t("selectWarehouseForMaxStock"));
       }
 
@@ -219,17 +213,16 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
       }
 
       return apiClient.patch(`/api/items/${itemId}/warehouse-settings`, {
-        warehouseId: selectedMaxStockLocation.warehouseId,
+        warehouseId: maxStockWarehouse.warehouseId,
         maxQuantity,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId] });
+      invalidateItemLocations();
       queryClient.invalidateQueries({ queryKey: ["items", itemId] });
       queryClient.invalidateQueries({ queryKey: ["items"] });
       toast.success(t("maxStockUpdated"));
-      setMaxStockDialogOpen(false);
-      setSelectedMaxStockLocation(null);
+      setMaxStockWarehouse(null);
       setMaxStockInput("");
     },
     onError: (mutationError) => {
@@ -238,10 +231,19 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
     },
   });
 
-  const openMaxStockDialog = (location: ItemLocation) => {
-    setSelectedMaxStockLocation(location);
-    setMaxStockInput(location.maxQuantity == null ? "" : String(location.maxQuantity));
-    setMaxStockDialogOpen(true);
+  const openMaxStockDialog = (warehouse: ItemWarehouseStock) => {
+    setMaxStockWarehouse(warehouse);
+    setMaxStockInput(warehouse.maxQuantity == null ? "" : String(warehouse.maxQuantity));
+  };
+
+  const openPreferredDialog = (warehouse: ItemWarehouseStock) => {
+    setPreferredWarehouse(warehouse);
+    setPreferredDraftId(warehouse.defaultLocationId ?? "");
+  };
+
+  const openMoveDialog = (source: { warehouseId: string; locationId: string } | null) => {
+    setMoveDialogSource(source);
+    setMoveDialogOpen(true);
   };
 
   const openBatchPrintDialog = (batch: ItemLocationBatch) => {
@@ -311,22 +313,43 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-32" />
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[1, 2, 3].map((row) => (
-              <Skeleton key={row} className="h-10 w-full" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+  const renderPanel = (warehouse: ItemWarehouseStock) =>
+    selected?.warehouseId === warehouse.warehouseId ? (
+      selectedStock.isLoading ? (
+        <Skeleton className="h-40 w-full" />
+      ) : selectedStock.isError ? (
+        <p className="text-sm text-destructive">{t("loadError")}</p>
+      ) : !selectedNode ? (
+        <p className="text-sm text-muted-foreground">{t("empty")}</p>
+      ) : (
+        <ItemLocationStockPanel
+          key={selected.locationId}
+          itemId={itemId}
+          warehouseName={warehouse.warehouseName}
+          node={selectedNode}
+          canMoveStock={canMoveStock && Boolean(item)}
+          canPrint={canPrintBatchQr}
+          printDisabled={printDisabled}
+          isSettingPreferred={setDefaultLocation.isPending}
+          onPrint={openBatchPrintDialog}
+          onSelect={(node) => {
+            setSelected({ warehouseId: warehouse.warehouseId, locationId: node.locationId });
+            setExpandedIds((current) => new Set([...current, node.locationId]));
+          }}
+          onSetPreferred={(node) =>
+            setDefaultLocation.mutate({
+              warehouseId: node.warehouseId,
+              locationId: node.locationId,
+            })
+          }
+          onMoveFromHere={(node) =>
+            openMoveDialog({ warehouseId: node.warehouseId, locationId: node.locationId })
+          }
+        />
+      )
+    ) : (
+      <p className="py-10 text-center text-sm text-muted-foreground">{t("selectLocationHint")}</p>
     );
-  }
 
   return (
     <Card>
@@ -341,7 +364,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
               <Button
                 variant="outline"
                 onClick={() => setLocationMapDialogOpen(true)}
-                disabled={stockedWarehouseGroups.length === 0 || !item}
+                disabled={!item || !currentBusinessUnitId}
               >
                 <MapPinned className="mr-2 h-4 w-4" />
                 {t("locationMap")}
@@ -349,8 +372,8 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
             ) : null}
             {canMoveStock ? (
               <Button
-                onClick={() => setMoveDialogOpen(true)}
-                disabled={locations.length === 0 || !item}
+                onClick={() => openMoveDialog(null)}
+                disabled={warehouses.length === 0 || !item}
               >
                 {t("moveStock")}
               </Button>
@@ -358,234 +381,217 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        {error ? (
-          <div className="text-sm text-destructive">{t("loadError")}</div>
-        ) : locations.length === 0 ? (
-          <div className="text-sm text-muted-foreground">{t("empty")}</div>
+      <CardContent className="space-y-4">
+        <Input
+          value={locationSearch}
+          placeholder={t("searchLocations")}
+          aria-label={t("searchLocations")}
+          onChange={(event) => {
+            setLocationSearch(event.target.value);
+            setSearchPage(1);
+          }}
+        />
+
+        {isSearching ? (
+          searchQuery.isLoading ? (
+            <Skeleton className="h-32 w-full" />
+          ) : searchQuery.error ? (
+            <p className="text-sm text-destructive">{t("loadError")}</p>
+          ) : (searchQuery.data?.data.length ?? 0) === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("empty")}</p>
+          ) : (
+            <div className="space-y-3">
+              <ul className="divide-y rounded-md border">
+                {searchQuery.data?.data.map((location) => (
+                  <li key={location.id}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-4 px-4 py-3 text-left hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => {
+                        setSelected({
+                          warehouseId: location.warehouseId,
+                          locationId: location.locationId,
+                        });
+                        setCollapsedWarehouses((current) => {
+                          const next = new Set(current);
+                          next.delete(location.warehouseId);
+                          return next;
+                        });
+                        setLocationSearch("");
+                      }}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">
+                          {getWarehouseLocationDisplayName({
+                            code: location.locationCode,
+                            name: location.locationName,
+                          })}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {location.warehouseName} / {location.locationNamePath}
+                        </span>
+                      </span>
+                      <span className="text-sm tabular-nums">
+                        {formatQty(location.qtyOnHand, locale)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {searchQuery.data && searchQuery.data.pagination.totalPages > 1 ? (
+                <DataTablePagination
+                  currentPage={searchPage}
+                  totalPages={searchQuery.data.pagination.totalPages}
+                  pageSize={20}
+                  totalItems={searchQuery.data.pagination.total}
+                  onPageChange={setSearchPage}
+                />
+              ) : null}
+            </div>
+          )
+        ) : warehouseStock.isLoading ? (
+          <Skeleton className="h-40 w-full" />
+        ) : warehouseStock.error ? (
+          <p className="text-sm text-destructive">{t("loadError")}</p>
+        ) : warehouses.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("empty")}</p>
         ) : (
           <div className="space-y-4">
-            {warehouseGroups.map((warehouse) => {
-              const warehouseSettings = warehouse.locations[0];
-              const warehouseOnHand = warehouse.locations.reduce(
-                (total, location) => total + location.qtyOnHand,
-                0
-              );
-
+            {warehouses.map((warehouse) => {
+              const isCollapsed = collapsedWarehouses.has(warehouse.warehouseId);
               return (
-                <section key={warehouse.id} className="overflow-hidden rounded-md border">
-                  <div className="flex flex-col gap-3 border-b bg-muted/30 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+                <section
+                  key={warehouse.warehouseId}
+                  aria-labelledby={`item-warehouse-${warehouse.warehouseId}`}
+                  className="overflow-hidden rounded-md border"
+                >
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b bg-muted/30 px-4 py-3">
+                    <button
+                      type="button"
+                      aria-expanded={!isCollapsed}
+                      className="flex min-w-48 flex-1 items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() =>
+                        setCollapsedWarehouses((current) =>
+                          toggleSet(current, warehouse.warehouseId)
+                        )
+                      }
+                    >
+                      {isCollapsed ? (
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      )}
+                      <span>
+                        <span
+                          id={`item-warehouse-${warehouse.warehouseId}`}
+                          className="block font-semibold"
+                        >
+                          {warehouse.warehouseName}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {warehouse.warehouseCode} ·{" "}
+                          {t("locationsHoldingItem", { count: warehouse.locationCount })}
+                        </span>
+                      </span>
+                    </button>
                     <div>
-                      <div className="font-semibold">{warehouse.code}</div>
-                      <div className="text-sm text-muted-foreground">{warehouse.name}</div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-                      <div>
-                        <div className="text-xs text-muted-foreground">{t("onHand")}</div>
-                        <div className="text-sm font-medium">
-                          {formatQty(warehouseOnHand, locale)}
-                        </div>
+                      <div className="text-xs text-muted-foreground">{t("preferredLocation")}</div>
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <span
+                          className="max-w-48 truncate"
+                          title={warehouse.defaultLocationNamePath ?? undefined}
+                        >
+                          {warehouse.defaultLocationName ?? t("preferredNotSet")}
+                        </span>
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0"
+                          onClick={() => openPreferredDialog(warehouse)}
+                        >
+                          {t("changePreferredLocation")}
+                        </Button>
                       </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">{t("maxStock")}</div>
-                        <div className="text-sm font-medium">
-                          {warehouseSettings.maxQuantity == null
-                            ? "--"
-                            : formatQty(warehouseSettings.maxQuantity, locale)}
-                        </div>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openMaxStockDialog(warehouseSettings)}
-                      >
-                        {t("editMaxStock")}
-                      </Button>
                     </div>
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground">{t("onHand")}</div>
+                      <div className="text-sm font-semibold tabular-nums">
+                        {formatQty(warehouse.qtyOnHand, locale)}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground">{t("reserved")}</div>
+                      <div className="text-sm font-semibold tabular-nums">
+                        {formatQty(warehouse.qtyReserved, locale)}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground">{t("maxStock")}</div>
+                      <div className="text-sm font-semibold tabular-nums">
+                        {warehouse.maxQuantity == null
+                          ? "--"
+                          : formatQty(warehouse.maxQuantity, locale)}
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openMaxStockDialog(warehouse)}
+                    >
+                      {t("editMaxStock")}
+                    </Button>
                   </div>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-12"></TableHead>
-                          <TableHead>{t("location")}</TableHead>
-                          <TableHead>{t("type")}</TableHead>
-                          <TableHead className="text-right">{t("onHand")}</TableHead>
-                          <TableHead className="text-right">{t("reserved")}</TableHead>
-                          <TableHead className="text-right">{t("available")}</TableHead>
-                          <TableHead className="text-right">{tCommon("actions")}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {warehouse.locations.map((location) => {
-                          const isExpanded = expandedLocations.has(location.locationId);
-                          const hasBatches = (location.batches?.length || 0) > 0;
-
-                          return (
-                            <Fragment key={location.id}>
-                              <TableRow>
-                                <TableCell>
-                                  {hasBatches && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 w-6 p-0"
-                                      onClick={() => toggleLocation(location.locationId)}
-                                    >
-                                      {isExpanded ? (
-                                        <ChevronDown className="h-4 w-4" />
-                                      ) : (
-                                        <ChevronRight className="h-4 w-4" />
-                                      )}
-                                    </Button>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2 text-sm font-medium">
-                                    {location.locationCode}
-                                    {location.isDefault && (
-                                      <Badge variant="secondary" className="text-xs">
-                                        {t("preferredRackBadge")}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {location.locationName}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-sm capitalize">
-                                  {location.locationType}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {formatQty(location.qtyOnHand, locale)}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {formatQty(location.qtyReserved, locale)}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {formatQty(location.qtyAvailable, locale)}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {location.isDefault ? (
-                                    <span className="inline-flex h-9 items-center px-3 text-sm text-muted-foreground">
-                                      {t("currentPreferredRack")}
-                                    </span>
-                                  ) : (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      disabled={setDefaultLocation.isPending}
-                                      onClick={() => setDefaultLocation.mutate(location)}
-                                    >
-                                      {t("setPreferredRack")}
-                                    </Button>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                              {hasBatches && isExpanded && (
-                                <TableRow>
-                                  <TableCell colSpan={7} className="bg-muted/50 p-0">
-                                    <div className="px-4 py-2">
-                                      <Table>
-                                        <TableHeader>
-                                          <TableRow className="hover:bg-transparent">
-                                            <TableHead className="h-8 text-xs">
-                                              {t("batchCode")}
-                                            </TableHead>
-                                            <TableHead className="h-8 text-xs">
-                                              {t("receivedDate")}
-                                            </TableHead>
-                                            <TableHead className="h-8 text-right text-xs">
-                                              {t("onHand")}
-                                            </TableHead>
-                                            <TableHead className="h-8 text-right text-xs">
-                                              {t("reserved")}
-                                            </TableHead>
-                                            <TableHead className="h-8 text-right text-xs">
-                                              {t("available")}
-                                            </TableHead>
-                                            {canPrintBatchQr ? (
-                                              <TableHead className="h-8 text-right text-xs">
-                                                {tCommon("actions")}
-                                              </TableHead>
-                                            ) : null}
-                                          </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                          {location.batches?.map((batch) => (
-                                            <TableRow
-                                              key={batch.id}
-                                              className="hover:bg-transparent"
-                                            >
-                                              <TableCell className="py-2 text-xs font-medium">
-                                                {batch.batchCode}
-                                              </TableCell>
-                                              <TableCell className="py-2 text-xs">
-                                                {new Date(batch.receivedAt).toLocaleDateString(
-                                                  locale
-                                                )}
-                                              </TableCell>
-                                              <TableCell className="py-2 text-right text-xs">
-                                                {formatQty(batch.qtyOnHand, locale)}
-                                              </TableCell>
-                                              <TableCell className="py-2 text-right text-xs">
-                                                {formatQty(batch.qtyReserved, locale)}
-                                              </TableCell>
-                                              <TableCell className="py-2 text-right text-xs">
-                                                {formatQty(batch.qtyAvailable, locale)}
-                                              </TableCell>
-                                              {canPrintBatchQr ? (
-                                                <TableCell className="py-2 text-right">
-                                                  <div className="flex justify-end gap-2">
-                                                    <Button
-                                                      variant="outline"
-                                                      size="sm"
-                                                      className="h-8 px-2"
-                                                      aria-label={t("printBatchQr")}
-                                                      disabled={
-                                                        batchPrintUnitOptions.length === 0 ||
-                                                        printingBatchLocationId !== null
-                                                      }
-                                                      onClick={() => openBatchPrintDialog(batch)}
-                                                    >
-                                                      {printingBatchLocationId === batch.id ? (
-                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                      ) : (
-                                                        <Printer className="mr-2 h-4 w-4" />
-                                                      )}
-                                                      <span>
-                                                        {printingBatchLocationId === batch.id
-                                                          ? t("printingBatchQr")
-                                                          : t("printBatchQr")}
-                                                      </span>
-                                                    </Button>
-                                                  </div>
-                                                </TableCell>
-                                              ) : null}
-                                            </TableRow>
-                                          ))}
-                                        </TableBody>
-                                      </Table>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                            </Fragment>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  {isCollapsed ? null : (
+                    <div className="flex flex-col lg:flex-row">
+                      <div className="border-b lg:w-96 lg:shrink-0 lg:border-b-0 lg:border-r">
+                        <ItemLocationStockTree
+                          itemId={itemId}
+                          warehouseId={warehouse.warehouseId}
+                          warehouseLabel={warehouse.warehouseName}
+                          selectedLocationId={
+                            selected?.warehouseId === warehouse.warehouseId
+                              ? selected.locationId
+                              : null
+                          }
+                          expandedIds={expandedIds}
+                          onToggle={(locationId) =>
+                            setExpandedIds((current) => toggleSet(current, locationId))
+                          }
+                          onSelect={(node) =>
+                            setSelected({
+                              warehouseId: warehouse.warehouseId,
+                              locationId: node.locationId,
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1 p-4">{renderPanel(warehouse)}</div>
+                    </div>
+                  )}
                 </section>
               );
             })}
+            {warehouseStock.data && warehouseStock.data.pagination.totalPages > 1 ? (
+              <DataTablePagination
+                currentPage={warehousePage}
+                totalPages={warehouseStock.data.pagination.totalPages}
+                pageSize={20}
+                totalItems={warehouseStock.data.pagination.total}
+                onPageChange={setWarehousePage}
+              />
+            ) : null}
           </div>
         )}
       </CardContent>
       <ItemLocationMapDialog
         open={locationMapDialogOpen}
         onOpenChange={setLocationMapDialogOpen}
-        warehouses={stockedWarehouseGroups}
+        warehouses={warehouses.map((warehouse) => ({
+          id: warehouse.warehouseId,
+          code: warehouse.warehouseCode,
+          name: warehouse.warehouseName,
+        }))}
+        itemId={itemId}
         itemCode={item?.code ?? ""}
         itemName={item?.name ?? ""}
       />
@@ -673,20 +679,72 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
       </Dialog>
       {moveDialogOpen && canMoveStock && item ? (
         <MoveStockDialog
-          key={`${itemId}:${currentBusinessUnitId}`}
+          key={`${itemId}:${currentBusinessUnitId}:${moveDialogSource?.locationId ?? "any"}`}
           itemId={itemId}
           baseUnit={item.uom}
           unitOptions={item.unitOptions ?? []}
-          sourceLocations={error || isLoading ? undefined : data?.data}
+          sourceLocations={undefined}
+          initialSource={moveDialogSource ?? undefined}
           onOpenChange={setMoveDialogOpen}
         />
       ) : null}
       <Dialog
-        open={maxStockDialogOpen}
+        open={preferredWarehouse !== null}
         onOpenChange={(open) => {
-          setMaxStockDialogOpen(open);
+          if (!open) setPreferredWarehouse(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("preferredDialogTitle")}</DialogTitle>
+            <DialogDescription>
+              {preferredWarehouse
+                ? t("preferredDialogDescription", { warehouse: preferredWarehouse.warehouseName })
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="preferred-location" className="text-sm font-medium">
+              {t("preferredLocation")}
+            </label>
+            <WarehouseLocationSelect
+              warehouseId={preferredWarehouse?.warehouseId}
+              value={preferredDraftId}
+              onValueChange={setPreferredDraftId}
+              storableOnly
+              triggerId="preferred-location"
+              buttonClassName="w-full"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreferredWarehouse(null)}>
+              {t("cancel")}
+            </Button>
+            <Button
+              disabled={
+                !preferredWarehouse ||
+                !preferredDraftId ||
+                preferredDraftId === preferredWarehouse.defaultLocationId ||
+                setDefaultLocation.isPending
+              }
+              onClick={() =>
+                preferredWarehouse &&
+                setDefaultLocation.mutate({
+                  warehouseId: preferredWarehouse.warehouseId,
+                  locationId: preferredDraftId,
+                })
+              }
+            >
+              {setDefaultLocation.isPending ? t("saving") : t("savePreferred")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={maxStockWarehouse !== null}
+        onOpenChange={(open) => {
           if (!open) {
-            setSelectedMaxStockLocation(null);
+            setMaxStockWarehouse(null);
             setMaxStockInput("");
           }
         }}
@@ -695,9 +753,9 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
           <DialogHeader>
             <DialogTitle>{t("maxStockDialogTitle")}</DialogTitle>
             <DialogDescription>
-              {selectedMaxStockLocation
+              {maxStockWarehouse
                 ? t("maxStockDialogDescription", {
-                    warehouse: `${selectedMaxStockLocation.warehouseCode} - ${selectedMaxStockLocation.warehouseName}`,
+                    warehouse: `${maxStockWarehouse.warehouseCode} - ${maxStockWarehouse.warehouseName}`,
                   })
                 : t("maxStockDialogDescriptionFallback")}
             </DialogDescription>
@@ -715,7 +773,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
             <p className="text-xs text-muted-foreground">{t("maxStockHelp")}</p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setMaxStockDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setMaxStockWarehouse(null)}>
               {t("cancel")}
             </Button>
             <Button onClick={() => updateMaxStock.mutate()} disabled={updateMaxStock.isPending}>

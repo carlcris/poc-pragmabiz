@@ -1,22 +1,24 @@
+import { warehouseLocationErrorResponse } from "@/lib/warehouse-location-errors";
 import { z } from "zod";
 import { NextRequest, NextResponse } from "next/server";
 import { RESOURCES } from "@/constants/resources";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
+import type { WarehouseLocationDetail } from "@/types/inventory-location";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LOCATION_COLUMNS =
-  "id, company_id, warehouse_id, code, name, parent_id, location_type, is_pickable, is_storable, is_active, max_capacity, created_at, updated_at";
+  "id, company_id, warehouse_id, code, name, parent_id, location_type, is_pickable, is_storable, is_active, max_capacity, location_path, created_at, updated_at";
 
 const updateLocationSchema = z
   .object({
     code: z.string().trim().min(1).max(100).optional(),
     name: z.string().trim().max(200).nullable().optional(),
     parentId: z.string().uuid().nullable().optional(),
-    locationType: z.string().trim().min(1).max(50).optional(),
+    locationType: z.enum(["zone", "aisle", "rack", "shelf", "bin", "crate"]).optional(),
     isPickable: z.boolean().optional(),
     isStorable: z.boolean().optional(),
     isActive: z.boolean().optional(),
@@ -38,6 +40,9 @@ const mapLocation = (location: {
   is_storable: boolean | null;
   is_active: boolean | null;
   max_capacity: number | null;
+  location_path: string;
+  child_count?: number;
+  subtree_quantity?: number;
   created_at: string;
   updated_at: string;
 }) => ({
@@ -47,6 +52,9 @@ const mapLocation = (location: {
   code: location.code,
   name: location.name,
   parentId: location.parent_id,
+  locationPath: location.location_path,
+  childCount: location.child_count ?? 0,
+  subtreeQuantity: location.subtree_quantity ?? 0,
   locationType: location.location_type,
   isPickable: location.is_pickable ?? false,
   isStorable: location.is_storable ?? false,
@@ -55,6 +63,98 @@ const mapLocation = (location: {
   createdAt: location.created_at,
   updatedAt: location.updated_at,
 });
+
+const ancestorsSchema = z.array(
+  z.object({
+    id: z.string().uuid(),
+    code: z.string(),
+    name: z.string().nullable(),
+    locationPath: z.string(),
+    isActive: z.boolean(),
+  })
+);
+
+async function GETHandler(_request: NextRequest, { params }: RouteContext) {
+  try {
+    const unauthorized = await requirePermission(RESOURCES.MANAGE_LOCATIONS, "view");
+    if (unauthorized) return unauthorized;
+
+    const requestContext = await requireRequestContext();
+    if ("status" in requestContext) return requestContext;
+    const { supabase, currentBusinessUnitId } = requestContext;
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: "Business unit context required", code: "BUSINESS_UNIT_CONTEXT_REQUIRED" },
+        { status: 400 }
+      );
+    }
+
+    const { id } = await params;
+    if (!UUID_REGEX.test(id)) {
+      return NextResponse.json(
+        { error: "Invalid location id", code: "INVALID_LOCATION_ID" },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await supabase.rpc("get_warehouse_location_detail", {
+      p_business_unit_id: currentBusinessUnitId,
+      p_location_id: id,
+    });
+    if (error) {
+      console.error("Failed to load warehouse location detail", error);
+      return NextResponse.json(
+        { error: "Failed to load location", code: "WAREHOUSE_LOCATION_FETCH_FAILED" },
+        { status: 500 }
+      );
+    }
+
+    const location = data?.[0];
+    if (!location) {
+      return NextResponse.json(
+        { error: "Warehouse location not found", code: "WAREHOUSE_LOCATION_NOT_FOUND" },
+        { status: 404 }
+      );
+    }
+    const ancestors = ancestorsSchema.safeParse(location.ancestors);
+    if (!ancestors.success) {
+      console.error("Invalid warehouse location ancestors", ancestors.error);
+      return NextResponse.json(
+        { error: "Failed to load location", code: "WAREHOUSE_LOCATION_FETCH_FAILED" },
+        { status: 500 }
+      );
+    }
+
+    const detail: WarehouseLocationDetail = {
+      id: location.id,
+      warehouseId: location.warehouse_id,
+      code: location.code,
+      name: location.name,
+      parentId: location.parent_id,
+      locationType: location.location_type,
+      isPickable: location.is_pickable,
+      isStorable: location.is_storable,
+      isActive: location.is_active,
+      maxCapacity: location.max_capacity,
+      locationPath: location.location_path,
+      ancestors: ancestors.data,
+      childCount: location.child_count,
+      activeChildCount: location.active_child_count,
+      descendantCount: location.descendant_count,
+      directOnHand: location.direct_on_hand,
+      directReserved: location.direct_reserved,
+      subtreeOnHand: location.subtree_on_hand,
+      subtreeReserved: location.subtree_reserved,
+      stockedLocationCount: location.stocked_location_count,
+      directPendingPutaway: location.direct_pending_putaway,
+      subtreePendingPutaway: location.subtree_pending_putaway,
+    };
+    return NextResponse.json({ data: detail });
+  } catch (error: unknown) {
+    console.error("Unexpected warehouse location detail error", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
 
 async function PATCHHandler(request: NextRequest, { params }: RouteContext) {
   try {
@@ -82,7 +182,10 @@ async function PATCHHandler(request: NextRequest, { params }: RouteContext) {
     const parsedBody = updateLocationSchema.safeParse(await request.json());
     if (!parsedBody.success) {
       return NextResponse.json(
-        { error: parsedBody.error.issues[0]?.message ?? "Invalid location details", code: "INVALID_LOCATION" },
+        {
+          error: parsedBody.error.issues[0]?.message ?? "Invalid location details",
+          code: "INVALID_LOCATION",
+        },
         { status: 400 }
       );
     }
@@ -145,9 +248,14 @@ async function PATCHHandler(request: NextRequest, { params }: RouteContext) {
 
     if (updateError || !updated) {
       console.error("Failed to update warehouse location", updateError);
+      const hierarchyError = updateError && warehouseLocationErrorResponse(updateError);
+      if (hierarchyError) return hierarchyError;
       if (updateError?.code === "23505") {
         return NextResponse.json(
-          { error: "Location code already exists for this warehouse", code: "LOCATION_CODE_EXISTS" },
+          {
+            error: "Location code already exists for this warehouse",
+            code: "LOCATION_CODE_EXISTS",
+          },
           { status: 409 }
         );
       }
@@ -164,6 +272,11 @@ async function PATCHHandler(request: NextRequest, { params }: RouteContext) {
   }
 }
 
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "warehouse_locations",
+  route: "/api/warehouse-locations/[id]",
+});
 export const PATCH = withActivityLogging(PATCHHandler, {
   action: "update",
   resourceType: "warehouse_locations",

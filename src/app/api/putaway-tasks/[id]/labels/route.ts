@@ -16,22 +16,22 @@ type PutawayTransactionItemRow = {
         reference_code: string | null;
         warehouse_id: string | null;
         to_location_id: string | null;
-        warehouse:
-          | { warehouse_code: string | null }
-          | { warehouse_code: string | null }[]
+        warehouse: { warehouse_code: string | null } | { warehouse_code: string | null }[] | null;
+        toLocation:
+          | { id: string; code: string | null; location_path: string }
+          | { id: string; code: string | null; location_path: string }[]
           | null;
-        toLocation: { id: string; code: string | null } | { id: string; code: string | null }[] | null;
       }
     | {
         transaction_date: string;
         reference_code: string | null;
         warehouse_id: string | null;
         to_location_id: string | null;
-        warehouse:
-          | { warehouse_code: string | null }
-          | { warehouse_code: string | null }[]
+        warehouse: { warehouse_code: string | null } | { warehouse_code: string | null }[] | null;
+        toLocation:
+          | { id: string; code: string | null; location_path: string }
+          | { id: string; code: string | null; location_path: string }[]
           | null;
-        toLocation: { id: string; code: string | null } | { id: string; code: string | null }[] | null;
       }[]
     | null;
   item:
@@ -49,7 +49,7 @@ type BatchLocationSkuRow = {
   itemBatch: { batch_code: string | null } | { batch_code: string | null }[] | null;
 };
 
-const one = <T,>(value: T | T[] | null | undefined): T | null =>
+const one = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 const parseNumber = (value: number | string | null | undefined) => {
@@ -86,7 +86,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
           business_unit_id,
           deleted_at,
           warehouse:warehouses!stock_transactions_warehouse_id_fkey(warehouse_code),
-          toLocation:warehouse_locations!stock_transactions_to_location_id_fkey(id, code)
+          toLocation:warehouse_locations!stock_transactions_to_location_id_fkey(id, code, location_path)
         ),
         item:items!inner(id, item_code, item_name)
       `
@@ -178,36 +178,34 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     );
   }
 
-  const labels: PutawayTaskLabel[] = rows.map(
-    (row, index) => {
-      const transaction = one(row.transaction);
-      const warehouse = one(transaction?.warehouse);
-      const location = one(transaction?.toLocation);
-      const item = one(row.item);
-      const skuKey = [
-        row.item_id,
-        transaction?.warehouse_id || "",
-        transaction?.to_location_id || "",
-        row.batch_no || "",
-      ].join("|");
+  const labels: PutawayTaskLabel[] = rows.map((row, index) => {
+    const transaction = one(row.transaction);
+    const warehouse = one(transaction?.warehouse);
+    const location = one(transaction?.toLocation);
+    const item = one(row.item);
+    const skuKey = [
+      row.item_id,
+      transaction?.warehouse_id || "",
+      transaction?.to_location_id || "",
+      row.batch_no || "",
+    ].join("|");
 
-      return {
-        boxId: `putaway-${row.id}`,
-        itemId: item?.id || "",
-        batchLocationSku: skuByKey.get(skuKey) ?? null,
-        batchNumber: row.batch_no || "",
-        referenceNumber: transaction?.reference_code || "PUTAWAY",
-        itemCode: item?.item_code || "",
-        itemName: item?.item_name || "",
-        boxNumber: index + 1,
-        quantity: parseNumber(row.quantity),
-        postedDate: transaction?.transaction_date || new Date().toISOString().split("T")[0],
-        warehouseCode: warehouse?.warehouse_code ?? null,
-        locationId: location?.id ?? null,
-        locationCode: location?.code ?? null,
-      };
-    }
-  );
+    return {
+      boxId: `putaway-${row.id}`,
+      itemId: item?.id || "",
+      batchLocationSku: skuByKey.get(skuKey) ?? null,
+      batchNumber: row.batch_no || "",
+      referenceNumber: transaction?.reference_code || "PUTAWAY",
+      itemCode: item?.item_code || "",
+      itemName: item?.item_name || "",
+      boxNumber: index + 1,
+      quantity: parseNumber(row.quantity),
+      postedDate: transaction?.transaction_date || new Date().toISOString().split("T")[0],
+      warehouseCode: warehouse?.warehouse_code ?? null,
+      locationId: location?.id ?? null,
+      locationCode: location?.location_path ?? null,
+    };
+  });
 
   return NextResponse.json({ data: labels });
 }

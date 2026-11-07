@@ -97,10 +97,6 @@ export function useCreatePickList() {
       queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["delivery-notes"] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
-      toast.success("Pick list created");
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to create pick list"));
     },
   });
 }

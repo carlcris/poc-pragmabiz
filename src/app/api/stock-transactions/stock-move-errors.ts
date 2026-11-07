@@ -54,6 +54,9 @@ export const stockMoveErrorResponse = (code: StockMoveErrorCode) => ({
 });
 
 export const mapStockMoveRpcError = (message: string) => {
+  if (message === "LOCATION_STORAGE_UNAVAILABLE" || message === "LOCATION_PARENT_INVALID") {
+    return stockMoveErrorResponse("STOCK_MOVE_LOCATION_INVALID");
+  }
   const code = Object.keys(STOCK_MOVE_ERRORS).find((value) => value === message);
   return stockMoveErrorResponse((code as StockMoveErrorCode | undefined) ?? "STOCK_MOVE_FAILED");
 };

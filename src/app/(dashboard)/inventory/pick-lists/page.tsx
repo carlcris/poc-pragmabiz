@@ -14,11 +14,7 @@ import {
   XCircle,
   Package,
 } from "lucide-react";
-import {
-  usePickList,
-  usePickLists,
-  useUpdatePickListStatus,
-} from "@/hooks/usePickLists";
+import { usePickList, usePickLists, useUpdatePickListStatus } from "@/hooks/usePickLists";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -389,8 +385,8 @@ export default function PickListsPage() {
               {selectedHeader?.pick_list_no || t("pickListDetails")}
             </DialogTitle>
             <DialogDescription>
-              {t("deliveryNoteLabel")}{" "}
-              {selectedHeader?.delivery_notes?.dn_no || t("noValue")} {" | "}
+              {t("deliveryNoteLabel")} {selectedHeader?.delivery_notes?.dn_no || t("noValue")}{" "}
+              {" | "}
               {t("statusLabel")}{" "}
               {selectedHeader
                 ? getStatusBadge(selectedHeader.status, statusLabel(selectedHeader.status))
@@ -488,8 +484,8 @@ export default function PickListsPage() {
                         const suggestedWarehouse = firstRelated(suggestedLocation?.warehouse);
                         const hasSuggestedSource = Boolean(
                           suggestedLocation ||
-                            item.suggested_pick_batch_code ||
-                            item.suggested_batch_location_sku
+                          item.suggested_pick_batch_code ||
+                          item.suggested_batch_location_sku
                         );
 
                         return (
@@ -507,14 +503,16 @@ export default function PickListsPage() {
                                     {suggestedWarehouse?.warehouse_code || t("noValue")}
                                   </div>
                                   <div>
-                                    <span className="text-muted-foreground">{t("rack")}: </span>
-                                    {suggestedLocation?.code || t("noValue")}
+                                    <span className="text-muted-foreground">
+                                      {t("pickLocation")}:{" "}
+                                    </span>
+                                    {suggestedLocation?.location_path || t("noValue")}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
                                     {t("batch")}: {item.suggested_pick_batch_code || t("noValue")}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
-                                    {t("locationSku")}: {" "}
+                                    {t("locationSku")}:{" "}
                                     <span className="tabular-nums text-foreground">
                                       {item.suggested_batch_location_sku || t("noValue")}
                                     </span>
@@ -571,7 +569,6 @@ export default function PickListsPage() {
               )}
             </div>
           ) : null}
-
         </DialogContent>
       </Dialog>
     </div>
