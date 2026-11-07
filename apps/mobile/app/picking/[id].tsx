@@ -999,10 +999,7 @@ const NextPickCard = ({
   onViewLocation: () => void;
 }) => {
   const locationAddress = getAssignedLocationAddress(item);
-  const sourceMeta = [
-    item.sourceWarehouseCode,
-    item.batchNumber ? `Batch ${item.batchNumber}` : null,
-  ]
+  const sourceMeta = [item.sourceWarehouseCode, item.batchNumber]
     .filter((segment): segment is string => Boolean(segment))
     .join(" · ");
   const remainingQty = getRemainingQty(item);
@@ -1090,32 +1087,50 @@ const UpNextList = ({
             candidate.claimedBy !== currentUserId
         );
         const rowContent = (
-          <>
-            <Text style={styles.rowLocation} numberOfLines={1}>
-              {getAssignedLocationAddress(item) ?? "—"}
-            </Text>
-            <Text style={styles.rowItemName} numberOfLines={2}>
-              {item.name}
-            </Text>
-            {claim ? (
-              <Text style={styles.rowReserved}>Reserved by {claim.claimedByName}</Text>
-            ) : (
-              <Text style={styles.rowQty}>
-                {getRemainingQty(item)} {item.uom}
+          <View style={styles.flexFill}>
+            <View style={styles.rowTitleLine}>
+              <Text style={styles.rowItemName} numberOfLines={2}>
+                {item.code} - {item.name}
               </Text>
-            )}
-            {item.sourceLocationId ? (
-              <Ionicons name="map-outline" size={18} color={colors.primaryDark} />
-            ) : null}
-          </>
+              {claim ? (
+                <Text style={styles.rowReserved}>Reserved by {claim.claimedByName}</Text>
+              ) : (
+                <Text style={styles.rowQty}>
+                  {getRemainingQty(item)} <Text style={styles.rowQtyUom}>{item.uom}</Text>
+                </Text>
+              )}
+              {item.sourceLocationId ? (
+                <Ionicons
+                  name="map-outline"
+                  size={18}
+                  color={colors.primaryDark}
+                  style={styles.rowMapIcon}
+                />
+              ) : null}
+            </View>
+            <View style={styles.rowMetaGroup}>
+              {item.batchNumber ? (
+                <Text style={styles.rowBatch} numberOfLines={1}>
+                  {item.batchNumber}
+                </Text>
+              ) : null}
+              <Text style={styles.rowLocation} numberOfLines={1}>
+                {getAssignedLocationAddress(item) ?? "—"}
+              </Text>
+            </View>
+          </View>
         );
-        const rowStyle = [styles.listRow, index > 0 ? styles.listRowDivider : null];
+        const rowStyle = [
+          styles.listRow,
+          styles.upNextRow,
+          index > 0 ? styles.listRowDivider : null,
+        ];
         return item.sourceLocationId ? (
           <Pressable
             key={item.id}
             accessibilityRole="button"
             accessibilityLabel={`Show ${item.name} on map`}
-            style={rowStyle}
+            style={({ pressed }) => [rowStyle, pressed && styles.upNextRowPressed]}
             onPress={() => onViewLocation(item.pickListItemId)}
           >
             {rowContent}
@@ -1598,15 +1613,42 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   listRowDivider: { borderTopWidth: 1, borderTopColor: colors.divider },
-  rowLocation: {
-    width: 88,
-    fontVariant: ["tabular-nums"],
+  upNextRow: { paddingVertical: spacing.md },
+  upNextRowPressed: { backgroundColor: colors.primarySoft },
+  rowTitleLine: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
+  rowItemName: {
+    flex: 1,
     fontSize: 15,
+    lineHeight: 20,
+    fontWeight: typography.fontWeights.semibold,
+    color: colors.text,
+  },
+  rowMetaGroup: { marginTop: spacing.xs },
+  rowBatch: {
+    fontVariant: ["tabular-nums"],
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.violetText,
+  },
+  rowLocation: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: typography.fontWeights.medium,
+    color: colors.text,
+  },
+  rowQty: {
+    fontVariant: ["tabular-nums"],
+    fontSize: 16,
+    lineHeight: 20,
     fontWeight: typography.fontWeights.bold,
     color: colors.text,
   },
-  rowItemName: { flex: 1, fontSize: 15, lineHeight: 20, color: colors.text },
-  rowQty: { fontSize: 15, fontWeight: typography.fontWeights.semibold, color: colors.text },
+  rowQtyUom: {
+    fontSize: 14,
+    fontWeight: typography.fontWeights.regular,
+    color: colors.violetText,
+  },
+  rowMapIcon: { marginTop: 1 },
   rowReserved: {
     maxWidth: 120,
     fontSize: 14,
