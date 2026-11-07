@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 export type SegmentedOption<T extends string> = {
   value: T;
   label: string;
+  disabled?: boolean;
 };
 
 type SegmentedControlProps<T extends string> = {
@@ -37,14 +38,25 @@ export function SegmentedControl<T extends string>({
 }: SegmentedControlProps<T>) {
   const select = (index: number) => onChange(options[index].value);
 
+  // Steps from `index` in `direction`, skipping disabled options.
+  const selectNext = (index: number, direction: 1 | -1) => {
+    for (let step = 1; step < options.length; step += 1) {
+      const next = (index + direction * step + options.length) % options.length;
+      if (!options[next].disabled) {
+        select(next);
+        return;
+      }
+    }
+  };
+
   const onKeyDown = (event: React.KeyboardEvent, index: number) => {
     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
       event.preventDefault();
-      select((index + 1) % options.length);
+      selectNext(index, 1);
     }
     if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
       event.preventDefault();
-      select((index - 1 + options.length) % options.length);
+      selectNext(index, -1);
     }
   };
 
@@ -52,10 +64,7 @@ export function SegmentedControl<T extends string>({
     <div
       role="radiogroup"
       aria-label={ariaLabel}
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full bg-primary p-1",
-        className
-      )}
+      className={cn("inline-flex items-center gap-1 rounded-full bg-primary p-1", className)}
     >
       {options.map((option, index) => {
         const selected = option.value === value;
@@ -65,6 +74,7 @@ export function SegmentedControl<T extends string>({
             type="button"
             role="radio"
             aria-checked={selected}
+            disabled={option.disabled}
             // Only the selected option is tabbable; arrow keys move within the
             // group, so a tab lands on the group rather than each option.
             tabIndex={selected ? 0 : -1}
@@ -73,9 +83,10 @@ export function SegmentedControl<T extends string>({
             className={cn(
               "rounded-full px-4 py-1.5 text-sm font-semibold transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-primary",
+              "disabled:cursor-not-allowed disabled:opacity-60",
               selected
                 ? "bg-background text-primary shadow-sm"
-                : "text-primary-foreground hover:bg-primary-foreground/10"
+                : "text-primary-foreground hover:bg-primary-foreground/10 disabled:hover:bg-transparent"
             )}
           >
             {option.label}

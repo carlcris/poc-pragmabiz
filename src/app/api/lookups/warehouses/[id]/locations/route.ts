@@ -20,13 +20,14 @@ const normalizeSearch = (raw: string | null) => {
   return value ? value : null;
 };
 
-const mapLocationOption = (location: {
+type LocationOptionRow = {
   id: string;
   company_id: string;
   warehouse_id: string;
   code: string;
   name: string | null;
   parent_id: string | null;
+  path_ids: string[];
   location_path: string;
   location_type: string;
   is_pickable: boolean | null;
@@ -34,7 +35,16 @@ const mapLocationOption = (location: {
   is_active: boolean | null;
   created_at: string;
   updated_at: string;
-}) => ({
+};
+
+type LocationLabel = { code: string; name: string | null };
+
+const getLocationLabel = (location: LocationLabel) => location.name?.trim() || location.code;
+
+const mapLocationOption = (
+  location: LocationOptionRow,
+  ancestorsById: ReadonlyMap<string, LocationLabel>
+) => ({
   id: location.id,
   companyId: location.company_id,
   warehouseId: location.warehouse_id,
@@ -42,6 +52,12 @@ const mapLocationOption = (location: {
   name: location.name,
   parentId: location.parent_id,
   locationPath: location.location_path,
+  // Names only, for pickers: ancestors come from one batched read of the page's paths.
+  locationNamePath: location.path_ids
+    .map((id) => (id === location.id ? location : ancestorsById.get(id)))
+    .filter((segment): segment is LocationLabel => Boolean(segment))
+    .map(getLocationLabel)
+    .join(" / "),
   locationType: location.location_type,
   isPickable: location.is_pickable ?? false,
   isStorable: location.is_storable ?? false,
@@ -101,7 +117,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     let query = adminSupabase
       .from("warehouse_locations")
       .select(
-        "id, company_id, warehouse_id, code, name, parent_id, location_path, location_type, is_pickable, is_storable, is_active, created_at, updated_at"
+        "id, company_id, warehouse_id, code, name, parent_id, path_ids, location_path, location_type, is_pickable, is_storable, is_active, created_at, updated_at"
       )
       .eq("company_id", companyId)
       .eq("warehouse_id", warehouseId)
@@ -127,7 +143,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       let selectedQuery = adminSupabase
         .from("warehouse_locations")
         .select(
-          "id, company_id, warehouse_id, code, name, parent_id, location_path, location_type, is_pickable, is_storable, is_active, created_at, updated_at"
+          "id, company_id, warehouse_id, code, name, parent_id, path_ids, location_path, location_type, is_pickable, is_storable, is_active, created_at, updated_at"
         )
         .eq("id", selectedId)
         .eq("company_id", companyId)
@@ -149,9 +165,31 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       selected = selectedLocation;
     }
 
+    const rows: LocationOptionRow[] = [
+      ...(data || []),
+      ...(selected && !data?.includes(selected) ? [selected] : []),
+    ];
+    const ancestorIds = [
+      ...new Set(rows.flatMap((row) => row.path_ids.filter((id) => id !== row.id))),
+    ];
+    const ancestorsById = new Map<string, LocationLabel>();
+    if (ancestorIds.length > 0) {
+      const { data: ancestors, error: ancestorsError } = await adminSupabase
+        .from("warehouse_locations")
+        .select("id, code, name")
+        .eq("company_id", companyId)
+        .eq("warehouse_id", warehouseId)
+        .in("id", ancestorIds);
+      if (ancestorsError) {
+        console.error("Failed to fetch warehouse location lookup ancestors:", ancestorsError);
+        return NextResponse.json({ error: "Failed to fetch warehouse locations" }, { status: 500 });
+      }
+      for (const ancestor of ancestors || []) ancestorsById.set(ancestor.id, ancestor);
+    }
+
     return NextResponse.json({
-      data: (data || []).map(mapLocationOption),
-      selected: selected ? mapLocationOption(selected) : null,
+      data: (data || []).map((row) => mapLocationOption(row, ancestorsById)),
+      selected: selected ? mapLocationOption(selected, ancestorsById) : null,
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

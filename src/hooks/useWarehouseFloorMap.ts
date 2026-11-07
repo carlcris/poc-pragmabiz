@@ -4,6 +4,7 @@ import {
   getWarehouseFloors,
   saveWarehouseFloorMap,
 } from "@/lib/api/warehouse-floor-maps";
+import { ITEM_LOCATIONS_QUERY_KEY } from "@/hooks/queryKeys";
 import { getApiErrorCode } from "@/lib/api";
 
 const TERMINAL_FLOOR_MAP_QUERY_ERROR_CODES = [
@@ -52,6 +53,16 @@ export const useSaveWarehouseFloorMap = (businessUnitId: string) => {
       queryClient.invalidateQueries({
         queryKey: ["business-unit", businessUnitId, "warehouse-floors", input.warehouseId],
       });
+      const floorMapId = response.data?.id;
+      if (floorMapId) {
+        void queryClient.invalidateQueries({
+          predicate: ({ queryKey }) =>
+            queryKey[0] === ITEM_LOCATIONS_QUERY_KEY &&
+            queryKey[2] === "floor" &&
+            queryKey[3] === businessUnitId &&
+            queryKey[4] === floorMapId,
+        });
+      }
     },
   });
 };

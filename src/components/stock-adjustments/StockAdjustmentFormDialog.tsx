@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Plus, Pencil, Trash2, Calculator, Printer } from "lucide-react";
+import { Lock, MoreVertical, Package, Pencil, Plus, Printer, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { StockAdjustment } from "@/types/stock-adjustment";
 import type { BarcodeData } from "@/lib/barcode";
@@ -14,6 +14,7 @@ import {
   StockAdjustmentLineItemDialog,
   type StockAdjustmentLineItemFormValues,
 } from "@/components/stock-adjustments/StockAdjustmentLineItemDialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,6 +24,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Form,
   FormControl,
@@ -47,10 +55,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import { WarehouseLocationSelect } from "@/components/warehouses/WarehouseLocationSelect";
 import type { LookupWarehouseOption } from "@/hooks/useLookups";
+import { cn } from "@/lib/utils";
 
 const createAdjustmentFormSchema = (
   tValidation: (key: "warehouseRequired" | "adjustmentDateRequired" | "reasonRequired") => string
@@ -93,6 +101,7 @@ export function StockAdjustmentFormDialog({
   const t = useTranslations("stockAdjustmentForm");
   const tPage = useTranslations("stockAdjustmentsPage");
   const tValidation = useTranslations("stockAdjustmentValidation");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   const [lineItems, setLineItems] = useState<StockAdjustmentLineItemFormValues[]>([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
@@ -116,15 +125,21 @@ export function StockAdjustmentFormDialog({
     },
   });
 
-  const totals = useMemo(() => {
-    const totalValue = lineItems.reduce((sum, item) => {
-      const difference = (item.adjustedQty || 0) - (item.currentQty || 0);
-      const value = difference * (item.unitCost || 0);
-      return sum + value;
-    }, 0);
-
-    return { totalValue };
-  }, [lineItems]);
+  const totals = useMemo(
+    () =>
+      lineItems.reduce(
+        (summary, item) => {
+          const difference = (item.adjustedQty || 0) - (item.currentQty || 0);
+          return {
+            totalValue: summary.totalValue + difference * (item.unitCost || 0),
+            increases: summary.increases + (difference > 0 ? 1 : 0),
+            decreases: summary.decreases + (difference < 0 ? 1 : 0),
+          };
+        },
+        { totalValue: 0, increases: 0, decreases: 0 }
+      ),
+    [lineItems]
+  );
 
   useEffect(() => {
     if (open && selectedAdjustment) {
@@ -258,7 +273,6 @@ export function StockAdjustmentFormDialog({
 
   const handleSubmit = async (values: StockAdjustmentFormValues) => {
     if (lineItems.length === 0) {
-      window.alert(t("lineItemRequired"));
       return;
     }
 
@@ -276,12 +290,24 @@ export function StockAdjustmentFormDialog({
     }
   };
 
+  const isWarehouseLocked = Boolean(selectedAdjustment) || lineItems.length > 0;
+  const formatQty = (value: number) =>
+    value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatValue = (value: number) =>
+    value < 0 ? `(${formatCurrency(Math.abs(value))})` : formatCurrency(value);
+  const toneClass = (value: number) =>
+    value > 0 ? "text-green-700" : value < 0 ? "text-red-700" : "text-muted-foreground";
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] max-w-6xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{selectedAdjustment ? t("editTitle") : t("createTitle")}</DialogTitle>
+        {/* Fixed height from md up so adding lines or switching states never resizes and
+            re-centres the dialog; the viewport clamp has no preset in the Tailwind scale. */}
+        <DialogContent className="flex max-h-[90vh] max-w-6xl flex-col gap-0 overflow-hidden p-0 md:h-[min(90vh,52rem)]">
+          <DialogHeader className="px-6 pb-5 pr-12 pt-6">
+            <DialogTitle className="text-xl">
+              {selectedAdjustment ? t("editTitle") : t("createTitle")}
+            </DialogTitle>
             <DialogDescription>
               {selectedAdjustment
                 ? t("editDescription", { code: selectedAdjustment.adjustmentCode })
@@ -290,172 +316,200 @@ export function StockAdjustmentFormDialog({
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">{t("generalInformation")}</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="warehouseId"
-                    render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>{t("warehouseLabel")}</FormLabel>
-                        <FormControl>
-                          <WarehouseSelect
-                            value={field.value}
-                            onValueChange={(value) => {
-                              field.onChange(value);
-                              form.setValue("locationId", "");
-                            }}
-                            onOptionChange={setSelectedWarehouse}
-                            scope="current_business_unit"
-                            selectedOption={selectedWarehouse}
-                            disabled={Boolean(selectedAdjustment) || lineItems.length > 0}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="adjustmentType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("adjustmentTypeLabel")}</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+            <form
+              onSubmit={form.handleSubmit(handleSubmit)}
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto border-t p-6">
+                <section
+                  aria-label={t("generalInformation")}
+                  className="space-y-4 rounded-xl border bg-muted/30 p-5"
+                >
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <FormField
+                      control={form.control}
+                      name="warehouseId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("warehouseLabel")}</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={t("selectType")} />
-                            </SelectTrigger>
+                            <WarehouseSelect
+                              value={field.value}
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                form.setValue("locationId", "");
+                              }}
+                              onOptionChange={setSelectedWarehouse}
+                              scope="current_business_unit"
+                              selectedOption={selectedWarehouse}
+                              disabled={isWarehouseLocked}
+                            />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="physical_count">{tPage("physicalCount")}</SelectItem>
-                            <SelectItem value="damage">{tPage("damage")}</SelectItem>
-                            <SelectItem value="loss">{tPage("loss")}</SelectItem>
-                            <SelectItem value="found">{tPage("found")}</SelectItem>
-                            <SelectItem value="quality_issue">{tPage("qualityIssue")}</SelectItem>
-                            <SelectItem value="other">{tPage("other")}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          {isWarehouseLocked ? (
+                            <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Lock className="h-3 w-3" />
+                              {t("warehouseLockedHint")}
+                            </p>
+                          ) : null}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  <FormField
-                    control={form.control}
-                    name="adjustmentDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("adjustmentDateLabel")}</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <FormField
+                      control={form.control}
+                      name="locationId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("locationLabel")}</FormLabel>
+                          <FormControl>
+                            <WarehouseLocationSelect
+                              warehouseId={selectedWarehouseId}
+                              value={field.value ?? ""}
+                              onValueChange={field.onChange}
+                              selectedOption={
+                                selectedAdjustment?.locationId &&
+                                selectedAdjustment.locationId === field.value
+                                  ? {
+                                      id: selectedAdjustment.locationId,
+                                      code: selectedAdjustment.locationCode ?? "",
+                                      name: selectedAdjustment.locationName,
+                                    }
+                                  : null
+                              }
+                              allowNone
+                              storableOnly
+                            />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">{t("locationHint")}</p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  <FormField
-                    control={form.control}
-                    name="locationId"
-                    render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>{t("locationLabel")}</FormLabel>
-                        <FormControl>
-                          <WarehouseLocationSelect
-                            warehouseId={selectedWarehouseId}
-                            value={field.value ?? ""}
-                            onValueChange={field.onChange}
-                            selectedOption={
-                              selectedAdjustment?.locationId &&
-                              selectedAdjustment.locationId === field.value
-                                ? {
-                                    id: selectedAdjustment.locationId,
-                                    code: selectedAdjustment.locationCode ?? "",
-                                    name: selectedAdjustment.locationName,
-                                  }
-                                : null
-                            }
-                            allowNone
-                            storableOnly
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <FormField
+                      control={form.control}
+                      name="adjustmentType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("adjustmentTypeLabel")}</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder={t("selectType")} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="physical_count">
+                                {tPage("physicalCount")}
+                              </SelectItem>
+                              <SelectItem value="damage">{tPage("damage")}</SelectItem>
+                              <SelectItem value="loss">{tPage("loss")}</SelectItem>
+                              <SelectItem value="found">{tPage("found")}</SelectItem>
+                              <SelectItem value="quality_issue">{tPage("qualityIssue")}</SelectItem>
+                              <SelectItem value="other">{tPage("other")}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  <FormField
-                    control={form.control}
-                    name="reason"
-                    render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>{t("reasonLabel")}</FormLabel>
-                        <FormControl>
-                          <Input placeholder={t("reasonPlaceholder")} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>{t("notesLabel")}</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder={t("notesPlaceholder")}
-                            className="resize-none"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-medium">{t("lineItemsTitle")}</h3>
-                    <p className="text-sm text-muted-foreground">{t("lineItemsDescription")}</p>
+                    <FormField
+                      control={form.control}
+                      name="adjustmentDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("adjustmentDateLabel")}</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                  <Button
-                    type="button"
-                    onClick={handleAddItem}
-                    size="sm"
-                    disabled={!selectedWarehouseId}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    {t("addItem")}
-                  </Button>
-                </div>
 
-                {!selectedWarehouseId && (
-                  <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-600">
-                    {t("selectWarehouseBeforeItems")}
-                  </div>
-                )}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="reason"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("reasonLabel")}</FormLabel>
+                          <FormControl>
+                            <Input placeholder={t("reasonPlaceholder")} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                {lineItems.length === 0 ? (
-                  <div className="rounded-lg border-2 border-dashed py-12 text-center text-muted-foreground">
-                    <p>{t("noItems")}</p>
-                    <p className="text-sm">{t("noItemsDescription")}</p>
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("notesLabel")}</FormLabel>
+                          <FormControl>
+                            <Input placeholder={t("notesPlaceholder")} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                ) : (
-                  <>
-                    <div className="rounded-lg border">
+                </section>
+
+                <section
+                  aria-labelledby="stock-adjustment-lines-heading"
+                  className="flex flex-1 flex-col gap-3"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <h3 id="stock-adjustment-lines-heading" className="text-base font-semibold">
+                        {t("lineItemsTitle")}
+                      </h3>
+                      {lineItems.length > 0 ? (
+                        <Badge variant="secondary" className="tabular-nums">
+                          {lineItems.length}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    {lineItems.length > 0 ? (
+                      <Button type="button" onClick={handleAddItem} size="sm">
+                        <Plus className="mr-2 h-4 w-4" />
+                        {t("addItem")}
+                      </Button>
+                    ) : null}
+                  </div>
+
+                  {lineItems.length === 0 ? (
+                    <div className="flex min-h-48 flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed p-6 text-center">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-primary">
+                        <Package className="h-5 w-5" />
+                      </span>
+                      <p className="text-sm font-semibold">{t("noItems")}</p>
+                      <p className="max-w-sm text-sm text-muted-foreground">
+                        {selectedWarehouseId
+                          ? t("noItemsDescription")
+                          : t("selectWarehouseBeforeItems")}
+                      </p>
+                      <Button
+                        type="button"
+                        onClick={handleAddItem}
+                        size="sm"
+                        disabled={!selectedWarehouseId}
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        {t("addItem")}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border">
                       <Table>
                         <TableHeader>
-                          <TableRow>
+                          <TableRow className="bg-muted/30">
                             <TableHead>{t("item")}</TableHead>
                             <TableHead>{t("batch")}</TableHead>
                             <TableHead className="text-right">{t("currentQty")}</TableHead>
@@ -463,7 +517,9 @@ export function StockAdjustmentFormDialog({
                             <TableHead className="text-right">{t("difference")}</TableHead>
                             <TableHead className="text-right">{t("unitCost")}</TableHead>
                             <TableHead className="text-right">{t("totalValue")}</TableHead>
-                            <TableHead className="w-24">{t("actions")}</TableHead>
+                            <TableHead>
+                              <span className="sr-only">{t("actions")}</span>
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -473,101 +529,99 @@ export function StockAdjustmentFormDialog({
 
                             return (
                               <TableRow key={index}>
-                                <TableCell>
-                                  <div>
-                                    <div className="font-medium">{item.itemName}</div>
-                                    <div className="text-sm text-muted-foreground">
-                                      {item.itemCode}
-                                    </div>
+                                <TableCell className="max-w-xs">
+                                  <div className="font-medium leading-snug">{item.itemName}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {item.itemCode}
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <div>
-                                    <div className="font-medium">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-semibold">
                                       {item.batchCode || item.batchLocationSku}
-                                    </div>
-                                    <div className="tabular-nums text-xs text-muted-foreground">
-                                      {item.batchLocationSku}
-                                    </div>
-                                    {(item.batchLocationCode || item.batchLocationName) && (
-                                      <div className="text-xs text-muted-foreground">
-                                        {item.batchLocationCode || item.batchLocationName}
-                                      </div>
+                                    </span>
+                                    {item.itemBatchLocationId ? null : (
+                                      <Badge variant="secondary">{t("newBatchTag")}</Badge>
                                     )}
                                   </div>
+                                  {item.batchLocationSku &&
+                                  item.batchLocationSku !== item.batchCode ? (
+                                    <div className="text-xs tabular-nums text-muted-foreground">
+                                      {item.batchLocationSku}
+                                    </div>
+                                  ) : null}
+                                  {item.batchLocationCode || item.batchLocationName ? (
+                                    <div className="text-xs text-muted-foreground">
+                                      {item.batchLocationCode || item.batchLocationName}
+                                    </div>
+                                  ) : null}
                                 </TableCell>
-                                <TableCell className="text-right">
-                                  {item.currentQty.toLocaleString(locale, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  })}
+                                <TableCell className="text-right tabular-nums text-muted-foreground">
+                                  {formatQty(item.currentQty)}
                                 </TableCell>
-                                <TableCell className="text-right">
-                                  {item.adjustedQty.toLocaleString(locale, {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  })}
+                                <TableCell className="text-right tabular-nums">
+                                  {formatQty(item.adjustedQty)}
                                 </TableCell>
-                                <TableCell className="text-right">
-                                  <span
-                                    className={`font-medium ${
-                                      difference > 0
-                                        ? "text-green-600"
-                                        : difference < 0
-                                          ? "text-red-600"
-                                          : "text-muted-foreground"
-                                    }`}
-                                  >
-                                    {difference > 0 ? "+" : ""}
-                                    {difference.toLocaleString(locale, {
-                                      minimumFractionDigits: 2,
-                                      maximumFractionDigits: 2,
-                                    })}
-                                  </span>
+                                <TableCell
+                                  className={cn(
+                                    "text-right font-semibold tabular-nums",
+                                    toneClass(difference)
+                                  )}
+                                >
+                                  {difference > 0 ? "+" : ""}
+                                  {formatQty(difference)}
                                 </TableCell>
-                                <TableCell className="text-right">
+                                <TableCell className="text-right tabular-nums">
                                   {formatCurrency(item.unitCost)}
                                 </TableCell>
-                                <TableCell className="text-right">
-                                  <span
-                                    className={`font-medium ${
-                                      totalValue > 0
-                                        ? "text-green-600"
-                                        : totalValue < 0
-                                          ? "text-red-600"
-                                          : ""
-                                    }`}
-                                  >
-                                    {formatCurrency(totalValue)}
-                                  </span>
+                                <TableCell
+                                  className={cn(
+                                    "text-right font-semibold tabular-nums",
+                                    toneClass(totalValue)
+                                  )}
+                                >
+                                  {formatValue(totalValue)}
                                 </TableCell>
                                 <TableCell>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex justify-end gap-1">
                                     <Button
                                       type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      aria-label={t("printBatchLabels")}
-                                      onClick={() => handlePrintBatchLabel(item)}
-                                    >
-                                      <Printer className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
+                                      variant="outline"
                                       size="sm"
                                       onClick={() => handleEditItem(index)}
                                     >
-                                      <Pencil className="h-4 w-4" />
+                                      <Pencil className="mr-2 h-4 w-4" />
+                                      {tCommon("edit")}
                                     </Button>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleDeleteItem(index)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-9 w-9"
+                                          aria-label={tCommon("actions")}
+                                        >
+                                          <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                          onClick={() => handlePrintBatchLabel(item)}
+                                        >
+                                          <Printer className="mr-2 h-4 w-4" />
+                                          {t("printBatchLabels")}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          className="text-destructive"
+                                          onClick={() => handleDeleteItem(index)}
+                                        >
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          {t("removeLine")}
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                   </div>
                                 </TableCell>
                               </TableRow>
@@ -576,42 +630,57 @@ export function StockAdjustmentFormDialog({
                         </TableBody>
                       </Table>
                     </div>
-
-                    <div className="rounded-lg bg-muted p-4">
-                      <div className="mb-3 flex items-center gap-2">
-                        <Calculator className="h-5 w-5" />
-                        <h4 className="font-semibold">{t("summary")}</h4>
-                      </div>
-                      <div className="flex justify-between text-lg font-bold">
-                        <span>{t("totalAdjustmentValue")}:</span>
-                        <span
-                          className={
-                            totals.totalValue > 0
-                              ? "text-green-600"
-                              : totals.totalValue < 0
-                                ? "text-red-600"
-                                : ""
-                          }
-                        >
-                          {formatCurrency(totals.totalValue)}
-                        </span>
-                      </div>
-                    </div>
-                  </>
-                )}
+                  )}
+                </section>
               </div>
 
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                  {t("cancel")}
-                </Button>
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving
-                    ? t("saving")
-                    : selectedAdjustment
-                      ? t("updateAction")
-                      : t("createAction")}
-                </Button>
+              <DialogFooter className="items-center gap-3 border-t bg-muted/30 px-6 py-4 sm:justify-between sm:space-x-0">
+                <dl className="flex flex-wrap items-center gap-x-7 gap-y-2">
+                  <div>
+                    <dt className="text-xs text-muted-foreground">{t("linesCount")}</dt>
+                    <dd className="font-semibold tabular-nums">{lineItems.length}</dd>
+                  </div>
+                  {lineItems.length > 0 ? (
+                    <>
+                      <div>
+                        <dt className="text-xs text-muted-foreground">{t("increasesCount")}</dt>
+                        <dd className="font-semibold tabular-nums text-green-700">
+                          {totals.increases}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-muted-foreground">{t("decreasesCount")}</dt>
+                        <dd className="font-semibold tabular-nums text-red-700">
+                          {totals.decreases}
+                        </dd>
+                      </div>
+                    </>
+                  ) : null}
+                  <div className="hidden h-8 w-px bg-border sm:block" aria-hidden="true" />
+                  <div>
+                    <dt className="text-xs text-muted-foreground">{t("totalAdjustmentValue")}</dt>
+                    <dd
+                      className={cn(
+                        "text-lg font-bold tabular-nums",
+                        totals.totalValue === 0 ? "text-foreground" : toneClass(totals.totalValue)
+                      )}
+                    >
+                      {formatValue(totals.totalValue)}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row">
+                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    {t("cancel")}
+                  </Button>
+                  <Button type="submit" disabled={isSaving || lineItems.length === 0}>
+                    {isSaving
+                      ? t("saving")
+                      : selectedAdjustment
+                        ? t("updateAction")
+                        : t("createAction")}
+                  </Button>
+                </div>
               </DialogFooter>
             </form>
           </Form>

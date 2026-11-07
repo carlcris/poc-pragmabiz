@@ -163,6 +163,7 @@ export type WarehouseLocation = {
   name?: string | null;
   parentId?: string | null;
   locationPath: string;
+  locationNamePath?: string;
   childCount?: number;
   subtreeQuantity?: number;
   locationType: string;

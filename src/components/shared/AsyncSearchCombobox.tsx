@@ -25,6 +25,7 @@ type AsyncSearchComboboxProps<T> = {
   getOptionLabel: (option: T) => string;
   getOptionSearchValue?: (option: T) => string;
   renderOption?: (option: T, selected: boolean) => ReactNode;
+  renderSelectedOption?: (option: T) => ReactNode;
   placeholder: string;
   searchPlaceholder: string;
   emptyMessage: string;
@@ -50,6 +51,7 @@ export function AsyncSearchCombobox<T>({
   getOptionLabel,
   getOptionSearchValue,
   renderOption,
+  renderSelectedOption,
   placeholder,
   searchPlaceholder,
   emptyMessage,
@@ -129,9 +131,13 @@ export function AsyncSearchCombobox<T>({
             buttonClassName
           )}
         >
-          <span className="min-w-0 flex-1 truncate text-left">
-            {selected ? getOptionLabel(selected) : placeholder}
-          </span>
+          {selected && renderSelectedOption ? (
+            <span className="min-w-0 flex-1 text-left">{renderSelectedOption(selected)}</span>
+          ) : (
+            <span className="min-w-0 flex-1 truncate text-left">
+              {selected ? getOptionLabel(selected) : placeholder}
+            </span>
+          )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>

@@ -202,6 +202,11 @@ for the rest). Each line's on-hand and available quantities include everything i
 location, so a rack's total equals stock on the rack itself plus its bins; when a container holds
 stock directly and also has stocked sublocations, a first child line labelled "-" (announced as
 "On … itself") shows the direct part.
+Posting stock adjustments or putaway invalidates warehouse location details and hierarchy queries,
+so quantities and structural-edit restrictions refresh without waiting for cache expiry. Saving a
+floor map invalidates item stock overlays for that map and business unit, refreshing rack highlights
+and off-floor location counts.
+
 Location edits invalidate cached item location names and descendant addresses, including preferred
 location summaries and the Item Location Batch / Stock Aging reports. Open views refresh after the
 edit; previously visited views reload current data when reopened instead of waiting for cache expiry.
@@ -1009,6 +1014,13 @@ unit. The warehouse must be selected before lines are added and cannot be change
 draft. The transactional RPC validates that the warehouse belongs to the current business unit
 before writing the draft.
 
+The Add Item and Edit Item dialogs accept quantities in active item unit options, using their
+configured display labels (for example, BOX (144)). The base unit is selected initially, including
+when reopening a saved line. Entering 2 boxes of 144 adjusts 288 base units. The total quantity,
+new stock level, saved line, and value impact use base units; unit cost remains per base unit.
+Decreases cannot exceed the selected batch’s current on-hand quantity. Converted adjustments
+must have at most two decimal places and cannot exceed 1,000,000,000.
+
 **Permissions**: `create` on `stock_adjustments`
 
 **Request**:
@@ -1034,7 +1046,11 @@ before writing the draft.
 }
 ```
 
-Each adjustment line explicitly chooses **Existing Batch** or **Create New Batch**. The existing-batch selector is server-filtered by item, the selected warehouse, optional location, and batch/QR search text. The selected batch-location row supplies the current quantity and QR label metadata.
+The create/edit adjustment dialog keeps warehouse, location, adjustment type, date, reason, and notes in one compact block above the line table. The warehouse is locked once any line exists; the location filters selectable batches and is where new batches are created. Each line has an **Edit** action plus a menu with **Print Labels** and **Remove Line**. A footer bar always shows the line count, increase and decrease counts, and the total value impact, and **Create Adjustment** stays disabled until at least one line exists.
+
+Each adjustment line explicitly chooses **Existing Batch** or **New Batch**. The existing-batch selector is server-filtered by item, the selected warehouse, optional location, and batch/QR search text. The selected batch-location row supplies the current quantity and QR label metadata, and the selector shows that batch's location, received date, and on-hand quantity.
+
+The line dialog keeps a **Stock Preview** panel beside the form once a batch is chosen: new stock level, before/after bars, current/change/new totals, and value impact, all recalculated as the user edits. The direction is chosen with **Increase Stock** / **Decrease Stock** buttons, and the unit selector sits on the quantity field. A decrease larger than the on-hand quantity is flagged in the preview and blocks saving the line.
 
 Creating a new batch requires an adjustment location, a batch code, a valid Received Date, and a positive stock increase. Received Date defaults to today and accepts past dates for initial inventory. New-batch API lines send `batchReceivedDate` as `YYYY-MM-DD` (also when adding a new batch to an existing draft); existing-batch lines omit it. The date is stored at midnight in `item_batches.received_at`, which drives batch age and oldest-first allocation, independently of the adjustment date and record creation time. Reusing a batch code at another location requires the same received date; it never changes the original batch date. Invalid dates return HTTP 400 with `STOCK_ADJUSTMENT_RECEIVED_DATE_INVALID`; conflicting dates return HTTP 409 with `STOCK_ADJUSTMENT_RECEIVED_DATE_CONFLICT`. New batches start at zero, so stock removal is unavailable in this mode. The form checks whether the same batch already exists at the selected location and directs the user to the existing-batch path when it does. Saving the draft creates or reuses the `item_batches` row and creates its missing `item_batch_locations` row for the selected warehouse/location inside the same database transaction as the adjustment header and lines. If any part of the save fails, no manual batch, batch-location, header, or line write remains committed.
 

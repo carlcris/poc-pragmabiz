@@ -27,6 +27,7 @@ import { putawayTasksApi } from "@/lib/api/putaway-tasks";
 import type { PostPutawayTaskRequest, PutawayTaskFilters } from "@/types/putaway-task";
 
 const PUTAWAY_AFFECTED_QUERY_PREFIXES = new Set([
+  "warehouse-locations",
   PUTAWAY_TASKS_QUERY_KEY,
   ITEMS_QUERY_KEY,
   ITEMS_STATS_QUERY_KEY,

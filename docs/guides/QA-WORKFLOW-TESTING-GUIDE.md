@@ -987,7 +987,7 @@ only the generic save message without internal database details.
 1. **Create** → status Draft. Freely editable.
 2. **Post** → records a stock movement, updates stock levels and the stock ledger, then changes the status to Posted. It does not create an accounting journal or General Ledger entry. This directly changes on-hand inventory — there is no approval step in between today.
 
-For each line, choose either **Existing Batch** or **Create New Batch**. Creating a new batch requires a selected adjustment location, a unique batch code at that location, a Received Date, and a positive stock increase. Received Date defaults to today and can be backdated for initial inventory; it determines batch age. Verify a historical date survives saving and reopening the draft, and that a later draft edit preserves it. Reusing a batch code from another location with a different received date must show a conflict and leave existing dates unchanged. Saving the draft creates the zero-quantity batch/location identity transactionally; posting applies the entered increase to inventory.
+For each line, choose either **Existing Batch** or **New Batch**. Verify the Stock Preview panel updates as the direction, quantity, and unit change, and that a decrease larger than the batch's on-hand quantity shows a warning and disables saving the line. Creating a new batch requires a selected adjustment location, a unique batch code at that location, a Received Date, and a positive stock increase. Received Date defaults to today and can be backdated for initial inventory; it determines batch age. Verify a historical date survives saving and reopening the draft, and that a later draft edit preserves it. Reusing a batch code from another location with a different received date must show a conflict and leave existing dates unchanged. Saving the draft creates the zero-quantity batch/location identity transactionally; posting applies the entered increase to inventory.
 
 **Who can do it**: edit access to Stock Adjustments (posting uses the same permission as editing).
 
@@ -998,7 +998,7 @@ For each line, choose either **Existing Batch** or **Create New Batch**. Creatin
 - Confirm posting correctly updates the item's on-hand quantity by exactly the adjusted amount, and that a corresponding stock transaction appears in the stock ledger.
 - With other batches already present, create a different batch code and confirm the draft creates its batch/location identity and Post applies the increase.
 - Try creating a batch without a location, with zero quantity, with Decrease Stock, and with a code already present at the selected location; each case should remain in the form with actionable guidance.
-- From both an editable adjustment and its read-only details view, print multiple QR labels for a persisted batch. Confirm the dialog defaults to the item's default unit (then base, then first active option), accepts another active unit selection, accepts only whole-number copy counts from 1–100, and produces exactly that many labels with the selected unit's `qtyPerUnit` and the same batch-location SKU.
+- From both an editable adjustment (line **⋮** menu → **Print Labels**) and its read-only details view, print multiple QR labels for a persisted batch. Confirm the dialog defaults to the item's default unit (then base, then first active option), accepts another active unit selection, accepts only whole-number copy counts from 1–100, and produces exactly that many labels with the selected unit's `qtyPerUnit` and the same batch-location SKU.
 
 ---
 
@@ -1693,6 +1693,13 @@ one selects it in its warehouse. Check that a level with more than 50 stocked lo
 more, and verify the tab in Chinese and at phone width.
 
 Regression checks for the selected stock panel:
+
+- Open a warehouse location detail, post an adjustment that removes its final stock, then return
+  before cache expiry. Quantity and Move/Disable restrictions must refresh without a reload.
+  Repeat after posting putaway: destination and ancestor quantities and pending-work counts refresh.
+- Open an item's floor-map overlay, add its stocked rack to that same floor map, save, and reopen
+  the overlay before cache expiry. The rack highlight and off-floor count must refresh. Cached
+  overlays for other maps and business units must remain untouched.
 
 - Open an item's Locations tab and the Item Location Batch / Stock Aging reports, then rename a
   parent location in warehouse management. Return before their normal cache expiry: tree labels,

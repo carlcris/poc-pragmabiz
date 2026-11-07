@@ -3677,7 +3677,6 @@ export type TranslationKeys = {
     notesLabel: string;
     notesPlaceholder: string;
     lineItemsTitle: string;
-    lineItemsDescription: string;
     addItem: string;
     selectWarehouseBeforeItems: string;
     warehouseUnavailableBeforeItems: string;
@@ -3691,13 +3690,18 @@ export type TranslationKeys = {
     unitCost: string;
     totalValue: string;
     actions: string;
-    summary: string;
     totalAdjustmentValue: string;
+    warehouseLockedHint: string;
+    locationHint: string;
+    newBatchTag: string;
+    removeLine: string;
+    linesCount: string;
+    increasesCount: string;
+    decreasesCount: string;
     cancel: string;
     saving: string;
     updateAction: string;
     createAction: string;
-    lineItemRequired: string;
     duplicateBatchLine: string;
     stockAdjustmentLabel: string;
     printBatchMissing: string;
@@ -3726,9 +3730,6 @@ export type TranslationKeys = {
     createTitle: string;
     editDescription: string;
     createDescription: string;
-    selectItemStep: string;
-    adjustmentDetailsStep: string;
-    summaryStep: string;
     itemLabel: string;
     chooseItem: string;
     searchByCodeOrName: string;
@@ -3750,22 +3751,29 @@ export type TranslationKeys = {
     newBatchIncreaseOnlyHint: string;
     batchOptionMeta: string;
     unassignedLocation: string;
-    currentStockOnHand: string;
     units: string;
-    typeLabel: string;
-    selectType: string;
     increaseStock: string;
     decreaseStock: string;
     quantityLabel: string;
     quantityPlaceholder: string;
     unitCostLabel: string;
-    summary: string;
     newStockLevel: string;
     currentStock: string;
     adjustment: string;
     newStock: string;
     valueImpact: string;
     valueImpactFormula: string;
+    receivedOn: string;
+    onHandUnit: string;
+    increaseStockHint: string;
+    decreaseStockHint: string;
+    stockPreview: string;
+    previewEmpty: string;
+    before: string;
+    after: string;
+    change: string;
+    exceedsOnHand: string;
+    draftSaveHint: string;
     cancel: string;
     updateAction: string;
     createAction: string;
@@ -7902,7 +7910,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       editTitle: "Edit Stock Adjustment",
       createTitle: "Create Stock Adjustment",
       editDescription: "Edit adjustment {code}",
-      createDescription: "Create a new stock adjustment",
+      createDescription: "Set where and why stock is changing, then add a line for each batch.",
       generalInformation: "General Information",
       adjustmentTypeLabel: "Adjustment Type",
       selectType: "Select type",
@@ -7918,28 +7926,33 @@ export const translations: Record<Locale, TranslationKeys> = {
       notesLabel: "Notes (Optional)",
       notesPlaceholder: "Additional notes...",
       lineItemsTitle: "Line Items",
-      lineItemsDescription: "Add items to adjust stock levels",
       addItem: "Add Item",
-      selectWarehouseBeforeItems: "Please select a warehouse before adding items",
+      selectWarehouseBeforeItems:
+        "Select a warehouse above, then add a line for each batch you are adjusting.",
       warehouseUnavailableBeforeItems:
         "An active warehouse must be assigned to the current business unit before adding items.",
-      noItems: "No items added yet.",
-      noItemsDescription: 'Click "Add Item" to get started.',
+      noItems: "No Line Items Yet",
+      noItemsDescription: "Add a line for each batch you are adjusting.",
       item: "Item",
       batch: "Batch",
-      currentQty: "Current Qty",
-      adjustedQty: "Adjusted Qty",
-      difference: "Difference",
+      currentQty: "Current",
+      adjustedQty: "Adjusted",
+      difference: "Change",
       unitCost: "Unit Cost",
-      totalValue: "Total Value",
+      totalValue: "Value",
       actions: "Actions",
-      summary: "Summary",
-      totalAdjustmentValue: "Total Adjustment Value",
+      totalAdjustmentValue: "Total Value Impact",
+      warehouseLockedHint: "Locked while lines exist",
+      locationHint: "Filters batches; new batches go here",
+      newBatchTag: "New",
+      removeLine: "Remove Line",
+      linesCount: "Lines",
+      increasesCount: "Increases",
+      decreasesCount: "Decreases",
       cancel: "Cancel",
       saving: "Saving...",
       updateAction: "Update Adjustment",
       createAction: "Create Adjustment",
-      lineItemRequired: "Please add at least one line item",
       duplicateBatchLine:
         "This item and batch are already included. Edit the existing line instead.",
       stockAdjustmentLabel: "Stock Adjustment",
@@ -7970,16 +7983,13 @@ export const translations: Record<Locale, TranslationKeys> = {
       editTitle: "Edit Stock Adjustment",
       createTitle: "New Stock Adjustment",
       editDescription: "Update the adjustment details below",
-      createDescription: "Adjust inventory levels for a specific item",
-      selectItemStep: "Select Item",
-      adjustmentDetailsStep: "Adjustment Details",
-      summaryStep: "Summary",
+      createDescription: "Pick a batch and enter the change. The preview updates as you type.",
       itemLabel: "Inventory Item",
       chooseItem: "Choose an item to adjust",
       searchByCodeOrName: "Search by code or name...",
       batchEntryModeLabel: "Batch Source",
       existingBatchMode: "Existing Batch",
-      newBatchMode: "Create New Batch",
+      newBatchMode: "New Batch",
       newBatchLocationRequired: "Select an adjustment location before creating a new batch.",
       batchLabel: "Batch",
       chooseBatch: "Choose a batch to adjust",
@@ -7994,25 +8004,34 @@ export const translations: Record<Locale, TranslationKeys> = {
       manualBatchCodePlaceholder: "Enter batch code",
       manualBatchCodeHint:
         "This batch will be created at the selected adjustment location when the draft is saved.",
-      newBatchIncreaseOnlyHint: "A new batch starts at zero and can only increase stock.",
+      newBatchIncreaseOnlyHint: "Not available for a new batch",
       batchOptionMeta: "{qty} units at {location}",
       unassignedLocation: "Unassigned location",
-      currentStockOnHand: "Current Stock on Hand",
       units: "units",
-      typeLabel: "Type",
-      selectType: "Select type",
       increaseStock: "Increase Stock",
       decreaseStock: "Decrease Stock",
       quantityLabel: "Quantity",
       quantityPlaceholder: "0.00",
       unitCostLabel: "Unit Cost",
-      summary: "Summary",
       newStockLevel: "New Stock Level",
       currentStock: "Current Stock",
       adjustment: "Adjustment",
       newStock: "New Stock",
       valueImpact: "Value Impact",
       valueImpactFormula: "{quantity} {uom} x {unitCost}",
+      receivedOn: "Received {date}",
+      onHandUnit: "{unit} On Hand",
+      increaseStockHint: "Found, returned or recounted up",
+      decreaseStockHint: "Damaged, lost or recounted down",
+      stockPreview: "Stock Preview",
+      previewEmpty:
+        "Choose an item and batch to see on-hand stock before and after this adjustment.",
+      before: "Before",
+      after: "After",
+      change: "Change",
+      exceedsOnHand:
+        "Only {available} {unit} on hand. Reduce the quantity by {excess} {unit} or switch to Increase Stock.",
+      draftSaveHint: "Saved to the draft. Stock changes only when the adjustment is posted.",
       cancel: "Cancel",
       updateAction: "Update Adjustment",
       createAction: "Add Adjustment",
@@ -14820,7 +14839,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       editTitle: "编辑库存调整",
       createTitle: "创建库存调整",
       editDescription: "编辑调整单 {code}",
-      createDescription: "创建新的库存调整",
+      createDescription: "设置库存变动的位置和原因，然后为每个批次添加一条明细。",
       generalInformation: "基本信息",
       adjustmentTypeLabel: "调整类型",
       selectType: "选择类型",
@@ -14836,27 +14855,31 @@ export const translations: Record<Locale, TranslationKeys> = {
       notesLabel: "备注（可选）",
       notesPlaceholder: "附加备注...",
       lineItemsTitle: "明细项目",
-      lineItemsDescription: "添加需要调整库存的商品",
       addItem: "添加商品",
-      selectWarehouseBeforeItems: "添加商品前请先选择仓库",
+      selectWarehouseBeforeItems: "请先在上方选择仓库，然后为每个要调整的批次添加一条明细。",
       warehouseUnavailableBeforeItems: "当前业务单元必须先分配启用的仓库，才能添加商品。",
-      noItems: "尚未添加商品。",
-      noItemsDescription: "点击“添加商品”开始。",
+      noItems: "暂无明细",
+      noItemsDescription: "为每个要调整的批次添加一条明细。",
       item: "商品",
       batch: "批次",
-      currentQty: "当前数量",
-      adjustedQty: "调整后数量",
-      difference: "差异",
+      currentQty: "当前",
+      adjustedQty: "调整后",
+      difference: "变动",
       unitCost: "单位成本",
-      totalValue: "总价值",
+      totalValue: "价值",
       actions: "操作",
-      summary: "汇总",
-      totalAdjustmentValue: "调整总价值",
+      totalAdjustmentValue: "总价值影响",
+      warehouseLockedHint: "已有明细时不可更改",
+      locationHint: "用于筛选批次；新批次将存放于此",
+      newBatchTag: "新",
+      removeLine: "移除明细",
+      linesCount: "明细",
+      increasesCount: "增加",
+      decreasesCount: "减少",
       cancel: "取消",
       saving: "保存中...",
       updateAction: "更新调整",
       createAction: "创建调整",
-      lineItemRequired: "请至少添加一条明细项目",
       duplicateBatchLine: "该商品和批次已包含在调整中，请改为编辑现有明细。",
       stockAdjustmentLabel: "库存调整",
       printBatchMissing: "请先保存库存调整，再打印新批次标签。",
@@ -14884,16 +14907,13 @@ export const translations: Record<Locale, TranslationKeys> = {
       editTitle: "编辑库存调整",
       createTitle: "新增库存调整",
       editDescription: "更新以下调整明细",
-      createDescription: "为指定商品调整库存数量",
-      selectItemStep: "选择商品",
-      adjustmentDetailsStep: "调整详情",
-      summaryStep: "汇总",
+      createDescription: "选择批次并输入调整量，预览会随输入实时更新。",
       itemLabel: "库存商品",
       chooseItem: "选择要调整的商品",
       searchByCodeOrName: "按编码或名称搜索...",
       batchEntryModeLabel: "批次来源",
       existingBatchMode: "现有批次",
-      newBatchMode: "创建新批次",
+      newBatchMode: "新批次",
       newBatchLocationRequired: "创建新批次前，请先选择调整库位。",
       batchLabel: "批次",
       chooseBatch: "选择要调整的批次",
@@ -14907,25 +14927,33 @@ export const translations: Record<Locale, TranslationKeys> = {
       manualBatchCodeLabel: "新批次编码",
       manualBatchCodePlaceholder: "输入批次编码",
       manualBatchCodeHint: "保存草稿时，将在所选调整库位创建此批次。",
-      newBatchIncreaseOnlyHint: "新批次的初始库存为零，只能增加库存。",
+      newBatchIncreaseOnlyHint: "新批次不可使用",
       batchOptionMeta: "{location} 的 {qty} 单位",
       unassignedLocation: "未分配库位",
-      currentStockOnHand: "当前现有库存",
       units: "单位",
-      typeLabel: "类型",
-      selectType: "选择类型",
       increaseStock: "增加库存",
       decreaseStock: "减少库存",
       quantityLabel: "数量",
       quantityPlaceholder: "0.00",
       unitCostLabel: "单位成本",
-      summary: "汇总",
       newStockLevel: "新库存水平",
       currentStock: "当前库存",
       adjustment: "调整量",
       newStock: "新库存",
       valueImpact: "价值影响",
       valueImpactFormula: "{quantity} {uom} x {unitCost}",
+      receivedOn: "收货于 {date}",
+      onHandUnit: "{unit} 现有",
+      increaseStockHint: "找回、退回或盘盈",
+      decreaseStockHint: "损坏、丢失或盘亏",
+      stockPreview: "库存预览",
+      previewEmpty: "选择商品和批次后，可查看本次调整前后的现有库存。",
+      before: "调整前",
+      after: "调整后",
+      change: "变动",
+      exceedsOnHand:
+        "现有库存仅 {available} {unit}。请将数量减少 {excess} {unit}，或改为增加库存。",
+      draftSaveHint: "将保存到草稿。只有过账后库存才会变动。",
       cancel: "取消",
       updateAction: "更新调整",
       createAction: "添加调整",

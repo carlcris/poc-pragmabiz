@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Check } from "lucide-react";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import {
@@ -9,6 +10,7 @@ import {
   type LookupWarehouseOption,
   type WarehouseLookupScope,
 } from "@/hooks/useLookups";
+import { cn } from "@/lib/utils";
 
 const ALL_WAREHOUSES_VALUE = "__all_warehouses__";
 
@@ -105,6 +107,19 @@ export function WarehouseSelect({
             : warehouse.name
       }
       getOptionSearchValue={(warehouse) => `${warehouse.code} ${warehouse.name}`}
+      renderOption={(warehouse, selected) => (
+        <div className="flex w-full items-start gap-2">
+          <Check
+            className={cn("mt-0.5 h-4 w-4 shrink-0", selected ? "opacity-100" : "opacity-0")}
+          />
+          <div className="min-w-0 flex-1">
+            <div className="font-medium">{warehouse.name}</div>
+            {showCodeInLabel && warehouse.code ? (
+              <div className="text-xs tabular-nums text-muted-foreground">{warehouse.code}</div>
+            ) : null}
+          </div>
+        </div>
+      )}
       placeholder={t("selectWarehouse")}
       searchPlaceholder={t("searchPlaceholder")}
       emptyMessage={t("empty")}

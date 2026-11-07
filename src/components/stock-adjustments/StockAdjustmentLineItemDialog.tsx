@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocale, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { format } from "date-fns";
 import { batchReceivedDateSchema } from "@/lib/stock-adjustments/batch-received-date";
-import { Check } from "lucide-react";
+import { AlertCircle, Check, Lock, Minus, Package, Plus } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +27,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -35,13 +34,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY } from "@/hooks/queryKeys";
 import { useItem, useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
 import { apiClient } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import type { StockAdjustmentBatchLocation } from "@/types/stock-adjustment";
 
 const createLineItemSchema = (
@@ -58,7 +58,8 @@ const createLineItemSchema = (
       | "newBatchPositiveQuantity"
       | "batchAlreadyExistsAtLocation"
       | "batchAvailabilityCheckFailed"
-  ) => string
+  ) => string,
+  quantityError: string
 ) =>
   z
     .object({
@@ -78,7 +79,12 @@ const createLineItemSchema = (
       currentQty: z.number().min(0, tValidation("currentQtyMin")),
       adjustedQty: z.number().min(0, tValidation("adjustedQtyMin")),
       unitCost: z.number().min(0, tValidation("unitCostMin")),
-      adjustmentAmount: z.number().optional(), // User input: the delta (always positive)
+      adjustmentAmount: z
+        .number()
+        .nonnegative(quantityError)
+        .max(1_000_000_000, quantityError)
+        .multipleOf(0.01, quantityError)
+        .optional(), // User input: the delta (always positive)
       adjustmentType: z.enum(["add", "remove"]).optional(), // Whether to add or remove
     })
     .superRefine((value, ctx) => {
@@ -166,7 +172,11 @@ export function StockAdjustmentLineItemDialog({
 }: StockAdjustmentLineItemDialogProps) {
   const t = useTranslations("stockAdjustmentLineItemDialog");
   const tValidation = useTranslations("stockAdjustmentLineItemValidation");
+  const tUnits = useTranslations("itemLocationsTab");
+  const [unitOptionId, setUnitOptionId] = useState("base");
+  const [quantityInput, setQuantityInput] = useState("");
   const locale = useLocale();
+  const formatter = useFormatter();
   const [itemSearch, setItemSearch] = useState("");
   const [batchSearch, setBatchSearch] = useState("");
   const debouncedItemSearch = useDebouncedValue(itemSearch.trim());
@@ -176,9 +186,12 @@ export function StockAdjustmentLineItemDialog({
     limit: 5,
   });
   const items = useMemo(() => itemsData?.data || [], [itemsData?.data]);
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, symbol: currencySymbol } = useCurrency();
   const [uomLabel, setUomLabel] = useState<string>("");
-  const lineItemSchema = createLineItemSchema((key) => tValidation(key));
+  const lineItemSchema = createLineItemSchema(
+    (key) => tValidation(key),
+    tUnits("moveQuantityInvalid")
+  );
 
   const form = useForm<StockAdjustmentLineItemFormValues>({
     resolver: zodResolver(lineItemSchema),
@@ -206,6 +219,7 @@ export function StockAdjustmentLineItemDialog({
 
   // Reset form when dialog opens/closes or item changes
   useEffect(() => {
+    setUnitOptionId("base");
     if (open && item) {
       const adjustmentDifference = item.adjustedQty - item.currentQty;
       form.reset({
@@ -247,7 +261,17 @@ export function StockAdjustmentLineItemDialog({
     batchEntryMode === "new" ? debouncedManualBatchCode : debouncedBatchSearch;
   const { data: selectedItemResponse } = useItem(watchedItemId);
   const selectedItem =
-    items.find((candidate) => candidate.id === watchedItemId) ?? selectedItemResponse?.data ?? null;
+    selectedItemResponse?.data ?? items.find((candidate) => candidate.id === watchedItemId) ?? null;
+
+  const unitOptions = (selectedItemResponse?.data.unitOptions ?? []).filter(
+    (option) =>
+      option.isActive &&
+      !option.isBase &&
+      Number.isFinite(option.qtyPerUnit) &&
+      option.qtyPerUnit > 0
+  );
+  const selectedUnit = unitOptions.find((option) => option.id === unitOptionId);
+  const quantityFactor = unitOptionId === "base" ? 1 : selectedUnit?.qtyPerUnit;
 
   useEffect(() => {
     if (!watchedItemId) {
@@ -338,6 +362,7 @@ export function StockAdjustmentLineItemDialog({
   const handleItemSelect = (itemId: string) => {
     const selectedItem = items.find((i) => i.id === itemId);
     if (selectedItem) {
+      setUnitOptionId("base");
       setItemSearch("");
       setBatchSearch("");
       form.setValue("itemId", selectedItem.id);
@@ -380,7 +405,8 @@ export function StockAdjustmentLineItemDialog({
   };
 
   const handleBatchEntryModeChange = (value: string) => {
-    if (value !== "existing" && value !== "new") {
+    // Re-selecting the active source must not clear the batch fields.
+    if ((value !== "existing" && value !== "new") || value === batchEntryMode) {
       return;
     }
 
@@ -440,6 +466,7 @@ export function StockAdjustmentLineItemDialog({
   ]);
 
   const onSubmit = (data: StockAdjustmentLineItemFormValues) => {
+    if (!quantityFactor) return;
     if (data.batchEntryMode === "new" && isNewBatchValidationFailed) {
       form.setError("batchCode", {
         type: "validate",
@@ -479,6 +506,15 @@ export function StockAdjustmentLineItemDialog({
 
   const currentQty = form.watch("currentQty") || 0;
   const adjustmentAmount = form.watch("adjustmentAmount") || 0; // This is always positive
+  // Show the typed text while it still matches the form value so typing is never reformatted
+  // (no leading "0", "0." survives); resets and unit changes fall back to the form value.
+  const enteredQuantity = Number((adjustmentAmount / (quantityFactor ?? 1)).toPrecision(15));
+  const quantityInputValue =
+    Math.abs((parseFloat(quantityInput) || 0) - enteredQuantity) < 1e-9
+      ? quantityInput
+      : enteredQuantity === 0
+        ? ""
+        : String(enteredQuantity);
   const adjustmentType = form.watch("adjustmentType") || "add";
   const unitCost = form.watch("unitCost") || 0;
   const isItemSelected = Boolean(form.watch("itemId"));
@@ -488,22 +524,73 @@ export function StockAdjustmentLineItemDialog({
       : Boolean(locationId && manualBatchCode.trim() && !duplicateBatchLocation);
 
   // Calculate adjustment in base units (with sign based on type)
-  const absAdjustmentInBaseUnits = adjustmentAmount;
-  const adjustmentInBaseUnits =
-    adjustmentType === "remove" ? -absAdjustmentInBaseUnits : absAdjustmentInBaseUnits;
+  const adjustmentInBaseUnits = adjustmentType === "remove" ? -adjustmentAmount : adjustmentAmount;
 
   // Calculate new stock level
   const newStockQty = currentQty + adjustmentInBaseUnits;
+  const exceedsOnHand = newStockQty < 0;
 
-  // Calculate difference and value (in base units)
-  const difference = adjustmentInBaseUnits;
-  const totalValue = difference * unitCost;
+  // Calculate value (in base units)
+  const totalValue = adjustmentInBaseUnits * unitCost;
   const displayTotalValue = Math.abs(totalValue) < 0.005 ? 0 : totalValue;
+
+  const baseUnitLabel = uomLabel || t("units");
+  const formatQty = (value: number) =>
+    value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const toneClass = (value: number) =>
+    value > 0 ? "text-green-700" : value < 0 ? "text-red-700" : "text-foreground";
+  const stockBarMax = Math.max(currentQty, newStockQty, 0);
+  const stockBars = [
+    { key: "before", label: t("before"), value: currentQty, barClass: "bg-muted-foreground/40" },
+    {
+      key: "after",
+      label: t("after"),
+      value: newStockQty,
+      barClass: adjustmentInBaseUnits < 0 ? "bg-red-600" : "bg-green-600",
+    },
+  ];
+  const adjustmentDirections = [
+    {
+      value: "add",
+      label: t("increaseStock"),
+      hint: t("increaseStockHint"),
+      Icon: Plus,
+      iconClass: "bg-green-100 text-green-700",
+      selectedClass: "border-green-600 bg-green-50 ring-1 ring-green-600",
+    },
+    {
+      value: "remove",
+      label: t("decreaseStock"),
+      hint: t("decreaseStockHint"),
+      Icon: Minus,
+      iconClass: "bg-red-100 text-red-700",
+      selectedClass: "border-red-600 bg-red-50 ring-1 ring-red-600",
+    },
+  ] as const;
+
+  const batchSourceToggle = (
+    <SegmentedControl
+      aria-label={t("batchEntryModeLabel")}
+      className="shrink-0 whitespace-nowrap"
+      value={batchEntryMode}
+      onChange={handleBatchEntryModeChange}
+      options={[
+        { value: "existing", label: t("existingBatchMode"), disabled: !isItemSelected },
+        {
+          value: "new",
+          label: t("newBatchMode"),
+          disabled: !isItemSelected || !locationId,
+        },
+      ]}
+    />
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-        <DialogHeader className="border-b pb-4">
+      {/* Fixed height from md up so switching batch source (and preview states) never resizes
+          and re-centres the dialog; the viewport clamp has no preset in the Tailwind scale. */}
+      <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col gap-0 overflow-hidden p-0 md:h-[min(90vh,52rem)]">
+        <DialogHeader className="px-6 pb-5 pr-12 pt-6">
           <DialogTitle className="text-xl">
             {mode === "edit" ? t("editTitle") : t("createTitle")}
           </DialogTitle>
@@ -513,133 +600,56 @@ export function StockAdjustmentLineItemDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-2">
-            {/* Item Selection */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
-                  <span className="text-lg font-bold text-purple-700">1</span>
-                </div>
-                <h3 className="text-base font-semibold text-gray-900">{t("selectItemStep")}</h3>
-              </div>
-
-              <FormField
-                control={form.control}
-                name="itemId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700">
-                      {t("itemLabel")} <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <AsyncSearchCombobox
-                        value={field.value || ""}
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                          void handleItemSelect(value);
-                        }}
-                        searchValue={itemSearch}
-                        onSearchValueChange={setItemSearch}
-                        options={items.filter((entry) => entry.isActive)}
-                        selectedOption={selectedItem}
-                        getOptionValue={(entry) => entry.id}
-                        getOptionLabel={(entry) => `${entry.code} - ${entry.name}`}
-                        getOptionSearchValue={(entry) => `${entry.code} ${entry.name}`}
-                        placeholder={t("chooseItem")}
-                        searchPlaceholder={t("searchByCodeOrName")}
-                        emptyMessage={t("chooseItem")}
-                        isLoading={isItemsLoading}
-                        renderOption={(entry, selected) => (
-                          <div className="flex items-center gap-2">
-                            <Check
-                              className={`h-4 w-4 ${selected ? "opacity-100" : "opacity-0"}`}
-                            />
-                            <span className="text-xs tabular-nums text-gray-500">{entry.code}</span>
-                            <span>•</span>
-                            <span>{entry.name}</span>
-                          </div>
-                        )}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">
-                  {t("batchEntryModeLabel")}
-                </Label>
-                <Tabs value={batchEntryMode} onValueChange={handleBatchEntryModeChange}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="existing" disabled={!isItemSelected}>
-                      {t("existingBatchMode")}
-                    </TabsTrigger>
-                    <TabsTrigger value="new" disabled={!isItemSelected || !locationId}>
-                      {t("newBatchMode")}
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                {isItemSelected && !locationId ? (
-                  <p className="text-xs text-muted-foreground">{t("newBatchLocationRequired")}</p>
-                ) : null}
-              </div>
-
-              {batchEntryMode === "existing" ? (
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto border-t md:flex-row md:overflow-hidden">
+              <div className="min-w-0 flex-1 space-y-5 p-6 md:overflow-y-auto">
                 <FormField
                   control={form.control}
-                  name="itemBatchLocationId"
+                  name="itemId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">
-                        {t("batchLabel")} <span className="text-red-500">*</span>
+                      <FormLabel>
+                        {t("itemLabel")} <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
                         <AsyncSearchCombobox
                           value={field.value || ""}
                           onValueChange={(value) => {
                             field.onChange(value);
-                            handleBatchSelect(value);
+                            void handleItemSelect(value);
                           }}
-                          searchValue={batchSearch}
-                          onSearchValueChange={setBatchSearch}
-                          options={batchLocations}
-                          selectedOption={selectedBatchLocation}
+                          searchValue={itemSearch}
+                          onSearchValueChange={setItemSearch}
+                          options={items.filter((entry) => entry.isActive)}
+                          selectedOption={selectedItem}
                           getOptionValue={(entry) => entry.id}
-                          getOptionLabel={(entry) => entry.batchCode || entry.batchLocationSku}
-                          getOptionSearchValue={(entry) =>
-                            `${entry.batchCode} ${entry.batchLocationSku} ${entry.locationCode || ""}`
-                          }
-                          placeholder={
-                            isItemSelected ? t("chooseBatch") : t("chooseItemBeforeBatch")
-                          }
-                          searchPlaceholder={t("searchByBatchOrQr")}
-                          emptyMessage={t("noBatches")}
-                          loadingMessage={t("loadingBatches")}
-                          isLoading={isBatchLocationsLoading}
-                          disabled={!isItemSelected}
+                          getOptionLabel={(entry) => `${entry.code} - ${entry.name}`}
+                          getOptionSearchValue={(entry) => `${entry.code} ${entry.name}`}
+                          renderSelectedOption={(entry) => (
+                            <span className="flex flex-col gap-0.5">
+                              <span className="truncate font-medium">{entry.name}</span>
+                              <span className="text-xs font-normal tabular-nums text-muted-foreground">
+                                {entry.code}
+                              </span>
+                            </span>
+                          )}
+                          placeholder={t("chooseItem")}
+                          searchPlaceholder={t("searchByCodeOrName")}
+                          emptyMessage={t("chooseItem")}
+                          isLoading={isItemsLoading}
+                          buttonClassName="h-auto min-h-14 py-2"
                           renderOption={(entry, selected) => (
                             <div className="flex w-full items-start gap-2">
                               <Check
-                                className={`mt-0.5 h-4 w-4 ${
+                                className={cn(
+                                  "mt-0.5 h-4 w-4 shrink-0",
                                   selected ? "opacity-100" : "opacity-0"
-                                }`}
+                                )}
                               />
                               <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                  <span className="font-medium">{entry.batchCode}</span>
-                                </div>
-                                <div className="mt-1 text-xs text-muted-foreground">
-                                  {t("batchOptionMeta", {
-                                    qty: entry.qtyOnHand.toLocaleString(locale, {
-                                      minimumFractionDigits: 2,
-                                      maximumFractionDigits: 2,
-                                    }),
-                                    location:
-                                      entry.locationCode ||
-                                      entry.locationName ||
-                                      t("unassignedLocation"),
-                                  })}
+                                <div className="font-medium">{entry.name}</div>
+                                <div className="text-xs tabular-nums text-muted-foreground">
+                                  {entry.code}
                                 </div>
                               </div>
                             </div>
@@ -650,325 +660,491 @@ export function StockAdjustmentLineItemDialog({
                     </FormItem>
                   )}
                 />
-              ) : (
-                <FormField
-                  control={form.control}
-                  name="batchCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">
-                        {t("manualBatchCodeLabel")} <span className="text-red-500">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(event) => {
-                            field.onChange(event.target.value);
-                            form.clearErrors("batchCode");
-                            form.setValue("itemBatchLocationId", "");
-                            form.setValue("batchLocationSku", "");
-                            form.setValue("batchWarehouseLocationId", locationId || "");
-                            form.setValue("batchLocationCode", "");
-                            form.setValue("batchLocationName", "");
-                            form.setValue("currentQty", 0);
-                            form.setValue("adjustedQty", 0);
-                          }}
-                          placeholder={t("manualBatchCodePlaceholder")}
+
+                {batchEntryMode === "existing" ? (
+                  <FormField
+                    control={form.control}
+                    name="itemBatchLocationId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center justify-between gap-3">
+                          <FormLabel>
+                            {t("batchLabel")} <span className="text-destructive">*</span>
+                          </FormLabel>
+                          {batchSourceToggle}
+                        </div>
+                        <FormControl>
+                          <AsyncSearchCombobox
+                            value={field.value || ""}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              handleBatchSelect(value);
+                            }}
+                            searchValue={batchSearch}
+                            onSearchValueChange={setBatchSearch}
+                            options={batchLocations}
+                            selectedOption={selectedBatchLocation}
+                            getOptionValue={(entry) => entry.id}
+                            getOptionLabel={(entry) => entry.batchCode || entry.batchLocationSku}
+                            getOptionSearchValue={(entry) =>
+                              `${entry.batchCode} ${entry.batchLocationSku} ${entry.locationCode || ""}`
+                            }
+                            renderSelectedOption={(entry) => (
+                              <span className="flex items-center gap-3">
+                                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                  <span className="truncate font-semibold">
+                                    {entry.batchCode || entry.batchLocationSku}
+                                  </span>
+                                  <span className="truncate text-xs font-normal text-muted-foreground">
+                                    {entry.locationCode ||
+                                      entry.locationName ||
+                                      t("unassignedLocation")}
+                                    {entry.receivedAt
+                                      ? ` · ${t("receivedOn", {
+                                          date: formatter.dateTime(new Date(entry.receivedAt), {
+                                            dateStyle: "medium",
+                                          }),
+                                        })}`
+                                      : null}
+                                  </span>
+                                </span>
+                                <span className="flex shrink-0 flex-col items-end gap-0.5">
+                                  <span className="font-semibold tabular-nums">
+                                    {formatQty(entry.qtyOnHand)}
+                                  </span>
+                                  <span className="text-xs font-normal text-muted-foreground">
+                                    {t("onHandUnit", { unit: baseUnitLabel })}
+                                  </span>
+                                </span>
+                              </span>
+                            )}
+                            placeholder={
+                              isItemSelected ? t("chooseBatch") : t("chooseItemBeforeBatch")
+                            }
+                            searchPlaceholder={t("searchByBatchOrQr")}
+                            emptyMessage={t("noBatches")}
+                            loadingMessage={t("loadingBatches")}
+                            isLoading={isBatchLocationsLoading}
+                            disabled={!isItemSelected}
+                            buttonClassName="h-auto min-h-14 py-2"
+                            renderOption={(entry, selected) => (
+                              <div className="flex w-full items-start gap-2">
+                                <Check
+                                  className={`mt-0.5 h-4 w-4 ${
+                                    selected ? "opacity-100" : "opacity-0"
+                                  }`}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <span className="font-medium">{entry.batchCode}</span>
+                                  </div>
+                                  <div className="mt-1 text-xs text-muted-foreground">
+                                    {t("batchOptionMeta", {
+                                      qty: formatQty(entry.qtyOnHand),
+                                      location:
+                                        entry.locationCode ||
+                                        entry.locationName ||
+                                        t("unassignedLocation"),
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          />
+                        </FormControl>
+                        {isItemSelected && !locationId ? (
+                          <p className="text-xs text-muted-foreground">
+                            {t("newBatchLocationRequired")}
+                          </p>
+                        ) : null}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-medium leading-none">
+                        {t("batchLabel")} <span className="text-destructive">*</span>
+                      </span>
+                      {batchSourceToggle}
+                    </div>
+                    <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <FormField
+                          control={form.control}
+                          name="batchCode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{t("manualBatchCodeLabel")}</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  value={field.value || ""}
+                                  onChange={(event) => {
+                                    field.onChange(event.target.value);
+                                    form.clearErrors("batchCode");
+                                    form.setValue("itemBatchLocationId", "");
+                                    form.setValue("batchLocationSku", "");
+                                    form.setValue("batchWarehouseLocationId", locationId || "");
+                                    form.setValue("batchLocationCode", "");
+                                    form.setValue("batchLocationName", "");
+                                    form.setValue("currentQty", 0);
+                                    form.setValue("adjustedQty", 0);
+                                  }}
+                                  placeholder={t("manualBatchCodePlaceholder")}
+                                  className="bg-background"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
                         />
-                      </FormControl>
+                        <FormField
+                          control={form.control}
+                          name="batchReceivedAt"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{t("receivedDateLabel")}</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="date"
+                                  {...field}
+                                  value={field.value || ""}
+                                  className="bg-background"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                       <p className="text-xs text-muted-foreground">{t("manualBatchCodeHint")}</p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {batchEntryMode === "new" && (
-                <FormField
-                  control={form.control}
-                  name="batchReceivedAt"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        {t("receivedDateLabel")} <span className="text-red-500">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} value={field.value || ""} />
-                      </FormControl>
                       <p className="text-xs text-muted-foreground">{t("receivedDateHint")}</p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {/* Current Stock Display */}
-              <div className="rounded-lg bg-gray-50 p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-600">
-                    {t("currentStockOnHand")}
-                  </span>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-gray-900">
-                      {currentQty.toLocaleString(locale, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </p>
-                    <p className="text-xs text-gray-500">{uomLabel || t("units")}</p>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </div>
+                )}
 
-            {/* Adjustment Type & Amount */}
-            <div className="space-y-4 border-t pt-6">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
-                  <span className="text-lg font-bold text-purple-700">2</span>
-                </div>
-                <h3 className="text-base font-semibold text-gray-900">
-                  {t("adjustmentDetailsStep")}
-                </h3>
-              </div>
+                <div className="border-t" />
 
-              <div className="grid gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="adjustmentType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">
-                        {t("typeLabel")} <span className="text-red-500">*</span>
-                      </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        disabled={!isBatchSelected || batchEntryMode === "new"}
-                      >
-                        <FormControl>
-                          <SelectTrigger
-                            className="h-11"
-                            disabled={!isBatchSelected || batchEntryMode === "new"}
-                          >
-                            <SelectValue placeholder={t("selectType")} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="add">
-                            <div className="flex items-center gap-2 py-1">
-                              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100">
-                                <span className="text-sm font-bold text-green-700">+</span>
-                              </div>
-                              <div>
-                                <p className="font-medium">{t("increaseStock")}</p>
-                              </div>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="remove">
-                            <div className="flex items-center gap-2 py-1">
-                              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-100">
-                                <span className="text-sm font-bold text-red-700">−</span>
-                              </div>
-                              <div>
-                                <p className="font-medium">{t("decreaseStock")}</p>
-                              </div>
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {batchEntryMode === "new" ? (
-                        <p className="text-xs text-muted-foreground">
-                          {t("newBatchIncreaseOnlyHint")}
-                        </p>
-                      ) : null}
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="adjustmentAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">
-                        {t("quantityLabel")} <span className="text-red-500">*</span>
+                      <FormLabel>
+                        {t("adjustment")} <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            {...field}
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                            placeholder={t("quantityPlaceholder")}
-                            className="h-11 pr-20 text-right text-base font-semibold"
-                            disabled={!isBatchSelected}
-                          />
-                          <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">
-                            {uomLabel || t("units")}
-                          </div>
+                        <div
+                          role="group"
+                          aria-label={t("adjustment")}
+                          className="grid gap-3 sm:grid-cols-2"
+                        >
+                          {adjustmentDirections.map((direction) => {
+                            const isLockedForNewBatch =
+                              direction.value === "remove" && batchEntryMode === "new";
+                            const isSelected = field.value === direction.value;
+                            const Icon = isLockedForNewBatch ? Lock : direction.Icon;
+
+                            return (
+                              <button
+                                key={direction.value}
+                                type="button"
+                                aria-pressed={isSelected}
+                                disabled={!isBatchSelected || isLockedForNewBatch}
+                                onClick={() => field.onChange(direction.value)}
+                                className={cn(
+                                  "flex min-h-14 items-center gap-3 rounded-lg border bg-background px-3 py-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-background",
+                                  isSelected && isBatchSelected && direction.selectedClass,
+                                  isLockedForNewBatch && "border-dashed"
+                                )}
+                              >
+                                <span
+                                  className={cn(
+                                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                                    isLockedForNewBatch
+                                      ? "bg-muted text-muted-foreground"
+                                      : direction.iconClass
+                                  )}
+                                >
+                                  <Icon className="h-4 w-4" />
+                                </span>
+                                <span className="flex flex-col gap-0.5">
+                                  <span className="text-sm font-semibold">{direction.label}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {isLockedForNewBatch
+                                      ? t("newBatchIncreaseOnlyHint")
+                                      : direction.hint}
+                                  </span>
+                                </span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
 
-              <FormField
-                control={form.control}
-                name="unitCost"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-medium text-gray-700">
-                      {t("unitCostLabel")} <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">
-                          ¥
-                        </span>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                          placeholder={t("quantityPlaceholder")}
-                          className="h-11 pl-8 pr-4 text-right text-base font-semibold"
-                          disabled={!isItemSelected}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="adjustmentAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t("quantityLabel")} <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <div className="flex">
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              {...field}
+                              value={quantityInputValue}
+                              onChange={(e) => {
+                                setQuantityInput(e.target.value);
+                                field.onChange(
+                                  Number(
+                                    (
+                                      (parseFloat(e.target.value) || 0) * (quantityFactor ?? NaN)
+                                    ).toPrecision(15)
+                                  )
+                                );
+                              }}
+                              placeholder={t("quantityPlaceholder")}
+                              className={cn(
+                                "h-11 rounded-r-none text-right text-base font-semibold tabular-nums",
+                                exceedsOnHand && "border-destructive focus-visible:ring-destructive"
+                              )}
+                              disabled={!isBatchSelected}
+                            />
+                          </FormControl>
+                          <Select
+                            value={unitOptionId}
+                            disabled={!isBatchSelected}
+                            onValueChange={(value) => {
+                              const factor =
+                                value === "base"
+                                  ? 1
+                                  : unitOptions.find((option) => option.id === value)?.qtyPerUnit;
+                              if (!factor || !quantityFactor) return;
+                              const enteredQuantity =
+                                (form.getValues("adjustmentAmount") || 0) / quantityFactor;
+                              setUnitOptionId(value);
+                              form.setValue(
+                                "adjustmentAmount",
+                                Number((enteredQuantity * factor).toPrecision(15)),
+                                { shouldValidate: true }
+                              );
+                            }}
+                          >
+                            <SelectTrigger
+                              aria-label={tUnits("moveUnitLabel")}
+                              className={cn(
+                                "h-11 w-auto shrink-0 gap-2 rounded-l-none border-l-0 bg-muted/40 font-semibold",
+                                exceedsOnHand && "border-destructive"
+                              )}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="base">{baseUnitLabel}</SelectItem>
+                              {unitOptions.map((option) => (
+                                <SelectItem key={option.id} value={option.id}>
+                                  {option.displayLabel}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <p className="text-xs text-muted-foreground" aria-live="polite">
+                          {tUnits("moveTotalQuantity", {
+                            quantity: formatQty(adjustmentAmount),
+                            unit: baseUnitLabel,
+                          })}
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-            {/* Summary Section */}
-            <div className="space-y-4 border-t pt-6">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
-                  <span className="text-lg font-bold text-purple-700">3</span>
+                  <FormField
+                    control={form.control}
+                    name="unitCost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t("unitCostLabel")} ({baseUnitLabel}){" "}
+                          <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                              {currencySymbol}
+                            </span>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              {...field}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              placeholder={t("quantityPlaceholder")}
+                              className="h-11 pl-8 pr-4 text-right text-base font-semibold tabular-nums"
+                              disabled={!isItemSelected}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                <h3 className="text-base font-semibold text-gray-900">{t("summaryStep")}</h3>
               </div>
 
-              <div className={`space-y-3 ${isBatchSelected ? "" : "opacity-60"}`}>
-                {/* New Stock Level Card */}
-                <div className="rounded-lg border-2 border-purple-200 bg-purple-50 p-5">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">
+              <aside
+                aria-label={t("stockPreview")}
+                className="space-y-5 border-t bg-muted/40 p-6 md:w-80 md:shrink-0 md:overflow-y-auto md:border-l md:border-t-0"
+              >
+                {isBatchSelected ? (
+                  <>
+                    <div className="space-y-1.5">
+                      <p className="text-sm font-semibold text-muted-foreground">
                         {t("newStockLevel")}
-                      </span>
-                      <div className="text-right">
-                        <p className="text-3xl font-bold text-purple-900">
-                          {newStockQty.toLocaleString(locale, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </p>
-                        <p className="text-xs font-medium text-purple-600">
-                          {uomLabel || t("units")}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 border-t border-purple-200 pt-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">{t("currentStock")}</span>
-                        <span className="font-semibold text-gray-900">
-                          {currentQty.toLocaleString(locale, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">{t("adjustment")}</span>
+                      </p>
+                      <p className="flex items-baseline gap-2" aria-live="polite">
                         <span
-                          className={`font-bold ${
-                            adjustmentInBaseUnits > 0 ? "text-green-600" : "text-red-600"
-                          }`}
+                          className={cn(
+                            "text-4xl font-bold tabular-nums tracking-tight",
+                            exceedsOnHand && "text-red-700"
+                          )}
                         >
-                          {adjustmentInBaseUnits > 0 ? "+" : ""}
-                          {adjustmentInBaseUnits.toLocaleString(locale, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
+                          {formatQty(newStockQty)}
                         </span>
-                      </div>
-                      <div className="flex items-center justify-between border-t border-purple-200 pt-2 text-sm">
-                        <span className="font-semibold text-gray-700">{t("newStock")}</span>
-                        <span className="font-bold text-purple-900">
-                          {newStockQty.toLocaleString(locale, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {baseUnitLabel}
                         </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Value Impact Card */}
-                <div className="rounded-lg bg-gray-50 p-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">{t("valueImpact")}</p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {t("valueImpactFormula", {
-                          quantity: Math.abs(adjustmentInBaseUnits).toLocaleString(locale, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          }),
-                          uom: uomLabel || t("units"),
-                          unitCost: formatCurrency(unitCost),
-                        })}
                       </p>
                     </div>
-                    <div className="text-right">
+
+                    <div className="space-y-2.5" aria-hidden="true">
+                      {stockBars.map((bar) => (
+                        <div key={bar.key} className="space-y-1">
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>{bar.label}</span>
+                            <span className="tabular-nums">{formatQty(bar.value)}</span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-border">
+                            {/* Inline width: the bar length is a live ratio, not a scale value. */}
+                            <div
+                              className={cn("h-full rounded-full transition-all", bar.barClass)}
+                              style={{
+                                width: `${
+                                  stockBarMax > 0 ? (Math.max(bar.value, 0) / stockBarMax) * 100 : 0
+                                }%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <dl className="space-y-2.5 border-t pt-4 text-sm">
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">{t("currentStock")}</dt>
+                        <dd className="tabular-nums">{formatQty(currentQty)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">{t("change")}</dt>
+                        <dd
+                          className={cn(
+                            "font-semibold tabular-nums",
+                            toneClass(adjustmentInBaseUnits)
+                          )}
+                        >
+                          {adjustmentInBaseUnits > 0 ? "+" : ""}
+                          {formatQty(adjustmentInBaseUnits)} {baseUnitLabel}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-3 font-semibold">
+                        <dt>{t("newStock")}</dt>
+                        <dd className="tabular-nums">{formatQty(newStockQty)}</dd>
+                      </div>
+                    </dl>
+
+                    <div className="space-y-1 border-t pt-4">
+                      <p className="text-sm font-semibold text-muted-foreground">
+                        {t("valueImpact")}
+                      </p>
                       <p
-                        className={`text-2xl font-bold ${
-                          displayTotalValue > 0
-                            ? "text-green-600"
-                            : displayTotalValue < 0
-                              ? "text-red-600"
-                              : "text-gray-600"
-                        }`}
+                        className={cn(
+                          "text-xl font-bold tabular-nums",
+                          toneClass(displayTotalValue)
+                        )}
                       >
                         {displayTotalValue < 0
                           ? `(${formatCurrency(Math.abs(displayTotalValue))})`
                           : formatCurrency(displayTotalValue)}
                       </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("valueImpactFormula", {
+                          quantity: formatQty(Math.abs(adjustmentInBaseUnits)),
+                          uom: baseUnitLabel,
+                          unitCost: formatCurrency(unitCost),
+                        })}
+                      </p>
                     </div>
+
+                    {exceedsOnHand ? (
+                      <div
+                        role="alert"
+                        className="flex gap-2.5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+                      >
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                        <span>
+                          {t("exceedsOnHand", {
+                            available: formatQty(currentQty),
+                            excess: formatQty(-newStockQty),
+                            unit: baseUnitLabel,
+                          })}
+                        </span>
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className="flex h-full min-h-48 flex-col items-center justify-center gap-3 text-center">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-primary">
+                      <Package className="h-5 w-5" />
+                    </span>
+                    <p className="text-sm font-semibold">{t("stockPreview")}</p>
+                    <p className="max-w-56 text-sm text-muted-foreground">{t("previewEmpty")}</p>
                   </div>
-                </div>
-              </div>
+                )}
+              </aside>
             </div>
 
-            <DialogFooter className="border-t pt-6">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} size="lg">
-                {t("cancel")}
-              </Button>
-              <Button
-                type="submit"
-                size="lg"
-                disabled={
-                  isNewBatchValidationPending ||
-                  isNewBatchValidationFailed ||
-                  Boolean(duplicateBatchLocation)
-                }
-                className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700"
-              >
-                {mode === "edit" ? t("updateAction") : t("createAction")}
-              </Button>
+            <DialogFooter className="items-center gap-3 border-t px-6 py-4 sm:justify-between sm:space-x-0">
+              <p className="hidden text-xs text-muted-foreground sm:block">{t("draftSaveHint")}</p>
+              <div className="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  {t("cancel")}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    !quantityFactor ||
+                    exceedsOnHand ||
+                    isNewBatchValidationPending ||
+                    isNewBatchValidationFailed ||
+                    Boolean(duplicateBatchLocation)
+                  }
+                >
+                  {mode === "edit" ? t("updateAction") : t("createAction")}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>

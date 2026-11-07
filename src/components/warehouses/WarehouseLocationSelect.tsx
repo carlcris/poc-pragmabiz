@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useLookupWarehouseLocations } from "@/hooks/useLookups";
+import { getWarehouseLocationDisplayName } from "@/lib/warehouse-location-form";
 
 const NO_LOCATION_VALUE = "__no_location__";
 
@@ -14,6 +15,7 @@ export type WarehouseLocationOption = {
   code: string;
   name?: string | null;
   locationPath?: string;
+  locationNamePath?: string;
 };
 
 type WarehouseLocationSelectProps = {
@@ -62,7 +64,7 @@ export function WarehouseLocationSelect({
   );
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
   const selectedOptionMissing = Boolean(
-    value && (lastSelectedOption?.id !== value || !lastSelectedOption.locationPath)
+    value && (lastSelectedOption?.id !== value || !lastSelectedOption.locationNamePath)
   );
   const { data, isLoading } = useLookupWarehouseLocations(warehouseId, {
     search: debouncedSearch || undefined,
@@ -89,9 +91,9 @@ export function WarehouseLocationSelect({
     }
     if (
       selectedOption?.id === value &&
-      (!lastSelectedOption?.locationPath ||
-        (selectedOption.locationPath &&
-          selectedOption.locationPath !== lastSelectedOption.locationPath))
+      (!lastSelectedOption?.locationNamePath ||
+        (selectedOption.locationNamePath &&
+          selectedOption.locationNamePath !== lastSelectedOption.locationNamePath))
     ) {
       setLastSelectedOption(selectedOption);
       return;
@@ -99,7 +101,7 @@ export function WarehouseLocationSelect({
     if (!value) setLastSelectedOption(null);
   }, [
     lastSelectedOption?.id,
-    lastSelectedOption?.locationPath,
+    lastSelectedOption?.locationNamePath,
     onOptionChange,
     selectedFromResults,
     selectedOption,
@@ -139,7 +141,7 @@ export function WarehouseLocationSelect({
       getOptionLabel={(location) =>
         location.id === NO_LOCATION_VALUE
           ? location.code
-          : location.locationPath || `${location.code}${location.name ? ` - ${location.name}` : ""}`
+          : location.locationNamePath || getWarehouseLocationDisplayName(location)
       }
       getOptionSearchValue={(location) => `${location.code} ${location.name ?? ""}`}
       placeholder={warehouseId ? t("selectLocation") : t("selectWarehouseFirst")}

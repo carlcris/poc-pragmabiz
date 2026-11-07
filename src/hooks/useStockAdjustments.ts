@@ -110,6 +110,7 @@ export function usePostStockAdjustment() {
       stockAdjustmentsApi.post(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-locations"] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
       queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY] });
