@@ -7,6 +7,7 @@
  * Loads available business units and sets default if none selected
  */
 
+import type { BusinessUnitWithAccess } from "@/types/business-unit";
 import { useEffect, useRef } from "react";
 import { useBusinessUnits, useSetBusinessUnitContext } from "@/hooks/useBusinessUnits";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
@@ -14,19 +15,34 @@ import { useAuthStore } from "@/stores/authStore";
 
 type BusinessUnitProviderProps = {
   children: React.ReactNode;
+  initialBusinessUnit?: BusinessUnitWithAccess | null;
+  initialBusinessUnitId?: string | null;
+  sessionBusinessUnitId?: string | null;
 };
 
-export const BusinessUnitProvider = ({ children }: BusinessUnitProviderProps) => {
+export const BusinessUnitProvider = ({
+  children,
+  initialBusinessUnit,
+  initialBusinessUnitId,
+  sessionBusinessUnitId,
+}: BusinessUnitProviderProps) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   const isAuthLoading = useAuthStore((state) => state.isLoading);
   const checkAuth = useAuthStore((state) => state.checkAuth);
-  const { data: businessUnits, isLoading, error } = useBusinessUnits();
+  const { data: businessUnits, isLoading } = useBusinessUnits();
   const { currentBusinessUnit, setAvailableBusinessUnits, setCurrentBusinessUnit, setLoading } =
     useBusinessUnitStore();
   const { mutate: setContext } = useSetBusinessUnitContext({ silent: true });
   const hasInitialized = useRef(false);
   const hasCheckedAuth = useRef(false);
+  const hasHydratedBusinessUnit = useRef(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || isLoggingOut || hasHydratedBusinessUnit.current) return;
+    hasHydratedBusinessUnit.current = true;
+    if (initialBusinessUnit) setCurrentBusinessUnit(initialBusinessUnit);
+  }, [isAuthenticated, isLoggingOut, initialBusinessUnit, setCurrentBusinessUnit]);
 
   useEffect(() => {
     if (isAuthenticated || isLoggingOut || hasCheckedAuth.current) return;
@@ -44,37 +60,18 @@ export const BusinessUnitProvider = ({ children }: BusinessUnitProviderProps) =>
     if (!isLoading && businessUnits && businessUnits.length > 0 && !hasInitialized.current) {
       setAvailableBusinessUnits(businessUnits);
 
-      // Check if current BU is valid for this user
-      const matchingCurrentBusinessUnit = currentBusinessUnit
-        ? (businessUnits.find((businessUnit) => businessUnit.id === currentBusinessUnit.id) ?? null)
-        : null;
-      const isCurrentBUValid = matchingCurrentBusinessUnit !== null;
+      // The server selection takes precedence over persisted browser state at login.
+      const selectedId = initialBusinessUnitId ?? currentBusinessUnit?.id;
+      const targetBU =
+        businessUnits.find((unit) => unit.id === selectedId) ||
+        businessUnits.find((unit) => unit.access.is_default) ||
+        businessUnits[0];
+      setCurrentBusinessUnit(targetBU);
+      hasInitialized.current = true;
 
-      // Auto-select default BU if none is selected OR if current BU is invalid
-      if (!currentBusinessUnit || !isCurrentBUValid) {
-        if (!isCurrentBUValid && currentBusinessUnit) {
-        }
-
-        const defaultBU = businessUnits.find((bu) => bu.access.is_default);
-        const targetBU = defaultBU || businessUnits[0];
-
-        // Update store directly to avoid triggering query invalidation
-        // This prevents the flickering on initial load
-        setCurrentBusinessUnit(targetBU);
-
-        // Mark as initialized to prevent re-running this logic
-        hasInitialized.current = true;
-
-        // Update server-side context in background (without clearing queries)
-        // We'll modify setContext to not clear queries on silent updates
+      // A DB-resolved fallback is not proof that the JWT already carries this context.
+      if (targetBU.id !== sessionBusinessUnitId) {
         setContext(targetBU.id);
-      } else {
-        // Current BU is valid, just mark as initialized
-        if (matchingCurrentBusinessUnit) {
-          setCurrentBusinessUnit(matchingCurrentBusinessUnit);
-          setContext(matchingCurrentBusinessUnit.id);
-        }
-        hasInitialized.current = true;
       }
     }
   }, [
@@ -83,22 +80,12 @@ export const BusinessUnitProvider = ({ children }: BusinessUnitProviderProps) =>
     businessUnits,
     isLoading,
     currentBusinessUnit,
+    initialBusinessUnitId,
+    sessionBusinessUnitId,
     setAvailableBusinessUnits,
     setCurrentBusinessUnit,
     setContext,
   ]);
-
-  // Log error but don't block the app
-  if (error) {
-    // For now, allow the app to continue even if BU loading fails
-    // This prevents complete app failure during development
-  }
-
-  // Warn if no business units but don't block
-  if (!isLoading && (!businessUnits || businessUnits.length === 0)) {
-    // For now, allow the app to continue
-    // In production, you might want to show an error or redirect
-  }
 
   return <>{children}</>;
 };

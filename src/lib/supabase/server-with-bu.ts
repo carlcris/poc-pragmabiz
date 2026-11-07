@@ -43,6 +43,7 @@ export async function createServerClientWithBU() {
   // Do NOT use getSession() as it reads from cookies without verification
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
   // Custom claims from auth hooks are NOT in the user object from getUser()
@@ -77,6 +78,8 @@ export async function createServerClientWithBU() {
       }
     } catch {}
   }
+
+  const sessionBusinessUnitId = currentBusinessUnitId ?? null;
 
   const shouldResolveActorLabel = shouldResolveActivityActorLabel();
 
@@ -138,6 +141,10 @@ export async function createServerClientWithBU() {
 
   return {
     supabase,
+    user,
+    authError,
+    session,
+    sessionBusinessUnitId,
     userId: user?.id ?? null,
     companyId: companyId ?? null,
     currentBusinessUnitId,

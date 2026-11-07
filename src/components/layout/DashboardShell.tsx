@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import type { BusinessUnitWithAccess } from "@/types/business-unit";
 import type { User } from "@/types/auth";
 import type { UserPermissions } from "@/types/rbac";
 import { useAuthStore } from "@/stores/authStore";
@@ -18,6 +19,9 @@ import { cn } from "@/lib/utils";
 
 type DashboardShellProps = {
   children: React.ReactNode;
+  initialBusinessUnit: BusinessUnitWithAccess | null;
+  initialBusinessUnitId: string | null;
+  sessionBusinessUnitId: string | null;
   initialUser: User;
   initialToken: string | null;
   initialPermissions: UserPermissions | null;
@@ -27,6 +31,9 @@ type DashboardShellProps = {
 
 export function DashboardShell({
   children,
+  initialBusinessUnit,
+  initialBusinessUnitId,
+  sessionBusinessUnitId,
   initialUser,
   initialToken,
   initialPermissions,
@@ -72,7 +79,11 @@ export function DashboardShell({
   ]);
 
   // Load user permissions for sidebar/page UI
-  useLoadPermissions();
+  useLoadPermissions({
+    userId: initialUser.id,
+    businessUnitId: initialBusinessUnitId,
+    permissions: initialPermissions,
+  });
 
   useEffect(() => {
     setHasMounted(true);
@@ -82,7 +93,11 @@ export function DashboardShell({
   if (isLoggingOut || (hasMounted && !isAuthenticated)) return null;
 
   return (
-    <BusinessUnitProvider>
+    <BusinessUnitProvider
+      initialBusinessUnit={initialBusinessUnit}
+      initialBusinessUnitId={initialBusinessUnitId}
+      sessionBusinessUnitId={sessionBusinessUnitId}
+    >
       <NavigationActivityLogger />
       <div className="flex h-screen min-h-0 flex-col overflow-hidden">
         {!isManufacturingFloorFullscreen ? (

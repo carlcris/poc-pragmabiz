@@ -35,7 +35,13 @@ type UserPermissionsResponse = {
  * - Business unit changes
  * - Permissions are stale (5 minutes)
  */
-export function useLoadPermissions() {
+type InitialPermissionSnapshot = {
+  userId: string;
+  businessUnitId: string | null;
+  permissions: UserPermissions | null;
+};
+
+export function useLoadPermissions(initial?: InitialPermissionSnapshot) {
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
@@ -46,7 +52,12 @@ export function useLoadPermissions() {
   const { setScope, setPermissions, setLoading, setError } = usePermissionStore();
 
   const userId = user?.id;
-  const businessUnitId = currentBusinessUnit?.id || null;
+  // Until the BU list initializes, use the server scope rather than persisted browser state.
+  const hasInitialScope = initial !== undefined && initial.userId === userId;
+  const businessUnitId =
+    hasInitialScope && availableBusinessUnits.length === 0
+      ? initial.businessUnitId
+      : currentBusinessUnit?.id || null;
   const permissionScopeKey = userId ? `${userId}:${businessUnitId ?? "all"}` : null;
 
   const isBusinessUnitReady =
@@ -54,6 +65,12 @@ export function useLoadPermissions() {
 
   const query = useQuery({
     queryKey: ["permissions", userId, businessUnitId],
+    initialData:
+      hasInitialScope &&
+      availableBusinessUnits.length === 0 &&
+      initial.businessUnitId === businessUnitId
+        ? (initial.permissions ?? undefined)
+        : undefined,
     queryFn: async ({ signal }) => {
       if (!userId) {
         throw new Error("User not authenticated");

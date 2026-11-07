@@ -6,6 +6,78 @@ The API resolves business-unit context once and loads business-unit details, per
 in parallel. Native mobile reuses the permission result for its capability maps. Web reuses the API's
 profile fields after establishing the browser session.
 
+## Dashboard initialization (November 7, 2026)
+
+The dashboard layout reuses the authenticated user and session from its business-unit context
+resolver, avoiding a second layout-level Auth verification. Middleware still independently verifies
+navigation. After context resolution, profile, permissions, and the single selected active membership
+are fetched concurrently. The membership query is bounded by user ID and business-unit ID.
+
+The server permission snapshot seeds only the matching user/business-unit React Query cache. The
+selected membership hydrates the business-unit store while the existing available-unit list loads.
+During initialization the server selection takes precedence over persisted browser selection. Context
+updates and token rotation are skipped only when the selected unit matches the verified JWT's current
+unit; missing claims and changed selections still use the existing context update flow. Browser
+`setSession()` and API authorization remain unchanged.
+
+Focused regressions verify the single layout authentication call, concurrent reads, exact permission
+cache scope, stale browser selections, and missing JWT context. These are request-count and execution
+ordering checks. The matched live measurement below verifies this change; the November 1 sections
+remain historical measurements of the earlier login API optimization.
+
+## Matched dashboard initialization measurement — November 7, 2026
+
+The uninstrumented working tree passed `npm run build`, including TypeScript validation. Two isolated
+production copies also passed builds: the baseline restored the five changed initialization source
+files from `41fcb783`, while the optimized copy retained the working-tree implementation. Both copies
+used identical temporary timing instrumentation, the configured benchmark account, the same LAN
+Supabase service, and ordinary authenticated access. Browser password authentication, session
+verification, middleware, activity logging, and dashboard APIs ran normally.
+
+The in-app browser submitted the actual login forms. Baseline and optimized servers used separate
+loopback origins to isolate cookies and browser storage. One warm-up per version was excluded,
+followed by five alternating baseline/optimized runs. Each run revoked only its own session with
+local sign-out, cleared business-unit and permission state, and reloaded the document so React Query
+started empty. Temporary servers were stopped and credential-bearing benchmark copies removed.
+
+Timing starts in the valid submit handler. API time includes response decoding; session time covers
+browser session establishment. Shell and loaded-dashboard markers run after two animation frames
+following the corresponding React commit. The loaded marker requires dashboard data, no loading or
+fetching state, and no query error. Measurements exclude automation and screenshot overhead. The
+loaded dashboard and selected business unit were checked in the browser.
+
+| Median metric                           | Baseline | Optimized | Observed reduction |
+| --------------------------------------- | -------: | --------: | -----------------: |
+| Login API and response decoding         | 244.0 ms |  198.2 ms |              18.8% |
+| Browser session setup                   |  48.5 ms |   34.3 ms |              29.3% |
+| Submit to dashboard shell               | 428.0 ms |  385.7 ms |               9.9% |
+| Submit to loaded dashboard              | 847.3 ms |  769.9 ms |               9.1% |
+| Session established to loaded dashboard | 561.5 ms |  457.0 ms |              18.6% |
+| Observed startup API/Auth requests      |       13 |         9 |            4 fewer |
+
+Phase medians are calculated independently. The login API and browser session setup were unchanged,
+so their timing differences demonstrate environmental variation, not improvements attributable to
+this change. Five samples and overlapping end-to-end ranges support a modest observed warm-run gain,
+not a production latency guarantee or reliable p95. Controlled cold-start and remote production
+measurements remain outstanding.
+
+| Sample | Baseline loaded dashboard | Optimized loaded dashboard |
+| ------ | ------------------------: | -------------------------: |
+| 1      |                  653.7 ms |                   769.9 ms |
+| 2      |                  913.3 ms |                   943.1 ms |
+| 3      |                  962.4 ms |                   672.6 ms |
+| 4      |                  780.1 ms |                   670.4 ms |
+| 5      |                  847.3 ms |                   835.7 ms |
+
+The observed ranges were 653.7–962.4 ms before and 670.4–943.1 ms after. Excluded warm-ups were
+1,211.0 ms and 808.7 ms, respectively; they are not controlled cold-start measurements.
+
+Every baseline run made two browser permission requests, one `set-context` request, and an additional
+Auth user request after context refresh. All four were absent from every optimized run. Counts cover
+completed startup API/Auth resources observed before session reset; they exclude assets, RSC
+navigation, and server-to-Supabase requests. Both versions still showed two business-unit requests
+and two dashboard resource entries; this change does not eliminate all initialization duplication.
+
 ## Full UI End-to-End Measurement
 
 Measured on November 1, 2026, through computer-use interactions with the real sign-in forms. Web used

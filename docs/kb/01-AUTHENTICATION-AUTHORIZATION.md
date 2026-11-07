@@ -61,6 +61,9 @@ Response: {
 8. Web establishes its Supabase session using the returned tokens and reuses the returned name fields;
    native mobile saves its returned session to secure storage
 9. Client redirects to its existing destination
+10. Web dashboard initialization reuses one verified server context and loads profile, permissions,
+    and selected active business-unit membership concurrently. It seeds the matching permission
+    cache and selected business-unit state; an unchanged JWT business-unit context is not refreshed.
 
 The password authentication call, application-account validation, browser Supabase session
 verification, permission RPC, role selection, cookies, and response fields are preserved. The login

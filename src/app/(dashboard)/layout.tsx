@@ -1,30 +1,51 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { getUserPermissions } from "@/services/permissions/permissionResolver";
 import { DashboardShell } from "@/components/layout/DashboardShell";
+import type { BusinessUnitWithAccess } from "@/types/business-unit";
 import type { User as AppUser } from "@/types/auth";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  const { supabase, user, authError, session, currentBusinessUnitId, sessionBusinessUnitId } =
+    await createServerClientWithBU();
 
-  if (error || !user) {
+  if (authError || !user) {
     redirect("/login");
   }
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const { data: userProfile } = await supabase
-    .from("users")
-    .select("company_id, first_name, last_name")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [profileResult, initialPermissions, businessUnitResult] = await Promise.all([
+    supabase
+      .from("users")
+      .select("company_id, first_name, last_name")
+      .eq("id", user.id)
+      .maybeSingle(),
+    getUserPermissions(user.id, currentBusinessUnitId ?? null),
+    currentBusinessUnitId
+      ? supabase
+          .from("user_business_unit_access")
+          .select(
+            `role, is_default, business_units!inner (
+            id, company_id, code, name, type, is_active,
+            created_at, created_by, updated_at, updated_by
+          )`
+          )
+          .eq("user_id", user.id)
+          .eq("business_unit_id", currentBusinessUnitId)
+          .eq("business_units.is_active", true)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const userProfile = profileResult.data;
+  const access = businessUnitResult.data as {
+    role: BusinessUnitWithAccess["access"]["role"];
+    is_default: boolean;
+    business_units: Omit<BusinessUnitWithAccess, "access">;
+  } | null;
+  const initialBusinessUnit: BusinessUnitWithAccess | null = access
+    ? { ...access.business_units, access: { role: access.role, is_default: access.is_default } }
+    : null;
+  const initialBusinessUnitName = initialBusinessUnit?.name ?? null;
+  const initialPermissionScopeKey = `${user.id}:${currentBusinessUnitId ?? "all"}`;
 
   const firstName = userProfile?.first_name ?? "";
   const lastName = userProfile?.last_name ?? "";
@@ -40,23 +61,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
     companyId: userProfile?.company_id || "",
   };
 
-  const { supabase: buSupabase, currentBusinessUnitId } = await createServerClientWithBU();
-  const initialPermissions = await getUserPermissions(user.id, currentBusinessUnitId ?? null);
-  const initialPermissionScopeKey = `${user.id}:${currentBusinessUnitId ?? "all"}`;
-  let initialBusinessUnitName: string | null = null;
-
-  if (currentBusinessUnitId) {
-    const { data: businessUnitRow } = await buSupabase
-      .from("business_units")
-      .select("name")
-      .eq("id", currentBusinessUnitId)
-      .maybeSingle();
-
-    initialBusinessUnitName = businessUnitRow?.name ?? null;
-  }
-
   return (
     <DashboardShell
+      initialBusinessUnit={initialBusinessUnit}
+      initialBusinessUnitId={currentBusinessUnitId ?? null}
+      sessionBusinessUnitId={sessionBusinessUnitId}
       initialUser={initialUser}
       initialToken={session?.access_token ?? null}
       initialPermissions={initialPermissions}
