@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
-import { ITEM_LOCATIONS_QUERY_KEY, ITEMS_STOCK_QUERY_KEY } from "@/hooks/queryKeys";
+import {
+  ITEM_LOCATIONS_QUERY_KEY,
+  ITEMS_STOCK_QUERY_KEY,
+  STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY,
+} from "@/hooks/queryKeys";
 import {
   useCreateStockAdjustment,
   useUpdateStockAdjustment,
@@ -64,3 +68,45 @@ describe("stock adjustment cache refresh", () => {
     client.clear();
   });
 });
+
+it.each([useCreateStockAdjustment, useUpdateStockAdjustment, usePostStockAdjustment])(
+  "%s refreshes active destination options and invalidates inactive searches",
+  async (useHook) => {
+    const client = state.client!;
+    const active = [
+      STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY,
+      "item",
+      "warehouse",
+      "location-b",
+      "",
+      "existing",
+    ];
+    const inactive = [
+      STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY,
+      "different-item",
+      "warehouse",
+      "location-b",
+      "OLD",
+      "existing",
+    ];
+    const unrelated = ["unrelated-settings"];
+    client.setQueryData(active, { data: [{ itemBatchLocationId: null }] });
+    client.setQueryData(inactive, { data: [] });
+    client.setQueryData(unrelated, {});
+    const fetch = vi.fn(async () => ({ data: [{ itemBatchLocationId: "destination" }] }));
+    const observer = new QueryObserver(client, { queryKey: active, queryFn: fetch });
+    const unsubscribe = observer.subscribe(() => {});
+    useHook();
+    state.onSuccess!();
+    await vi.waitFor(() =>
+      expect(client.getQueryData(active)).toEqual({
+        data: [{ itemBatchLocationId: "destination" }],
+      })
+    );
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(client.getQueryState(inactive)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(unrelated)?.isInvalidated).toBe(false);
+    unsubscribe();
+    client.clear();
+  }
+);

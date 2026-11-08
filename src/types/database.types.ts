@@ -13748,6 +13748,26 @@ export type Database = {
         };
         Returns: string;
       };
+      search_stock_adjustment_batches: {
+        Args: {
+          p_company_id: string;
+          p_item_id: string;
+          p_limit?: number;
+          p_location_id: string;
+          p_search?: string;
+          p_warehouse_id: string;
+        };
+        Returns: {
+          batch_code: string;
+          batch_location_sku: string;
+          item_batch_id: string;
+          item_batch_location_id: string;
+          qty_available: number;
+          qty_on_hand: number;
+          qty_reserved: number;
+          received_at: string;
+        }[];
+      };
       search_stock_request_fulfillment_batches: {
         Args: {
           p_company_id: string;

@@ -52,6 +52,12 @@ const save = (method: "POST" | "PATCH", payload = body) => {
 
 describe.each(["POST", "PATCH"] as const)("%s stock adjustment save failures", (method) => {
   it.each([
+    [
+      "A new batch location requires a positive stock increase from zero",
+      "STOCK_ADJUSTMENT_BATCH_LOCATION_INCREASE_REQUIRED",
+      400,
+      "batchLocationIncreaseRequired",
+    ],
     ["Only draft adjustments can be updated", "STOCK_ADJUSTMENT_NOT_DRAFT", 409, "saveNotDraft"],
     [
       "Selected batch location is not valid for the adjustment",
@@ -108,6 +114,26 @@ describe.each(["POST", "PATCH"] as const)("%s stock adjustment save failures", (
     }
   );
 
+  it("presents warehouse duplicate guidance in both locales", async () => {
+    state.rpc.mockResolvedValue({
+      data: null,
+      error: { code: "SA003", message: "internal detail" },
+    });
+    const response = await save(method);
+    expect(response.status).toBe(409);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+    const client = new ApiClient();
+    const failure = await (
+      method === "POST" ? client.post("/save", body) : client.patch("/save", body)
+    ).catch((error: unknown) => error);
+    for (const locale of ["en", "zh"] as const) {
+      const messages = translations[locale].stockAdjustmentLineItemValidation;
+      expect(getStockAdjustmentSaveErrorMessage(failure, (key) => messages[key])).toBe(
+        messages.batchAlreadyExistsInWarehouse
+      );
+    }
+  });
+
   it("keeps unknown internal errors generic", async () => {
     state.rpc.mockResolvedValue({
       data: null,
@@ -137,6 +163,7 @@ describe.each(["POST", "PATCH"] as const)("%s stock adjustment save failures", (
   it.each([
     ["SA001", 400, "STOCK_ADJUSTMENT_RECEIVED_DATE_INVALID"],
     ["SA002", 409, "STOCK_ADJUSTMENT_RECEIVED_DATE_CONFLICT"],
+    ["SA003", 409, "STOCK_ADJUSTMENT_BATCH_ALREADY_EXISTS"],
   ] as const)("retains received-date code %s", async (code, status, publicCode) => {
     state.rpc.mockResolvedValue({ data: null, error: { code, message: "internal detail" } });
     const response = await save(method);
@@ -144,3 +171,27 @@ describe.each(["POST", "PATCH"] as const)("%s stock adjustment save failures", (
     expect(await response.json()).toMatchObject({ code: publicCode });
   });
 });
+
+it.each(["POST", "PATCH"] as const)(
+  "%s accepts an existing batch identity without a received date",
+  async (method) => {
+    state.rpc.mockResolvedValue({
+      data: null,
+      error: { message: "Only draft adjustments can be updated" },
+    });
+    const payload = { ...body, items: [{ itemId: "item", itemBatchId: "batch" }] };
+    const request = new NextRequest("http://localhost/api/stock-adjustments", {
+      method,
+      body: JSON.stringify(method === "PATCH" ? { ...payload, warehouseId: undefined } : payload),
+    });
+    const response =
+      method === "POST"
+        ? await POST(request)
+        : await PATCH(request, { params: Promise.resolve({ id: "adjustment" }) });
+    expect(response.status).toBe(409);
+    expect(state.rpc).toHaveBeenCalledWith(
+      method === "POST" ? "create_stock_adjustment" : "update_stock_adjustment",
+      expect.objectContaining({ p_items: payload.items })
+    );
+  }
+);

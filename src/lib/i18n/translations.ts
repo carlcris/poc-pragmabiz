@@ -3803,8 +3803,9 @@ export type TranslationKeys = {
     adjustedQtyMin: string;
     unitCostMin: string;
     newBatchIncreaseOnly: string;
+    batchLocationIncreaseRequired: string;
     newBatchPositiveQuantity: string;
-    batchAlreadyExistsAtLocation: string;
+    batchAlreadyExistsInWarehouse: string;
     saveFailed: string;
     receivedDateInvalid: string;
     receivedDateConflict: string;
@@ -7975,7 +7976,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       actions: "Actions",
       totalAdjustmentValue: "Total Value Impact",
       warehouseLockedHint: "Locked while lines exist",
-      locationHint: "Filters batches; new batches go here",
+      locationHint: "Stock is adjusted at this location; existing batches can be added here",
       newBatchTag: "New",
       removeLine: "Remove Line",
       linesCount: "Lines",
@@ -8076,9 +8077,11 @@ export const translations: Record<Locale, TranslationKeys> = {
       adjustedQtyMin: "Adjusted quantity cannot be negative",
       unitCostMin: "Unit cost cannot be negative",
       newBatchIncreaseOnly: "A new batch can only increase stock",
+      batchLocationIncreaseRequired:
+        "This batch has no stock at the selected location. Enter a positive increase from zero.",
       newBatchPositiveQuantity: "Enter a quantity greater than zero for the new batch",
-      batchAlreadyExistsAtLocation:
-        "This batch already exists at the selected location. Use Existing Batch instead.",
+      batchAlreadyExistsInWarehouse:
+        "This batch code already exists in the selected warehouse. Use Existing Batch instead.",
       saveNotFound:
         "This adjustment is no longer available. Refresh the list and select another draft.",
       saveNotDraft: "This adjustment is no longer a draft. Refresh the list before making changes.",
@@ -14919,7 +14922,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       actions: "操作",
       totalAdjustmentValue: "总价值影响",
       warehouseLockedHint: "已有明细时不可更改",
-      locationHint: "用于筛选批次；新批次将存放于此",
+      locationHint: "在此库位调整库存；也可将现有批次添加到此库位",
       newBatchTag: "新",
       removeLine: "移除明细",
       linesCount: "明细",
@@ -15015,8 +15018,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       adjustedQtyMin: "调整后数量不能为负数",
       unitCostMin: "单位成本不能为负数",
       newBatchIncreaseOnly: "新批次只能增加库存",
+      batchLocationIncreaseRequired: "此批次在所选库位没有库存。请从零开始输入正数增加量。",
       newBatchPositiveQuantity: "请输入大于零的新批次数量",
-      batchAlreadyExistsAtLocation: "该批次已存在于所选库位，请改用“现有批次”。",
+      batchAlreadyExistsInWarehouse: "该批次编码已存在于所选仓库，请改用“现有批次”。",
       saveNotFound: "此调整已不可用。请刷新列表并选择其他草稿。",
       saveNotDraft: "此调整已不是草稿。请刷新列表后再操作。",
       saveBusinessUnitRequired: "请选择业务单元后重新保存。",

@@ -74,9 +74,9 @@ BEGIN
       ctx.company_id, ctx.business_unit_id, ctx.actor_id, 'physical_count', CURRENT_DATE,
       ctx.warehouse_id, ctx.location_id, 'Conflict test', NULL,
       jsonb_build_array(line || jsonb_build_object('batchReceivedDate', '2000-01-01')));
-    RAISE EXCEPTION 'Conflicting date unexpectedly accepted';
-  EXCEPTION WHEN SQLSTATE 'SA002' THEN NULL;
+    RAISE EXCEPTION 'Duplicate New Batch unexpectedly accepted';
+  EXCEPTION WHEN SQLSTATE 'SA003' THEN NULL;
   END;
-  RAISE NOTICE 'Passed: historical date, batch age ordering, draft update preservation, invalid-date rollback, date conflict';
+  RAISE NOTICE 'Passed: historical date, batch age ordering, draft update preservation, invalid-date rollback, duplicate rejection';
 END $$;
 ROLLBACK;

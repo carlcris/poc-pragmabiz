@@ -284,8 +284,11 @@ export default function StockAdjustmentsPage() {
     const items = payload.lineItems.map((item) => ({
       itemId: item.itemId,
       itemBatchLocationId: item.itemBatchLocationId,
+      itemBatchId: item.itemBatchId,
       batchCode: item.batchCode,
-      ...(!item.itemBatchLocationId ? { batchReceivedDate: item.batchReceivedAt } : {}),
+      ...(!item.itemBatchLocationId && !item.itemBatchId
+        ? { batchReceivedDate: item.batchReceivedAt }
+        : {}),
       currentQty: item.currentQty,
       adjustedQty: item.adjustedQty,
       unitCost: item.unitCost,

@@ -6,9 +6,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { format } from "date-fns";
-import { batchReceivedDateSchema } from "@/lib/stock-adjustments/batch-received-date";
+import {
+  createStockAdjustmentLineItemSchema,
+  type StockAdjustmentLineItemFormValues,
+} from "@/lib/stock-adjustments/line-item-schema";
 import { AlertCircle, Check, Lock, Minus, Package, Plus } from "lucide-react";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -43,113 +45,6 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { apiClient } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { StockAdjustmentBatchLocation } from "@/types/stock-adjustment";
-
-const createLineItemSchema = (
-  tValidation: (
-    key:
-      | "receivedDateInvalid"
-      | "itemRequired"
-      | "batchRequired"
-      | "uomRequired"
-      | "currentQtyMin"
-      | "adjustedQtyMin"
-      | "unitCostMin"
-      | "newBatchIncreaseOnly"
-      | "newBatchPositiveQuantity"
-      | "batchAlreadyExistsAtLocation"
-      | "batchAvailabilityCheckFailed"
-  ) => string,
-  quantityError: string
-) =>
-  z
-    .object({
-      itemId: z.string().min(1, tValidation("itemRequired")),
-      batchEntryMode: z.enum(["existing", "new"]),
-      itemBatchLocationId: z.string().optional(),
-      batchLocationSku: z.string().optional(),
-      batchCode: z.string().optional(),
-      batchReceivedAt: z.string().optional(),
-      batchWarehouseLocationId: z.string().optional(),
-      batchLocationCode: z.string().optional(),
-      batchLocationName: z.string().optional(),
-      itemCode: z.string().optional(),
-      itemName: z.string().optional(),
-      uomId: z.string().min(1, tValidation("uomRequired")),
-      uomName: z.string().optional(),
-      currentQty: z.number().min(0, tValidation("currentQtyMin")),
-      adjustedQty: z.number().min(0, tValidation("adjustedQtyMin")),
-      unitCost: z.number().min(0, tValidation("unitCostMin")),
-      adjustmentAmount: z
-        .number()
-        .nonnegative(quantityError)
-        .max(1_000_000_000, quantityError)
-        .multipleOf(0.01, quantityError)
-        .optional(), // User input: the delta (always positive)
-      adjustmentType: z.enum(["add", "remove"]).optional(), // Whether to add or remove
-    })
-    .superRefine((value, ctx) => {
-      if (value.batchEntryMode === "existing" && !value.itemBatchLocationId) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: tValidation("batchRequired"),
-          path: ["itemBatchLocationId"],
-        });
-      }
-
-      if (
-        value.batchEntryMode === "new" &&
-        !batchReceivedDateSchema.safeParse(value.batchReceivedAt).success
-      ) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: tValidation("receivedDateInvalid"),
-          path: ["batchReceivedAt"],
-        });
-      }
-
-      if (value.batchEntryMode === "new" && !value.batchCode?.trim()) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: tValidation("batchRequired"),
-          path: ["batchCode"],
-        });
-      }
-
-      if (value.batchEntryMode === "new" && value.adjustmentType !== "add") {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: tValidation("newBatchIncreaseOnly"),
-          path: ["adjustmentType"],
-        });
-      }
-
-      if (
-        value.batchEntryMode === "new" &&
-        (!value.adjustmentAmount || value.adjustmentAmount <= 0)
-      ) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: tValidation("newBatchPositiveQuantity"),
-          path: ["adjustmentAmount"],
-        });
-      }
-
-      const signedAdjustment =
-        value.adjustmentType === "remove"
-          ? -(value.adjustmentAmount || 0)
-          : value.adjustmentAmount || 0;
-
-      if (value.currentQty + signedAdjustment < 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: tValidation("adjustedQtyMin"),
-          path: ["adjustmentAmount"],
-        });
-      }
-    });
-
-type LineItemSchema = ReturnType<typeof createLineItemSchema>;
-export type StockAdjustmentLineItemFormValues = z.infer<LineItemSchema>;
 
 type StockAdjustmentLineItemDialogProps = {
   open: boolean;
@@ -188,7 +83,7 @@ export function StockAdjustmentLineItemDialog({
   const items = useMemo(() => itemsData?.data || [], [itemsData?.data]);
   const { formatCurrency, symbol: currencySymbol } = useCurrency();
   const [uomLabel, setUomLabel] = useState<string>("");
-  const lineItemSchema = createLineItemSchema(
+  const lineItemSchema = createStockAdjustmentLineItemSchema(
     (key) => tValidation(key),
     tUnits("moveQuantityInvalid")
   );
@@ -198,6 +93,7 @@ export function StockAdjustmentLineItemDialog({
     defaultValues: {
       itemId: "",
       batchEntryMode: "existing",
+      itemBatchId: "",
       itemBatchLocationId: "",
       batchLocationSku: "",
       batchCode: "",
@@ -224,7 +120,7 @@ export function StockAdjustmentLineItemDialog({
       const adjustmentDifference = item.adjustedQty - item.currentQty;
       form.reset({
         ...item,
-        batchEntryMode: item.itemBatchLocationId ? "existing" : "new",
+        batchEntryMode: item.itemBatchLocationId || item.itemBatchId ? "existing" : "new",
         adjustmentAmount: Math.abs(adjustmentDifference),
         adjustmentType: adjustmentDifference < 0 ? "remove" : "add",
       });
@@ -232,6 +128,7 @@ export function StockAdjustmentLineItemDialog({
       form.reset({
         itemId: "",
         batchEntryMode: "existing",
+        itemBatchId: "",
         itemBatchLocationId: "",
         batchLocationSku: "",
         batchCode: "",
@@ -254,7 +151,7 @@ export function StockAdjustmentLineItemDialog({
 
   const watchedItemId = form.watch("itemId");
   const batchEntryMode = form.watch("batchEntryMode");
-  const watchedBatchLocationId = form.watch("itemBatchLocationId");
+  const watchedBatchSelectionId = form.watch("itemBatchLocationId") || form.watch("itemBatchId");
   const manualBatchCode = form.watch("batchCode") || "";
   const debouncedManualBatchCode = useDebouncedValue(manualBatchCode.trim());
   const batchQuerySearch =
@@ -288,6 +185,7 @@ export function StockAdjustmentLineItemDialog({
     isLoading: isBatchLocationsLoading,
   } = useQuery<{
     data: StockAdjustmentBatchLocation[];
+    duplicate?: boolean;
   }>({
     queryKey: [
       STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY,
@@ -295,18 +193,33 @@ export function StockAdjustmentLineItemDialog({
       warehouseId,
       locationId,
       batchQuerySearch,
+      batchEntryMode,
     ],
-    queryFn: () =>
-      apiClient.get("/api/inventory/batch-locations", {
-        params: {
-          itemId: watchedItemId,
-          warehouseId,
-          locationId: locationId || undefined,
-          search: batchEntryMode === "existing" ? batchQuerySearch || undefined : undefined,
-          exactBatchCode: batchEntryMode === "new" ? batchQuerySearch || undefined : undefined,
-          limit: 5,
-        },
-      }),
+    queryFn: async () => {
+      if (batchEntryMode === "new") {
+        const response = await apiClient.get<{ exists: boolean }>("/api/inventory/batches", {
+          params: {
+            itemId: watchedItemId,
+            warehouseId,
+            locationId,
+            exactBatchCode: batchQuerySearch,
+          },
+        });
+        return { data: [], duplicate: response.exists };
+      }
+      return apiClient.get<{ data: StockAdjustmentBatchLocation[] }>(
+        locationId ? "/api/inventory/batches" : "/api/inventory/batch-locations",
+        {
+          params: {
+            itemId: watchedItemId,
+            warehouseId,
+            locationId: locationId || undefined,
+            search: batchQuerySearch || undefined,
+            limit: 5,
+          },
+        }
+      );
+    },
     enabled: Boolean(
       watchedItemId &&
       warehouseId &&
@@ -320,34 +233,30 @@ export function StockAdjustmentLineItemDialog({
   );
 
   const selectedBatchLocation =
-    batchLocations.find((candidate) => candidate.id === watchedBatchLocationId) ||
-    (item && item.itemBatchLocationId && item.itemBatchLocationId === watchedBatchLocationId
+    batchLocations.find((candidate) => candidate.id === watchedBatchSelectionId) ||
+    (watchedBatchSelectionId
       ? {
-          id: item.itemBatchLocationId,
-          itemId: item.itemId,
+          id: watchedBatchSelectionId,
+          itemId: watchedItemId,
           warehouseId: warehouseId || "",
-          locationId: "",
-          itemBatchId: "",
-          batchLocationSku: item.batchLocationSku || "",
-          batchCode: item.batchCode || "",
-          receivedAt: item.batchReceivedAt || "",
-          batchWarehouseLocationId: item.batchWarehouseLocationId || "",
-          qtyOnHand: item.currentQty,
-          qtyAvailable: item.currentQty,
+          locationId: form.getValues("batchWarehouseLocationId") || "",
+          itemBatchId: form.getValues("itemBatchId") || "",
+          batchLocationSku: form.getValues("batchLocationSku") || "",
+          batchCode: form.getValues("batchCode") || "",
+          receivedAt: form.getValues("batchReceivedAt") || "",
+          qtyOnHand: form.getValues("currentQty"),
+          qtyAvailable: form.getValues("currentQty"),
           qtyReserved: 0,
-          locationCode: item.batchLocationCode || null,
-          locationName: item.batchLocationName || null,
+          locationCode: form.getValues("batchLocationCode") || null,
+          locationName: form.getValues("batchLocationName") || null,
         }
       : null);
 
-  const duplicateBatchLocation =
+  const duplicateBatchCode =
     batchEntryMode === "new" &&
-    debouncedManualBatchCode &&
-    manualBatchCode.trim() === debouncedManualBatchCode
-      ? batchLocations.find(
-          (candidate) => candidate.batchCode.trim() === debouncedManualBatchCode
-        ) || null
-      : null;
+    Boolean(debouncedManualBatchCode) &&
+    manualBatchCode.trim() === debouncedManualBatchCode &&
+    batchLocationsResponse?.duplicate === true;
 
   const isNewBatchValidationPending =
     batchEntryMode === "new" &&
@@ -368,6 +277,7 @@ export function StockAdjustmentLineItemDialog({
       form.setValue("itemId", selectedItem.id);
       form.setValue("batchEntryMode", "existing");
       form.setValue("itemBatchLocationId", "");
+      form.setValue("itemBatchId", "");
       form.setValue("batchLocationSku", "");
       form.setValue("batchCode", "");
       form.setValue("batchReceivedAt", "");
@@ -392,7 +302,11 @@ export function StockAdjustmentLineItemDialog({
 
     setBatchSearch("");
     form.setValue("batchEntryMode", "existing");
-    form.setValue("itemBatchLocationId", batchLocation.id);
+    form.setValue(
+      "itemBatchLocationId",
+      locationId ? batchLocation.itemBatchLocationId || "" : batchLocation.id
+    );
+    form.setValue("itemBatchId", locationId ? batchLocation.itemBatchId : "");
     form.setValue("batchLocationSku", batchLocation.batchLocationSku);
     form.setValue("batchCode", batchLocation.batchCode);
     form.setValue("batchReceivedAt", batchLocation.receivedAt);
@@ -413,6 +327,7 @@ export function StockAdjustmentLineItemDialog({
     setBatchSearch("");
     form.setValue("batchEntryMode", value);
     form.setValue("itemBatchLocationId", "");
+    form.setValue("itemBatchId", "");
     form.setValue("batchLocationSku", "");
     form.setValue("batchCode", "");
     form.setValue("batchReceivedAt", value === "new" ? format(new Date(), "yyyy-MM-dd") : "");
@@ -436,10 +351,10 @@ export function StockAdjustmentLineItemDialog({
       return;
     }
 
-    if (duplicateBatchLocation) {
+    if (duplicateBatchCode) {
       form.setError("batchCode", {
         type: "validate",
-        message: tValidation("batchAlreadyExistsAtLocation"),
+        message: tValidation("batchAlreadyExistsInWarehouse"),
       });
       return;
     }
@@ -457,7 +372,7 @@ export function StockAdjustmentLineItemDialog({
     }
   }, [
     batchEntryMode,
-    duplicateBatchLocation,
+    duplicateBatchCode,
     form,
     isNewBatchValidationFailed,
     isNewBatchValidationPending,
@@ -475,10 +390,10 @@ export function StockAdjustmentLineItemDialog({
       return;
     }
 
-    if (data.batchEntryMode === "new" && duplicateBatchLocation) {
+    if (data.batchEntryMode === "new" && duplicateBatchCode) {
       form.setError("batchCode", {
         type: "validate",
-        message: tValidation("batchAlreadyExistsAtLocation"),
+        message: tValidation("batchAlreadyExistsInWarehouse"),
       });
       return;
     }
@@ -520,8 +435,8 @@ export function StockAdjustmentLineItemDialog({
   const isItemSelected = Boolean(form.watch("itemId"));
   const isBatchSelected =
     batchEntryMode === "existing"
-      ? Boolean(form.watch("itemBatchLocationId"))
-      : Boolean(locationId && manualBatchCode.trim() && !duplicateBatchLocation);
+      ? Boolean(watchedBatchSelectionId)
+      : Boolean(locationId && manualBatchCode.trim() && !duplicateBatchCode);
 
   // Calculate adjustment in base units (with sign based on type)
   const adjustmentInBaseUnits = adjustmentType === "remove" ? -adjustmentAmount : adjustmentAmount;
@@ -675,7 +590,7 @@ export function StockAdjustmentLineItemDialog({
                         </div>
                         <FormControl>
                           <AsyncSearchCombobox
-                            value={field.value || ""}
+                            value={watchedBatchSelectionId || ""}
                             onValueChange={(value) => {
                               field.onChange(value);
                               handleBatchSelect(value);
@@ -785,6 +700,7 @@ export function StockAdjustmentLineItemDialog({
                                     field.onChange(event.target.value);
                                     form.clearErrors("batchCode");
                                     form.setValue("itemBatchLocationId", "");
+                                    form.setValue("itemBatchId", "");
                                     form.setValue("batchLocationSku", "");
                                     form.setValue("batchWarehouseLocationId", locationId || "");
                                     form.setValue("batchLocationCode", "");
@@ -1139,7 +1055,7 @@ export function StockAdjustmentLineItemDialog({
                     exceedsOnHand ||
                     isNewBatchValidationPending ||
                     isNewBatchValidationFailed ||
-                    Boolean(duplicateBatchLocation)
+                    Boolean(duplicateBatchCode)
                   }
                 >
                   {mode === "edit" ? t("updateAction") : t("createAction")}

@@ -1,5 +1,7 @@
 "use client";
 
+import type { StockAdjustmentLineItemFormValues } from "@/lib/stock-adjustments/line-item-schema";
+
 import { useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
@@ -10,10 +12,7 @@ import { toast } from "sonner";
 import type { StockAdjustment } from "@/types/stock-adjustment";
 import type { BarcodeData } from "@/lib/barcode";
 import { StockAdjustmentBatchPrintDialog } from "@/components/stock-adjustments/StockAdjustmentBatchPrintDialog";
-import {
-  StockAdjustmentLineItemDialog,
-  type StockAdjustmentLineItemFormValues,
-} from "@/components/stock-adjustments/StockAdjustmentLineItemDialog";
+import { StockAdjustmentLineItemDialog } from "@/components/stock-adjustments/StockAdjustmentLineItemDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -540,7 +539,7 @@ export function StockAdjustmentFormDialog({
                                     <span className="font-semibold">
                                       {item.batchCode || item.batchLocationSku}
                                     </span>
-                                    {item.itemBatchLocationId ? null : (
+                                    {item.itemBatchLocationId || item.itemBatchId ? null : (
                                       <Badge variant="secondary">{t("newBatchTag")}</Badge>
                                     )}
                                   </div>

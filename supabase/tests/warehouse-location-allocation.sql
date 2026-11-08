@@ -96,6 +96,8 @@ BEGIN
   UPDATE public.settings SET value='"batch_only"'::JSONB WHERE company_id=v_company AND business_unit_id=v_bu
     AND group_key='inventory' AND setting_key='picking_validation_policy';
   SET LOCAL ROLE authenticated;
+  -- The previous completed scan releases its claim; reacquire before the next scan.
+  PERFORM public.claim_pick_list_item(v_company,v_user,v_pick,v_line);
   PERFORM public.record_pick_list_item_progress(v_company,v_user,v_pick,v_line,gen_random_uuid(),1,v_spare_sku,
     NULL,NULL,NULL,true,'test substitution');
   IF (SELECT qty_reserved FROM public.item_batch_locations WHERE location_id=v_spare) <> 1

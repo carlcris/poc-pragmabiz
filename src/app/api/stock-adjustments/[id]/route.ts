@@ -33,6 +33,7 @@ type StockAdjustmentItemInput = {
   itemBatchLocationId?: string | null;
   batchCode?: string | null;
   batchReceivedDate?: string;
+  itemBatchId?: string;
   currentQty: number;
   adjustedQty: number;
   unitCost: number;
@@ -347,7 +348,11 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
     }
 
     if (body.items) {
-      if (body.items.some((item) => !item.itemBatchLocationId && !item.batchCode?.trim())) {
+      if (
+        body.items.some(
+          (item) => !item.itemBatchLocationId && !item.itemBatchId && !item.batchCode?.trim()
+        )
+      ) {
         return NextResponse.json(
           {
             error: "Select an existing batch or enter a batch code for every item.",
@@ -362,6 +367,7 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       body.items?.some(
         (item) =>
           !item.itemBatchLocationId &&
+          !item.itemBatchId &&
           !batchReceivedDateSchema.safeParse(item.batchReceivedDate).success
       )
     ) {

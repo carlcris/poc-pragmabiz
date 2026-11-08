@@ -5,6 +5,8 @@ import {
 
 export const STOCK_ADJUSTMENT_SAVE_ERROR_CODES = [
   ...STOCK_ADJUSTMENT_DATE_ERROR_CODES,
+  "STOCK_ADJUSTMENT_BATCH_ALREADY_EXISTS",
+  "STOCK_ADJUSTMENT_BATCH_LOCATION_INCREASE_REQUIRED",
   "STOCK_ADJUSTMENT_NOT_FOUND",
   "STOCK_ADJUSTMENT_NOT_DRAFT",
   "STOCK_ADJUSTMENT_BU_REQUIRED",
@@ -27,6 +29,15 @@ const knownFailures = new Map<
   string,
   { code: StockAdjustmentSaveErrorCode; error: string; status: number }
 >([
+  [
+    "A new batch location requires a positive stock increase from zero",
+    {
+      code: "STOCK_ADJUSTMENT_BATCH_LOCATION_INCREASE_REQUIRED",
+      error:
+        "This batch has no stock at the selected location. Enter a positive increase from zero.",
+      status: 400,
+    },
+  ],
   [
     "Stock adjustment not found",
     {
@@ -195,6 +206,14 @@ const knownFailures = new Map<
 export const getStockAdjustmentSaveError = (
   failure: { code?: string; message?: string } | null | undefined
 ) => {
+  if (failure?.code === "SA003") {
+    return {
+      code: "STOCK_ADJUSTMENT_BATCH_ALREADY_EXISTS" as const,
+      error:
+        "This batch code already exists in the selected warehouse. Use Existing Batch instead.",
+      status: 409,
+    };
+  }
   const dateError = getBatchReceivedDateError(failure?.code);
   if (dateError) return dateError;
   if (failure?.code === "42501") return knownFailures.get("User context mismatch")!;

@@ -1018,6 +1018,31 @@ only the generic save message without internal database details.
 1. **Create** → status Draft. Freely editable.
 2. **Post** → records a stock movement, updates stock levels and the stock ledger, then changes the status to Posted. It does not create an accounting journal or General Ledger entry. This directly changes on-hand inventory — there is no approval step in between today.
 
+Phase 1 existing-batch checks (same warehouse only):
+
+1. Select Location B for a batch currently stored only at Location A in the same warehouse.
+   Search its batch code or source QR. It must appear with its original received date and zero
+   destination stock. A batch owned by another warehouse must not appear.
+2. Add a positive quantity, save, reopen, edit, and post. Location A must stay unchanged;
+   Location B increases, using the same batch ID/date and one destination record.
+3. Reject a decrease at a missing destination. At an existing destination, decreases must use its
+   local stock, not stock at Location A.
+4. Keep selectors and item/warehouse Locations open; verify saves and posting refresh affected
+   views without a browser reload.
+5. Run `supabase/tests/stock-adjustment-batch-destination.sql` and
+   `supabase/tests/stock-adjustment-received-date.sql` for authenticated date preservation,
+   warehouse rejection, reuse, editing, posting, and rollback checks.
+
+Also select `Z10111` for a different item within the same warehouse. Verify one code option, its
+original received date, and zero stock until that item has stock at the destination. Save, reopen,
+and post: only the new item changes. Repeat the save to verify reuse, and verify the first item's
+stock and reservations remain unchanged. Conflicting received dates must fail without overwrites.
+The SQL regression also verifies exact timestamps, cross-item rollback, and lookup deduplication.
+
+Phase 1 requires only the function-definition migration
+`20261108130000_stock_adjustment_existing_batch_destination.sql`; do not run a seed/reset or backfill.
+Cross-warehouse batches are deferred to `docs/plans/cross-warehouse-batches-phase-2-handover.md`.
+
 For each line, choose either **Existing Batch** or **New Batch**. Verify the Stock Preview panel updates as the direction, quantity, and unit change, and that a decrease larger than the batch's on-hand quantity shows a warning and disables saving the line. Creating a new batch requires a selected adjustment location, a unique batch code at that location, a Received Date, and a positive stock increase. Received Date defaults to today and can be backdated for initial inventory; it determines batch age. Verify a historical date survives saving and reopening the draft, and that a later draft edit preserves it. Reusing a batch code from another location with a different received date must show a conflict and leave existing dates unchanged. Saving the draft creates the zero-quantity batch/location identity transactionally; posting applies the entered increase to inventory.
 
 **Who can do it**: edit access to Stock Adjustments (posting uses the same permission as editing).
@@ -1800,3 +1825,17 @@ Verify item floor-map highlights are independent of the current table page. Exer
 and batch pages, QR printing, putaway, adjustments, counts, movements, and preferred-location selection.
 Existing stock must be moved explicitly into newly created children; hierarchy edits must not silently
 redistribute stock. Concurrent allocation or location edits must not create duplicate reservations or cycles.
+
+### New Batch warehouse-wide uniqueness
+
+- Create a batch in one warehouse. Attempt New Batch with the same code for the same and a
+  different item, at another location, with both matching and different received dates. All must
+  be rejected with guidance to choose Existing Batch.
+- Reuse the code through Existing Batch for another item/location; reopen and save the draft.
+  The original received date must remain unchanged and quantities must stay item-specific.
+- Two simultaneous New Batch saves for the same warehouse/code must yield one success and one
+  `409 STOCK_ADJUSTMENT_BATCH_ALREADY_EXISTS`, with no partial header, line, or batch writes.
+- A different warehouse may independently create the same code.
+- Run `supabase/tests/stock-adjustment-batch-destination.sql` and
+  `supabase/tests/stock-adjustment-received-date.sql` against local Supabase. Both run authenticated
+  operations and roll back fixtures; duplicate rejection also checks rollback after an earlier line.

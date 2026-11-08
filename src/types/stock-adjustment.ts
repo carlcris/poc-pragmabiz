@@ -14,6 +14,7 @@ export type StockAdjustmentBatchLocation = {
   warehouseId: string;
   locationId: string;
   itemBatchId: string;
+  itemBatchLocationId?: string | null;
   batchLocationSku: string;
   batchCode: string;
   receivedAt: string;
@@ -95,6 +96,7 @@ export interface CreateStockAdjustmentRequest {
   items: {
     itemId: string;
     itemBatchLocationId?: string | null;
+    itemBatchId?: string;
     batchCode?: string | null;
     batchReceivedDate?: string;
     currentQty: number;
@@ -115,6 +117,7 @@ export interface UpdateStockAdjustmentRequest {
     id?: string;
     itemId: string;
     itemBatchLocationId?: string | null;
+    itemBatchId?: string;
     batchCode?: string | null;
     batchReceivedDate?: string;
     currentQty: number;

@@ -7,6 +7,10 @@ export const getStockAdjustmentSaveErrorMessage = (
   t: (key: keyof typeof translations.en.stockAdjustmentLineItemValidation) => string
 ): string => {
   switch (getApiErrorCode(error, STOCK_ADJUSTMENT_SAVE_ERROR_CODES)) {
+    case "STOCK_ADJUSTMENT_BATCH_ALREADY_EXISTS":
+      return t("batchAlreadyExistsInWarehouse");
+    case "STOCK_ADJUSTMENT_BATCH_LOCATION_INCREASE_REQUIRED":
+      return t("batchLocationIncreaseRequired");
     case "STOCK_ADJUSTMENT_RECEIVED_DATE_INVALID":
       return t("receivedDateInvalid");
     case "STOCK_ADJUSTMENT_RECEIVED_DATE_CONFLICT":
