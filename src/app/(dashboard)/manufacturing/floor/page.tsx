@@ -1,5 +1,7 @@
 "use client";
 
+import { useAuthStore } from "@/stores/authStore";
+
 import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -232,6 +234,7 @@ const getPriorityColor = (priority: string) => {
 };
 
 export default function ManufacturingFloorPage() {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   const t = useTranslations("manufacturingFloorPage");
   const router = useRouter();
   const pathname = usePathname();
@@ -249,6 +252,7 @@ export default function ManufacturingFloorPage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["manufacturing-orders", "floor", station],
+    enabled: !isLoggingOut,
     queryFn: () => fetchFloorOrders(station),
     refetchInterval: 30_000,
   });

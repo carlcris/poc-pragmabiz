@@ -520,12 +520,23 @@ End user session.
 ```
 
 Browser logout continues to use the existing `supabase.auth.signOut()` call and its default scope.
-Before signing out, the auth store marks logout in progress, unmounts protected dashboard consumers,
-pauses authenticated reads and realtime invalidation, and cancels pending React Query reads. The
+Before signing out, the auth store marks logout in progress, pauses authenticated reads and realtime
+invalidation, and cancels pending React Query reads. Purchasing, analytics widgets, van-sales stats,
+and manufacturing-floor polling also disable their queries during sign-out. The
 business-unit, permissions, notifications, and warehouse-dashboard reads pass their cancellation
 signals to `fetch`; the preferences provider separately aborts its read on logout or account change.
-Business-unit, permission, and query caches are then cleared, including when sign-out throws, and
-the web menu replaces the current history entry with `/login`.
+Once remote sign-out settles, the web menu replaces the current history entry with `/login`.
+`isLoggingOut` remains true throughout navigation so the native modal backdrop and existing page
+stay visible together. The backdrop blocks clicks, focus, keyboard shortcuts, and Escape dismissal,
+including portalled controls. With no panel behind it, the backdrop shows the user's initials inside
+an animated drawing ring with a logout badge, a translated farewell using the user's first name
+(a generic farewell when no name is loaded), and the translated sign-out status. The name and initials
+are read when the backdrop opens, so they stay visible after cleanup clears the user. Reduced-motion
+preferences disable the ring and badge animation.
+The root `LogoutCleanup` component clears user, business-unit, permission, and query state only
+after `/login` commits and the protected page has unmounted. This avoids erasing the page while
+the login route is still loading. Cleanup is idempotent and also runs before a new login establishes
+a session. Normal middleware authentication redirects remain unchanged.
 
 Dashboard authentication initializes once from the verified server session. Intentional logout
 blocks stale server hydration, and auth checks started before logout cannot restore the old user.

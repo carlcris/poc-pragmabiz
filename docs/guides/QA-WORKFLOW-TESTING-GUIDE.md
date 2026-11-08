@@ -55,6 +55,19 @@
 
 ## Sign-out Cleanup
 
+On November 8, 2026, the updated handoff was checked in Chrome at `localhost:3000` using
+the real dashboard user-menu logout. The observed states were the populated dashboard beneath
+the modal backdrop followed by the login page; no empty page was observed. This run did not
+include network throttling or frame-by-frame recording. Automated tests separately verify that
+display/cache state survives remote sign-out and is cleared only after the login route commits.
+
+- Throttle the sign-out request and log out from the web menu or access-denied page. Confirm
+  current page stays visible beneath a dimmed backdrop during sign-out, with the user's initials,
+  an animated ring, and a "See you soon, <first name>" farewell that remain until `/login` commits.
+  Verify clicks, Tab, Escape,
+  keyboard shortcuts, and portalled menu/dialog controls cannot interact with the page. Throttle
+  login navigation as well: the page and backdrop must remain together after remote sign-out settles,
+  until `/login` commits. Only then should private client state and query caches be cleared.
 - From the web dashboard, open the user menu and log out. Confirm the sign-in screen appears and no
   new warehouse-dashboard, business-unit, preferences, permissions, or notification reads start
   after the logout action. Observe beyond the dashboard's 30-second refresh interval.

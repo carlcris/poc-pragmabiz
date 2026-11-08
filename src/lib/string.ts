@@ -7,4 +7,12 @@ export const toProperCase = (value?: string | null) => {
     .join(" ");
 };
 
+export const getInitials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
 export default toProperCase;

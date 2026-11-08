@@ -57,6 +57,21 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      keyframes: {
+        "logout-arc-draw": {
+          "0%, 100%": { strokeDashoffset: "222" },
+          "50%": { strokeDashoffset: "74" },
+        },
+        "logout-badge-nudge": {
+          "0%, 40%, 100%": { transform: "translateX(0)" },
+          "60%": { transform: "translateX(3px)" },
+        },
+      },
+      animation: {
+        "logout-ring-spin": "spin 1.8s linear infinite",
+        "logout-arc-draw": "logout-arc-draw 1.8s ease-in-out infinite",
+        "logout-badge-nudge": "logout-badge-nudge 1.8s ease-in-out infinite",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

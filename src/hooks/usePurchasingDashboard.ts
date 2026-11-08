@@ -6,6 +6,7 @@
  */
 
 import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { useAuthStore } from "@/stores/authStore";
 import { apiClient } from "@/lib/api";
 import type {
   PurchasingDashboardData,
@@ -44,6 +45,7 @@ export const usePurchasingDashboard = (
   params?: DashboardQueryParams,
   options?: Omit<UseQueryOptions<PurchasingDashboardData>, "queryKey" | "queryFn">
 ) => {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery<PurchasingDashboardData>({
     queryKey: ["purchasing-dashboard", params],
     queryFn: async () => {
@@ -75,6 +77,7 @@ export const usePurchasingDashboard = (
     refetchOnWindowFocus: true, // Refetch when user returns to the tab
     retry: 2, // Retry failed requests twice
     ...options,
+    enabled: isLoggingOut ? false : options?.enabled,
   });
 };
 
@@ -82,6 +85,7 @@ export const usePurchasingDashboardCapabilities = (
   params?: Omit<DashboardQueryParams, "widgets">,
   options?: Omit<UseQueryOptions<PurchasingDashboardCapabilities>, "queryKey" | "queryFn">
 ) => {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery<PurchasingDashboardCapabilities>({
     queryKey: ["purchasing-dashboard", "capabilities", params],
     queryFn: async () => {
@@ -122,6 +126,7 @@ export const usePurchasingDashboardCapabilities = (
     gcTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 5,
     ...options,
+    enabled: isLoggingOut ? false : options?.enabled,
   });
 };
 
@@ -137,6 +142,7 @@ export const useOutstandingRequisitions = (
   params?: Omit<DashboardQueryParams, "widgets">,
   options?: Omit<UseQueryOptions<OutstandingRequisitionsData>, "queryKey" | "queryFn">
 ) => {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery<OutstandingRequisitionsData>({
     queryKey: ["purchasing-dashboard", "outstandingRequisitions", params],
     queryFn: async () => {
@@ -156,6 +162,7 @@ export const useOutstandingRequisitions = (
     gcTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 5,
     ...options,
+    enabled: isLoggingOut ? false : options?.enabled,
   });
 };
 
@@ -167,6 +174,7 @@ export const useDamagedItemsThisMonth = (
   params?: Omit<DashboardQueryParams, "widgets">,
   options?: Omit<UseQueryOptions<DamagedItemsData>, "queryKey" | "queryFn">
 ) => {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery<DamagedItemsData>({
     queryKey: ["purchasing-dashboard", "damagedItemsThisMonth", params],
     queryFn: async () => {
@@ -187,6 +195,7 @@ export const useDamagedItemsThisMonth = (
     gcTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 5,
     ...options,
+    enabled: isLoggingOut ? false : options?.enabled,
   });
 };
 
@@ -198,6 +207,7 @@ export const useExpectedArrivalsThisWeek = (
   params?: Omit<DashboardQueryParams, "widgets">,
   options?: Omit<UseQueryOptions<ExpectedArrivalsData>, "queryKey" | "queryFn">
 ) => {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery<ExpectedArrivalsData>({
     queryKey: ["purchasing-dashboard", "expectedArrivalsThisWeek", params],
     queryFn: async () => {
@@ -215,6 +225,7 @@ export const useExpectedArrivalsThisWeek = (
     gcTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 5,
     ...options,
+    enabled: isLoggingOut ? false : options?.enabled,
   });
 };
 
@@ -226,6 +237,7 @@ export const useDelayedShipments = (
   params?: Omit<DashboardQueryParams, "widgets">,
   options?: Omit<UseQueryOptions<DelayedShipmentsData>, "queryKey" | "queryFn">
 ) => {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery<DelayedShipmentsData>({
     queryKey: ["purchasing-dashboard", "delayedShipments", params],
     queryFn: async () => {
@@ -243,6 +255,7 @@ export const useDelayedShipments = (
     gcTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 5,
     ...options,
+    enabled: isLoggingOut ? false : options?.enabled,
   });
 };
 
@@ -254,6 +267,7 @@ export const useTodaysReceivingQueue = (
   params?: Omit<DashboardQueryParams, "widgets">,
   options?: Omit<UseQueryOptions<TodaysReceivingQueueData>, "queryKey" | "queryFn">
 ) => {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery<TodaysReceivingQueueData>({
     queryKey: ["purchasing-dashboard", "todaysReceivingQueue", params],
     queryFn: async () => {
@@ -271,6 +285,7 @@ export const useTodaysReceivingQueue = (
     gcTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 2, // Refresh every 2 minutes
     ...options,
+    enabled: isLoggingOut ? false : options?.enabled,
   });
 };
 
@@ -282,6 +297,7 @@ export const usePendingApprovals = (
   params?: Omit<DashboardQueryParams, "widgets">,
   options?: Omit<UseQueryOptions<PendingApprovalsData>, "queryKey" | "queryFn">
 ) => {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery<PendingApprovalsData>({
     queryKey: ["purchasing-dashboard", "pendingApprovals", params],
     queryFn: async () => {
@@ -299,6 +315,7 @@ export const usePendingApprovals = (
     gcTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 2,
     ...options,
+    enabled: isLoggingOut ? false : options?.enabled,
   });
 };
 
@@ -310,6 +327,7 @@ export const useBoxAssignmentQueue = (
   params?: Omit<DashboardQueryParams, "widgets">,
   options?: Omit<UseQueryOptions<BoxAssignmentQueueData>, "queryKey" | "queryFn">
 ) => {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery<BoxAssignmentQueueData>({
     queryKey: ["purchasing-dashboard", "boxAssignmentQueue", params],
     queryFn: async () => {
@@ -327,6 +345,7 @@ export const useBoxAssignmentQueue = (
     gcTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 5,
     ...options,
+    enabled: isLoggingOut ? false : options?.enabled,
   });
 };
 
@@ -338,6 +357,7 @@ export const useWarehouseCapacity = (
   params?: Omit<DashboardQueryParams, "widgets">,
   options?: Omit<UseQueryOptions<WarehouseCapacityData>, "queryKey" | "queryFn">
 ) => {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery<WarehouseCapacityData>({
     queryKey: ["purchasing-dashboard", "warehouseCapacity", params],
     queryFn: async () => {
@@ -353,6 +373,7 @@ export const useWarehouseCapacity = (
     gcTime: 1000 * 60 * 10,
     refetchInterval: 1000 * 60 * 10, // Refresh every 10 minutes
     ...options,
+    enabled: isLoggingOut ? false : options?.enabled,
   });
 };
 
@@ -364,6 +385,7 @@ export const useActiveRequisitions = (
   params?: Omit<DashboardQueryParams, "widgets">,
   options?: Omit<UseQueryOptions<ActiveRequisitionsData>, "queryKey" | "queryFn">
 ) => {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery<ActiveRequisitionsData>({
     queryKey: ["purchasing-dashboard", "activeRequisitions", params],
     queryFn: async () => {
@@ -385,6 +407,7 @@ export const useActiveRequisitions = (
     gcTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 5,
     ...options,
+    enabled: isLoggingOut ? false : options?.enabled,
   });
 };
 
@@ -396,6 +419,7 @@ export const useIncomingDeliveriesWithSRs = (
   params?: Omit<DashboardQueryParams, "widgets">,
   options?: Omit<UseQueryOptions<IncomingDeliveriesData>, "queryKey" | "queryFn">
 ) => {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery<IncomingDeliveriesData>({
     queryKey: ["purchasing-dashboard", "incomingDeliveriesWithSRs", params],
     queryFn: async () => {
@@ -413,6 +437,7 @@ export const useIncomingDeliveriesWithSRs = (
     gcTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 5,
     ...options,
+    enabled: isLoggingOut ? false : options?.enabled,
   });
 };
 
@@ -424,6 +449,7 @@ export const useActiveContainers = (
   params?: Omit<DashboardQueryParams, "widgets">,
   options?: Omit<UseQueryOptions<ActiveContainersData>, "queryKey" | "queryFn">
 ) => {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery<ActiveContainersData>({
     queryKey: ["purchasing-dashboard", "activeContainers", params],
     queryFn: async () => {
@@ -441,6 +467,7 @@ export const useActiveContainers = (
     gcTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 5,
     ...options,
+    enabled: isLoggingOut ? false : options?.enabled,
   });
 };
 
@@ -452,6 +479,7 @@ export const useLocationAssignmentStatus = (
   params?: Omit<DashboardQueryParams, "widgets">,
   options?: Omit<UseQueryOptions<LocationAssignmentStatusData>, "queryKey" | "queryFn">
 ) => {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery<LocationAssignmentStatusData>({
     queryKey: ["purchasing-dashboard", "locationAssignmentStatus", params],
     queryFn: async () => {
@@ -471,5 +499,6 @@ export const useLocationAssignmentStatus = (
     gcTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 5,
     ...options,
+    enabled: isLoggingOut ? false : options?.enabled,
   });
 };

@@ -16,6 +16,7 @@ import { BusinessUnitProvider } from "@/components/business-unit/BusinessUnitPro
 import { useLoadPermissions } from "@/hooks/usePermissions";
 import { useSidebarStore } from "@/stores/sidebarStore";
 import { cn } from "@/lib/utils";
+import { LogoutBackdrop } from "@/components/auth/LogoutBackdrop";
 
 type DashboardShellProps = {
   children: React.ReactNode;
@@ -35,6 +36,11 @@ export function DashboardShell(props: DashboardShellProps) {
   const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   const staleAccount = Boolean(currentUserId && currentUserId !== props.initialUser.id);
   const refreshRequested = useRef(false);
+  const logoutStarted = useRef(false);
+
+  useEffect(() => {
+    if (isLoggingOut) logoutStarted.current = true;
+  }, [isLoggingOut]);
 
   useEffect(() => {
     if (!staleAccount) {
@@ -46,9 +52,17 @@ export function DashboardShell(props: DashboardShellProps) {
     router.refresh();
   }, [isLoggingOut, router, staleAccount]);
 
-  // Do not mount old-account permissions, BU initialization, or page consumers.
-  if (staleAccount || isLoggingOut) return null;
-  return <DashboardSessionShell key={props.initialUser.id} {...props} />;
+  const showLogoutBackdrop = isLoggingOut || logoutStarted.current;
+  if (staleAccount && !showLogoutBackdrop) return null;
+  // Preserve the current page during remote sign-out, then remove protected
+  // consumers before cleared session/cache state can trigger new reads.
+  const showPage = !staleAccount && (!logoutStarted.current || isLoggingOut);
+  return (
+    <>
+      {showPage ? <DashboardSessionShell key={props.initialUser.id} {...props} /> : null}
+      {showLogoutBackdrop ? <LogoutBackdrop /> : null}
+    </>
+  );
 }
 
 function DashboardSessionShell({
@@ -112,7 +126,7 @@ function DashboardSessionShell({
   }, []);
 
   // Unmount protected consumers while sign-out and navigation finish.
-  if (isLoggingOut || (hasMounted && !isAuthenticated)) return null;
+  if (hasMounted && !isAuthenticated) return null;
 
   return (
     <BusinessUnitProvider

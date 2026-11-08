@@ -87,6 +87,7 @@ beforeEach(() => {
     isAuthenticated: false,
     isLoading: false,
     isLoggingOut: false,
+    isLogoutReady: false,
     error: null,
   });
   mocks.setSession.mockResolvedValue({ error: null });
@@ -187,6 +188,30 @@ describe("web login profile reuse", () => {
 });
 
 describe("web logout lifecycle", () => {
+  it("retains display state through navigation and clears it once login commits", async () => {
+    authenticate();
+    queryClient.setQueryData(["page-data"], { label: "Visible page" });
+    await useAuthStore.getState().logout();
+    expect(useAuthStore.getState()).toMatchObject({
+      isLoggingOut: true,
+      isLogoutReady: true,
+      user: { id: payload.user.id },
+    });
+    expect(queryClient.getQueryData(["page-data"])).toEqual({ label: "Visible page" });
+    expect(mocks.clearPermissions).not.toHaveBeenCalled();
+    await useAuthStore.getState().logout();
+    expect(mocks.signOut).toHaveBeenCalledOnce();
+    useAuthStore.getState().completeLogout();
+    useAuthStore.getState().completeLogout();
+    expect(mocks.clearPermissions).toHaveBeenCalledOnce();
+    expect(useAuthStore.getState()).toMatchObject({
+      user: null,
+      isLoggingOut: false,
+      isLogoutReady: false,
+    });
+    expect(queryClient.getQueryCache().getAll()).toEqual([]);
+  });
+
   it("preserves the current API profile and role when hydrating the same server user", () => {
     const user = { ...payload.user, name: "Existing Operator", role: "sales_operator" };
     useAuthStore.setState({ user, isAuthenticated: true });
@@ -208,6 +233,7 @@ describe("web logout lifecycle", () => {
 
     signOut.resolve({ error: null });
     await logout;
+    useAuthStore.getState().completeLogout();
     expect(useAuthStore.getState()).toMatchObject({
       user: null,
       token: null,
@@ -230,6 +256,7 @@ describe("web logout lifecycle", () => {
 
     signOut.resolve({ error: null });
     await logout;
+    useAuthStore.getState().completeLogout();
     useAuthStore.getState().hydrateFromServer(payload.user, accessToken);
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(useAuthStore.getState().user).toBeNull();
@@ -245,6 +272,7 @@ describe("web logout lifecycle", () => {
     await vi.waitFor(() => expect(mocks.signOut).toHaveBeenCalledTimes(1));
     signOut.resolve({ error: null });
     await Promise.all([first, second]);
+    useAuthStore.getState().completeLogout();
     expect(mocks.clearPermissions).toHaveBeenCalledTimes(1);
   });
 
@@ -252,6 +280,7 @@ describe("web logout lifecycle", () => {
     authenticate();
     mocks.signOut.mockRejectedValue(new Error("network unavailable"));
     await expect(useAuthStore.getState().logout()).resolves.toBeUndefined();
+    useAuthStore.getState().completeLogout();
     expect(mocks.clearBusinessUnit).toHaveBeenCalledTimes(1);
     expect(mocks.clearPermissions).toHaveBeenCalledTimes(1);
     expect(useAuthStore.getState()).toMatchObject({
@@ -270,6 +299,7 @@ describe("web logout lifecycle", () => {
       throw new Error("Session storage unavailable");
     });
     await expect(useAuthStore.getState().logout()).resolves.toBeUndefined();
+    useAuthStore.getState().completeLogout();
     expect(mocks.clearBusinessUnit).toHaveBeenCalledTimes(1);
     expect(mocks.clearPermissions).toHaveBeenCalledTimes(1);
     expect(queryClient.getQueryCache().getAll()).toEqual([]);
@@ -315,6 +345,7 @@ describe("web logout lifecycle", () => {
         return { error: null };
       });
       await useAuthStore.getState().logout();
+      useAuthStore.getState().completeLogout();
       useAuthStore.getState().hydrateFromServer(payload.user, accessToken);
       await queryClient.refetchQueries();
       expect(fetch).toHaveBeenCalledTimes(1);
@@ -327,9 +358,24 @@ describe("web logout lifecycle", () => {
     }
   });
 
+  it("waits for pending sign-out before establishing a new login", async () => {
+    authenticate();
+    const signOut = deferred<{ error: null }>();
+    mocks.signOut.mockReturnValue(signOut.promise);
+    const logout = useAuthStore.getState().logout();
+    const login = useAuthStore.getState().login(credentials);
+    await vi.waitFor(() => expect(mocks.signOut).toHaveBeenCalledOnce());
+    expect(mocks.setSession).not.toHaveBeenCalled();
+    signOut.resolve({ error: null });
+    await Promise.all([logout, login]);
+    expect(mocks.setSession).toHaveBeenCalledOnce();
+    expect(useAuthStore.getState()).toMatchObject({ isAuthenticated: true, isLoggingOut: false });
+  });
+
   it("allows a subsequent login after logout without restoring the previous user", async () => {
     authenticate();
     await useAuthStore.getState().logout();
+    useAuthStore.getState().completeLogout();
     await useAuthStore.getState().login(credentials);
     expect(mocks.setSession).toHaveBeenCalledExactlyOnceWith({
       access_token: payload.token,
@@ -359,6 +405,7 @@ describe("authentication checks across logout", () => {
     await useAuthStore.getState().checkAuth();
     signOut.resolve({ error: null });
     await logout;
+    useAuthStore.getState().completeLogout();
     await useAuthStore.getState().checkAuth();
     expect(mocks.getSession).not.toHaveBeenCalled();
     expect(mocks.getUser).not.toHaveBeenCalled();
@@ -369,6 +416,7 @@ describe("authentication checks across logout", () => {
     mocks.getSession.mockReturnValue(session.promise);
     const check = useAuthStore.getState().checkAuth();
     await useAuthStore.getState().logout();
+    useAuthStore.getState().completeLogout();
     session.resolve({ data: { session: { access_token: accessToken } } });
     await check;
     expect(mocks.getUser).not.toHaveBeenCalled();
@@ -383,6 +431,7 @@ describe("authentication checks across logout", () => {
       const check = useAuthStore.getState().checkAuth();
       await vi.waitFor(() => expect(mocks.getUser).toHaveBeenCalledTimes(1));
       await useAuthStore.getState().logout();
+      useAuthStore.getState().completeLogout();
       if (outcome === "resolve") user.resolve({ data: { user: verifiedUser }, error: null });
       else user.reject(new Error("verification failed"));
       await check;
@@ -405,6 +454,7 @@ describe("authentication checks across logout", () => {
     const check = useAuthStore.getState().checkAuth();
     await vi.waitFor(() => expect(maybeSingle).toHaveBeenCalledTimes(1));
     await useAuthStore.getState().logout();
+    useAuthStore.getState().completeLogout();
     profile.resolve({ data: { company_id: "company", first_name: "Old", last_name: "User" } });
     await check;
     expect(useAuthStore.getState()).toMatchObject({
@@ -444,6 +494,7 @@ describe("account switching", () => {
     authenticate();
     queryClient.setQueryData(["permissions", "user"], { account: "first" });
     await useAuthStore.getState().logout();
+    useAuthStore.getState().completeLogout();
     const second = {
       ...payload,
       user: {

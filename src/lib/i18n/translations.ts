@@ -1028,6 +1028,9 @@ export type TranslationKeys = {
     myPreferences: string;
     changePassword: string;
     logOut: string;
+    signingOut: string;
+    farewell: string;
+    farewellNamed: string;
   };
   profilePage: {
     title: string;
@@ -5133,6 +5136,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       myPreferences: "My Preferences",
       changePassword: "Change Password",
       logOut: "Log out",
+      signingOut: "Signing out…",
+      farewell: "See you soon",
+      farewellNamed: "See you soon, {name}",
     },
     profilePage: {
       title: "My Profile",
@@ -12157,6 +12163,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       myPreferences: "我的偏好设置",
       changePassword: "修改密码",
       logOut: "退出登录",
+      signingOut: "正在退出登录…",
+      farewell: "下次见",
+      farewellNamed: "下次见，{name}",
     },
     profilePage: {
       title: "我的资料",

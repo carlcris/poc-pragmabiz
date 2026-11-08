@@ -1,3 +1,4 @@
+import { useAuthStore } from "@/stores/authStore";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { toast } from "sonner";
@@ -94,7 +95,9 @@ interface VanSalesStats {
 }
 
 export function useVanSalesStats() {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   return useQuery({
+    enabled: !isLoggingOut,
     queryKey: ["vanSalesStats"],
     queryFn: async () => {
       try {

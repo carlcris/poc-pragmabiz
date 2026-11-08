@@ -7,6 +7,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getInitials } from "@/lib/string";
 import { LogOut, User, Settings, KeyRound } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,14 +32,6 @@ export function UserMenu() {
     await logout();
     router.replace("/login");
     router.refresh();
-  };
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
   };
 
   if (!mounted) {

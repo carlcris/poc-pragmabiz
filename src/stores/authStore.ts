@@ -51,6 +51,7 @@ type AuthStore = {
   isAuthenticated: boolean;
   isLoading: boolean;
   isLoggingOut: boolean;
+  isLogoutReady: boolean;
   error: LoginErrorCode | null;
 
   // Actions
@@ -60,6 +61,7 @@ type AuthStore = {
   setError: (error: LoginErrorCode | null) => void;
   login: (credentials: LoginCredentials) => Promise<{ landingPage: string }>;
   logout: () => Promise<void>;
+  completeLogout: () => void;
   checkAuth: () => Promise<void>;
 };
 
@@ -69,6 +71,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
   isAuthenticated: false,
   isLoading: true, // Start as true to prevent premature redirects
   isLoggingOut: false,
+  isLogoutReady: false,
   error: null,
 
   hydrateFromServer: (user, token) => {
@@ -90,6 +93,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
 
   login: async (credentials) => {
     if (logoutPromise) await logoutPromise;
+    get().completeLogout();
     authOperationVersion += 1;
     try {
       set({ isLoading: true, error: null });
@@ -152,6 +156,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
 
   logout: () => {
     if (logoutPromise) return logoutPromise;
+    if (get().isLogoutReady) return Promise.resolve();
 
     authOperationVersion += 1;
     // Pause protected consumers before cookies or query keys change.
@@ -165,23 +170,31 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
       } catch {
         // Preserve local cleanup and navigation if sign-out fails.
       } finally {
-        useBusinessUnitStore.getState().clearBusinessUnit();
-        usePermissionStore.getState().clearPermissions();
-        queryClientInstance?.clear();
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          isLoading: false,
-          isLoggingOut: false,
-          error: null,
-        });
+        // Keep the inert page's display state until the login route commits.
+        // Remote sign-out has settled; protected consumers stay paused.
+        set({ isLogoutReady: true });
       }
     })().finally(() => {
       logoutPromise = null;
     });
 
     return logoutPromise;
+  },
+
+  completeLogout: () => {
+    if (!get().isLogoutReady) return;
+    useBusinessUnitStore.getState().clearBusinessUnit();
+    usePermissionStore.getState().clearPermissions();
+    queryClientInstance?.clear();
+    set({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      isLoading: false,
+      isLoggingOut: false,
+      isLogoutReady: false,
+      error: null,
+    });
   },
 
   checkAuth: async () => {

@@ -1,3 +1,4 @@
+import { useAuthStore } from "@/stores/authStore";
 import { useQuery, useMutation, keepPreviousData } from "@tanstack/react-query";
 import { analyticsApi } from "@/lib/api/analytics";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
@@ -75,9 +76,11 @@ export function useCommissionBreakdown(employeeId: string, filters?: SalesAnalyt
 
 // Dashboard widgets
 export function useDashboardWidgets() {
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
 
   return useQuery({
+    enabled: !isLoggingOut,
     queryKey: [ANALYTICS_QUERY_KEY, "dashboard-widgets", currentBusinessUnitId ?? null],
     queryFn: () => analyticsApi.getDashboardWidgets(),
     staleTime: 0,
