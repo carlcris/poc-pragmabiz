@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useCreateItem } from "@/hooks/useItems";
+import { ItemCategorySelect } from "@/components/items/ItemCategorySelect";
 import { useItemCategories } from "@/hooks/useItemCategories";
 import { useUnitsOfMeasure } from "@/hooks/useUnitsOfMeasure";
 import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
@@ -117,8 +118,7 @@ function CreateItemContent() {
   useEffect(() => {
     if (categories.length === 0) return;
     const currentCategory = form.getValues("category");
-    const hasMatch = categories.some((category) => category.name === currentCategory);
-    if (!currentCategory || !hasMatch) {
+    if (!currentCategory) {
       form.setValue("category", categories[0].name);
     }
   }, [categories, form]);
@@ -385,7 +385,6 @@ function CreateItemContent() {
                       )}
                     />
                   </div>
-
                 </div>
 
                 {/* Classification and Unit */}
@@ -399,20 +398,13 @@ function CreateItemContent() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>{t("categoryLabel")}</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder={t("selectCategory")} />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {categories.map((category) => (
-                                <SelectItem key={category.id} value={category.name}>
-                                  {category.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <ItemCategorySelect
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              valueField="name"
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -443,7 +435,6 @@ function CreateItemContent() {
                       )}
                     />
                   </div>
-
                 </div>
 
                 {/* Pricing */}
@@ -625,7 +616,6 @@ function CreateItemContent() {
                         </FormItem>
                       )}
                     />
-
                   </div>
                 </div>
 

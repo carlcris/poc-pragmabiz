@@ -64,6 +64,12 @@ Response: {
 10. Web dashboard initialization reuses one verified server context and loads profile, permissions,
     and selected active business-unit membership concurrently. It seeds the matching permission
     cache and selected business-unit state; an unchanged JWT business-unit context is not refreshed.
+    When the authenticated user, active selected membership, and JWT unit match, page requests can
+    start while the business-unit option list loads in the background. Persisted browser selection
+    alone does not establish readiness. The shared switcher query avoids duplicate list requests;
+    current-unit warehouse lookups wait for hydrated scope. Server-rendered dashboards reuse their
+    verified authentication snapshot instead of repeating the browser user/profile check; tablet
+    initialization without that snapshot still checks browser authentication.
 
 The password authentication call, application-account validation, browser Supabase session
 verification, permission RPC, role selection, cookies, and response fields are preserved. The login

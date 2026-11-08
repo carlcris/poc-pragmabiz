@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { RESOURCES, type Resource } from "@/constants/resources";
 import type { PermissionAction } from "@/types/rbac";
-import { getAuthenticatedUser, checkPermission, checkPermissionForUser } from "./checkPermission";
+import {
+  getAuthenticatedUser,
+  checkPermission,
+  checkPermissionForUser,
+  type AuthenticatedUser,
+} from "./checkPermission";
 import { type LookupResource, getAccessorsForLookupData } from "@/config/lookupDataPermissions";
 
 /**
@@ -177,10 +182,11 @@ export async function requireAnyPermission(
  * }
  */
 export async function requireLookupDataAccess(
-  lookupResource: LookupResource
+  lookupResource: LookupResource,
+  authenticatedUser?: AuthenticatedUser
 ): Promise<UnauthorizedResponse | null> {
   // Check authentication first
-  const user = await getAuthenticatedUser();
+  const user = authenticatedUser ?? (await getAuthenticatedUser());
 
   if (!user) {
     return NextResponse.json(
@@ -193,7 +199,7 @@ export async function requireLookupDataAccess(
   }
 
   // First, check if user has direct view permission to the lookup resource
-  const hasDirectPermission = await checkPermission(lookupResource, "view");
+  const hasDirectPermission = await checkPermissionForUser(user, lookupResource, "view");
   if (hasDirectPermission) {
     return null; // Authorized via direct permission
   }
@@ -212,7 +218,7 @@ export async function requireLookupDataAccess(
   const accessors = getAccessorsForLookupData(lookupResource);
 
   for (const accessor of accessors) {
-    const hasFeaturePermission = await checkPermission(accessor, "view");
+    const hasFeaturePermission = await checkPermissionForUser(user, accessor, "view");
     if (hasFeaturePermission) {
       // User has permission via transactional feature
       return null; // Authorized via dependent feature

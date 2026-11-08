@@ -116,6 +116,7 @@ function DashboardSessionShell({
 
   return (
     <BusinessUnitProvider
+      initialUserId={initialUser.id}
       initialBusinessUnit={initialBusinessUnit}
       initialBusinessUnitId={initialBusinessUnitId}
       sessionBusinessUnitId={sessionBusinessUnitId}

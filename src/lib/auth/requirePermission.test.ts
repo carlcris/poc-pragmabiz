@@ -7,60 +7,75 @@ vi.mock("./checkPermission", () => ({
   checkPermission: mocks.check,
   checkPermissionForUser: mocks.checkForUser,
 }));
-
+const actor = { id: "actor", companyId: "company", businessUnitId: "unit" };
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.user.mockResolvedValue({ id: "actor", companyId: "company", businessUnitId: "unit" });
-  mocks.check.mockResolvedValue(false);
-  mocks.checkForUser.mockResolvedValue(true);
+  mocks.user.mockResolvedValue(actor);
+  mocks.checkForUser.mockResolvedValue(false);
 });
 
-describe("Move Stock warehouse lookup access", () => {
-  it("preserves direct warehouse view access without extra move permission checks", async () => {
-    mocks.check.mockImplementation(async (resource: string) => resource === "warehouses");
-    expect(await requireLookupDataAccess("warehouses")).toBeNull();
-    expect(mocks.checkForUser).not.toHaveBeenCalled();
-  });
-
-  it("preserves lookup access through an existing inventory workflow", async () => {
-    mocks.check.mockImplementation(async (resource: string) => resource === "stock_requests");
-    mocks.checkForUser.mockResolvedValue(false);
-    expect(await requireLookupDataAccess("warehouses")).toBeNull();
-  });
-
-  it("allows warehouse and rack lookups with both move actions without warehouse management access", async () => {
-    expect(await requireLookupDataAccess("warehouses")).toBeNull();
-    expect(mocks.checkForUser).toHaveBeenCalledWith(
-      { id: "actor", companyId: "company", businessUnitId: "unit" },
-      "stock_transactions",
-      "create"
+describe("lookup access with one verified actor", () => {
+  it("preserves direct warehouse view access", async () => {
+    mocks.checkForUser.mockImplementation(
+      async (_actor: unknown, resource: string) => resource === "warehouses"
     );
-    expect(mocks.checkForUser).toHaveBeenCalledWith(
-      { id: "actor", companyId: "company", businessUnitId: "unit" },
-      "transfer_between_locations",
-      "create"
+    expect(await requireLookupDataAccess("warehouses")).toBeNull();
+    expect(mocks.checkForUser).toHaveBeenCalledTimes(1);
+  });
+  it("preserves dependent workflow access", async () => {
+    mocks.checkForUser.mockImplementation(
+      async (_actor: unknown, resource: string) => resource === "stock_requests"
     );
+    expect(await requireLookupDataAccess("warehouses")).toBeNull();
     expect(mocks.user).toHaveBeenCalledTimes(1);
   });
-
+  it("allows Move Stock only with both create actions", async () => {
+    mocks.checkForUser.mockImplementation(
+      async (_actor: unknown, resource: string, action: string) =>
+        action === "create" &&
+        ["stock_transactions", "transfer_between_locations"].includes(resource)
+    );
+    expect(await requireLookupDataAccess("warehouses")).toBeNull();
+    expect(mocks.user).toHaveBeenCalledTimes(1);
+  });
   it.each(["stock_transactions", "transfer_between_locations"])(
-    "denies implicit move lookup access without %s",
+    "denies Move Stock missing %s",
     async (missingResource) => {
       mocks.checkForUser.mockImplementation(
-        async (_actor: unknown, resource: string) => resource !== missingResource
+        async (_actor: unknown, resource: string, action: string) =>
+          action === "create" && resource !== missingResource
       );
       expect((await requireLookupDataAccess("warehouses"))?.status).toBe(403);
     }
   );
-
-  it("does not extend access to other lookup resources", async () => {
+  it("does not extend Move Stock access to other lookups", async () => {
+    mocks.checkForUser.mockImplementation(
+      async (_actor: unknown, _resource: string, action: string) => action === "create"
+    );
     expect((await requireLookupDataAccess("suppliers"))?.status).toBe(403);
-    expect(mocks.checkForUser).not.toHaveBeenCalled();
   });
-
-  it("requires an active business-unit context for move lookup access", async () => {
-    mocks.user.mockResolvedValue({ id: "actor", companyId: "company", businessUnitId: null });
+  it("requires BU context for Move Stock", async () => {
+    mocks.user.mockResolvedValue({ ...actor, businessUnitId: null });
+    mocks.checkForUser.mockImplementation(
+      async (_actor: unknown, _resource: string, action: string) => action === "create"
+    );
     expect((await requireLookupDataAccess("warehouses"))?.status).toBe(403);
+  });
+  it("reuses category request context and preserves dependent feature access", async () => {
+    mocks.checkForUser.mockImplementation(
+      async (_actor: unknown, resource: string) => resource === "pos"
+    );
+    expect(await requireLookupDataAccess("item_categories", actor)).toBeNull();
+    expect(mocks.user).not.toHaveBeenCalled();
+    expect(mocks.check).not.toHaveBeenCalled();
+    expect(mocks.checkForUser.mock.calls.every(([user]) => user === actor)).toBe(true);
+  });
+  it("denies category access without direct or dependent permission", async () => {
+    expect((await requireLookupDataAccess("item_categories", actor))?.status).toBe(403);
+  });
+  it("rejects unauthenticated callers", async () => {
+    mocks.user.mockResolvedValue(null);
+    expect((await requireLookupDataAccess("item_categories"))?.status).toBe(401);
     expect(mocks.checkForUser).not.toHaveBeenCalled();
   });
 });

@@ -15,6 +15,7 @@ import { useAuthStore } from "@/stores/authStore";
 
 type BusinessUnitProviderProps = {
   children: React.ReactNode;
+  initialUserId?: string;
   initialBusinessUnit?: BusinessUnitWithAccess | null;
   initialBusinessUnitId?: string | null;
   sessionBusinessUnitId?: string | null;
@@ -22,10 +23,12 @@ type BusinessUnitProviderProps = {
 
 export const BusinessUnitProvider = ({
   children,
+  initialUserId,
   initialBusinessUnit,
   initialBusinessUnitId,
   sessionBusinessUnitId,
 }: BusinessUnitProviderProps) => {
+  const userId = useAuthStore((state) => state.user?.id);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   const isAuthLoading = useAuthStore((state) => state.isLoading);
@@ -38,27 +41,48 @@ export const BusinessUnitProvider = ({
   const hasCheckedAuth = useRef(false);
   const hasHydratedBusinessUnit = useRef(false);
 
+  const hasVerifiedInitialContext = Boolean(
+    initialUserId &&
+    initialUserId === userId &&
+    initialBusinessUnit?.is_active &&
+    initialBusinessUnit.id === initialBusinessUnitId &&
+    initialBusinessUnitId === sessionBusinessUnitId
+  );
+
   useEffect(() => {
     if (!isAuthenticated || isLoggingOut || hasHydratedBusinessUnit.current) return;
+    if (initialUserId && initialUserId !== userId) return;
     hasHydratedBusinessUnit.current = true;
     if (initialBusinessUnit) setCurrentBusinessUnit(initialBusinessUnit);
-  }, [isAuthenticated, isLoggingOut, initialBusinessUnit, setCurrentBusinessUnit]);
+    // The server already checked this active membership and its JWT scope. Loading
+    // the switcher's remaining options must not hold up the page or reselect a BU.
+    if (hasVerifiedInitialContext) hasInitialized.current = true;
+  }, [
+    isAuthenticated,
+    isLoggingOut,
+    initialBusinessUnit,
+    initialUserId,
+    userId,
+    hasVerifiedInitialContext,
+    setCurrentBusinessUnit,
+  ]);
 
   useEffect(() => {
-    if (isAuthenticated || isLoggingOut || hasCheckedAuth.current) return;
+    if (initialUserId || isAuthenticated || isLoggingOut || hasCheckedAuth.current) return;
     hasCheckedAuth.current = true;
     void checkAuth();
-  }, [checkAuth, isAuthenticated, isLoggingOut]);
+  }, [checkAuth, initialUserId, isAuthenticated, isLoggingOut]);
 
   useEffect(() => {
-    setLoading(isAuthLoading || isLoading);
-  }, [isAuthLoading, isLoading, setLoading]);
+    setLoading(isAuthLoading || (isLoading && !hasVerifiedInitialContext));
+  }, [isAuthLoading, isLoading, hasVerifiedInitialContext, setLoading]);
 
   // Initialize business unit when data is loaded
   useEffect(() => {
     if (!isAuthenticated || isLoggingOut) return;
-    if (!isLoading && businessUnits && businessUnits.length > 0 && !hasInitialized.current) {
+    if (!isLoading && businessUnits && businessUnits.length > 0) {
       setAvailableBusinessUnits(businessUnits);
+      if (hasInitialized.current) return;
 
       // The server selection takes precedence over persisted browser state at login.
       const selectedId = initialBusinessUnitId ?? currentBusinessUnit?.id;

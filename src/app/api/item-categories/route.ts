@@ -1,57 +1,57 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireLookupDataAccess } from "@/lib/auth";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 
-async function GETHandler() {
+async function GETHandler(request: NextRequest) {
   try {
-    // Check permission using Lookup Data Access Pattern
-    // User can access if they have EITHER:
-    // 1. Direct 'item_categories' view permission, OR
-    // 2. Permission to a feature that depends on item categories (pos, sales_orders, etc.)
-    const permissionCheck = await requireLookupDataAccess(RESOURCES.ITEM_CATEGORIES);
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, userId, companyId, currentBusinessUnitId } = context;
+    const permissionCheck = await requireLookupDataAccess(RESOURCES.ITEM_CATEGORIES, {
+      id: userId,
+      companyId,
+      businessUnitId: currentBusinessUnitId,
+    });
     if (permissionCheck) return permissionCheck;
 
-    const { supabase } = await createServerClientWithBU();
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const params = request.nextUrl.searchParams;
+    const page = Number(params.get("page") ?? 1);
+    const limit = Number(params.get("limit") ?? 5);
+    const search = (params.get("search") ?? "").trim();
+    if (
+      !Number.isSafeInteger(page) ||
+      page < 1 ||
+      !Number.isSafeInteger(limit) ||
+      limit < 1 ||
+      limit > 50 ||
+      search.length > 100 ||
+      !Number.isSafeInteger(page * limit)
+    ) {
+      return NextResponse.json({ error: "Invalid category search parameters" }, { status: 400 });
     }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
-
-    // Fetch all item categories for the company
-    const { data: categories, error } = await supabase
+    let query = supabase
       .from("item_categories")
-      .select("id, name, description")
-      .eq("company_id", userData.company_id)
+      .select("id, name", { count: "exact" })
+      .eq("company_id", companyId)
       .is("deleted_at", null)
-      .order("name", { ascending: true });
-
+      .order("name", { ascending: true })
+      .order("id", { ascending: true })
+      .range((page - 1) * limit, page * limit - 1);
+    if (search) query = query.ilike("name", `%${search.replace(/[\\%_]/g, "\\$&")}%`);
+    const { data, error, count } = await query;
     if (error) {
+      console.error("Failed to fetch item categories:", error);
       return NextResponse.json({ error: "Failed to fetch item categories" }, { status: 500 });
     }
-
+    const total = count ?? 0;
     return NextResponse.json({
-      data: categories || [],
+      data: data ?? [],
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
-  } catch {
+  } catch (error) {
+    console.error("Failed to fetch item categories:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

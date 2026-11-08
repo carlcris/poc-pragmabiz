@@ -443,6 +443,14 @@ export type TranslationKeys = {
     newSalesOrder: string;
     unitConverter: string;
   };
+  itemCategorySelect: {
+    allCategories: string;
+    selectCategory: string;
+    searchPlaceholder: string;
+    empty: string;
+    loading: string;
+    loadError: string;
+  };
   warehouseSelect: {
     allWarehouses: string;
     selectWarehouse: string;
@@ -457,6 +465,20 @@ export type TranslationKeys = {
     searchPlaceholder: string;
     empty: string;
     loading: string;
+  };
+  businessUnitSwitcher: {
+    company: string;
+    businessUnit: string;
+    noBusinessUnit: string;
+    default: string;
+    loading: string;
+    retry: string;
+    noMatches: string;
+    noCompanyUnits: string;
+    noUnits: string;
+    searchPlaceholder: string;
+    selectBusinessUnit: string;
+    loadError: string;
   };
   businessUnitSelect: {
     selectBusinessUnit: string;
@@ -2993,6 +3015,7 @@ export type TranslationKeys = {
     close: string;
   };
   itemsPage: {
+    refreshing: string;
     title: string;
     subtitle: string;
     export: string;
@@ -4558,6 +4581,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       newSalesOrder: "New sales order",
       unitConverter: "Unit converter",
     },
+    itemCategorySelect: {
+      allCategories: "All Categories",
+      selectCategory: "Select category",
+      searchPlaceholder: "Search categories...",
+      empty: "No categories found",
+      loading: "Loading categories...",
+      loadError: "Unable to load categories. Try searching again.",
+    },
     warehouseSelect: {
       allWarehouses: "All warehouses",
       selectWarehouse: "Select warehouse",
@@ -4572,6 +4603,20 @@ export const translations: Record<Locale, TranslationKeys> = {
       searchPlaceholder: "Search locations...",
       empty: "No locations found.",
       loading: "Loading locations...",
+    },
+    businessUnitSwitcher: {
+      company: "Company",
+      businessUnit: "Business unit",
+      noBusinessUnit: "No business unit",
+      default: "Default",
+      loading: "Loading business units...",
+      retry: "Retry",
+      noMatches: "No matching companies or business units",
+      noCompanyUnits: "No business units available for this company",
+      noUnits: "No business units available",
+      searchPlaceholder: "Search business unit...",
+      selectBusinessUnit: "Select business unit",
+      loadError: "Failed to load business units",
     },
     businessUnitSelect: {
       selectBusinessUnit: "Select business unit",
@@ -7212,6 +7257,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       close: "Close",
     },
     itemsPage: {
+      refreshing: "Refreshing items...",
       title: "Inventory Master",
       subtitle: "Manage items with real-time stock levels",
       export: "Export",
@@ -11611,6 +11657,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       newSalesOrder: "新建销售订单",
       unitConverter: "单位换算器",
     },
+    itemCategorySelect: {
+      allCategories: "所有类别",
+      selectCategory: "选择类别",
+      searchPlaceholder: "搜索类别...",
+      empty: "未找到类别",
+      loading: "正在加载类别...",
+      loadError: "无法加载类别，请重新搜索。",
+    },
     warehouseSelect: {
       allWarehouses: "所有仓库",
       selectWarehouse: "选择仓库",
@@ -11625,6 +11679,20 @@ export const translations: Record<Locale, TranslationKeys> = {
       searchPlaceholder: "搜索库位...",
       empty: "未找到库位。",
       loading: "正在加载库位...",
+    },
+    businessUnitSwitcher: {
+      company: "公司",
+      businessUnit: "业务单位",
+      noBusinessUnit: "无业务单位",
+      default: "默认",
+      loading: "正在加载业务单位...",
+      retry: "重试",
+      noMatches: "没有匹配的公司或业务单位",
+      noCompanyUnits: "该公司暂无可用业务单位",
+      noUnits: "暂无可用业务单位",
+      searchPlaceholder: "搜索业务单位...",
+      selectBusinessUnit: "选择业务单位",
+      loadError: "无法加载业务单位",
     },
     businessUnitSelect: {
       selectBusinessUnit: "选择业务单元",
@@ -14174,6 +14242,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       close: "关闭",
     },
     itemsPage: {
+      refreshing: "正在刷新物料...",
       title: "库存主数据",
       subtitle: "管理具有实时库存数量的商品",
       export: "导出",

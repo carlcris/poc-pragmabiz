@@ -806,47 +806,70 @@ Reorder alerts are generated from live stock levels, not stored as alert rows. A
 
 #### GET /api/items
 
-List all items with pagination and filtering.
+List items with server-side filtering and bounded pagination. The page renders its shell immediately,
+loads rows and statistics independently, and retains existing rows with a translated refresh indicator
+while fetching the next result within the same business unit. Switching business units clears the
+previous unit's rows and shows the table loading state until the selected unit's query resolves.
 
-**Permissions**: `view` on `items`
+**Query parameters**:
 
-**Cost Contract**: Item API request and response payloads use `purchasePrice`.
+- `page`: default 1; `limit`: default 10, maximum 100 for ordinary API requests.
+- `search`: item/supplier code, name, Chinese name, or barcode for stock-aware lists.
+- `category`: category UUID for stock-aware lists; `warehouseId`: optional warehouse UUID.
+- `status`: `normal`, `low_stock`, `out_of_stock`, `overstock`, or `discontinued`.
+- `itemType`: optional item type. `isActive` applies to the non-stock item list.
+- `view=inventory`: lightweight stock-aware table response. Omits pricing, custom fields,
+  unit options, and barcode enrichment; cannot be combined with exports, statistics,
+  or `includeStock=false`.
+- Without `view`, existing full item-list consumers retain their pricing and barcode enrichment.
+- `includeStock=false`: non-stock item list.
+- `includeStats=true&statsOnly=true`: separate inventory statistics. The returned
+  `capabilities.canViewTotalAvailableValue` controls the value card, and the server returns
+  `totalAvailableValue: null` when access is denied. This request does not load pricing settings.
+- `exportMode=csv|xlsx|pdf`: full enriched export data, capped at 5,000 items. Larger exports
+  require narrower filters and return 413.
 
-**Query Parameters**:
+Rows remain scoped to the authenticated company and selected business unit/warehouse. The
+lightweight view uses the same stock RPC, filter semantics, and stock quantities as the full view.
+Its cache remains under the `items` query family so existing item/stock mutations and realtime
+invalidation refresh it.
 
-- `page` - Page number (default: 1)
-- `limit` - Items per page (default: 20)
-- `search` - Search by code/name
-- `category_id` - Filter by category
-- `is_active` - Filter active/inactive
-
-**Response**:
+**Inventory view response**:
 
 ```json
 {
-  "items": [
+  "data": [
     {
       "id": "uuid",
       "code": "ITEM-001",
+      "supplierCode": null,
       "name": "Widget ABC",
-      "description": "High-quality widget",
-      "category": { "id": "uuid", "name": "Widgets" },
-      "base_unit": { "id": "uuid", "name": "piece" },
-      "sales_price": 10.5,
-      "reorder_point": 100,
-      "max_stock_level": 500,
-      "is_active": true,
-      "unit_options": [
-        { "unit": "piece", "conversion_factor": 1, "is_base_unit": true },
-        { "unit": "box", "conversion_factor": 12, "is_base_unit": false }
-      ]
+      "category": "Widgets",
+      "onHand": 12,
+      "allocated": 2,
+      "available": 10,
+      "putawayQty": 0,
+      "reorderPoint": 5,
+      "status": "normal"
     }
   ],
-  "total": 150,
-  "page": 1,
-  "limit": 20
+  "pagination": { "page": 1, "limit": 10, "total": 150, "totalPages": 15 }
 }
 ```
+
+#### GET /api/item-categories
+
+Category selectors in inventory, item create/edit, and the inventory/aging/product-movement report
+previews use server search. Requests accept `search` (up to 100 characters), `page` (default 1),
+and `limit` (default 5, maximum 50). Invalid bounds return 400. Results use company scope,
+exclude deleted categories, and order by name then ID. The response contains `data: [{ id, name }]`
+and `pagination: { page, limit, total, totalPages }`.
+
+The first five results are shown initially; users search for other categories. Selected labels
+remain visible when the selection is outside the current search results. Item forms retain category
+names in their existing mutation contracts; ID-based filters still submit IDs. Lookup authorization
+preserves direct category-view access and dependent-feature access, reusing one verified request
+context for all permission and company-scope checks.
 
 #### POST /api/items
 

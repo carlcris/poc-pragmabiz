@@ -34,7 +34,7 @@ export const useBusinessUnitStore = create<BusinessUnitStore>()(
       // Initial state
       currentBusinessUnit: null,
       availableBusinessUnits: [],
-      isLoading: false,
+      isLoading: true, // Persisted selection is not ready until the provider verifies context.
       hasHydrated: false,
 
       // Actions

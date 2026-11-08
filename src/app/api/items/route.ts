@@ -6,6 +6,7 @@ import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import type { CreateItemRequest, Item, ItemPriceTier } from "@/types/item";
+import type { ItemInventoryRow } from "@/types/item-inventory";
 import type { Database } from "@/types/database.types";
 import { insertItemUnitOptionWithRetry } from "@/lib/items/insertItemUnitOption";
 import { DEFAULT_PRICE_TIER_CODE } from "@/lib/pricing/itemPriceTiers";
@@ -537,12 +538,20 @@ async function GETHandler(request: NextRequest) {
       ? searchParams.get("exportMode")
       : null;
     const page = parsePositiveInt(searchParams.get("page"), 1);
-    const limit =
-      exportMode
-        ? ITEM_EXPORT_ROW_LIMIT + 1
-        : Math.min(parsePositiveInt(searchParams.get("limit"), DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
-    const capabilities = await getUserCapabilities(userId, currentBusinessUnitId);
-    const defaultPricingTier = await getDefaultPricingTier(supabase, companyId);
+    const limit = exportMode
+      ? ITEM_EXPORT_ROW_LIMIT + 1
+      : Math.min(parsePositiveInt(searchParams.get("limit"), DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
+    const view = searchParams.get("view");
+    if (view !== null && view !== "inventory") {
+      return NextResponse.json({ error: "Invalid item view" }, { status: 400 });
+    }
+    const inventoryView = view === "inventory";
+    if (inventoryView && (!includeStock || includeStats || statsOnly || exportMode)) {
+      return NextResponse.json({ error: "Invalid inventory view options" }, { status: 400 });
+    }
+    const capabilities = inventoryView
+      ? {}
+      : await getUserCapabilities(userId, currentBusinessUnitId);
     const itemMasterCapabilities: ItemMasterCapabilities = {
       canViewTotalAvailableValue: hasCapability(
         capabilities,
@@ -553,6 +562,7 @@ async function GETHandler(request: NextRequest) {
     };
 
     if (!includeStock) {
+      const defaultPricingTier = await getDefaultPricingTier(supabase, companyId);
       let query = supabase
         .from("items")
         .select(
@@ -637,10 +647,8 @@ id,
       const { data, error, count } = await query;
 
       if (error) {
-        return NextResponse.json(
-          { error: "Failed to fetch items", details: error.message },
-          { status: 500 }
-        );
+        console.error("Failed to fetch items:", error);
+        return NextResponse.json({ error: "Failed to fetch items" }, { status: 500 });
       }
 
       const fetchedItems = (data || []) as ItemRow[];
@@ -708,10 +716,8 @@ id,
       );
 
       if (statsError) {
-        return NextResponse.json(
-          { error: "Failed to fetch item statistics", details: statsError.message },
-          { status: 500 }
-        );
+        console.error("Failed to fetch item statistics:", statsError);
+        return NextResponse.json({ error: "Failed to fetch item statistics" }, { status: 500 });
       }
 
       const statsRow = ((statsRows || [])[0] || null) as ItemsStatsRow | null;
@@ -730,8 +736,7 @@ id,
     }
 
     const exportPage = exportMode ? 1 : page;
-    const candidateLimit =
-      exportMode ? limit : search && page === 1 ? Math.max(limit, 100) : limit;
+    const candidateLimit = exportMode ? limit : search && page === 1 ? Math.max(limit, 100) : limit;
 
     const rpcPayload = {
       ...statsRpcPayload,
@@ -750,10 +755,7 @@ id,
 
     if (rpcError) {
       console.error("Failed to fetch items via enhanced page RPC:", rpcError);
-      return NextResponse.json(
-        { error: "Failed to fetch items" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to fetch items" }, { status: 500 });
     }
 
     const rows = (rpcRows || []) as ItemsRpcRow[];
@@ -767,6 +769,29 @@ id,
       );
     }
 
+    if (inventoryView) {
+      const items: ItemInventoryRow[] = rows.map((row) => ({
+        id: row.id,
+        code: row.item_code,
+        supplierCode: row.supplier_code,
+        name: row.item_name,
+        chineseName: row.item_name_cn || undefined,
+        category: row.category_name || "",
+        onHand: row.on_hand,
+        allocated: row.allocated,
+        available: row.available,
+        putawayQty: row.putaway_qty,
+        reorderPoint: row.reorder_point,
+        status: row.status,
+        imageUrl: row.image_url || undefined,
+      }));
+      return NextResponse.json({
+        data: search && page === 1 ? rankItemsBySearch(items, search).slice(0, limit) : items,
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      });
+    }
+
+    const defaultPricingTier = await getDefaultPricingTier(supabase, companyId);
     const priceTiersByItemId = await fetchCurrentPriceTiersByItemId(
       supabase,
       companyId,
@@ -842,10 +867,8 @@ id,
     const { data: statsRows, error: statsError } = await statsRpcPromise!;
 
     if (statsError) {
-      return NextResponse.json(
-        { error: "Failed to fetch item statistics", details: statsError.message },
-        { status: 500 }
-      );
+      console.error("Failed to fetch item statistics:", statsError);
+      return NextResponse.json({ error: "Failed to fetch item statistics" }, { status: 500 });
     }
 
     const statsRow = ((statsRows || [])[0] || null) as ItemsStatsRow | null;

@@ -1,16 +1,13 @@
-import type { ItemCategoriesResponse } from "@/types/item-category";
-
-const API_BASE = "/api/item-categories";
+import { apiClient } from "@/lib/api";
+import type { ItemCategoriesResponse, ItemCategoryFilters } from "@/types/item-category";
 
 export const itemCategoriesApi = {
-  getCategories: async (): Promise<ItemCategoriesResponse> => {
-    const response = await fetch(API_BASE, {
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
+  getCategories: (filters: ItemCategoryFilters = {}): Promise<ItemCategoriesResponse> => {
+    const params = new URLSearchParams({
+      page: String(filters.page ?? 1),
+      limit: String(filters.limit ?? 5),
     });
-    if (!response.ok) throw new Error("Failed to fetch item categories");
-    return response.json();
+    if (filters.search) params.set("search", filters.search);
+    return apiClient.get<ItemCategoriesResponse>(`/api/item-categories?${params}`);
   },
 };

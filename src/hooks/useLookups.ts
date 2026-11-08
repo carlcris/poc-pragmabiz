@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
+import { useAuthStore } from "@/stores/authStore";
 import type { WarehouseLocation } from "@/types/inventory-location";
 
 export type LookupWarehouseOption = {
@@ -81,6 +82,13 @@ export function useLookupWarehouses(params: {
   enabled?: boolean;
 }) {
   const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
+  const hasHydrated = useBusinessUnitStore((state) => state.hasHydrated);
+  const isBusinessUnitLoading = useBusinessUnitStore((state) => state.isLoading);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
+  const isScopeReady =
+    params.scope !== "current_business_unit" ||
+    (hasHydrated && !isBusinessUnitLoading && Boolean(currentBusinessUnitId));
   return useQuery({
     queryKey: [
       "lookups",
@@ -92,7 +100,7 @@ export function useLookupWarehouses(params: {
       params?.includeInactive ?? false,
       params.scope === "current_business_unit" ? (currentBusinessUnitId ?? null) : null,
     ],
-    enabled: params.enabled ?? true,
+    enabled: (params.enabled ?? true) && isAuthenticated && !isLoggingOut && isScopeReady,
     queryFn: () =>
       apiClient.get<LookupResponse<LookupWarehouseOption>>("/api/lookups/warehouses", {
         params: {

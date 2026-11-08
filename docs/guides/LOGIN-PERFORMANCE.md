@@ -6,6 +6,24 @@ The API resolves business-unit context once and loads business-unit details, per
 in parallel. Native mobile reuses the permission result for its capability maps. Web reuses the API's
 profile fields after establishing the browser session.
 
+## Dashboard initialization follow-up (November 8, 2026)
+
+Full-page loads no longer wait for the entire business-unit option list when the server has already
+verified the authenticated user's active selected membership and matching JWT scope. Persisted
+browser selection remains loading until initialization resolves it. The remaining business-unit
+options load in the background and cannot reselect a unit after the server snapshot initializes it.
+
+The dashboard provider reuses server authentication rather than starting another browser user/profile
+check during hydration. Tablet initialization without a server snapshot retains its browser auth check.
+The switcher uses the shared React Query request and retry state, eliminating its independent bootstrap
+fetch. Current-business-unit warehouse lookups wait for authenticated, hydrated scope to avoid fetching
+once under an unresolved cache key and again under the selected unit.
+
+Middleware, server-layout verification, API authorization, token synchronization for missing/changed
+context, and permission-snapshot scope checks remain unchanged. See
+[full-page benchmark results](DASHBOARD-INITIALIZATION-PERFORMANCE.md) for the matched measurement and
+its limitations. The November 7 and November 1 measurements below remain historical.
+
 ## Dashboard initialization (November 7, 2026)
 
 The dashboard layout reuses the authenticated user and session from its business-unit context

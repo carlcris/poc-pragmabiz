@@ -7,7 +7,8 @@ import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import { useCustomers, useCustomerLedger } from "@/hooks/useCustomers";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useItemCategories } from "@/hooks/useItemCategories";
+import { ItemCategorySelect } from "@/components/items/ItemCategorySelect";
+import type { ItemCategory } from "@/types/item-category";
 import { useItemLocationBatchReport } from "@/hooks/useItemLocationBatchReport";
 import { useItems } from "@/hooks/useItems";
 import {
@@ -134,8 +135,6 @@ function InventoryReportPreview({
   const tReports = useTranslations("reportsPage");
   const t = useTranslations("inventoryReportPage");
   const locale = useLocale();
-  const { data: categoriesData } = useItemCategories();
-  const categories = categoriesData?.data || [];
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
@@ -264,19 +263,12 @@ function InventoryReportPreview({
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("category")}</label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("allCategories")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allCategories")}</SelectItem>
-                {categories.map((itemCategory) => (
-                  <SelectItem key={itemCategory.id} value={itemCategory.name}>
-                    {itemCategory.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ItemCategorySelect
+              value={category}
+              onValueChange={setCategory}
+              valueField="name"
+              allowAll
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("status")}</label>
@@ -341,8 +333,6 @@ function StockAgingReportPreview({
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [ageBucket, setAgeBucket] = useState<StockAgingAgeBucket>("90_plus");
-  const { data: categoriesData } = useItemCategories();
-  const categories = categoriesData?.data || [];
   const { previewUrl, isGeneratingPreview, setIsGeneratingPreview, replacePreviewUrl } =
     usePdfPreviewState(open);
 
@@ -472,19 +462,12 @@ function StockAgingReportPreview({
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("category")}</label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("allCategories")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allCategories")}</SelectItem>
-                {categories.map((itemCategory) => (
-                  <SelectItem key={itemCategory.id} value={itemCategory.name}>
-                    {itemCategory.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ItemCategorySelect
+              value={category}
+              onValueChange={setCategory}
+              valueField="name"
+              allowAll
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("ageBucket")}</label>
@@ -735,9 +718,7 @@ function ProductMovementReportPreview({
   );
   const [dateTo, setDateTo] = useState(new Date().toISOString().slice(0, 10));
   const [categoryId, setCategoryId] = useState("all");
-  const { data: categoriesData } = useItemCategories();
-  const categories = categoriesData?.data || [];
-  const selectedCategory = categories.find((category) => category.id === categoryId) ?? null;
+  const [selectedCategory, setSelectedCategory] = useState<ItemCategory | null>(null);
   const { previewUrl, isGeneratingPreview, setIsGeneratingPreview, replacePreviewUrl } =
     usePdfPreviewState(open);
 
@@ -868,19 +849,13 @@ function ProductMovementReportPreview({
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("category")}</label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("allCategories")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allCategories")}</SelectItem>
-                {categories.map((itemCategory) => (
-                  <SelectItem key={itemCategory.id} value={itemCategory.id}>
-                    {itemCategory.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ItemCategorySelect
+              value={categoryId}
+              onValueChange={setCategoryId}
+              valueField="id"
+              allowAll
+              onOptionChange={setSelectedCategory}
+            />
           </div>
         </div>
         <div className="mt-auto pt-6">

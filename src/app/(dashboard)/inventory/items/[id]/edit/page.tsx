@@ -8,7 +8,7 @@ import { AlertCircle, Barcode } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
-import { useItemCategories } from "@/hooks/useItemCategories";
+import { ItemCategorySelect } from "@/components/items/ItemCategorySelect";
 import { useUnitsOfMeasure } from "@/hooks/useUnitsOfMeasure";
 import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import { createItemFormSchema } from "@/lib/validations/item";
@@ -51,7 +51,6 @@ function EditItemContent({ params }: EditItemPageProps) {
 
   const { data: itemResponse, isLoading, error } = useItem(itemId);
   const updateItem = useUpdateItem();
-  const { data: categoriesData } = useItemCategories();
   const { data: uomsData } = useUnitsOfMeasure();
 
   const item = itemResponse?.data;
@@ -69,16 +68,10 @@ function EditItemContent({ params }: EditItemPageProps) {
   const primaryBarcode = item?.primaryBarcode ?? null;
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedUom, setSelectedUom] = useState("");
-  const categories = useMemo(() => categoriesData?.data || [], [categoriesData?.data]);
   const unitsOfMeasure = useMemo(
     () => (uomsData?.data || []).filter((unit) => unit.isActive !== false),
     [uomsData?.data]
   );
-  const categoryOptions = useMemo(() => {
-    if (!item?.category) return categories;
-    if (categories.some((category) => category.name === item.category)) return categories;
-    return [{ id: `current-category-${itemId}`, name: item.category }, ...categories];
-  }, [categories, item?.category, itemId]);
   const unitOptions = useMemo(() => {
     if (!item?.uom) return unitsOfMeasure;
     if (unitsOfMeasure.some((unit) => unit.code === item.uom)) return unitsOfMeasure;
@@ -533,22 +526,14 @@ function EditItemContent({ params }: EditItemPageProps) {
                         <FormItem>
                           <FormLabel>{t("categoryLabel")}</FormLabel>
                           <FormControl>
-                            <select
-                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                              onChange={(event) => {
-                                const value = event.target.value;
+                            <ItemCategorySelect
+                              value={selectedCategory}
+                              valueField="name"
+                              onValueChange={(value) => {
                                 setSelectedCategory(value);
                                 field.onChange(value);
                               }}
-                              value={selectedCategory}
-                            >
-                              <option value="">{t("selectCategory")}</option>
-                              {categoryOptions.map((category) => (
-                                <option key={category.id} value={category.name}>
-                                  {category.name}
-                                </option>
-                              ))}
-                            </select>
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

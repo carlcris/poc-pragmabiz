@@ -1,12 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { itemCategoriesApi } from "@/lib/api/item-categories";
+import { useAuthStore } from "@/stores/authStore";
+import type { ItemCategoryFilters } from "@/types/item-category";
 
-const ITEM_CATEGORIES_QUERY_KEY = "item-categories";
-
-export function useItemCategories() {
+export function useItemCategories(filters: ItemCategoryFilters = {}) {
+  const companyId = useAuthStore((state) => state.user?.companyId);
+  const normalizedFilters = {
+    search: filters.search?.trim() ?? "",
+    page: filters.page ?? 1,
+    limit: filters.limit ?? 5,
+  };
   return useQuery({
-    queryKey: [ITEM_CATEGORIES_QUERY_KEY],
-    queryFn: () => itemCategoriesApi.getCategories(),
-    staleTime: 1000 * 60 * 5, // 5 minutes - categories don't change often
+    queryKey: ["item-categories", companyId, normalizedFilters],
+    queryFn: () => itemCategoriesApi.getCategories(normalizedFilters),
+    enabled: Boolean(companyId),
+    staleTime: 5 * 60 * 1000,
   });
 }

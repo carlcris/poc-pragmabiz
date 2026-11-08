@@ -8,6 +8,7 @@
  */
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { Check, ChevronsUpDown, Building2, Loader2, AlertCircle, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,6 @@ import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { useBusinessUnits, useSetBusinessUnitContext } from "@/hooks/useBusinessUnits";
 import type { BusinessUnitWithAccess } from "@/types/business-unit";
 import { toProperCase } from "@/lib/string";
-import { apiClient } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   DELIVERY_NOTES_QUERY_KEY,
@@ -41,13 +41,9 @@ export const BusinessUnitSwitcher = ({
   initialBusinessUnitName = null,
   variant = "default",
 }: BusinessUnitSwitcherProps) => {
+  const t = useTranslations("businessUnitSwitcher");
   const [open, setOpen] = useState(false);
   const tabletDropdownRef = useRef<HTMLDivElement | null>(null);
-  const hasBootstrappedRef = useRef(false);
-  const [fallbackBusinessUnits, setFallbackBusinessUnits] = useState<BusinessUnitWithAccess[]>([]);
-  const [isBootstrapping, setIsBootstrapping] = useState(false);
-  const [bootstrapError, setBootstrapError] = useState<string | null>(null);
-  const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const {
@@ -63,8 +59,11 @@ export const BusinessUnitSwitcher = ({
     silent: variant === "tablet",
   });
   const isInitializing = !hasHydrated || (isLoading && !currentBusinessUnit);
-  const effectiveBusinessUnits =
-    availableBusinessUnits.length > 0 ? availableBusinessUnits : fallbackBusinessUnits;
+  const effectiveBusinessUnits = useMemo(
+    () =>
+      availableBusinessUnits.length > 0 ? availableBusinessUnits : (businessUnitsQuery.data ?? []),
+    [availableBusinessUnits, businessUnitsQuery.data]
+  );
   const resolvedCurrentBusinessUnit = currentBusinessUnit
     ? (effectiveBusinessUnits.find((businessUnit) => businessUnit.id === currentBusinessUnit.id) ??
       currentBusinessUnit)
@@ -73,52 +72,8 @@ export const BusinessUnitSwitcher = ({
     resolvedCurrentBusinessUnit?.name || initialBusinessUnitName || null;
 
   useEffect(() => {
-    const rows = businessUnitsQuery.data;
-    if (!rows) return;
-
-    setFallbackBusinessUnits(rows);
-    setAvailableBusinessUnits(rows);
-    setBootstrapError(null);
-    setIsBootstrapping(false);
+    if (businessUnitsQuery.data) setAvailableBusinessUnits(businessUnitsQuery.data);
   }, [businessUnitsQuery.data, setAvailableBusinessUnits]);
-
-  useEffect(() => {
-    if (!businessUnitsQuery.error) return;
-    setIsBootstrapping(false);
-    setBootstrapError("Failed to load business units");
-  }, [businessUnitsQuery.error]);
-
-  useEffect(() => {
-    let active = true;
-
-    const bootstrapBusinessUnits = async () => {
-      if (availableBusinessUnits.length > 0 || hasBootstrappedRef.current) return;
-      hasBootstrappedRef.current = true;
-      try {
-        setIsBootstrapping(true);
-        setBootstrapError(null);
-        const response = await apiClient.get<{ data: BusinessUnitWithAccess[] }>(
-          "/api/business-units"
-        );
-        const rows = Array.isArray(response?.data) ? response.data : [];
-        if (!active) return;
-        setFallbackBusinessUnits(rows);
-        if (rows.length > 0) {
-          setAvailableBusinessUnits(rows);
-        }
-      } catch {
-        if (!active) return;
-        setBootstrapError("Failed to load business units");
-      } finally {
-        if (active) setIsBootstrapping(false);
-      }
-    };
-
-    void bootstrapBusinessUnits();
-    return () => {
-      active = false;
-    };
-  }, [availableBusinessUnits.length, bootstrapAttempt, setAvailableBusinessUnits]);
 
   // Sort business units: default first, then alphabetically by name
   const sortedBusinessUnits = useMemo(() => {
@@ -146,13 +101,13 @@ export const BusinessUnitSwitcher = ({
       groups.set(companyId, {
         id: companyId,
         code: businessUnit.company?.code ?? "",
-        name: businessUnit.company?.name ?? "Company",
+        name: businessUnit.company?.name ?? t("company"),
         businessUnits: [businessUnit],
       });
     });
 
     return Array.from(groups.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [sortedBusinessUnits]);
+  }, [sortedBusinessUnits, t]);
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
 
@@ -221,7 +176,7 @@ export const BusinessUnitSwitcher = ({
   const selectedCompanyBusinessUnits = selectedCompany?.businessUnits ?? [];
   const displayLabel = displayBusinessUnitName;
   const isBusinessUnitFetchLoading =
-    isBootstrapping || businessUnitsQuery.isLoading || (isLoading && effectiveBusinessUnits.length === 0);
+    businessUnitsQuery.isFetching || (isLoading && effectiveBusinessUnits.length === 0);
 
   const handleSelect = (businessUnit: BusinessUnitWithAccess) => {
     if (businessUnit.id === resolvedCurrentBusinessUnit?.id) {
@@ -265,27 +220,21 @@ export const BusinessUnitSwitcher = ({
   }, [open, variant]);
 
   // If only one business unit, show it but make it non-interactive
-  if (effectiveBusinessUnits.length <= 1 && variant !== "tablet") {
+  if (effectiveBusinessUnits.length <= 1 && variant !== "tablet" && !businessUnitsQuery.error) {
     return (
       <div className="flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2">
         <Building2 className="h-4 w-4 shrink-0 text-white/70" />
         <span className="truncate text-sm text-white/90">
           {displayLabel ||
-            (isInitializing || isBootstrapping ? "Business unit" : "No business unit")}
+            (isInitializing || businessUnitsQuery.isFetching
+              ? t("businessUnit")
+              : t("noBusinessUnit"))}
         </span>
       </div>
     );
   }
 
   const isTablet = variant === "tablet";
-
-  const handleRetryBootstrap = () => {
-    hasBootstrappedRef.current = false;
-    setFallbackBusinessUnits([]);
-    setBootstrapError(null);
-    setIsBootstrapping(false);
-    setBootstrapAttempt((attempt) => attempt + 1);
-  };
 
   const renderCompanyButtons = () => {
     if (filteredCompanyGroups.length === 0) return null;
@@ -347,8 +296,8 @@ export const BusinessUnitSwitcher = ({
             <div className="flex items-center gap-2">
               <span className="truncate text-sm font-medium">{businessUnit.name}</span>
               {businessUnit.access.is_default && (
-                <Badge variant="secondary" className="shrink-0 text-[10px]">
-                  Default
+                <Badge variant="secondary" className="shrink-0 text-xs">
+                  {t("default")}
                 </Badge>
               )}
             </div>
@@ -367,20 +316,25 @@ export const BusinessUnitSwitcher = ({
       return (
         <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Loading business units...</span>
+          <span>{t("loading")}</span>
         </div>
       );
     }
 
-    if (bootstrapError) {
+    if (businessUnitsQuery.error) {
       return (
         <div className="space-y-2 px-3 py-3">
           <div className="flex items-center gap-2 text-sm text-red-600">
             <AlertCircle className="h-4 w-4" />
-            <span>{bootstrapError}</span>
+            <span>{t("loadError")}</span>
           </div>
-          <Button type="button" variant="outline" size="sm" onClick={handleRetryBootstrap}>
-            Retry
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void businessUnitsQuery.refetch()}
+          >
+            {t("retry")}
           </Button>
         </div>
       );
@@ -389,10 +343,10 @@ export const BusinessUnitSwitcher = ({
     return (
       <div className="px-3 py-3 text-sm text-muted-foreground">
         {normalizedSearchTerm
-          ? "No matching companies or business units"
+          ? t("noMatches")
           : selectedCompany
-            ? "No business units available for this company"
-            : "No business units available"}
+            ? t("noCompanyUnits")
+            : t("noUnits")}
       </div>
     );
   };
@@ -410,7 +364,7 @@ export const BusinessUnitSwitcher = ({
           <input
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Search business unit..."
+            placeholder={t("searchPlaceholder")}
             className="w-full bg-transparent outline-none placeholder:text-muted-foreground"
           />
         </label>
@@ -423,7 +377,7 @@ export const BusinessUnitSwitcher = ({
             : "border-b text-muted-foreground"
         )}
       >
-        Company
+        {t("company")}
       </div>
       <div className="py-1">{renderCompanyButtons()}</div>
       <div className={cn("border-t", tone === "tablet" ? "border-gray-100" : "border-border")} />
@@ -433,7 +387,7 @@ export const BusinessUnitSwitcher = ({
           tone === "tablet" ? "text-gray-500" : "text-muted-foreground"
         )}
       >
-        {selectedCompany?.name ?? "Business Unit"}
+        {selectedCompany?.name ?? t("businessUnit")}
       </div>
       <div className="max-h-72 overflow-y-auto py-1">{renderBusinessUnitButtons()}</div>
     </>
@@ -446,14 +400,14 @@ export const BusinessUnitSwitcher = ({
           type="button"
           variant="outline"
           aria-expanded={open}
-          aria-label="Select business unit"
+          aria-label={t("selectBusinessUnit")}
           onClick={() => setOpen((prev) => !prev)}
           className="h-11 w-full justify-between border-gray-200 bg-white text-gray-900 shadow-sm hover:bg-gray-50"
         >
           <div className="flex items-center gap-2 truncate">
             <Building2 className="h-4 w-4 shrink-0 text-primary" />
             <span className="truncate font-medium">
-              {displayLabel || (isInitializing ? "Loading..." : "Select business unit")}
+              {displayLabel || (isInitializing ? t("loading") : t("selectBusinessUnit"))}
             </span>
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-gray-500" />
@@ -475,7 +429,7 @@ export const BusinessUnitSwitcher = ({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          aria-label="Select business unit"
+          aria-label={t("selectBusinessUnit")}
           className={cn(
             "w-full justify-between",
             isTablet ? "h-11 border-gray-200 bg-white text-gray-900 shadow-sm hover:bg-gray-50" : ""
@@ -484,13 +438,13 @@ export const BusinessUnitSwitcher = ({
           <div className="flex items-center gap-2 truncate">
             <Building2 className="h-4 w-4 shrink-0" />
             <span className="truncate">
-              {displayLabel || (isInitializing ? "Loading..." : "Select business unit")}
+              {displayLabel || (isInitializing ? t("loading") : t("selectBusinessUnit"))}
             </span>
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0" side="right" align="start">
+      <PopoverContent className="w-80 p-0" side="right" align="start">
         {renderSwitcherContent("default")}
       </PopoverContent>
     </Popover>

@@ -18,13 +18,10 @@ import {
   TrendingUp,
   type LucideIcon,
 } from "lucide-react";
-import {
-  useDeleteItem,
-  useItems,
-  useItemsStats,
-  type ItemsWithStockResponse,
-} from "@/hooks/useItems";
-import { useItemCategories } from "@/hooks/useItemCategories";
+import { useDeleteItem, useItemsStats, type ItemsWithStockResponse } from "@/hooks/useItems";
+import { useInventoryItems } from "@/hooks/useInventoryItems";
+import { ItemCategorySelect } from "@/components/items/ItemCategorySelect";
+import type { ItemInventoryRow } from "@/types/item-inventory";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { toast } from "sonner";
@@ -59,10 +56,7 @@ import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
 import { ItemImage } from "@/components/items/ItemImage";
 import { RESOURCES } from "@/constants/resources";
-import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
-import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import type { ItemWithStock } from "@/app/api/items/route";
-import type { Item } from "@/types/item";
 import type { XlsxCellValue } from "@/lib/export/xlsx-workbook";
 
 const ConfirmDialog = dynamic(
@@ -85,7 +79,7 @@ function ItemsPageContent() {
   const [warehouseFilter, setWarehouseFilter] = useState("");
   const [exportingFormat, setExportingFormat] = useState<ItemExportFormat | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<ItemWithStock | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<ItemInventoryRow | null>(null);
 
   const { formatCurrency } = useCurrency();
   const deleteItem = useDeleteItem();
@@ -102,8 +96,6 @@ function ItemsPageContent() {
     category: string | undefined;
     warehouseId: string | undefined;
     status: "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued" | "all";
-    includeStock: true;
-    includeStats: false;
   }>(
     () => ({
       search,
@@ -115,13 +107,11 @@ function ItemsPageContent() {
         statusFilter !== "all"
           ? (statusFilter as "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued")
           : "all",
-      includeStock: true,
-      includeStats: false,
     }),
     [search, page, pageSize, categoryFilter, warehouseFilter, statusFilter]
   );
 
-  const { data, isLoading, isFetching, error } = useItems({
+  const { data, isLoading, isFetching, error } = useInventoryItems({
     ...itemsQueryParams,
     enabled: areItemQueriesEnabled,
   });
@@ -134,30 +124,24 @@ function ItemsPageContent() {
     includeStock: true,
     enabled: areItemQueriesEnabled,
   });
-  const { data: granularCapabilities = {} } = useGranularCapabilities([
-    GRANULAR_CAPABILITIES.ITEM_MASTER_TOTAL_AVAILABLE_VALUE,
-  ]);
 
   useEffect(() => {
+    if (searchInput.trim() === search) return;
     const timeoutId = window.setTimeout(() => {
       setSearch(searchInput.trim());
       setPage(1);
     }, 400);
 
     return () => window.clearTimeout(timeoutId);
-  }, [searchInput]);
+  }, [searchInput, search]);
 
   useEffect(() => {
     setWarehouseFilter("");
     setPage(1);
   }, [currentBusinessUnit?.id]);
 
-  // Fetch categories for filter
-  const { data: categoriesData } = useItemCategories();
-  const categories = categoriesData?.data || [];
-
   const isInitialLoading = isLoading || !areItemQueriesEnabled;
-  const items = (data?.data || []) as ItemWithStock[];
+  const items = data?.data || [];
   const pagination = data?.pagination;
   const statistics = statsData?.statistics;
   const hasStatsError = Boolean(statsError);
@@ -168,8 +152,7 @@ function ItemsPageContent() {
   const outOfStockItems = statistics?.outOfStockCount;
   const totalValue = statistics?.totalAvailableValue;
   const totalItems = statistics?.totalCount;
-  const canViewTotalAvailableValue =
-    granularCapabilities[GRANULAR_CAPABILITIES.ITEM_MASTER_TOTAL_AVAILABLE_VALUE] === true;
+  const canViewTotalAvailableValue = statsData?.capabilities?.canViewTotalAvailableValue === true;
 
   type StatsCardConfig = {
     title: string;
@@ -252,11 +235,11 @@ function ItemsPageContent() {
     router.push(`/inventory/items/${itemId}`);
   };
 
-  const handleEditItem = (item: ItemWithStock | Item) => {
+  const handleEditItem = (item: ItemInventoryRow) => {
     router.push(`/inventory/items/${item.id}/edit`);
   };
 
-  const handleDeleteItem = (item: ItemWithStock) => {
+  const handleDeleteItem = (item: ItemInventoryRow) => {
     setItemToDelete(item);
     setDeleteDialogOpen(true);
   };
@@ -550,7 +533,7 @@ function ItemsPageContent() {
                 iconClassName={`h-3 w-3 md:h-4 md:w-4 ${stat.iconColor}`}
                 value={String(stat.value)}
                 caption={stat.description}
-                isLoading={isInitialLoading || isStatsPending}
+                isLoading={!areItemQueriesEnabled || isStatsPending}
                 skeletonCaption={false}
                 valueClassName="text-lg md:text-2xl font-bold"
               />
@@ -573,26 +556,15 @@ function ItemsPageContent() {
               className="pl-8"
             />
           </div>
-          <Select
+          <ItemCategorySelect
             value={categoryFilter}
             onValueChange={(value) => {
               setCategoryFilter(value);
               setPage(1);
             }}
-          >
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <Filter className="mr-2 h-4 w-4 shrink-0" />
-              <SelectValue placeholder={t("categoryPlaceholder")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("allCategories")}</SelectItem>
-              {categories.map((cat) => (
-                <SelectItem key={cat.id} value={cat.id}>
-                  {cat.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            allowAll
+            buttonClassName="w-full sm:w-48"
+          />
           <WarehouseSelect
             value={warehouseFilter}
             onValueChange={(value) => {
@@ -628,9 +600,12 @@ function ItemsPageContent() {
           </Select>
         </div>
 
+        <div role="status" aria-live="polite" className="h-4 text-xs text-muted-foreground">
+          {isFetching && !isInitialLoading ? t("refreshing") : null}
+        </div>
         {/* Table */}
         <div className="md:min-h-0 md:flex-1">
-          {isInitialLoading || isFetching ? (
+          {isInitialLoading ? (
             <div className="h-[200px] overflow-y-auto overscroll-contain rounded-md border md:h-full">
               <Table containerClassName="overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
@@ -740,7 +715,7 @@ function ItemsPageContent() {
                           />
                         </div>
                       </TableCell>
-                      <TableCell className="tabular-nums font-medium">{item.code}</TableCell>
+                      <TableCell className="font-medium tabular-nums">{item.code}</TableCell>
                       <TableCell className="w-72 max-w-72 whitespace-normal break-words text-primary">
                         <div className="font-medium leading-snug hover:underline" title={item.name}>
                           {item.name}
