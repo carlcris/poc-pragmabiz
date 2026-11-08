@@ -38,6 +38,7 @@ type AsyncSearchComboboxProps<T> = {
   invalid?: boolean;
   describedBy?: string;
   popoverClassName?: string;
+  footer?: ReactNode;
 };
 
 export function AsyncSearchCombobox<T>({
@@ -64,6 +65,7 @@ export function AsyncSearchCombobox<T>({
   invalid,
   describedBy,
   popoverClassName,
+  footer,
 }: AsyncSearchComboboxProps<T>) {
   const [open, setOpen] = useState(false);
   const [internalSearch, setInternalSearch] = useState("");
@@ -198,6 +200,7 @@ export function AsyncSearchCombobox<T>({
             </CommandList>
           </div>
         </Command>
+        {footer}
       </PopoverContent>
     </Popover>
   );

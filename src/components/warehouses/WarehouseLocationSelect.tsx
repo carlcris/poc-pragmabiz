@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -58,17 +60,33 @@ export function WarehouseLocationSelect({
   describedBy,
 }: WarehouseLocationSelectProps) {
   const t = useTranslations("warehouseLocationSelect");
+  const pagination = useTranslations("pagination");
   const [search, setSearch] = useState("");
+  const [paging, setPaging] = useState({ scope: "", page: 1 });
   const [lastSelectedOption, setLastSelectedOption] = useState<WarehouseLocationOption | null>(
     selectedOption
   );
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
+  const scope = JSON.stringify([
+    warehouseId,
+    debouncedSearch,
+    includeInactive,
+    storableOnly,
+    locationType,
+    excludeSubtreeId,
+    pickableOnly,
+  ]);
+  const page = paging.scope === scope ? paging.page : 1;
+  useEffect(() => {
+    if (paging.scope !== scope) setPaging({ scope, page: 1 });
+  }, [paging.scope, scope]);
   const selectedOptionMissing = Boolean(
     value && (lastSelectedOption?.id !== value || !lastSelectedOption.locationNamePath)
   );
-  const { data, isLoading } = useLookupWarehouseLocations(warehouseId, {
+  const { data, isFetching } = useLookupWarehouseLocations(warehouseId, {
     search: debouncedSearch || undefined,
     limit: 5,
+    page,
     selectedId: selectedOptionMissing ? value : undefined,
     includeInactive,
     storableOnly,
@@ -134,7 +152,10 @@ export function WarehouseLocationSelect({
         onValueChange(isNoLocation ? "" : nextValue);
       }}
       searchValue={search}
-      onSearchValueChange={setSearch}
+      onSearchValueChange={(nextSearch) => {
+        setSearch(nextSearch);
+        setPaging({ scope: "", page: 1 });
+      }}
       options={options}
       selectedOption={effectiveSelectedOption}
       getOptionValue={(location) => location.id}
@@ -148,7 +169,33 @@ export function WarehouseLocationSelect({
       searchPlaceholder={t("searchPlaceholder")}
       emptyMessage={t("empty")}
       loadingMessage={t("loading")}
-      isLoading={isLoading}
+      isLoading={isFetching || search.trim() !== debouncedSearch}
+      footer={
+        (page > 1 || data?.hasMore) && (
+          <div className="flex justify-between border-t p-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={pagination("goToPreviousPage")}
+              disabled={page === 1 || isFetching || search.trim() !== debouncedSearch}
+              onClick={() => setPaging({ scope, page: page - 1 })}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={pagination("goToNextPage")}
+              disabled={!data?.hasMore || isFetching || search.trim() !== debouncedSearch}
+              onClick={() => setPaging({ scope, page: page + 1 })}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )
+      }
       disabled={disabled || !warehouseId}
       buttonClassName={buttonClassName}
       triggerId={triggerId}

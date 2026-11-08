@@ -72,6 +72,10 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     const searchParams = request.nextUrl.searchParams;
     const search = normalizeSearch(searchParams.get("search"));
     const limit = parseLimit(searchParams.get("limit"));
+    const page = Number(searchParams.get("page") ?? "1");
+    if (!Number.isSafeInteger(page) || page < 1 || page > 1_000_000) {
+      return NextResponse.json({ error: "Invalid page" }, { status: 400 });
+    }
     const selectedId = searchParams.get("selectedId")?.trim() || null;
     if (selectedId && !UUID_PATTERN.test(selectedId)) {
       return NextResponse.json({ error: "Invalid selected location" }, { status: 400 });
@@ -114,21 +118,33 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       .eq("company_id", companyId)
       .eq("warehouse_id", warehouseId)
       .is("deleted_at", null)
-      .order("code", { ascending: true })
-      .limit(limit);
+      .order("location_path", { ascending: true })
+      .order("id", { ascending: true })
+      .range((page - 1) * limit, page * limit);
 
     if (!includeInactive) query = query.eq("is_active", true);
     if (excludeSubtreeId) query = query.not("path_ids", "cs", `{${excludeSubtreeId}}`);
     if (pickableOnly) query = query.eq("is_pickable", true);
     if (storableOnly) query = query.eq("is_storable", true);
     if (locationType) query = query.eq("location_type", locationType);
-    if (search) query = query.ilike("location_path", `%${search}%`);
+    if (search) {
+      // Stored addresses include codes between the names displayed by the picker.
+      // Match each slash-separated segment in order, allowing those codes in between.
+      const pattern = search
+        .split("/")
+        .map((segment) => segment.trim().replace(/[\\_%]/g, "\\$&"))
+        .filter(Boolean)
+        .join("%/%");
+      if (pattern) query = query.ilike("location_path", `%${pattern}%`);
+    }
 
-    const { data, error } = await query;
+    const { data: matches, error } = await query;
     if (error) {
       console.error("Failed to fetch warehouse location lookup options:", error);
       return NextResponse.json({ error: "Failed to fetch warehouse locations" }, { status: 500 });
     }
+
+    const data = (matches ?? []).slice(0, limit);
 
     let selected = selectedId ? (data || []).find((location) => location.id === selectedId) : null;
     if (selectedId && !selected) {
@@ -174,6 +190,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({
       data: (data || []).map((row) => mapLocationOption(row, namePaths)),
       selected: selected ? mapLocationOption(selected, namePaths) : null,
+      hasMore: (matches?.length ?? 0) > limit,
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -301,7 +301,11 @@ database operation; replacing the image removes the previous storage object only
 save succeeds.
 
 Operational warehouse-location selectors use a bounded lookup contract: they show the first five
-eligible locations and search the server by location code or name as the user types. The warehouse
+eligible locations, with previous/next controls to reach every matching page. Results are ordered
+by full stored address and ID, and search runs on the server by code, name, or slash-separated
+names-only address (for example, `Rack 01 / Bin 10`). Stored codes between address segments do not
+prevent names-only searches. Changing the search or eligibility scope resets paging. Each request
+reads at most one extra result to detect the next page, without counting all matches. The warehouse
 location management page remains independently paginated and does not supply selector data.
 
 The item **Locations** tab groups rack rows by warehouse. Each warehouse section shows its aggregate

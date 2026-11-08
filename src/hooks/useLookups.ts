@@ -119,6 +119,7 @@ export function useLookupWarehouseLocations(
   params?: {
     search?: string;
     limit?: number;
+    page?: number;
     selectedId?: string;
     includeInactive?: boolean;
     storableOnly?: boolean;
@@ -133,6 +134,7 @@ export function useLookupWarehouseLocations(
       "warehouse_locations",
       warehouseId ?? null,
       params?.search ?? "",
+      params?.page ?? 1,
       params?.limit ?? 5,
       params?.selectedId ?? null,
       params?.includeInactive ?? false,
@@ -143,11 +145,12 @@ export function useLookupWarehouseLocations(
     ],
     enabled: !!warehouseId,
     queryFn: () =>
-      apiClient.get<LookupResponse<WarehouseLocation>>(
+      apiClient.get<LookupResponse<WarehouseLocation> & { hasMore: boolean }>(
         `/api/lookups/warehouses/${warehouseId!}/locations`,
         {
           params: {
             search: params?.search,
+            page: params?.page ?? 1,
             limit: params?.limit ?? 5,
             selectedId: params?.selectedId,
             includeInactive: params?.includeInactive ? "true" : "false",
