@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { getApiErrorCode } from "@/lib/api";
 import {
-  formatWarehouseLocationAddress,
   getWarehouseLocationErrorField,
   getWarehouseLocationErrorMessageKey,
   warehouseLocationMutationErrorCodes,
@@ -66,11 +65,7 @@ export function MoveWarehouseLocationDialog({
     (destination?.id === selectedParentId && Boolean(destination.locationPath));
   const newAddress =
     detail && !isUnchanged && isDestinationResolved
-      ? formatWarehouseLocationAddress(
-          selectedParentId ? (destination?.locationPath ?? null) : null,
-          detail.code,
-          detail.name ?? ""
-        )
+      ? `${selectedParentId ? destination?.locationNamePath || destination?.name || destination?.code : warehouseLabel} / ${detail.name || detail.code}`
       : null;
   const quantity = (value: number) => format.number(value, { maximumFractionDigits: 2 });
 

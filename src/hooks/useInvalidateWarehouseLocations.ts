@@ -14,6 +14,17 @@ export function useInvalidateWarehouseLocations(warehouseId: string) {
       predicate: ({ queryKey }) => {
         const [family, scope] = queryKey;
         switch (family) {
+          case "business-unit":
+            return queryKey[2] === "warehouse-floor-map" && queryKey[3] === warehouseId;
+          case "stock-adjustments":
+            // Detail keys contain only an adjustment ID; list filters may narrow the warehouse.
+            return (
+              typeof scope !== "object" ||
+              scope === null ||
+              !("warehouseId" in scope) ||
+              !scope.warehouseId ||
+              scope.warehouseId === warehouseId
+            );
           case "warehouse-locations":
             return scope === warehouseId;
           case "lookups":

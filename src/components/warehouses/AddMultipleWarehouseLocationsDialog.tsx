@@ -20,10 +20,9 @@ import {
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useWarehouseLocationBatchPreview } from "@/hooks/useWarehouseLocationBatchPreview";
 import type { WarehouseLocationOption } from "@/components/warehouses/WarehouseLocationSelect";
-import { StatusText } from "@/components/shared/StatusText";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -53,7 +52,6 @@ export type WarehouseLocationBatchRequest = WarehouseLocationBatchRange & {
   isPickable: boolean;
   isActive: boolean;
   maxCapacity: number | null;
-  skipExisting: boolean;
 };
 
 type AddMultipleWarehouseLocationsDialogProps = {
@@ -67,7 +65,6 @@ type AddMultipleWarehouseLocationsDialogProps = {
 };
 
 const MAX_BATCH_SIZE = 100;
-const DIGIT_OPTIONS = [1, 2, 3, 4] as const;
 
 const parseWholeNumber = (value: string) =>
   /^\d{1,6}$/.test(value.trim()) ? Number(value.trim()) : null;
@@ -86,17 +83,14 @@ export function AddMultipleWarehouseLocationsDialog({
   const [locationType, setLocationType] = useState<WarehouseLocationType>(initialType);
   const [use, setUse] = useState<WarehouseLocationUse>(getDefaultWarehouseLocationUse(initialType));
   const [isUseChosen, setIsUseChosen] = useState(false);
-  const [codePrefix, setCodePrefix] = useState(parent ? `${parent.code}-` : "");
   const [from, setFrom] = useState("1");
   const [to, setTo] = useState("10");
-  const [digits, setDigits] = useState(2);
   const [namePrefix, setNamePrefix] = useState(
     `${t(warehouseLocationTypeLabelKeys[initialType])} `
   );
   const [isNamePrefixChosen, setIsNamePrefixChosen] = useState(false);
   const [maxCapacity, setMaxCapacity] = useState("");
   const [isActive, setIsActive] = useState(true);
-  const [skipExisting, setSkipExisting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const fromNumber = parseWholeNumber(from);
@@ -121,10 +115,9 @@ export function AddMultipleWarehouseLocationsDialog({
       ? null
       : {
           parentId: parent?.id ?? null,
-          codePrefix,
+          locationType,
           from: fromNumber,
           to: toNumber,
-          digits,
           namePrefix: namePrefix.trim() ? namePrefix : null,
         };
   // Query only once typing settles; the key is a primitive so debouncing stays stable.
@@ -138,16 +131,10 @@ export function AddMultipleWarehouseLocationsDialog({
     ? getApiErrorCode(preview.error, warehouseLocationMutationErrorCodes)
     : null;
   const rows = preview.data?.rows ?? [];
-  const existingCount = rows.filter((row) => row.alreadyExists).length;
-  const newCount = rows.length - existingCount;
+  const newCount = rows.length;
   const isPreviewCurrent =
     Boolean(range) && isRangeSettled && Boolean(preview.data) && !preview.isFetching;
-  const canCreate =
-    isPreviewCurrent &&
-    !preview.error &&
-    !capacityError &&
-    newCount > 0 &&
-    (existingCount === 0 || skipExisting);
+  const canCreate = isPreviewCurrent && !preview.error && !capacityError && newCount > 0;
 
   const changeType = (value: string) => {
     if (!isWarehouseLocationType(value)) return;
@@ -168,7 +155,6 @@ export function AddMultipleWarehouseLocationsDialog({
         isPickable: flags.isPickable,
         isActive,
         maxCapacity: flags.isStorable && capacityValue ? Number(capacityValue) : null,
-        skipExisting: existingCount > 0 && skipExisting,
       });
     } catch (createError) {
       const code = getApiErrorCode(createError, warehouseLocationMutationErrorCodes);
@@ -178,9 +164,6 @@ export function AddMultipleWarehouseLocationsDialog({
     }
     onOpenChange(false);
   };
-
-  const firstRow = rows[0];
-  const lastRow = rows.at(-1);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -256,15 +239,6 @@ export function AddMultipleWarehouseLocationsDialog({
           <fieldset className="space-y-3 rounded-lg border p-3">
             <legend className="px-1 text-sm font-medium">{t("batchNumbering")}</legend>
             <div className="grid gap-3 sm:grid-cols-4">
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="batch-code-prefix">{t("batchCodePrefix")}</Label>
-                <Input
-                  id="batch-code-prefix"
-                  value={codePrefix}
-                  maxLength={100}
-                  onChange={(event) => setCodePrefix(event.target.value)}
-                />
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="batch-from">{t("batchFrom")}</Label>
                 <Input
@@ -300,24 +274,6 @@ export function AddMultipleWarehouseLocationsDialog({
                     setIsNamePrefixChosen(true);
                   }}
                 />
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="batch-digits">{t("batchDigits")}</Label>
-                <Select value={String(digits)} onValueChange={(value) => setDigits(Number(value))}>
-                  <SelectTrigger id="batch-digits">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DIGIT_OPTIONS.map((option) => (
-                      <SelectItem key={option} value={String(option)}>
-                        {t("batchDigitsOption", {
-                          count: option,
-                          example: "1".padStart(option, "0"),
-                        })}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
             </div>
             {rangeError ? (
@@ -369,7 +325,7 @@ export function AddMultipleWarehouseLocationsDialog({
               </h3>
               {isPreviewCurrent && rows.length > 0 ? (
                 <p aria-live="polite" className="text-sm text-muted-foreground">
-                  {t("batchPreviewSummary", { newCount, existingCount })}
+                  {t("batchPreviewSummary", { newCount })}
                 </p>
               ) : null}
             </div>
@@ -386,11 +342,6 @@ export function AddMultipleWarehouseLocationsDialog({
               </div>
             ) : (
               <>
-                {firstRow && lastRow ? (
-                  <p className="text-sm">
-                    {t("batchPreviewRange", { first: firstRow.code, last: lastRow.code })}
-                  </p>
-                ) : null}
                 <div className="max-h-64 overflow-y-auto rounded-lg border">
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-muted text-left text-xs text-muted-foreground">
@@ -398,39 +349,21 @@ export function AddMultipleWarehouseLocationsDialog({
                         <th className="px-3 py-2 font-medium">{t("code")}</th>
                         <th className="px-3 py-2 font-medium">{t("name")}</th>
                         <th className="px-3 py-2 font-medium">{t("addressPreview")}</th>
-                        <th className="px-3 py-2 font-medium">{t("batchResult")}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.map((row) => (
-                        <tr key={row.code} className="border-t">
+                      {rows.map((row, index) => (
+                        <tr key={index} className="border-t">
                           <td className="whitespace-nowrap px-3 py-1.5 font-medium">{row.code}</td>
                           <td className="whitespace-nowrap px-3 py-1.5">{row.name ?? "—"}</td>
                           <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">
                             {row.locationPath}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-1.5">
-                            <StatusText tone={row.alreadyExists ? "red" : "green"}>
-                              {row.alreadyExists ? t("batchAlreadyExists") : t("batchNew")}
-                            </StatusText>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-                {existingCount > 0 ? (
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="batch-skip-existing"
-                      checked={skipExisting}
-                      onCheckedChange={(value) => setSkipExisting(value === true)}
-                    />
-                    <Label htmlFor="batch-skip-existing" className="font-normal">
-                      {t("batchSkipExisting", { count: existingCount })}
-                    </Label>
-                  </div>
-                ) : null}
               </>
             )}
           </section>

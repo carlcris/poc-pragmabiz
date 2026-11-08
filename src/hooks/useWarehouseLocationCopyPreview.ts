@@ -19,8 +19,6 @@ export function useWarehouseLocationCopyPreview(
         {
           params: {
             destinationParentId: request?.destinationParentId ?? undefined,
-            codeFind: request?.codeFind,
-            codeReplace: request?.codeReplace,
             nameFind: request?.nameFind ?? undefined,
             nameReplace: request?.nameReplace ?? undefined,
           },

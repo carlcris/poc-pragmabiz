@@ -25,9 +25,9 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM <> 'LOCATION_ADDRESS_READ_ONLY' THEN RAISE; END IF;
   END;
-  UPDATE public.warehouse_locations SET code = '__TEST_ZONE_RENAMED' WHERE id = v_root;
+  UPDATE public.warehouse_locations SET name = 'Renamed' WHERE id = v_root;
   SELECT location_path INTO v_path FROM public.warehouse_locations WHERE id = v_bin;
-  IF v_path <> '__TEST_ZONE_RENAMED / __TEST_SHELF / __TEST_BIN' THEN RAISE EXCEPTION 'DESCENDANT_REFRESH_FAILED'; END IF;
+  IF v_path <> '__TEST_ZONE - Renamed / __TEST_SHELF / __TEST_BIN' THEN RAISE EXCEPTION 'DESCENDANT_REFRESH_FAILED'; END IF;
   UPDATE public.warehouse_locations SET parent_id = v_root WHERE id = v_bin;
   IF (SELECT cardinality(path_ids) FROM public.warehouse_locations WHERE id = v_bin) <> 2 THEN RAISE EXCEPTION 'REPARENT_FAILED'; END IF;
   BEGIN

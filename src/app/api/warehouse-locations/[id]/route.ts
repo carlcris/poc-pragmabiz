@@ -15,7 +15,6 @@ const LOCATION_COLUMNS =
 
 const updateLocationSchema = z
   .object({
-    code: z.string().trim().min(1).max(100).optional(),
     name: z.string().trim().max(200).nullable().optional(),
     parentId: z.string().uuid().nullable().optional(),
     locationType: z.enum(["zone", "aisle", "rack", "shelf", "bin", "crate"]).optional(),
@@ -24,6 +23,7 @@ const updateLocationSchema = z
     isActive: z.boolean().optional(),
     maxCapacity: z.number().finite().positive().max(999_999_999_999_999_999).nullable().optional(),
   })
+  .strict()
   .refine((value) => Object.values(value).some((entry) => entry !== undefined), {
     message: "At least one location field is required",
   });
@@ -163,7 +163,7 @@ async function PATCHHandler(request: NextRequest, { params }: RouteContext) {
 
     const requestContext = await requireRequestContext();
     if ("status" in requestContext) return requestContext;
-    const { supabase, userId, companyId, currentBusinessUnitId } = requestContext;
+    const { supabase, companyId, currentBusinessUnitId } = requestContext;
     if (!currentBusinessUnitId) {
       return NextResponse.json(
         { error: "Business unit context required", code: "BUSINESS_UNIT_CONTEXT_REQUIRED" },
@@ -226,23 +226,21 @@ async function PATCHHandler(request: NextRequest, { params }: RouteContext) {
     }
 
     const updatePayload = {
-      code: body.code,
       name: body.name,
       parent_id: body.parentId,
       location_type: body.locationType,
       is_pickable: body.isPickable,
       is_storable: body.isStorable,
       is_active: body.isActive,
-      max_capacity: willBeStorable ? body.maxCapacity : null,
-      updated_by: userId,
-      updated_at: new Date().toISOString(),
+      max_capacity: body.maxCapacity,
     };
 
     const { data: updated, error: updateError } = await supabase
-      .from("warehouse_locations")
-      .update(updatePayload)
-      .eq("id", id)
-      .eq("company_id", companyId)
+      .rpc("update_warehouse_location", {
+        p_business_unit_id: currentBusinessUnitId,
+        p_location_id: id,
+        p_changes: updatePayload,
+      })
       .select(LOCATION_COLUMNS)
       .single();
 

@@ -18,10 +18,9 @@ export function useWarehouseLocationBatchPreview(
         {
           params: {
             parentId: range?.parentId ?? undefined,
-            codePrefix: range?.codePrefix ?? "",
+            locationType: range?.locationType,
             from: range?.from,
             to: range?.to,
-            digits: range?.digits,
             namePrefix: range?.namePrefix ?? undefined,
           },
         }

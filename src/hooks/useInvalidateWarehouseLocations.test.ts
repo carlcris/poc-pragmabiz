@@ -20,6 +20,9 @@ beforeEach(() => {
 afterEach(() => state.client?.clear());
 
 const affectedKeys: QueryKey[] = [
+  ["business-unit", "bu", "warehouse-floor-map", "warehouse", 1],
+  ["stock-adjustments", "adjustment"],
+  ["stock-adjustments", { warehouseId: "warehouse" }],
   ["warehouse-locations", "warehouse", "detail", "rack"],
   ["warehouse-locations", "warehouse", "tree", "rack"],
   ["lookups", "warehouse_locations", "warehouse", "Rack"],
@@ -78,6 +81,8 @@ it("refetches an inactive summary when returning to it instead of reusing its fr
 it("leaves other warehouses and unrelated query families fresh without refetching", async () => {
   const client = state.client!;
   const keys: QueryKey[] = [
+    ["business-unit", "bu", "warehouse-floor-map", "other", 1],
+    ["stock-adjustments", { warehouseId: "other" }],
     ["warehouse-locations", "other", "detail", "rack"],
     ["lookups", "warehouse_locations", "other"],
     [ITEM_LOCATION_BATCH_REPORT_QUERY_KEY, { warehouseId: "other" }],

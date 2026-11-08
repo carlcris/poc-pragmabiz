@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 export const warehouseLocationErrorCodes = [
+  "LOCATION_CODE_TOO_LONG",
+  "LOCATION_CODE_READ_ONLY",
   "LOCATION_EDIT_CONFLICT",
   "LOCATION_PARENT_INVALID",
   "LOCATION_HIERARCHY_CYCLE",
@@ -10,7 +12,6 @@ export const warehouseLocationErrorCodes = [
   "LOCATION_WAREHOUSE_INVALID",
   "LOCATION_OWNERSHIP_IMMUTABLE",
   "LOCATION_BATCH_INVALID",
-  "LOCATION_BATCH_EMPTY",
   "LOCATION_CODE_EXISTS",
   "CAPACITY_REQUIRES_STORABLE_LOCATION",
   "LOCATION_COPY_INVALID",
@@ -31,6 +32,8 @@ export function warehouseLocationErrorResponse(error: { message: string; code?: 
   const code = warehouseLocationErrorCodes.find((candidate) => candidate === error.message);
   if (!code) return null;
   const messages: Record<WarehouseLocationErrorCode, string> = {
+    LOCATION_CODE_TOO_LONG: "Choose a shallower parent: generated code exceeds 100 characters.",
+    LOCATION_CODE_READ_ONLY: "Location codes are generated automatically.",
     LOCATION_EDIT_CONFLICT: "The location changed during this operation. Refresh and retry.",
     LOCATION_PARENT_INVALID: "Select an active parent in the same warehouse.",
     LOCATION_HIERARCHY_CYCLE: "A location cannot be its own ancestor. Choose another parent.",
@@ -40,22 +43,16 @@ export function warehouseLocationErrorResponse(error: { message: string; code?: 
     LOCATION_WAREHOUSE_INVALID: "Select an available warehouse.",
     LOCATION_OWNERSHIP_IMMUTABLE: "A location cannot be moved to another warehouse.",
     LOCATION_BATCH_INVALID: "Enter up to 100 numbers with codes of 100 characters or fewer.",
-    LOCATION_BATCH_EMPTY: "Every code in this range already exists in this warehouse.",
     LOCATION_CODE_EXISTS: "Location code already exists for this warehouse",
     CAPACITY_REQUIRES_STORABLE_LOCATION: "Capacity can only be configured for storable locations",
     LOCATION_COPY_INVALID:
-      "The code replacement must produce distinct codes of 100 characters or fewer.",
+      "Check the copied names and destination: codes must fit within 100 characters and names within 200.",
     LOCATION_COPY_TOO_LARGE: "Copy at most 200 locations at a time.",
   };
   return NextResponse.json(
     { error: messages[code], code },
     {
-      status: [
-        "LOCATION_HAS_CHILDREN",
-        "LOCATION_IN_USE",
-        "LOCATION_BATCH_EMPTY",
-        "LOCATION_CODE_EXISTS",
-      ].includes(code)
+      status: ["LOCATION_HAS_CHILDREN", "LOCATION_IN_USE", "LOCATION_CODE_EXISTS"].includes(code)
         ? 409
         : 400,
     }

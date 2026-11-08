@@ -17,11 +17,10 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const MAX_BATCH_SIZE = 100;
 
 const batchRangeShape = {
+  locationType: z.enum(["zone", "aisle", "rack", "shelf", "bin", "crate"]),
   parentId: z.string().uuid().nullable().optional(),
-  codePrefix: z.string().max(100),
   from: z.number().int().min(0).max(999_999),
   to: z.number().int().min(0).max(999_999),
-  digits: z.number().int().min(1).max(6),
   namePrefix: z.string().max(200).nullable().optional(),
 };
 
@@ -33,8 +32,8 @@ const previewQuerySchema = z
     ...batchRangeShape,
     from: z.coerce.number().int().min(0).max(999_999),
     to: z.coerce.number().int().min(0).max(999_999),
-    digits: z.coerce.number().int().min(1).max(6),
   })
+  .strict()
   .refine(isBoundedRange, { message: "Enter a range of up to 100 numbers" });
 
 const createBatchSchema = z
@@ -45,8 +44,8 @@ const createBatchSchema = z
     isPickable: z.boolean(),
     isActive: z.boolean(),
     maxCapacity: z.number().finite().positive().max(999_999_999_999_999_999).nullable(),
-    skipExisting: z.boolean(),
   })
+  .strict()
   .refine(isBoundedRange, { message: "Enter a range of up to 100 numbers" })
   .refine((value) => value.isStorable || (!value.isPickable && value.maxCapacity === null), {
     message: "Only storable locations can be pickable or have a capacity",
@@ -92,10 +91,9 @@ async function GETHandler(request: NextRequest, { params }: RouteContext) {
     const searchParams = request.nextUrl.searchParams;
     const parsed = previewQuerySchema.safeParse({
       parentId: searchParams.get("parentId") || null,
-      codePrefix: searchParams.get("codePrefix") ?? "",
+      locationType: searchParams.get("locationType"),
       from: searchParams.get("from"),
       to: searchParams.get("to"),
-      digits: searchParams.get("digits"),
       namePrefix: searchParams.get("namePrefix") || null,
     });
     if (!parsed.success) {
@@ -106,10 +104,9 @@ async function GETHandler(request: NextRequest, { params }: RouteContext) {
     const { data, error } = await context.supabase.rpc("preview_warehouse_locations_batch", {
       p_business_unit_id: context.businessUnitId,
       p_warehouse_id: context.warehouseId,
-      p_code_prefix: range.codePrefix,
+      p_location_type: range.locationType,
       p_from: range.from,
       p_to: range.to,
-      p_digits: range.digits,
       p_parent_id: range.parentId ?? undefined,
       p_name_prefix: range.namePrefix ?? undefined,
     });
@@ -129,7 +126,6 @@ async function GETHandler(request: NextRequest, { params }: RouteContext) {
         code: row.code,
         name: row.name,
         locationPath: row.location_path,
-        alreadyExists: row.already_exists,
       })),
     };
     return NextResponse.json({ data: preview });
@@ -155,15 +151,12 @@ async function POSTHandler(request: NextRequest, { params }: RouteContext) {
     const { data, error } = await context.supabase.rpc("create_warehouse_locations_batch", {
       p_business_unit_id: context.businessUnitId,
       p_warehouse_id: context.warehouseId,
-      p_code_prefix: body.codePrefix,
       p_from: body.from,
       p_to: body.to,
-      p_digits: body.digits,
       p_location_type: body.locationType,
       p_is_storable: body.isStorable,
       p_is_pickable: body.isPickable,
       p_is_active: body.isActive,
-      p_skip_existing: body.skipExisting,
       p_parent_id: body.parentId ?? undefined,
       p_name_prefix: body.namePrefix ?? undefined,
       p_max_capacity: body.maxCapacity ?? undefined,
@@ -193,7 +186,6 @@ async function POSTHandler(request: NextRequest, { params }: RouteContext) {
       {
         data: {
           createdCount: result?.created_count ?? 0,
-          skippedCount: result?.skipped_count ?? 0,
         },
       },
       { status: 201 }

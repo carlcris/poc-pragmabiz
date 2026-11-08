@@ -690,7 +690,9 @@ export type TranslationKeys = {
     addTitle: string;
     editDescription: string;
     addDescription: string;
-    codePlaceholder: string;
+    codeGenerated: string;
+    codeTooLong: string;
+    codeReadOnly: string;
     namePlaceholder: string;
     locationType: string;
     selectType: string;
@@ -706,7 +708,6 @@ export type TranslationKeys = {
     updatedSuccess: string;
     createError: string;
     updateError: string;
-    codeRequired: string;
     capacityPositive: string;
     invalidLocation: string;
     codeExists: string;
@@ -795,46 +796,32 @@ export type TranslationKeys = {
     addMultipleSublocationsTitle: string;
     addMultipleDescription: string;
     batchNumbering: string;
-    batchCodePrefix: string;
     batchFrom: string;
     batchTo: string;
     batchNamePrefix: string;
-    batchDigits: string;
-    batchDigitsOption: string;
     batchCapacityEach: string;
     batchCreateActive: string;
     batchPreview: string;
     batchPreviewSummary: string;
-    batchPreviewRange: string;
     batchPreviewError: string;
-    batchResult: string;
-    batchNew: string;
-    batchAlreadyExists: string;
-    batchSkipExisting: string;
     batchAllOrNothing: string;
     batchCreateButton: string;
     batchCreateError: string;
     batchRangeWholeNumbers: string;
     batchRangeLimit: string;
     batchInvalid: string;
-    batchEmpty: string;
     batchCreated: string;
-    batchCreatedWithSkipped: string;
     copyStructure: string;
     copyTitle: string;
     copyDescription: string;
     copyInto: string;
     copyDestinationHelp: string;
     copyRename: string;
-    copyCodeFind: string;
-    copyCodeReplace: string;
     copyNameFind: string;
     copyNameReplace: string;
     copyRenameHelp: string;
     copyPreviewSummary: string;
     copyPreviewError: string;
-    copyFindRequired: string;
-    copyConflicts: string;
     copyNotCopied: string;
     copyButton: string;
     copyError: string;
@@ -4776,7 +4763,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       addTitle: "Add Location",
       editDescription: "Update location details for this warehouse.",
       addDescription: "Define a storage location within this warehouse.",
-      codePlaceholder: "A1-RACK-01",
+      codeGenerated: "Auto Generated",
+      codeTooLong:
+        "This parent would produce a code over 100 characters. Choose a shallower parent.",
+      codeReadOnly: "Codes are generated automatically. Refresh this form and try again.",
       namePlaceholder: "Rack A",
       locationType: "Location Type",
       selectType: "Select type",
@@ -4793,10 +4783,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       updatedSuccess: "Location updated",
       createError: "Failed to create location",
       updateError: "Failed to update location",
-      codeRequired: "Location code is required",
       capacityPositive: "Maximum capacity must be greater than zero.",
       invalidLocation: "Check the location details and enter a positive maximum capacity.",
-      codeExists: "That location code is already used in this warehouse.",
+      codeExists: "The generated code conflicts with another location. Refresh and try again.",
       capacityRequiresStorable: "Enable storage before configuring a maximum capacity.",
       locationNotFound: "This location is no longer available. Refresh the page and try again.",
       capacityEmpty: "Empty",
@@ -4857,7 +4846,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       reasonUsedHere: "Stock or pending putaway is at this location.",
       reasonReservedHere: "Stock here is reserved for open pick lists.",
       moveTitle: "Move {location}",
-      moveDescription: "Choose where this location and its sublocations belong.",
+      moveDescription:
+        "Moving regenerates this location’s code and all descendant codes. Replace printed labels after the move.",
       moveInto: "Move Into",
       moveExcludedHelp: "This location and its sublocations are hidden from the list.",
       moveBlockedTitle: "This branch can't be moved yet",
@@ -4891,24 +4881,15 @@ export const translations: Record<Locale, TranslationKeys> = {
       addMultipleSublocationsTitle: "Add Multiple Sublocations",
       addMultipleDescription:
         "Create up to {max} numbered locations at once, such as Bin 1 to Bin 20.",
-      batchNumbering: "Numbering",
-      batchCodePrefix: "Code Prefix",
+      batchNumbering: "Name numbering",
       batchFrom: "From",
       batchTo: "To",
       batchNamePrefix: "Name Prefix",
-      batchDigits: "Digits",
-      batchDigitsOption: "{count, plural, one {# digit} other {# digits}} ({example})",
       batchCapacityEach: "Maximum Capacity Each",
       batchCreateActive: "Create as active",
       batchPreview: "Preview",
-      batchPreviewSummary: "{newCount} new · {existingCount} already exist",
-      batchPreviewRange: "Codes {first} to {last}",
+      batchPreviewSummary: "{newCount} new locations",
       batchPreviewError: "Could not preview these locations. Try again.",
-      batchResult: "Result",
-      batchNew: "New",
-      batchAlreadyExists: "Already exists",
-      batchSkipExisting:
-        "Skip {count, plural, one {# code that already exists} other {# codes that already exist}}",
       batchAllOrNothing: "All or nothing: if any location fails, none are created.",
       batchCreateButton:
         "{count, plural, =0 {Create Locations} one {Create # Location} other {Create # Locations}}",
@@ -4917,10 +4898,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       batchRangeLimit: "Enter a range of up to {max} numbers, with To not smaller than From.",
       batchInvalid:
         "Check the range: up to 100 numbers, codes up to 100 characters, and names up to 200 characters.",
-      batchEmpty: "Every code in this range already exists. Change the prefix or range.",
       batchCreated: "{count, plural, one {Created # location} other {Created # locations}}",
-      batchCreatedWithSkipped:
-        "{count, plural, one {Created # location} other {Created # locations}}; skipped {skipped} existing.",
       copyStructure: "Copy Structure",
       copyTitle: "Copy {location}",
       copyDescription:
@@ -4928,19 +4906,13 @@ export const translations: Record<Locale, TranslationKeys> = {
       copyInto: "Copy Into",
       copyDestinationHelp:
         "The copy keeps the same layout below the location you choose. This location's own branch is not available.",
-      copyRename: "New Codes and Names",
-      copyCodeFind: "Replace in Codes",
-      copyCodeReplace: "With",
+      copyRename: "Names",
       copyNameFind: "Replace in Names (Optional)",
       copyNameReplace: "With",
       copyRenameHelp:
-        "Every copied code must change, because codes are unique in this warehouse. Leave the name field empty to keep names.",
-      copyPreviewSummary:
-        "{count, plural, one {# location} other {# locations}} · {conflicts, plural, =0 {no conflicts} one {# conflict} other {# conflicts}}",
+        "Codes are assigned automatically on save. Leave the name replacement empty to keep names.",
+      copyPreviewSummary: "{count, plural, one {# location} other {# locations}}",
       copyPreviewError: "Could not preview this copy. Try again.",
-      copyFindRequired: "Enter the text to replace in codes.",
-      copyConflicts:
-        "Some new codes already exist. Change the replacement text so every code is new.",
       copyNotCopied:
         "Type, use, capacity, and active settings are copied. Stock, reservations, and floor-map positions are not.",
       copyButton:
@@ -4948,7 +4920,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       copyError: "Failed to copy locations",
       copyCreated: "{count, plural, one {Copied # location} other {Copied # locations}}",
       copyInvalid:
-        "The replacement must give every copied location a distinct code of 100 characters or fewer.",
+        "Check the copied names and destination. Codes must fit within 100 characters and names within 200.",
       copyTooLarge: "Copy at most 200 locations at a time. Copy a smaller branch instead.",
       browse: "Browse",
       browseTitle: "Choose a Location",
@@ -11844,7 +11816,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       addTitle: "添加库位",
       editDescription: "更新此仓库的库位详细信息。",
       addDescription: "在此仓库内定义一个存储库位。",
-      codePlaceholder: "A1-RACK-01",
+      codeGenerated: "自动生成",
+      codeTooLong: "此父级会导致代码超过 100 个字符。请选择层级较浅的父级。",
+      codeReadOnly: "代码由系统自动生成。请刷新表单后重试。",
       namePlaceholder: "货架 A",
       locationType: "库位类型",
       selectType: "选择类型",
@@ -11860,10 +11834,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       updatedSuccess: "库位已更新",
       createError: "创建库位失败",
       updateError: "更新库位失败",
-      codeRequired: "库位代码为必填项",
       capacityPositive: "最大容量必须大于零。",
       invalidLocation: "请检查库位详细信息并输入正数最大容量。",
-      codeExists: "此仓库已使用该库位代码。",
+      codeExists: "生成的代码与其他库位冲突。请刷新后重试。",
       capacityRequiresStorable: "配置最大容量前，请先启用存储。",
       locationNotFound: "此库位已不可用。请刷新页面后重试。",
       capacityEmpty: "空置",
@@ -11923,7 +11896,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       reasonUsedHere: "此库位存有库存或待上架任务。",
       reasonReservedHere: "此处库存已被未完成的拣货单预留。",
       moveTitle: "移动 {location}",
-      moveDescription: "选择此库位及其下级库位的归属位置。",
+      moveDescription: "移动会重新生成此库位及所有下级库位的代码。移动后请更换打印标签。",
       moveInto: "移入",
       moveExcludedHelp: "此库位及其下级库位不会出现在列表中。",
       moveBlockedTitle: "此分支暂时无法移动",
@@ -11950,52 +11923,38 @@ export const translations: Record<Locale, TranslationKeys> = {
       addMultipleTitle: "批量添加库位",
       addMultipleSublocationsTitle: "批量添加下级库位",
       addMultipleDescription: "一次最多创建 {max} 个编号库位，例如储位 1 至储位 20。",
-      batchNumbering: "编号",
-      batchCodePrefix: "代码前缀",
+      batchNumbering: "名称编号",
       batchFrom: "起始",
       batchTo: "结束",
       batchNamePrefix: "名称前缀",
-      batchDigits: "位数",
-      batchDigitsOption: "{count} 位（{example}）",
       batchCapacityEach: "每个库位最大容量",
       batchCreateActive: "创建为启用状态",
       batchPreview: "预览",
-      batchPreviewSummary: "新建 {newCount} 个 · 已存在 {existingCount} 个",
-      batchPreviewRange: "代码 {first} 至 {last}",
+      batchPreviewSummary: "新建 {newCount} 个库位",
       batchPreviewError: "无法预览这些库位，请重试。",
-      batchResult: "结果",
-      batchNew: "新建",
-      batchAlreadyExists: "已存在",
-      batchSkipExisting: "跳过 {count} 个已存在的代码",
       batchAllOrNothing: "全部成功或全部不创建：任一库位失败时，不会创建任何库位。",
       batchCreateButton: "{count, plural, =0 {创建库位} other {创建 # 个库位}}",
       batchCreateError: "创建库位失败",
       batchRangeWholeNumbers: "请输入 0 至 999999 之间的整数。",
       batchRangeLimit: "请输入最多 {max} 个数字的范围，且结束值不小于起始值。",
       batchInvalid: "请检查范围：最多 100 个数字，代码不超过 100 个字符，名称不超过 200 个字符。",
-      batchEmpty: "此范围内的所有代码均已存在。请更改前缀或范围。",
       batchCreated: "已创建 {count} 个库位",
-      batchCreatedWithSkipped: "已创建 {count} 个库位；跳过 {skipped} 个已存在的代码。",
       copyStructure: "复制结构",
       copyTitle: "复制 {location}",
       copyDescription: "以新代码复制此库位及其所有下级库位。可用于重复货架、层板或区域的布局。",
       copyInto: "复制到",
       copyDestinationHelp: "副本会在所选库位下保持相同布局。不可选择此库位自身的分支。",
-      copyRename: "新代码和名称",
-      copyCodeFind: "代码中替换",
-      copyCodeReplace: "替换为",
+      copyRename: "名称",
       copyNameFind: "名称中替换（可选）",
       copyNameReplace: "替换为",
-      copyRenameHelp: "由于代码在仓库内唯一，每个复制的代码都必须改变。名称留空则保持不变。",
-      copyPreviewSummary: "{count} 个库位 · {conflicts} 个冲突",
+      copyRenameHelp: "代码将在保存时自动分配。名称替换留空则保持原名称。",
+      copyPreviewSummary: "{count} 个库位",
       copyPreviewError: "无法预览此复制，请重试。",
-      copyFindRequired: "请输入代码中要替换的文本。",
-      copyConflicts: "部分新代码已存在。请修改替换文本，使所有代码均为新代码。",
       copyNotCopied: "会复制类型、用途、容量和启用设置；不会复制库存、预留和平面图位置。",
       copyButton: "{count, plural, =0 {复制库位} other {复制 # 个库位}}",
       copyError: "复制库位失败",
       copyCreated: "已复制 {count} 个库位",
-      copyInvalid: "替换后每个复制的库位必须有不同的代码，且不超过 100 个字符。",
+      copyInvalid: "请检查复制的名称和目标位置：代码不得超过 100 个字符，名称不得超过 200 个字符。",
       copyTooLarge: "每次最多复制 200 个库位。请改为复制较小的分支。",
       browse: "浏览",
       browseTitle: "选择库位",

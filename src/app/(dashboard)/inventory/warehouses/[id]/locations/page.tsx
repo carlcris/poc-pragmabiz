@@ -268,14 +268,7 @@ export default function WarehouseLocationsPage() {
     },
     onSuccess: (result) => {
       invalidateLocationQueries();
-      toast.success(
-        result.skippedCount > 0
-          ? t("batchCreatedWithSkipped", {
-              count: result.createdCount,
-              skipped: result.skippedCount,
-            })
-          : t("batchCreated", { count: result.createdCount })
-      );
+      toast.success(t("batchCreated", { count: result.createdCount }));
     },
   });
 

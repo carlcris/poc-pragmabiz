@@ -15,13 +15,13 @@ type CopyResultRow = DatabaseFunctions["copy_warehouse_location_structure"]["Ret
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const copyRequestSchema = z.object({
-  destinationParentId: z.string().uuid().nullable(),
-  codeFind: z.string().trim().min(1).max(100),
-  codeReplace: z.string().max(100),
-  nameFind: z.string().max(200).nullable(),
-  nameReplace: z.string().max(200).nullable(),
-});
+const copyRequestSchema = z
+  .object({
+    destinationParentId: z.string().uuid().nullable(),
+    nameFind: z.string().max(200).nullable(),
+    nameReplace: z.string().max(200).nullable(),
+  })
+  .strict();
 
 const invalidCopy = (message: string) =>
   NextResponse.json({ error: message, code: "LOCATION_COPY_INVALID" }, { status: 400 });
@@ -71,8 +71,6 @@ async function GETHandler(request: NextRequest, { params }: RouteContext) {
     const searchParams = request.nextUrl.searchParams;
     const parsed = copyRequestSchema.safeParse({
       destinationParentId: searchParams.get("destinationParentId") || null,
-      codeFind: searchParams.get("codeFind") ?? "",
-      codeReplace: searchParams.get("codeReplace") ?? "",
       nameFind: searchParams.get("nameFind") || null,
       nameReplace: searchParams.get("nameReplace") || null,
     });
@@ -84,8 +82,6 @@ async function GETHandler(request: NextRequest, { params }: RouteContext) {
     const { data, error } = await context.supabase.rpc("plan_warehouse_location_copy", {
       p_business_unit_id: context.businessUnitId,
       p_source_id: context.sourceId,
-      p_code_find: copy.codeFind,
-      p_code_replace: copy.codeReplace,
       p_destination_parent_id: copy.destinationParentId ?? undefined,
       p_name_find: copy.nameFind ?? undefined,
       p_name_replace: copy.nameReplace ?? undefined,
@@ -108,7 +104,6 @@ async function GETHandler(request: NextRequest, { params }: RouteContext) {
         name: row.name,
         locationPath: row.location_path,
         locationType: row.location_type,
-        alreadyExists: row.already_exists,
       })),
     };
     return NextResponse.json({ data: preview });
@@ -134,8 +129,6 @@ async function POSTHandler(request: NextRequest, { params }: RouteContext) {
     const { data, error } = await context.supabase.rpc("copy_warehouse_location_structure", {
       p_business_unit_id: context.businessUnitId,
       p_source_id: context.sourceId,
-      p_code_find: copy.codeFind,
-      p_code_replace: copy.codeReplace,
       p_destination_parent_id: copy.destinationParentId ?? undefined,
       p_name_find: copy.nameFind ?? undefined,
       p_name_replace: copy.nameReplace ?? undefined,

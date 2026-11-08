@@ -108,11 +108,10 @@ export type WarehouseLocationDetail = {
 };
 
 export type WarehouseLocationBatchRange = {
+  locationType: string;
   parentId: string | null;
-  codePrefix: string;
   from: number;
   to: number;
-  digits: number;
   namePrefix: string | null;
 };
 
@@ -121,19 +120,15 @@ export type WarehouseLocationBatchPreview = {
     code: string;
     name: string | null;
     locationPath: string;
-    alreadyExists: boolean;
   }>;
 };
 
 export type WarehouseLocationBatchResult = {
   createdCount: number;
-  skippedCount: number;
 };
 
 export type WarehouseLocationCopyRequest = {
   destinationParentId: string | null;
-  codeFind: string;
-  codeReplace: string;
   nameFind: string | null;
   nameReplace: string | null;
 };
@@ -146,7 +141,6 @@ export type WarehouseLocationCopyPreview = {
     name: string | null;
     locationPath: string;
     locationType: string;
-    alreadyExists: boolean;
   }>;
 };
 

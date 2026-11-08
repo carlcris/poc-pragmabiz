@@ -1,6 +1,20 @@
 export const WAREHOUSE_LOCATION_TYPES = ["zone", "aisle", "rack", "shelf", "bin", "crate"] as const;
 export type WarehouseLocationType = (typeof WAREHOUSE_LOCATION_TYPES)[number];
 
+// Preview only: the database assigns the final sequence when the operation commits.
+const warehouseLocationTypePrefixes: Record<WarehouseLocationType, string> = {
+  zone: "Z",
+  aisle: "A",
+  rack: "R",
+  shelf: "S",
+  bin: "B",
+  crate: "C",
+};
+export const getWarehouseLocationCodeTemplate = (
+  parentCode: string | null | undefined,
+  locationType: WarehouseLocationType
+) => [parentCode, `${warehouseLocationTypePrefixes[locationType]}…`].filter(Boolean).join("-");
+
 export const WAREHOUSE_LOCATION_USES = ["storeAndPick", "storeOnly", "organizeOnly"] as const;
 export type WarehouseLocationUse = (typeof WAREHOUSE_LOCATION_USES)[number];
 
@@ -26,6 +40,8 @@ export const warehouseLocationUseHelpKeys = {
 } as const satisfies Record<WarehouseLocationUse, string>;
 
 export const warehouseLocationMutationErrorCodes = [
+  "LOCATION_CODE_TOO_LONG",
+  "LOCATION_CODE_READ_ONLY",
   "LOCATION_EDIT_CONFLICT",
   "LOCATION_PARENT_INVALID",
   "LOCATION_HIERARCHY_CYCLE",
@@ -40,7 +56,6 @@ export const warehouseLocationMutationErrorCodes = [
   "WAREHOUSE_LOCATION_NOT_FOUND",
   "WAREHOUSE_NOT_FOUND",
   "LOCATION_BATCH_INVALID",
-  "LOCATION_BATCH_EMPTY",
   "LOCATION_COPY_INVALID",
   "LOCATION_COPY_TOO_LARGE",
 ] as const;
@@ -48,6 +63,8 @@ export type WarehouseLocationMutationErrorCode =
   (typeof warehouseLocationMutationErrorCodes)[number];
 
 export type WarehouseLocationErrorMessageKey =
+  | "codeTooLong"
+  | "codeReadOnly"
   | "editConflict"
   | "parentInvalid"
   | "hierarchyCycle"
@@ -59,16 +76,17 @@ export type WarehouseLocationErrorMessageKey =
   | "codeExists"
   | "capacityRequiresStorable"
   | "batchInvalid"
-  | "batchEmpty"
   | "copyInvalid"
   | "copyTooLarge";
 
-export type WarehouseLocationFormField = "code" | "parent" | "maxCapacity";
+export type WarehouseLocationFormField = "parent" | "maxCapacity";
 
 const errorMessageKeys: Record<
   WarehouseLocationMutationErrorCode,
   WarehouseLocationErrorMessageKey
 > = {
+  LOCATION_CODE_TOO_LONG: "codeTooLong",
+  LOCATION_CODE_READ_ONLY: "codeReadOnly",
   LOCATION_EDIT_CONFLICT: "editConflict",
   LOCATION_PARENT_INVALID: "parentInvalid",
   LOCATION_HIERARCHY_CYCLE: "hierarchyCycle",
@@ -83,14 +101,12 @@ const errorMessageKeys: Record<
   WAREHOUSE_LOCATION_NOT_FOUND: "locationNotFound",
   WAREHOUSE_NOT_FOUND: "locationNotFound",
   LOCATION_BATCH_INVALID: "batchInvalid",
-  LOCATION_BATCH_EMPTY: "batchEmpty",
   LOCATION_COPY_INVALID: "copyInvalid",
   LOCATION_COPY_TOO_LARGE: "copyTooLarge",
 };
 
 const errorFields: Partial<Record<WarehouseLocationMutationErrorCode, WarehouseLocationFormField>> =
   {
-    LOCATION_CODE_EXISTS: "code",
     LOCATION_PARENT_INVALID: "parent",
     LOCATION_HIERARCHY_CYCLE: "parent",
     CAPACITY_REQUIRES_STORABLE_LOCATION: "maxCapacity",

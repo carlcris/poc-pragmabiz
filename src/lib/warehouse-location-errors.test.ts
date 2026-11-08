@@ -4,6 +4,8 @@ import { getPickAllocationErrorMessage } from "./pick-allocation-errors";
 
 describe("location and allocation error contracts", () => {
   it.each([
+    "LOCATION_CODE_TOO_LONG",
+    "LOCATION_CODE_READ_ONLY",
     "LOCATION_PARENT_INVALID",
     "LOCATION_HIERARCHY_CYCLE",
     "LOCATION_BATCH_INVALID",
@@ -15,14 +17,12 @@ describe("location and allocation error contracts", () => {
     expect(response?.status).toBe(400);
     expect(await response?.json()).toMatchObject({ code: message });
   });
-  it.each([
-    "LOCATION_HAS_CHILDREN",
-    "LOCATION_IN_USE",
-    "LOCATION_CODE_EXISTS",
-    "LOCATION_BATCH_EMPTY",
-  ])("preserves a recoverable conflict for %s", async (message) => {
-    expect(warehouseLocationErrorResponse({ message })?.status).toBe(409);
-  });
+  it.each(["LOCATION_HAS_CHILDREN", "LOCATION_IN_USE", "LOCATION_CODE_EXISTS"])(
+    "preserves a recoverable conflict for %s",
+    async (message) => {
+      expect(warehouseLocationErrorResponse({ message })?.status).toBe(409);
+    }
+  );
   it("does not expose unexpected database details", () => {
     expect(warehouseLocationErrorResponse({ message: "private database details" })).toBeNull();
   });

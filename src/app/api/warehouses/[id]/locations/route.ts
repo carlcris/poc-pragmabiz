@@ -14,7 +14,6 @@ const LOCATION_COLUMNS =
 
 const createLocationSchema = z
   .object({
-    code: z.string().trim().min(1).max(100),
     name: z.string().trim().max(200).nullable().optional(),
     parentId: z.string().uuid().nullable().optional(),
     locationType: z.enum(["zone", "aisle", "rack", "shelf", "bin", "crate"]).optional(),
@@ -23,6 +22,7 @@ const createLocationSchema = z
     isActive: z.boolean().optional(),
     maxCapacity: z.number().finite().positive().max(999_999_999_999_999_999).nullable().optional(),
   })
+  .strict()
   .superRefine((value, context) => {
     if (value.isStorable === false && value.maxCapacity != null) {
       context.addIssue({
@@ -261,35 +261,11 @@ async function POSTHandler(request: NextRequest, { params }: RouteContext) {
     if (!warehouse) return warehouseNotFound();
 
     const body = parsedBody.data;
-    const { data: existing, error: existingError } = await supabase
-      .from("warehouse_locations")
-      .select("id")
-      .eq("company_id", companyId)
-      .eq("warehouse_id", id)
-      .eq("code", body.code)
-      .is("deleted_at", null)
-      .maybeSingle();
-
-    if (existingError) {
-      console.error("Failed to check warehouse location code", existingError);
-      return NextResponse.json(
-        { error: "Failed to create location", code: "WAREHOUSE_LOCATION_CREATE_FAILED" },
-        { status: 500 }
-      );
-    }
-    if (existing) {
-      return NextResponse.json(
-        { error: "Location code already exists for this warehouse", code: "LOCATION_CODE_EXISTS" },
-        { status: 409 }
-      );
-    }
-
     const { data: created, error: insertError } = await supabase
       .from("warehouse_locations")
       .insert({
         company_id: companyId,
         warehouse_id: id,
-        code: body.code,
         name: body.name || null,
         parent_id: body.parentId || null,
         location_type: body.locationType || "bin",

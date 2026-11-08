@@ -17,7 +17,6 @@ import {
   type WarehouseLocationOption,
 } from "@/components/warehouses/WarehouseLocationSelect";
 import { WarehouseLocationBrowseButton } from "@/components/warehouses/WarehouseLocationBrowseButton";
-import { StatusText } from "@/components/shared/StatusText";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,21 +59,15 @@ export function CopyWarehouseLocationStructureDialog({
   const t = useTranslations("warehouseLocationsPage");
   const [destinationId, setDestinationId] = useState(source.parentId ?? "");
   const [destination, setDestination] = useState<WarehouseLocationOption | null>(null);
-  const [codeFind, setCodeFind] = useState(source.code);
-  const [codeReplace, setCodeReplace] = useState(incrementTrailingNumber(source.code));
   const [nameFind, setNameFind] = useState(source.name ?? "");
   const [nameReplace, setNameReplace] = useState(incrementTrailingNumber(source.name ?? ""));
   const [formError, setFormError] = useState<string | null>(null);
 
-  const request: WarehouseLocationCopyRequest | null = codeFind.trim()
-    ? {
-        destinationParentId: destinationId || null,
-        codeFind,
-        codeReplace,
-        nameFind: nameFind.trim() ? nameFind : null,
-        nameReplace: nameFind.trim() ? nameReplace : null,
-      }
-    : null;
+  const request: WarehouseLocationCopyRequest = {
+    destinationParentId: destinationId || null,
+    nameFind: nameFind.trim() ? nameFind : null,
+    nameReplace: nameFind.trim() ? nameReplace : null,
+  };
   // Query only once typing settles; the key is a primitive so debouncing stays stable.
   const requestKey = request ? JSON.stringify(request) : null;
   const isRequestSettled = useDebouncedValue(requestKey, 300) === requestKey;
@@ -87,10 +80,9 @@ export function CopyWarehouseLocationStructureDialog({
     ? getApiErrorCode(preview.error, warehouseLocationMutationErrorCodes)
     : null;
   const rows = preview.data?.rows ?? [];
-  const conflictCount = rows.filter((row) => row.alreadyExists).length;
   const isPreviewCurrent =
     Boolean(request) && isRequestSettled && Boolean(preview.data) && !preview.isFetching;
-  const canCopy = isPreviewCurrent && !preview.error && rows.length > 0 && conflictCount === 0;
+  const canCopy = isPreviewCurrent && !preview.error && rows.length > 0;
 
   const handleCopy = async () => {
     if (!request || !canCopy) return;
@@ -160,24 +152,6 @@ export function CopyWarehouseLocationStructureDialog({
             <legend className="px-1 text-sm font-medium">{t("copyRename")}</legend>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="copy-code-find">{t("copyCodeFind")}</Label>
-                <Input
-                  id="copy-code-find"
-                  value={codeFind}
-                  maxLength={100}
-                  onChange={(event) => setCodeFind(event.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="copy-code-replace">{t("copyCodeReplace")}</Label>
-                <Input
-                  id="copy-code-replace"
-                  value={codeReplace}
-                  maxLength={100}
-                  onChange={(event) => setCodeReplace(event.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="copy-name-find">{t("copyNameFind")}</Label>
                 <Input
                   id="copy-name-find"
@@ -207,7 +181,7 @@ export function CopyWarehouseLocationStructureDialog({
               </h3>
               {isPreviewCurrent && rows.length > 0 ? (
                 <p aria-live="polite" className="text-sm text-muted-foreground">
-                  {t("copyPreviewSummary", { count: rows.length, conflicts: conflictCount })}
+                  {t("copyPreviewSummary", { count: rows.length })}
                 </p>
               ) : null}
             </div>
@@ -217,8 +191,6 @@ export function CopyWarehouseLocationStructureDialog({
               </p>
             ) : preview.error ? (
               <p className="text-sm text-destructive">{t("copyPreviewError")}</p>
-            ) : !request ? (
-              <p className="text-sm text-destructive">{t("copyFindRequired")}</p>
             ) : !isPreviewCurrent ? (
               <div className="space-y-2" aria-busy="true">
                 <Skeleton className="h-24 w-full" />
@@ -231,7 +203,6 @@ export function CopyWarehouseLocationStructureDialog({
                       <th className="px-3 py-2 font-medium">{t("code")}</th>
                       <th className="px-3 py-2 font-medium">{t("type")}</th>
                       <th className="px-3 py-2 font-medium">{t("addressPreview")}</th>
-                      <th className="px-3 py-2 font-medium">{t("batchResult")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -251,20 +222,12 @@ export function CopyWarehouseLocationStructureDialog({
                         <td className="px-3 py-1.5 font-mono text-xs text-muted-foreground">
                           {row.locationPath}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-1.5">
-                          <StatusText tone={row.alreadyExists ? "red" : "green"}>
-                            {row.alreadyExists ? t("batchAlreadyExists") : t("batchNew")}
-                          </StatusText>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
-            {isPreviewCurrent && conflictCount > 0 ? (
-              <p className="text-sm text-destructive">{t("copyConflicts")}</p>
-            ) : null}
           </section>
 
           <p className="text-xs text-muted-foreground">{t("copyNotCopied")}</p>

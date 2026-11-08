@@ -94,7 +94,7 @@ describe("incrementTrailingNumber", () => {
 
 describe("warehouse location error mapping", () => {
   it("routes field errors to the field they concern", () => {
-    expect(getWarehouseLocationErrorField("LOCATION_CODE_EXISTS")).toBe("code");
+    expect(getWarehouseLocationErrorField("LOCATION_CODE_EXISTS")).toBeNull();
     expect(getWarehouseLocationErrorField("LOCATION_PARENT_INVALID")).toBe("parent");
     expect(getWarehouseLocationErrorField("LOCATION_HIERARCHY_CYCLE")).toBe("parent");
     expect(getWarehouseLocationErrorField("CAPACITY_REQUIRES_STORABLE_LOCATION")).toBe(

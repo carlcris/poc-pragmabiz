@@ -12123,8 +12123,6 @@ export type Database = {
       copy_warehouse_location_structure: {
         Args: {
           p_business_unit_id: string;
-          p_code_find: string;
-          p_code_replace: string;
           p_destination_parent_id?: string;
           p_name_find?: string;
           p_name_replace?: string;
@@ -12432,8 +12430,6 @@ export type Database = {
       create_warehouse_locations_batch: {
         Args: {
           p_business_unit_id: string;
-          p_code_prefix: string;
-          p_digits: number;
           p_from: number;
           p_is_active: boolean;
           p_is_pickable: boolean;
@@ -12442,13 +12438,11 @@ export type Database = {
           p_max_capacity?: number;
           p_name_prefix?: string;
           p_parent_id?: string;
-          p_skip_existing: boolean;
           p_to: number;
           p_warehouse_id: string;
         };
         Returns: {
           created_count: number;
-          skipped_count: number;
         }[];
       };
       custom_access_token_hook: { Args: { event: Json }; Returns: Json };
@@ -12475,20 +12469,6 @@ export type Database = {
       ensure_user_activity_log_partitions: {
         Args: { p_months_ahead?: number; p_months_before?: number };
         Returns: undefined;
-      };
-      expand_warehouse_location_batch: {
-        Args: {
-          p_code_prefix: string;
-          p_digits: number;
-          p_from: number;
-          p_name_prefix: string;
-          p_to: number;
-        };
-        Returns: {
-          code: string;
-          name: string;
-          sequence_number: number;
-        }[];
       };
       finalize_frame_job_order_completion_transaction: {
         Args: { p_job_order_id: string };
@@ -13331,6 +13311,15 @@ export type Database = {
         };
         Returns: Json;
       };
+      next_warehouse_location_code: {
+        Args: {
+          p_company: string;
+          p_parent_code: string;
+          p_type: string;
+          p_warehouse: string;
+        };
+        Returns: string;
+      };
       notify_business_units: {
         Args: {
           p_actor_user_id: string;
@@ -13377,15 +13366,12 @@ export type Database = {
       plan_warehouse_location_copy: {
         Args: {
           p_business_unit_id: string;
-          p_code_find: string;
-          p_code_replace: string;
           p_destination_parent_id?: string;
           p_name_find?: string;
           p_name_replace?: string;
           p_source_id: string;
         };
         Returns: {
-          already_exists: boolean;
           code: string;
           depth: number;
           is_active: boolean;
@@ -13481,16 +13467,14 @@ export type Database = {
       preview_warehouse_locations_batch: {
         Args: {
           p_business_unit_id: string;
-          p_code_prefix: string;
-          p_digits: number;
           p_from: number;
+          p_location_type: string;
           p_name_prefix?: string;
           p_parent_id?: string;
           p_to: number;
           p_warehouse_id: string;
         };
         Returns: {
-          already_exists: boolean;
           code: string;
           location_path: string;
           name: string;
@@ -14017,6 +14001,40 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      update_warehouse_location: {
+        Args: {
+          p_business_unit_id: string;
+          p_changes: Json;
+          p_location_id: string;
+        };
+        Returns: {
+          code: string;
+          company_id: string;
+          created_at: string;
+          created_by: string | null;
+          deleted_at: string | null;
+          id: string;
+          is_active: boolean | null;
+          is_pickable: boolean | null;
+          is_storable: boolean | null;
+          location_path: string;
+          location_type: string;
+          max_capacity: number | null;
+          name: string | null;
+          parent_id: string | null;
+          path_ids: string[];
+          updated_at: string;
+          updated_by: string | null;
+          version: number;
+          warehouse_id: string;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "warehouse_locations";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
       upsert_item_custom_field: {
         Args: {
           p_item_id: string;
@@ -14082,6 +14100,10 @@ export type Database = {
           p_void_reason?: string;
         };
         Returns: Json;
+      };
+      warehouse_location_type_prefix: {
+        Args: { p_type: string };
+        Returns: string;
       };
     };
     Enums: {

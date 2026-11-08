@@ -1660,10 +1660,11 @@ Add-location dialog checks: at warehouse level the button reads Add Location and
 Warehouse Level; after opening a location it reads Add Sublocation and Inside shows that location's
 full address; row Add Inside (active rows only) uses the row as parent. With existing bins listed,
 the type defaults to Bin with a suggestion hint; switching to Zone moves Use to Organize Only until a
-Use is chosen manually, and Organize Only hides capacity. The address preview must equal the saved
-address. Submit with an empty code, a duplicate code, and capacity `0`: each error appears under its
-field and the dialog stays open. Save & Add Another on `A1-B09`/`Bin 9` must create it, keep the
-dialog open with `A1-B10`/`Bin 10`, and focus Code. Labels must announce Parent, Type, Code, Use
+Use is chosen manually, and Organize Only hides capacity. New codes show the read-only
+“Auto Generated” placeholder without a code template or explanatory paragraph. Existing codes
+remain visible when editing; changing the type shows the placeholder until saved. Submit with
+capacity `0`: the error appears under its field and the dialog stays open. Save & Add Another on
+`Bin 9` must create it, keep the dialog open with name `Bin 10`, and focus Name. Labels must announce Parent, Type, Code, Use
 options, Maximum Capacity, and Active to a screen reader.
 
 Navigation checks: open a nested location, refresh, and use browser Back; the summary, breadcrumb,
@@ -1690,25 +1691,52 @@ the result's parent with the search cleared. Move an empty bin to another rack a
 excludes the bin and its subtree, previews both addresses, and updates the breadcrumb. Open Move on
 a branch with stock: it lists on-hand, reserved, and pending putaway counts and offers no
 destination. Edit a location with direct stock and active sublocations: Organize Only and the
-Active switch are disabled with their reasons, and changing the code notes how many sublocation
-addresses change.
+Active switch are disabled with their reasons. Code is read-only. Moving a branch or changing its
+type regenerates every descendant code and refreshes all addresses; names alone do not change codes.
+Verify the warning to replace printed labels.
 
-Add Multiple checks: inside a rack with bins, Add Multiple pre-fills Bin, the parent code prefix, and
-a `Bin ` name prefix. Range 1–10 with 2 digits previews `…-01` to `…-10` with full addresses. Include
-an existing code: it is marked Already exists and Create stays disabled until Skip is checked; the
-toast then reports created and skipped counts and the table, tree, and sublocation count refresh.
-A range where every code exists keeps Create disabled. A To value 100 or more above From shows the
-range error and no preview. Switching to Zone sets Organize Only and hides capacity. Verify the
-dialog in Chinese.
+Location-code checks: create a Zone, then a Rack inside it, then a Bin inside that rack. Verify
+`Znn-Rnn-Bnn` codes, automatic assignment on save, and no manual code in create/update payloads.
+Add another sibling and confirm a distinct number. Move an empty branch and verify all descendant
+codes change while IDs remain unchanged. Ensure stock/open-work protections still block moves.
 
-Copy Structure checks: from a rack with bins, Copy Structure defaults to the rack's parent and
-replaces the rack code with its incremented form; a code without a number shows every row as
-Already exists and keeps Copy disabled. Replace `RACK-A` with `RACK-Z` and `Rack A` with `Rack Z`:
-the preview shows the new rack and indented bins with full addresses. Browse shows the source rack
-disabled; choosing another rack updates every preview address. Copying opens the new rack with
-copied names, types, and capacities and no stock. Choosing a destination inside the source branch
-is impossible in both the list and Browse. Browse also appears for Add Location's parent (after
-Change) and for Move.
+Add Multiple checks: inside a rack, choose Bin and a name range 1–10. Preview shows code templates
+ending in `…`; saving assigns ten distinct codes and names Bin 1–10. Repeating the range creates
+new codes rather than skipping rows. Ranges above 100 rows remain blocked. Code-prefix, digit-width,
+and skip-existing inputs are absent. Switching to Zone sets Organize Only and hides capacity.
+Verify these flows and error messages in Chinese.
+
+Copy Structure checks: choose a destination and optionally replace names. Code replacement fields
+are absent; preview shows generated-code templates. Saving opens the copied branch with new codes,
+correct parent IDs, copied settings, and no stock. The source remains unchanged. Destinations
+inside the source subtree remain unavailable. Check that floor maps and stock-adjustment views
+refresh changed location codes without a browser reload.
+
+Run `supabase/tests/warehouse-location-codes.sql`, `warehouse-location-batch.sql`,
+`warehouse-location-copy.sql`, and `warehouse-location-hierarchy.sql` against local Supabase with
+`psql -v ON_ERROR_STOP=1`. Tests roll back all fixtures; code tests run under an authenticated
+session and force failures after earlier writes to verify full rollback, including sequences.
+
+Run `python3 scripts/verification/warehouse-location-concurrency.py` with local Supabase Docker
+running (`supabase_db_backend`). It starts 12 authenticated database sessions creating 60 bins
+under one parent, then moves an 82-location subtree into a parent with an occupied code. It checks
+all 81 descendant codes, unchanged IDs, parent prefixes, complete address paths, and warehouse-wide
+uniqueness. Separate sessions require committed disposable fixtures; the script removes its
+fixtures and sequence allocations in `finally`. This test connects only to the local Docker database.
+It also moves two 29-location subtrees into the same parent concurrently, with an occupied
+destination code. A temporary warehouse lock and `pg_stat_activity` confirm both authenticated
+RPC requests overlap. An independent observer checks that each subtree is wholly unchanged or
+wholly moved; final checks cover all 56 descendant codes, IDs, complete paths, and uniqueness.
+A second concurrent round forces one transaction to fail after its move writes, verifying that
+its entire subtree and code allocation roll back while the other move commits successfully.
+For browser verification, create two disposable root zones, populate the source with branching
+rack/bin/crate descendants, and move it using the Move dialog. Confirm the tree, address, and child
+codes refresh without reloading, then compare every descendant code and ID against a pre-move
+snapshot. Include an existing destination child to verify collision skipping; remove test fixtures.
+
+Deploy `20261108120000_generate_hierarchical_location_codes.sql` and the matching app/API in the
+same coordinated release: old code-entry, batch-prefix, and copy-code-replacement payloads are no
+longer supported. No historical codes are backfilled by this migration.
 
 Item Locations tab checks: for an item stored on a rack and in a bin inside it, the warehouse header
 shows total on-hand and the preferred location by name. The tree shows the rack with the combined

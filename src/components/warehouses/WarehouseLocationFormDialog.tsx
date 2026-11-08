@@ -59,7 +59,6 @@ import { cn } from "@/lib/utils";
 import type { WarehouseLocation } from "@/types/inventory-location";
 
 export type WarehouseLocationFormValues = {
-  code: string;
   name: string;
   locationType: WarehouseLocationType;
   isPickable: boolean;
@@ -115,7 +114,8 @@ export function WarehouseLocationFormDialog({
     location && isWarehouseLocationType(location.locationType)
       ? location.locationType
       : (suggestedType ?? "bin");
-  const codeInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const submissionPending = useRef(false);
   const capacityInputRef = useRef<HTMLInputElement>(null);
   const [parentId, setParentId] = useState(
     location ? (location.parentId ?? "") : (defaultParent?.id ?? "")
@@ -124,9 +124,9 @@ export function WarehouseLocationFormDialog({
     location ? null : defaultParent
   );
   const [isChoosingParent, setIsChoosingParent] = useState(false);
-  const [code, setCode] = useState(location?.code ?? "");
   const [name, setName] = useState(location?.name ?? "");
   const [locationType, setLocationType] = useState<WarehouseLocationType>(initialType);
+
   const [use, setUse] = useState<WarehouseLocationUse>(
     location ? getWarehouseLocationUse(location) : getDefaultWarehouseLocationUse(initialType)
   );
@@ -146,6 +146,8 @@ export function WarehouseLocationFormDialog({
   };
 
   const { data: detail } = useWarehouseLocationDetail(warehouseId, location?.id);
+  const code =
+    location && location.locationType === locationType ? location.code : "";
   const restrictions = detail ? getWarehouseLocationRestrictions(detail) : null;
   const restrictionText = (reason: WarehouseLocationRestrictionReason) => {
     if (!detail) return "";
@@ -183,10 +185,9 @@ export function WarehouseLocationFormDialog({
   const isStorable = use !== "organizeOnly";
 
   const submit = async (addAnother: boolean) => {
-    const trimmedCode = code.trim();
+    if (submissionPending.current || isSubmitting || !canSubmit) return;
     const capacityValue = maxCapacity.trim();
     const nextErrors: Partial<Record<WarehouseLocationFormField, string>> = {};
-    if (!trimmedCode) nextErrors.code = t("codeRequired");
     if (
       isStorable &&
       capacityValue &&
@@ -196,20 +197,16 @@ export function WarehouseLocationFormDialog({
     }
     setFieldErrors(nextErrors);
     setFormError(null);
-    if (nextErrors.code) {
-      codeInputRef.current?.focus();
-      return;
-    }
     if (nextErrors.maxCapacity) {
       capacityInputRef.current?.focus();
       return;
     }
 
     const flags = getWarehouseLocationUseFlags(use);
+    submissionPending.current = true;
     try {
       await onSubmit(
         {
-          code: trimmedCode,
           name: name.trim(),
           locationType,
           isStorable: flags.isStorable,
@@ -231,18 +228,18 @@ export function WarehouseLocationFormDialog({
       }
       setFieldErrors({ [field]: message });
       if (field === "parent" && !isEditing) setIsChoosingParent(true);
-      if (field === "code") codeInputRef.current?.focus();
       if (field === "maxCapacity") capacityInputRef.current?.focus();
       return;
+    } finally {
+      submissionPending.current = false;
     }
 
     if (!addAnother) {
       onOpenChange(false);
       return;
     }
-    setCode(incrementTrailingNumber(trimmedCode));
     setName((current) => incrementTrailingNumber(current.trim()));
-    codeInputRef.current?.focus();
+    nameInputRef.current?.focus();
   };
 
   const handleFormSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -379,29 +376,13 @@ export function WarehouseLocationFormDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="location-code">{t("code")}</Label>
-              <Input
-                id="location-code"
-                ref={codeInputRef}
-                placeholder={t("codePlaceholder")}
-                value={code}
-                aria-invalid={Boolean(fieldErrors.code)}
-                className={cn(fieldErrors.code && "border-destructive")}
-                aria-describedby={fieldErrors.code ? "location-code-error" : undefined}
-                onChange={(event) => {
-                  setCode(event.target.value);
-                  clearFieldError("code");
-                }}
-              />
-              {fieldErrors.code ? (
-                <p id="location-code-error" className="text-sm text-destructive">
-                  {fieldErrors.code}
-                </p>
-              ) : null}
+              <Input id="location-code" placeholder={t("codeGenerated")} readOnly value={code} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="location-name">{t("name")}</Label>
               <Input
                 id="location-name"
+                ref={nameInputRef}
                 placeholder={t("namePlaceholder")}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
@@ -518,7 +499,7 @@ export function WarehouseLocationFormDialog({
             <p aria-live="polite" className="break-words font-mono text-sm">
               {addressPreview ?? (
                 <span className="font-sans text-muted-foreground">
-                  {code.trim() ? t("addressPreviewLoading") : t("addressPreviewEmpty")}
+                  {code.trim() ? t("addressPreviewLoading") : t("codeGenerated")}
                 </span>
               )}
             </p>
