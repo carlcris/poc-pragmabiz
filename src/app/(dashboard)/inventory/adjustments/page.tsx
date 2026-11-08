@@ -491,9 +491,12 @@ export default function StockAdjustmentsPage() {
                         <TableCell>{formatDate(adjustment.adjustmentDate)}</TableCell>
                         <TableCell>{adjustment.warehouseName}</TableCell>
                         <TableCell>
-                          {adjustment.locationName?.trim() ||
-                            adjustment.locationCode ||
-                            t("noLocation")}
+                          <div>{adjustment.locationName?.trim() || t("noLocation")}</div>
+                          {adjustment.locationPath && (
+                            <div className="mt-1 whitespace-normal break-words text-xs text-muted-foreground">
+                              {adjustment.locationPath}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="max-w-[200px] truncate">{adjustment.reason}</div>

@@ -59,6 +59,7 @@ export interface StockAdjustment {
   locationId?: string;
   locationCode?: string;
   locationName?: string;
+  locationPath?: string | null;
   warehouseCode?: string;
   warehouseName?: string;
   status: StockAdjustmentStatus;

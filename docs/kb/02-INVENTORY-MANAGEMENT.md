@@ -657,6 +657,8 @@ CREATE TABLE stock_transactions (
 
 #### stock_adjustments
 
+The stock adjustment list shows the location name with its full hierarchical address beneath it in the Location column. The address uses location names only, omitting codes and unnamed levels.
+
 ```sql
 CREATE TABLE stock_adjustments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

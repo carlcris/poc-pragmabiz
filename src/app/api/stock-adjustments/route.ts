@@ -89,6 +89,7 @@ type LocationRow = {
   id: string;
   code: string | null;
   name: string | null;
+  path_ids: string[];
 };
 
 type UserRow = {
@@ -335,7 +336,7 @@ async function GETHandler(request: NextRequest) {
       locationIds.size > 0
         ? supabase
             .from("warehouse_locations")
-            .select("id, code, name")
+            .select("id, code, name, path_ids")
             .in("id", Array.from(locationIds))
         : Promise.resolve({ data: [] }),
       userIds.size > 0
@@ -356,6 +357,27 @@ async function GETHandler(request: NextRequest) {
     const locationsMap = new Map(
       (locationsData.data as LocationRow[] | null)?.map((l) => [l.id, l]) || []
     );
+    const locationPathIds = [
+      ...new Set(Array.from(locationsMap.values()).flatMap((location) => location.path_ids)),
+    ];
+    const missingPathIds = locationPathIds.filter((id) => !locationsMap.has(id));
+    const locationNames = new Map(
+      Array.from(locationsMap.values()).map((location) => [location.id, location.name])
+    );
+    if (missingPathIds.length > 0) {
+      const { data: ancestors, error: ancestorError } = await supabase
+        .from("warehouse_locations")
+        .select("id, name")
+        .eq("company_id", companyId)
+        .in("id", missingPathIds);
+      if (ancestorError) {
+        console.error("Error loading stock adjustment location names:", ancestorError);
+        return NextResponse.json({ error: "Failed to load stock adjustments" }, { status: 500 });
+      }
+      for (const ancestor of ancestors || []) {
+        locationNames.set(ancestor.id, ancestor.name);
+      }
+    }
     const usersMap = new Map((usersData.data as UserRow[] | null)?.map((u) => [u.id, u]) || []);
     const stockTransactionsMap = new Map(
       (stockTransactionsData.data as StockTransactionRow[] | null)?.map((st) => [st.id, st]) || []
@@ -437,6 +459,11 @@ async function GETHandler(request: NextRequest) {
         locationId,
         locationCode: location?.code || null,
         locationName: location?.name || null,
+        locationPath:
+          location?.path_ids
+            .map((id) => locationNames.get(id)?.trim())
+            .filter(Boolean)
+            .join(" / ") || null,
         warehouseCode: warehouse?.warehouse_code || null,
         warehouseName: warehouse?.warehouse_name || null,
         status: adj.status,
