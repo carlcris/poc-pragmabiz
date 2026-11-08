@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { BusinessUnitWithAccess } from "@/types/business-unit";
 import type { User } from "@/types/auth";
 import type { UserPermissions } from "@/types/rbac";
@@ -29,7 +29,29 @@ type DashboardShellProps = {
   initialBusinessUnitName: string | null;
 };
 
-export function DashboardShell({
+export function DashboardShell(props: DashboardShellProps) {
+  const router = useRouter();
+  const currentUserId = useAuthStore((state) => state.user?.id);
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
+  const staleAccount = Boolean(currentUserId && currentUserId !== props.initialUser.id);
+  const refreshRequested = useRef(false);
+
+  useEffect(() => {
+    if (!staleAccount) {
+      refreshRequested.current = false;
+      return;
+    }
+    if (isLoggingOut || refreshRequested.current) return;
+    refreshRequested.current = true;
+    router.refresh();
+  }, [isLoggingOut, router, staleAccount]);
+
+  // Do not mount old-account permissions, BU initialization, or page consumers.
+  if (staleAccount || isLoggingOut) return null;
+  return <DashboardSessionShell key={props.initialUser.id} {...props} />;
+}
+
+function DashboardSessionShell({
   children,
   initialBusinessUnit,
   initialBusinessUnitId,

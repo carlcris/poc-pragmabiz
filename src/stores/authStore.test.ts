@@ -438,3 +438,40 @@ describe("saved profile names during session restoration", () => {
     }
   );
 });
+
+describe("account switching", () => {
+  it("keeps account 2 after logout/login when account 1's cached layout hydrates", async () => {
+    authenticate();
+    queryClient.setQueryData(["permissions", "user"], { account: "first" });
+    await useAuthStore.getState().logout();
+    const second = {
+      ...payload,
+      user: {
+        ...payload.user,
+        id: "second",
+        email: "second@example.com",
+        companyId: "second-company",
+        firstName: "Second",
+      },
+      token: "second-token",
+    };
+    vi.mocked(fetch).mockResolvedValue(Response.json(second));
+    await useAuthStore.getState().login({ ...credentials, email: second.user.email });
+    useAuthStore.getState().hydrateFromServer(payload.user, accessToken);
+    expect(useAuthStore.getState()).toMatchObject({
+      user: { id: "second", email: "second@example.com", companyId: "second-company" },
+      token: "second-token",
+      isAuthenticated: true,
+    });
+    expect(queryClient.getQueryData(["permissions", "user"])).toBeUndefined();
+  });
+
+  it("still hydrates a fresh browser session from the verified server snapshot", () => {
+    useAuthStore.getState().hydrateFromServer(payload.user, accessToken);
+    expect(useAuthStore.getState()).toMatchObject({
+      user: payload.user,
+      token: accessToken,
+      isAuthenticated: true,
+    });
+  });
+});

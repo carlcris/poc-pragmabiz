@@ -49,7 +49,8 @@ function AccessDeniedContent() {
   // Better UX than being stuck on 403 page - forces them to contact admin
   const handleLogout = async () => {
     await logout();
-    router.push("/login");
+    router.replace("/login");
+    router.refresh();
   };
 
   // Check if user has any accessible pages at all

@@ -30,6 +30,7 @@ export function UserMenu() {
   const handleLogout = async () => {
     await logout();
     router.replace("/login");
+    router.refresh();
   };
 
   const getInitials = (name: string) => {

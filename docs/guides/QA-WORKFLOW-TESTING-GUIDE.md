@@ -63,9 +63,22 @@
   and appear in server completion logs; distinguish it from a newly started browser request.
 - Repeat the logout click and confirm only one sign-out operation runs. Simulate sign-out failure
   and confirm local user, business-unit, permission, and query state still clears.
+- In the same tab, sign in as account A, visit a protected page, log out using the user menu,
+  then sign in as account B without refreshing. Confirm the user menu, profile, business-unit
+  selection, sidebar permissions, and destination data belong to B. Repeat B → A and try browser
+  Back. Include accounts with different business units and access; no A content should flash while
+  B's server layout is loading. A full browser refresh must not be needed to correct identity.
 - Use browser Back after logout and confirm the previous user's dashboard is not restored. Sign in
   again and confirm the normal destination, profile, role, business-unit scope, and permissions are
   retained, with fresh preferences for the signed-in account.
+
+Verified on November 8, 2026, in an isolated production build using the real sign-in form and user
+menu: Demo User → logout → Admin User → logout → Demo User worked in one tab without a browser
+refresh. Account B's dashboard greeting, user-menu email, and previously visited profile showed B;
+the reverse switch and browser Back retained A. Both test accounts had Super Admin access to the
+same business unit, so different-role/unit browser verification remains a separate QA case. Focused
+regressions additionally deliver A's stale server snapshot after B logs in and assert that B's token
+and identity remain intact and A's protected consumers do not mount.
 
 Verified on November 1, 2026, through the real web sign-in and user-menu logout: no protected API
 reads started during more than 108 seconds of observation after logout. Only the existing

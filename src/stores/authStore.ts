@@ -74,6 +74,8 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
   hydrateFromServer: (user, token) => {
     if (get().isLoggingOut || hasIntentionalLogoutMarker()) return;
     const currentUser = get().user;
+    // A cached server layout must not replace a newer browser login's identity or token.
+    if (currentUser && currentUser.id !== user.id) return;
     set({
       user: currentUser?.id === user.id ? currentUser : user,
       token,

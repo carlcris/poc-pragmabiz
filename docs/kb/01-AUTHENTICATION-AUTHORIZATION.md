@@ -77,6 +77,18 @@ the permission or membership query. The browser no longer repeats the API's prof
 session verification. See [Login Performance](../guides/LOGIN-PERFORMANCE.md) for measurements and
 reproduction commands.
 
+#### Switching accounts in the same browser tab
+
+Web and tablet sign-in replace the login history entry and refresh the Next.js router cache after
+session establishment. Web user-menu and access-denied logout also refresh the router cache after
+sign-out. Clearing React Query alone does not clear cached server-component layouts.
+
+A dashboard snapshot belonging to a different user than the active browser account is withheld and
+refetched before its page, permissions, or business-unit providers mount. The authenticated shell is
+keyed by user ID so initialization resets for the new account. Auth hydration also rejects a
+conflicting account snapshot, preventing an old layout from replacing the newer identity or token.
+Fresh browser loads still hydrate from the verified server snapshot.
+
 #### Sign-in Failure Guidance
 
 Native mobile, web, tablet, and mobile-browser login screens show safe guidance rather than provider

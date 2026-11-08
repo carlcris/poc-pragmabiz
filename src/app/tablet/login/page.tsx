@@ -39,7 +39,8 @@ export default function TabletLoginPage() {
       await login({ email, password });
 
       // Redirect to tablet dashboard
-      router.push("/tablet");
+      router.replace("/tablet");
+      router.refresh();
     } catch (err) {
       setError(getLoginErrorCode(err));
     } finally {

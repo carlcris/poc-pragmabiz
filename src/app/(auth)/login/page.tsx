@@ -66,7 +66,8 @@ export default function LoginPage() {
       setIsSubmitting(true);
       setLoginError(null);
       const result = await login(data);
-      router.push(result.landingPage);
+      router.replace(result.landingPage);
+      router.refresh();
     } catch (err) {
       submittingRef.current = false;
       setLoginError(getLoginErrorCode(err));
