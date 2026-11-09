@@ -18,7 +18,14 @@ const body = {
   adjustmentType: "increase",
   adjustmentDate: "2026-11-05",
   reason: "Opening inventory",
-  items: [{ itemId: "item", itemBatchLocationId: "batch-location" }],
+  items: [
+    {
+      itemId: "item",
+      itemBatchLocationId: "batch-location",
+      enteredQty: 1,
+      enteredUnitOptionId: null,
+    },
+  ],
 };
 beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -52,6 +59,12 @@ const save = (method: "POST" | "PATCH", payload = body) => {
 
 describe.each(["POST", "PATCH"] as const)("%s stock adjustment save failures", (method) => {
   it.each([
+    [
+      "Invalid stock adjustment entered quantity or unit",
+      "STOCK_ADJUSTMENT_ENTERED_UNIT_INVALID",
+      400,
+      "saveEnteredUnitInvalid",
+    ],
     [
       "A new batch location requires a positive stock increase from zero",
       "STOCK_ADJUSTMENT_BATCH_LOCATION_INCREASE_REQUIRED",
@@ -154,7 +167,7 @@ describe.each(["POST", "PATCH"] as const)("%s stock adjustment save failures", (
   it("gives batch preflight the same code as the RPC", async () => {
     const response = await save(method, {
       ...body,
-      items: [{ itemId: "item", itemBatchLocationId: "" }],
+      items: [{ ...body.items[0], itemBatchLocationId: "" }],
     });
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ code: "STOCK_ADJUSTMENT_BATCH_REQUIRED" });
@@ -179,7 +192,10 @@ it.each(["POST", "PATCH"] as const)(
       data: null,
       error: { message: "Only draft adjustments can be updated" },
     });
-    const payload = { ...body, items: [{ itemId: "item", itemBatchId: "batch" }] };
+    const payload = {
+      ...body,
+      items: [{ itemId: "item", itemBatchId: "batch", enteredQty: 1, enteredUnitOptionId: null }],
+    };
     const request = new NextRequest("http://localhost/api/stock-adjustments", {
       method,
       body: JSON.stringify(method === "PATCH" ? { ...payload, warehouseId: undefined } : payload),
@@ -193,5 +209,16 @@ it.each(["POST", "PATCH"] as const)(
       method === "POST" ? "create_stock_adjustment" : "update_stock_adjustment",
       expect.objectContaining({ p_items: payload.items })
     );
+  }
+);
+
+it.each(["POST", "PATCH"] as const)(
+  "%s rejects invalid entered metadata before RPC",
+  async (method) => {
+    state.rpc.mockClear();
+    const response = await save(method, { ...body, items: [{ ...body.items[0], enteredQty: -1 }] });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "STOCK_ADJUSTMENT_ENTERED_UNIT_INVALID" });
+    expect(state.rpc).not.toHaveBeenCalled();
   }
 );

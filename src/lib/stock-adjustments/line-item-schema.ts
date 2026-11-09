@@ -35,6 +35,15 @@ export const createStockAdjustmentLineItemSchema = (
       itemName: z.string().optional(),
       uomId: z.string().min(1, tValidation("uomRequired")),
       uomName: z.string().optional(),
+      enteredQty: z
+        .number()
+        .nonnegative(quantityError)
+        .max(1_000_000_000, quantityError)
+        .multipleOf(0.01, quantityError)
+        .optional(),
+      enteredUnitOptionId: z.string().nullable().optional(),
+      enteredUnitLabel: z.string().nullable().optional(),
+      enteredQtyPerUnit: z.number().positive().optional(),
       currentQty: z.number().min(0, tValidation("currentQtyMin")),
       adjustedQty: z.number().min(0, tValidation("adjustedQtyMin")),
       unitCost: z.number().min(0, tValidation("unitCostMin")),

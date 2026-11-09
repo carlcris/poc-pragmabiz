@@ -3664,15 +3664,11 @@ export type TranslationKeys = {
     detailsTitle: string;
     detailsDescription: string;
     stockTransaction: string;
-    notes: string;
-    itemsTitle: string;
-    item: string;
-    batch: string;
-    currentQty: string;
-    adjustedQty: string;
-    difference: string;
-    unitCost: string;
     noLocation: string;
+    detailsNoLocation: string;
+    detailsNoNotes: string;
+    stockTransactionPending: string;
+    editAdjustment: string;
   };
   stockAdjustmentForm: {
     editTitle: string;
@@ -3817,6 +3813,7 @@ export type TranslationKeys = {
     saveWarehouseInvalid: string;
     saveItemInvalid: string;
     saveItemMissing: string;
+    saveEnteredUnitInvalid: string;
     saveUomInvalid: string;
     saveBatchLocationInvalid: string;
     saveBatchRequired: string;
@@ -7929,15 +7926,11 @@ export const translations: Record<Locale, TranslationKeys> = {
       detailsTitle: "Stock Adjustment Details",
       detailsDescription: "View adjustment {code}",
       stockTransaction: "Stock Transaction",
-      notes: "Notes",
-      itemsTitle: "Adjustment Items",
-      item: "Item",
-      batch: "Batch",
-      currentQty: "Current Qty",
-      adjustedQty: "Adjusted Qty",
-      difference: "Difference",
-      unitCost: "Unit Cost",
       noLocation: "--",
+      detailsNoLocation: "No location",
+      detailsNoNotes: "No notes",
+      stockTransactionPending: "Created when posted",
+      editAdjustment: "Edit Adjustment",
     },
     stockAdjustmentForm: {
       editTitle: "Edit Stock Adjustment",
@@ -8092,6 +8085,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       saveWarehouseInvalid: "Select a warehouse belonging to the current business unit.",
       saveItemInvalid: "Review each adjustment item and its quantities and cost, then try again.",
       saveItemMissing: "An item is no longer available. Remove it and select an available item.",
+      saveEnteredUnitInvalid:
+        "The entered quantity or unit no longer matches the stock change. Reselect the unit and enter the quantity again.",
       saveUomInvalid:
         "A unit of measure is no longer available. Reselect the unit for the affected item.",
       saveBatchLocationInvalid:
@@ -14884,15 +14879,11 @@ export const translations: Record<Locale, TranslationKeys> = {
       detailsTitle: "库存调整详情",
       detailsDescription: "查看调整单 {code}",
       stockTransaction: "库存交易",
-      notes: "备注",
-      itemsTitle: "调整项目",
-      item: "商品",
-      batch: "批次",
-      currentQty: "当前数量",
-      adjustedQty: "调整后数量",
-      difference: "差异",
-      unitCost: "单位成本",
       noLocation: "--",
+      detailsNoLocation: "未指定库位",
+      detailsNoNotes: "无备注",
+      stockTransactionPending: "过账时生成",
+      editAdjustment: "编辑调整单",
     },
     stockAdjustmentForm: {
       editTitle: "编辑库存调整",
@@ -15036,6 +15027,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       saveWarehouseInvalid: "请选择属于当前业务单元的仓库。",
       saveItemInvalid: "请检查各调整物料的数量和成本后重试。",
       saveItemMissing: "某物料已不可用。请移除并选择可用物料。",
+      saveEnteredUnitInvalid: "输入数量或单位与库存变动不一致。请重新选择单位并输入数量。",
       saveUomInvalid: "某计量单位已不可用。请为相关物料重新选择单位。",
       saveBatchLocationInvalid: "所选批次库位已无效。请重新选择此仓库中的批次。",
       saveBatchRequired: "请为每个物料选择现有批次或输入批次编码。",

@@ -1003,6 +1003,23 @@ multiple warehouse-specific delivery notes from one action.
 
 ## 16. Stock Adjustments
 
+Open Edit directly from the adjustment list for a draft with a saved location. Confirm the
+location remains selected after the form mounts, and saving without changing it preserves the
+location. For a new adjustment, changing warehouses must still clear the previous location.
+
+Entered-unit persistence checks (migration `20261109100000_stock_adjustment_entered_units.sql`):
+
+- Save an increase of 1 BOX (144), reopen the draft and its line editor, and confirm the quantity
+  remains 1 with BOX selected. Detail and draft tables must show the entered amount and base delta.
+- Edit to 1.5 BOX, save, and post; stock must increase by 216 base units. Repeat a decrease of
+  1 BOX and confirm stock decreases by 144 while the saved entry remains 1 BOX.
+- Change an item's unit label after saving and confirm the saved label remains visible. If the
+  conversion changes or the unit is deactivated, an incompatible resave must show translated
+  guidance; select a current active option and re-enter the quantity to continue.
+- Confirm historical adjustments display their recorded base-unit quantities. Run
+  `supabase/tests/stock-adjustment-entered-units.sql` for authenticated snapshot, posting,
+  decrease, and forced create/update rollback checks. No inventory reset is required.
+
 Save-error regression checks: create and edit failures must explain the corrective action for a
 missing item or unit, invalid warehouse/batch/location, missing batch code/location, a draft that
 has already changed status, or unavailable access. Confirm the dialog stays open with entered

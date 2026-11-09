@@ -31,7 +31,7 @@ BEGIN
   INTO STRICT ctx FROM received_date_context;
   line := jsonb_build_object('itemId', ctx.item_id, 'uomId', ctx.uom_id,
     'batchCode', ctx.batch_prefix || '-old', 'batchReceivedDate', '1999-01-01',
-    'currentQty', 0, 'adjustedQty', 1, 'unitCost', 1);
+    'currentQty', 0, 'adjustedQty', 1,'enteredQty',1,'enteredUnitOptionId',null, 'unitCost', 1);
   SELECT adjustment_id INTO saved_id FROM public.create_stock_adjustment(
     ctx.company_id, ctx.business_unit_id, ctx.actor_id, 'physical_count', CURRENT_DATE,
     ctx.warehouse_id, ctx.location_id, 'Received date test', NULL,

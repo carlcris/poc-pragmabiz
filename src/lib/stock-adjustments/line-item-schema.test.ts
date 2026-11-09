@@ -46,3 +46,23 @@ describe("existing batch destination form validation", () => {
     ).toBe(false);
   });
 });
+
+it("retains entered units without changing the base-unit delta", () => {
+  expect(
+    schema.parse({
+      ...line,
+      adjustedQty: 144,
+      adjustmentAmount: 144,
+      enteredQty: 1,
+      enteredUnitOptionId: "box",
+      enteredUnitLabel: "BOX (144)",
+      enteredQtyPerUnit: 144,
+    })
+  ).toMatchObject({
+    enteredQty: 1,
+    enteredUnitOptionId: "box",
+    enteredQtyPerUnit: 144,
+    adjustedQty: 144,
+    adjustmentAmount: 144,
+  });
+});

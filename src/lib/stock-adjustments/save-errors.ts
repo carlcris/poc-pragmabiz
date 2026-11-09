@@ -5,6 +5,7 @@ import {
 
 export const STOCK_ADJUSTMENT_SAVE_ERROR_CODES = [
   ...STOCK_ADJUSTMENT_DATE_ERROR_CODES,
+  "STOCK_ADJUSTMENT_ENTERED_UNIT_INVALID",
   "STOCK_ADJUSTMENT_BATCH_ALREADY_EXISTS",
   "STOCK_ADJUSTMENT_BATCH_LOCATION_INCREASE_REQUIRED",
   "STOCK_ADJUSTMENT_NOT_FOUND",
@@ -29,6 +30,15 @@ const knownFailures = new Map<
   string,
   { code: StockAdjustmentSaveErrorCode; error: string; status: number }
 >([
+  [
+    "Invalid stock adjustment entered quantity or unit",
+    {
+      code: "STOCK_ADJUSTMENT_ENTERED_UNIT_INVALID",
+      error:
+        "The entered quantity or unit no longer matches the stock change. Reselect the unit and enter the quantity again.",
+      status: 400,
+    },
+  ],
   [
     "A new batch location requires a positive stock increase from zero",
     {

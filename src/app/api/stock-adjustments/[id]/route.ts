@@ -1,3 +1,4 @@
+import { stockAdjustmentEnteredUnitSchema } from "@/lib/stock-adjustments/entered-unit-schema";
 import { getStockAdjustmentSaveError } from "@/lib/stock-adjustments/save-errors";
 import {
   batchReceivedDateSchema,
@@ -16,6 +17,10 @@ type DbStockAdjustmentItem = {
   item_batch_location_id: string | null;
   item_code: string | null;
   item_name: string | null;
+  entered_qty: number;
+  entered_unit_option_id: string | null;
+  entered_unit_label: string | null;
+  entered_qty_per_unit: number;
   current_qty: number | string | null;
   adjusted_qty: number | string | null;
   difference: number | string | null;
@@ -34,6 +39,8 @@ type StockAdjustmentItemInput = {
   batchCode?: string | null;
   batchReceivedDate?: string;
   itemBatchId?: string;
+  enteredQty: number;
+  enteredUnitOptionId: string | null;
   currentQty: number;
   adjustedQty: number;
   unitCost: number;
@@ -112,6 +119,10 @@ const STOCK_ADJUSTMENT_ITEM_COLUMNS = `
   item_batch_location_id,
   item_code,
   item_name,
+  entered_qty,
+  entered_unit_option_id,
+  entered_unit_label,
+  entered_qty_per_unit,
   current_qty,
   adjusted_qty,
   difference,
@@ -289,6 +300,10 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
           batchLocationName: batchWarehouseLocation?.name || null,
           itemCode: item.item_code,
           itemName: item.item_name,
+          enteredQty: Number(item.entered_qty),
+          enteredUnitOptionId: item.entered_unit_option_id,
+          enteredUnitLabel: item.entered_unit_label,
+          enteredQtyPerUnit: Number(item.entered_qty_per_unit),
           currentQty: parseFloat(String(item.current_qty ?? 0)),
           adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
           difference: parseFloat(String(item.difference ?? 0)),
@@ -373,6 +388,16 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
     ) {
       const error = getBatchReceivedDateError("SA001")!;
       return NextResponse.json({ error: error.error, code: error.code }, { status: error.status });
+    }
+
+    if (body.items?.some((item) => !stockAdjustmentEnteredUnitSchema.safeParse(item).success)) {
+      const failure = getStockAdjustmentSaveError({
+        message: "Invalid stock adjustment entered quantity or unit",
+      })!;
+      return NextResponse.json(
+        { error: failure.error, code: failure.code },
+        { status: failure.status }
+      );
     }
 
     const { data: savedAdjustments, error: updateError } = await supabase.rpc(
@@ -467,6 +492,10 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
           itemBatchLocationId: item.item_batch_location_id,
           itemCode: item.item_code,
           itemName: item.item_name,
+          enteredQty: Number(item.entered_qty),
+          enteredUnitOptionId: item.entered_unit_option_id,
+          enteredUnitLabel: item.entered_unit_label,
+          enteredQtyPerUnit: Number(item.entered_qty_per_unit),
           currentQty: parseFloat(String(item.current_qty ?? 0)),
           adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
           difference: parseFloat(String(item.difference ?? 0)),

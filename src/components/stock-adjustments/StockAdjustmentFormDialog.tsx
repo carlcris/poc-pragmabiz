@@ -173,6 +173,10 @@ export function StockAdjustmentFormDialog({
           itemName: item.itemName,
           uomId: item.uomId,
           uomName: item.uomName || "",
+          enteredQty: item.enteredQty,
+          enteredUnitOptionId: item.enteredUnitOptionId,
+          enteredUnitLabel: item.enteredUnitLabel,
+          enteredQtyPerUnit: item.enteredQtyPerUnit,
           currentQty: item.currentQty,
           adjustedQty: item.adjustedQty,
           unitCost: item.unitCost,
@@ -197,12 +201,6 @@ export function StockAdjustmentFormDialog({
   }, [form, open, selectedAdjustment, t]);
 
   const selectedWarehouseId = form.watch("warehouseId");
-
-  useEffect(() => {
-    if (!selectedWarehouseId) {
-      form.setValue("locationId", "");
-    }
-  }, [selectedWarehouseId, form]);
 
   const handleAddItem = () => {
     setEditingItem(null);
@@ -568,7 +566,14 @@ export function StockAdjustmentFormDialog({
                                   )}
                                 >
                                   {difference > 0 ? "+" : ""}
-                                  {formatQty(difference)}
+                                  {formatQty(
+                                    (difference < 0 ? -1 : 1) *
+                                      (item.enteredQty ?? Math.abs(difference))
+                                  )}{" "}
+                                  {item.enteredUnitLabel || item.uomName}
+                                  <div className="text-xs font-normal text-muted-foreground">
+                                    {formatQty(difference)} {item.uomName}
+                                  </div>
                                 </TableCell>
                                 <TableCell className="text-right tabular-nums">
                                   {formatCurrency(item.unitCost)}

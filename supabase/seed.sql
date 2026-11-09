@@ -5191,13 +5191,24 @@ location_assignments AS (
   JOIN target_locations
     ON target_locations.row_number = ranked_opening_stock.row_number
   WHERE ranked_opening_stock.row_number <= 10
+),
+-- Location is part of stock identity. Replace these opening-balance fixtures
+-- atomically instead of updating their location; the new rack gets its own SKU.
+relocated_opening_stock AS (
+  DELETE FROM public.item_batch_locations stock
+  USING location_assignments
+  WHERE stock.id = location_assignments.item_batch_location_id
+  RETURNING stock.company_id, stock.item_id, stock.warehouse_id,
+    location_assignments.location_id, stock.item_batch_id,
+    stock.qty_on_hand, stock.qty_reserved
 )
-UPDATE public.item_batch_locations
-SET
-  location_id = location_assignments.location_id,
-  updated_at = CURRENT_TIMESTAMP
-FROM location_assignments
-WHERE item_batch_locations.id = location_assignments.item_batch_location_id;
+INSERT INTO public.item_batch_locations (
+  company_id, item_id, warehouse_id, location_id, item_batch_id,
+  qty_on_hand, qty_reserved
+)
+SELECT company_id, item_id, warehouse_id, location_id, item_batch_id,
+  qty_on_hand, qty_reserved
+FROM relocated_opening_stock;
 
 WITH target_locations AS (
   SELECT

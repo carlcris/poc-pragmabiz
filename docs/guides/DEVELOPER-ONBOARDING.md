@@ -497,7 +497,7 @@ supabase migration list
 
 3. Edit migration file in `supabase/migrations/`
 
-   Migrations define schema, RLS, RPCs, triggers, indexes, and production-safe backfills only. Dev/demo seed data and seed-only behavior belong in `supabase/seed.sql`, not in migration scripts.
+   Migrations define schema, RLS, RPCs, triggers, indexes, and production-safe backfills only. Dev/demo seed data and seed-only behavior belong in `supabase/seed.sql`, not in migration scripts. The Warehouse B opening-stock fixture replaces its selected `MAIN` rows with rack rows in one atomic statement, preserving quantities and generating new location scan codes. It must not update `item_batch_locations.location_id`, which is immutable.
 
 4. Test migration
    ```bash

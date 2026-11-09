@@ -115,7 +115,8 @@ export function StockAdjustmentLineItemDialog({
 
   // Reset form when dialog opens/closes or item changes
   useEffect(() => {
-    setUnitOptionId("base");
+    setUnitOptionId(item?.enteredUnitOptionId ? "saved" : "base");
+    setQuantityInput(item?.enteredQty?.toString() || "");
     if (open && item) {
       const adjustmentDifference = item.adjustedQty - item.currentQty;
       form.reset({
@@ -167,7 +168,26 @@ export function StockAdjustmentLineItemDialog({
       Number.isFinite(option.qtyPerUnit) &&
       option.qtyPerUnit > 0
   );
-  const selectedUnit = unitOptions.find((option) => option.id === unitOptionId);
+  const savedUnit =
+    item?.itemId === watchedItemId && item.enteredUnitOptionId
+      ? {
+          id: "saved",
+          qtyPerUnit: item.enteredQtyPerUnit!,
+          displayLabel: item.enteredUnitLabel!,
+        }
+      : null;
+  const displayUnitOptions = savedUnit
+    ? [
+        savedUnit,
+        ...unitOptions.filter(
+          (option) =>
+            option.id !== item?.enteredUnitOptionId ||
+            option.qtyPerUnit !== savedUnit.qtyPerUnit ||
+            option.displayLabel !== savedUnit.displayLabel
+        ),
+      ]
+    : unitOptions;
+  const selectedUnit = displayUnitOptions.find((option) => option.id === unitOptionId);
   const quantityFactor = unitOptionId === "base" ? 1 : selectedUnit?.qtyPerUnit;
 
   useEffect(() => {
@@ -288,6 +308,7 @@ export function StockAdjustmentLineItemDialog({
       form.setValue("itemName", selectedItem.name);
       form.setValue("uomId", selectedItem.uomId);
       form.setValue("uomName", selectedItem.uom);
+      setQuantityInput("");
       setUomLabel(selectedItem.uom || "");
       form.setValue("unitCost", selectedItem.purchasePrice);
       form.setValue("currentQty", 0);
@@ -411,6 +432,15 @@ export function StockAdjustmentLineItemDialog({
     const submitData = {
       ...data,
       batchCode: data.batchEntryMode === "new" ? data.batchCode?.trim() : data.batchCode,
+      enteredQty: Number((adjustmentInBaseUnits / (quantityFactor ?? 1)).toPrecision(15)),
+      enteredUnitOptionId:
+        unitOptionId === "base"
+          ? null
+          : unitOptionId === "saved"
+            ? item!.enteredUnitOptionId!
+            : unitOptionId,
+      enteredUnitLabel: selectedUnit?.displayLabel || baseUnitLabel,
+      enteredQtyPerUnit: quantityFactor ?? 1,
       adjustedQty: finalStockInBaseUnits, // Send final stock in BASE UNITS
     };
 
@@ -846,7 +876,8 @@ export function StockAdjustmentLineItemDialog({
                               const factor =
                                 value === "base"
                                   ? 1
-                                  : unitOptions.find((option) => option.id === value)?.qtyPerUnit;
+                                  : displayUnitOptions.find((option) => option.id === value)
+                                      ?.qtyPerUnit;
                               if (!factor || !quantityFactor) return;
                               const enteredQuantity =
                                 (form.getValues("adjustmentAmount") || 0) / quantityFactor;
@@ -869,7 +900,7 @@ export function StockAdjustmentLineItemDialog({
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="base">{baseUnitLabel}</SelectItem>
-                              {unitOptions.map((option) => (
+                              {displayUnitOptions.map((option) => (
                                 <SelectItem key={option.id} value={option.id}>
                                   {option.displayLabel}
                                 </SelectItem>

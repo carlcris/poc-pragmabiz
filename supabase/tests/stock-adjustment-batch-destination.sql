@@ -46,7 +46,7 @@ BEGIN
     batch_prefix, destination_warehouse_id, destination_id, empty_location_id, other_warehouse_id, other_location_id INTO STRICT ctx FROM batch_destination_context;
   source_line := jsonb_build_object('itemId', ctx.item_id, 'uomId', ctx.uom_id,
     'batchCode', ctx.batch_prefix, 'batchReceivedDate', '1999-01-01',
-    'currentQty', 0, 'adjustedQty', 10, 'unitCost', 1);
+    'currentQty', 0, 'adjustedQty', 10,'enteredQty',10,'enteredUnitOptionId',null, 'unitCost', 1);
   SELECT adjustment_id INTO source_adjustment FROM public.create_stock_adjustment(
     ctx.company_id, ctx.business_unit_id, ctx.actor_id, 'physical_count', CURRENT_DATE,
     ctx.warehouse_id, ctx.location_id, 'Source batch test', NULL, jsonb_build_array(source_line));
@@ -55,7 +55,7 @@ BEGIN
     FROM public.stock_adjustment_items sai JOIN public.item_batch_locations bl ON bl.id=sai.item_batch_location_id
     WHERE sai.adjustment_id=source_adjustment;
   destination_line := jsonb_build_object('itemId', ctx.item_id, 'uomId', ctx.uom_id,
-    'itemBatchId', batch_id, 'currentQty', 0, 'adjustedQty', 7, 'unitCost', 1);
+    'itemBatchId', batch_id, 'currentQty', 0, 'adjustedQty', 7,'enteredQty',7,'enteredUnitOptionId',null, 'unitCost', 1);
   -- No received date is required; even a supplied date must never change batch identity.
   SELECT adjustment_id INTO destination_adjustment FROM public.create_stock_adjustment(
     ctx.company_id, ctx.business_unit_id, ctx.actor_id, 'physical_count', CURRENT_DATE,
@@ -88,7 +88,7 @@ BEGIN
   SELECT adjustment_id INTO saved_id FROM public.create_stock_adjustment(
     ctx.company_id, ctx.business_unit_id, ctx.actor_id, 'physical_count', CURRENT_DATE,
     ctx.destination_warehouse_id, ctx.destination_id, 'Decrease test', NULL,
-    jsonb_build_array(destination_line || jsonb_build_object('currentQty',7,'adjustedQty',5)));
+    jsonb_build_array(destination_line || jsonb_build_object('currentQty',7,'adjustedQty',5,'enteredQty',2,'enteredUnitOptionId',null)));
   PERFORM public.post_stock_adjustment(saved_id, ctx.company_id, ctx.business_unit_id, ctx.actor_id);
   IF NOT EXISTS (SELECT 1 FROM public.item_batch_locations WHERE id=destination_batch_location AND qty_on_hand=5)
     THEN RAISE EXCEPTION 'Existing destination decrease failed'; END IF;
@@ -96,7 +96,7 @@ BEGIN
   BEGIN
     PERFORM public.create_stock_adjustment(ctx.company_id, ctx.business_unit_id, ctx.actor_id,
       'physical_count', CURRENT_DATE, ctx.destination_warehouse_id, ctx.empty_location_id, 'Invalid decrease', NULL,
-      jsonb_build_array(destination_line || jsonb_build_object('currentQty',2,'adjustedQty',1)));
+      jsonb_build_array(destination_line || jsonb_build_object('currentQty',2,'adjustedQty',1,'enteredQty',1,'enteredUnitOptionId',null)));
     RAISE EXCEPTION 'Missing destination accepted a decrease';
   EXCEPTION WHEN raise_exception THEN
     IF SQLERRM<>'A new batch location requires a positive stock increase from zero' THEN RAISE; END IF;
@@ -153,7 +153,7 @@ BEGIN
   PERFORM public.update_stock_adjustment(ctx.company_id,ctx.business_unit_id,ctx.actor_id,saved_id,
     p_items=>jsonb_build_array(jsonb_build_object('itemId',ctx.item_id,'uomId',ctx.uom_id,
       'itemBatchLocationId',(SELECT item_batch_location_id FROM public.stock_adjustment_items WHERE adjustment_id=saved_id),
-      'currentQty',0,'adjustedQty',11,'unitCost',1)));
+      'currentQty',0,'adjustedQty',11,'enteredQty',11,'enteredUnitOptionId',null,'unitCost',1)));
   -- An update rejects New Batch too and restores the draft lines deleted earlier in the RPC.
   BEGIN
     PERFORM public.update_stock_adjustment(ctx.company_id,ctx.business_unit_id,ctx.actor_id,saved_id,
@@ -176,7 +176,7 @@ BEGIN
     RAISE EXCEPTION 'Another item QR resolved as target stock';
   END IF;
   cross_item_line := jsonb_build_object('itemId',other_item,'uomId',other_uom,'itemBatchId',batch_id,
-    'currentQty',0,'adjustedQty',4,'unitCost',1,'batchReceivedDate','2026-11-08');
+    'currentQty',0,'adjustedQty',4,'enteredQty',4,'enteredUnitOptionId',null,'unitCost',1,'batchReceivedDate','2026-11-08');
   BEGIN
     PERFORM public.create_stock_adjustment(ctx.company_id,ctx.business_unit_id,ctx.actor_id,
       'physical_count',CURRENT_DATE,ctx.warehouse_id,ctx.destination_id,'Cross item rollback',NULL,
@@ -227,7 +227,7 @@ BEGIN
   BEGIN
     PERFORM public.create_stock_adjustment(ctx.company_id,ctx.business_unit_id,ctx.actor_id,
       'physical_count',CURRENT_DATE,ctx.warehouse_id,ctx.destination_id,'Cross item date conflict',NULL,
-      jsonb_build_array(cross_item_line || jsonb_build_object('itemBatchId',other_batch,'itemBatchLocationId',other_batch_location,'currentQty',4,'adjustedQty',5)));
+      jsonb_build_array(cross_item_line || jsonb_build_object('itemBatchId',other_batch,'itemBatchLocationId',other_batch_location,'currentQty',4,'adjustedQty',5,'enteredQty',1,'enteredUnitOptionId',null)));
     RAISE EXCEPTION 'Conflicting original date accepted';
   EXCEPTION WHEN SQLSTATE 'SA002' THEN NULL;
   END;

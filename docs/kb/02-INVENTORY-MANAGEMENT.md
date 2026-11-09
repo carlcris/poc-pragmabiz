@@ -1053,7 +1053,7 @@ Get all inventory in a warehouse.
 
 ### Stock Adjustments
 
-The adjustment details dialog displays the full location name path without location codes, using the same `locationPath` supplied for the list.
+The adjustment details dialog uses the same frame and layout as the create/edit dialog, read-only: the status sits beside the title as colored text, the general-information panel shows warehouse, location, type, date, reason, notes, and stock transaction, and the footer repeats the form's lines, increases, decreases, and total adjustment value summary. Missing notes, locations, and not-yet-posted stock transactions show as "No notes", "No location", and "Created when posted" instead of a dash. Draft adjustments offer **Edit Adjustment**, which closes the view and opens the edit dialog; other statuses only offer **Close**. On phone widths each line renders as a card instead of a table row. The location shows the full location name path without location codes, using the same `locationPath` supplied for the list.
 
 Phase 1 keeps batches warehouse-scoped. With a destination location selected, **Existing Batch**
 searches batch codes across all items in that warehouse, including codes not yet associated with
@@ -1090,9 +1090,16 @@ draft. The transactional RPC validates that the warehouse belongs to the current
 before writing the draft.
 
 The Add Item and Edit Item dialogs accept quantities in active item unit options, using their
-configured display labels (for example, BOX (144)). The base unit is selected initially, including
-when reopening a saved line. Entering 2 boxes of 144 adjusts 288 base units. The total quantity,
-new stock level, saved line, and value impact use base units; unit cost remains per base unit.
+configured display labels (for example, BOX (144)). New lines initially select the base unit.
+Saved lines retain the entered quantity and selected unit when reopened; difference columns show
+that entry alongside its base-unit equivalent. Entering 2 boxes of 144 adjusts 288 base units.
+Current quantity, new stock level, posting, and value impact continue to use base units; unit cost
+remains per base unit. Create/update lines send `enteredQty` (the unsigned adjustment delta) and
+`enteredUnitOptionId` (null for base). The transactional save validates the conversion and stores
+`entered_qty`, `entered_unit_option_id`, `entered_unit_label`, and `entered_qty_per_unit` snapshots.
+Existing rows are backfilled from their recorded base-unit delta; the original selection is unknown.
+If an option is changed or deactivated, historical display remains intact, while resaving an
+incompatible entry returns `STOCK_ADJUSTMENT_ENTERED_UNIT_INVALID` with translated guidance.
 Decreases cannot exceed the selected batch’s current on-hand quantity. Converted adjustments
 must have at most two decimal places and cannot exceed 1,000,000,000.
 
@@ -1523,7 +1530,7 @@ class LocationService {
 
 - Create stock adjustment
 - Add adjustment lines using an existing batch-location or a new batch code at the selected location
-- View adjustment header and line-item details from the stock adjustments list
+- View adjustment header and line-item details from the stock adjustments list in `StockAdjustmentDetailsDialog.tsx`, which mirrors the form's layout read-only
 - Reprint 1–100 selected batch QR labels from editable lines or the read-only details view
 - Show variance calculations
 - Post adjustment workflow

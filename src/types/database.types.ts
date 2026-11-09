@@ -8947,6 +8947,10 @@ export type Database = {
           current_qty: number;
           deleted_at: string | null;
           difference: number;
+          entered_qty: number;
+          entered_qty_per_unit: number;
+          entered_unit_label: string | null;
+          entered_unit_option_id: string | null;
           id: string;
           item_batch_location_id: string | null;
           item_code: string;
@@ -8969,6 +8973,10 @@ export type Database = {
           current_qty?: number;
           deleted_at?: string | null;
           difference: number;
+          entered_qty: number;
+          entered_qty_per_unit: number;
+          entered_unit_label?: string | null;
+          entered_unit_option_id?: string | null;
           id?: string;
           item_batch_location_id?: string | null;
           item_code: string;
@@ -8991,6 +8999,10 @@ export type Database = {
           current_qty?: number;
           deleted_at?: string | null;
           difference?: number;
+          entered_qty?: number;
+          entered_qty_per_unit?: number;
+          entered_unit_label?: string | null;
+          entered_unit_option_id?: string | null;
           id?: string;
           item_batch_location_id?: string | null;
           item_code?: string;
@@ -9024,6 +9036,13 @@ export type Database = {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "stock_adjustment_items_entered_unit_option_id_fkey";
+            columns: ["entered_unit_option_id"];
+            isOneToOne: false;
+            referencedRelation: "item_unit_options";
             referencedColumns: ["id"];
           },
           {

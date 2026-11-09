@@ -11,6 +11,10 @@ type DbStockAdjustmentItem = {
   item_batch_location_id: string | null;
   item_code: string;
   item_name: string;
+  entered_qty: number;
+  entered_unit_option_id: string | null;
+  entered_unit_label: string | null;
+  entered_qty_per_unit: number;
   current_qty: number | string | null;
   adjusted_qty: number | string | null;
   difference: number | string | null;
@@ -61,16 +65,31 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
     const postResult = ((rpcData || []) as PostStockAdjustmentResult[])[0] || null;
 
     // Fetch updated adjustment
-    const { data: updatedAdjustment } = await supabase
+    const { data: updatedAdjustment, error: adjustmentReadError } = await supabase
       .from("stock_adjustments")
-      .select("*")
+      .select(
+        "id, company_id, adjustment_code, adjustment_type, adjustment_date, warehouse_id, status, reason, notes, total_value, stock_transaction_id, approved_by, approved_at, posted_by, posted_at, created_by, updated_by, created_at, updated_at"
+      )
       .eq("id", id)
       .single();
 
-    const { data: updatedItems } = await supabase
+    const { data: updatedItems, error: itemsReadError } = await supabase
       .from("stock_adjustment_items")
-      .select("*")
+      .select(
+        "id, adjustment_id, item_id, item_batch_location_id, item_code, item_name, current_qty, adjusted_qty, difference, unit_cost, total_cost, uom_id, uom_name, reason, created_at, updated_at, entered_qty, entered_unit_option_id, entered_unit_label, entered_qty_per_unit"
+      )
       .eq("adjustment_id", id);
+
+    if (adjustmentReadError || itemsReadError || !updatedAdjustment || !updatedItems) {
+      console.error("Error reading posted stock adjustment:", {
+        adjustmentReadError,
+        itemsReadError,
+      });
+      return NextResponse.json(
+        { error: "Failed to load posted stock adjustment" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -104,6 +123,10 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
             itemBatchLocationId: item.item_batch_location_id,
             itemCode: item.item_code,
             itemName: item.item_name,
+            enteredQty: Number(item.entered_qty),
+            enteredUnitOptionId: item.entered_unit_option_id,
+            enteredUnitLabel: item.entered_unit_label,
+            enteredQtyPerUnit: Number(item.entered_qty_per_unit),
             currentQty: parseFloat(String(item.current_qty ?? 0)),
             adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
             difference: parseFloat(String(item.difference ?? 0)),
