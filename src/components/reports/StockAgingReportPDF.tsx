@@ -1,6 +1,10 @@
 import React from "react";
 import { Document, Font, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
-import type { StockAgingReportRow } from "@/hooks/useStockAgingReport";
+import type {
+  StockAgingReportRow,
+  StockAgingReportGroup,
+  StockAgingGroupBy,
+} from "@/types/stock-aging-report";
 
 Font.register({
   family: "ArialUnicode",
@@ -10,17 +14,8 @@ Font.register({
   ],
 });
 
-type StockAgingReportPDFGroup = {
-  itemId: string;
-  itemName: string;
-  itemCode: string | null;
-  category: string;
+export type StockAgingReportPDFGroup = Omit<StockAgingReportGroup, "startIndex" | "rowCount"> & {
   rows: StockAgingReportRow[];
-  subtotalQtyOnHand: number;
-  subtotalQtyReserved: number;
-  subtotalQtyAvailable: number;
-  subtotalStockValue: number;
-  oldestAgeDays: number;
 };
 
 type StockAgingReportPDFProps = {
@@ -28,20 +23,55 @@ type StockAgingReportPDFProps = {
   subtitle: string;
   generatedAtLabel: string;
   warehouseLocationLabel: string;
-  batchLabel: string;
+  detailLabel: string;
+  groupBy: StockAgingGroupBy;
   ageDaysLabel: string;
+  ageDurationLabel: (years: number, months: number, days: number) => string;
   qtyOnHandLabel: string;
   qtyReservedLabel: string;
   qtyAvailableLabel: string;
   stockValueLabel: string;
-  updatedAtLabel: string;
-  itemSubtotalLabel: string;
+  subtotalLabel: string;
+  oldestAgeLabel: (value: number) => string;
+  rowCountLabel: (count: number) => string;
   noValueLabel: string;
   groups: StockAgingReportPDFGroup[];
-  currentPage: number;
-  totalPages: number;
+  pageLabel: (page: number, totalPages: number) => string;
+};
+
+// Bound each pagination/layout tree. React PDF otherwise repeatedly splits and
+// measures the remaining rows of a single report-sized table on every page.
+const MAX_LAYOUT_ROWS = 50;
+type StockAgingLayoutGroup = StockAgingReportPDFGroup & {
+  showSubtotal: boolean;
   totalRows: number;
 };
+
+export function partitionStockAgingPdfGroups(groups: StockAgingReportPDFGroup[]) {
+  const pages: StockAgingLayoutGroup[][] = [];
+  let page: StockAgingLayoutGroup[] = [];
+  let rowCount = 0;
+  for (const group of groups) {
+    for (let offset = 0; offset < group.rows.length; ) {
+      const rows = group.rows.slice(offset, offset + MAX_LAYOUT_ROWS - rowCount);
+      offset += rows.length;
+      page.push({
+        ...group,
+        rows,
+        showSubtotal: offset === group.rows.length,
+        totalRows: group.rows.length,
+      });
+      rowCount += rows.length;
+      if (rowCount === MAX_LAYOUT_ROWS) {
+        pages.push(page);
+        page = [];
+        rowCount = 0;
+      }
+    }
+  }
+  if (page.length || pages.length === 0) pages.push(page);
+  return pages;
+}
 
 const styles = StyleSheet.create({
   page: {
@@ -166,11 +196,10 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   colLocation: { width: "24%" },
-  colBatch: { width: "18%" },
-  colAge: { width: "8%" },
+  colDetail: { width: "22%" },
+  colAge: { width: "12%" },
   colQty: { width: "10%" },
   colValue: { width: "12%" },
-  colUpdated: { width: "18%" },
   footer: {
     marginTop: 10,
     fontSize: 10,
@@ -184,150 +213,164 @@ export const StockAgingReportPDF = ({
   subtitle,
   generatedAtLabel,
   warehouseLocationLabel,
-  batchLabel,
+  detailLabel,
+  groupBy,
   ageDaysLabel,
+  ageDurationLabel,
   qtyOnHandLabel,
   qtyReservedLabel,
   qtyAvailableLabel,
   stockValueLabel,
-  updatedAtLabel,
-  itemSubtotalLabel,
+  subtotalLabel,
+  oldestAgeLabel,
+  rowCountLabel,
   noValueLabel,
   groups,
-  currentPage,
-  totalPages,
-  totalRows,
+  pageLabel,
 }: StockAgingReportPDFProps) => (
   <Document title={title}>
-    <Page size="A4" orientation="landscape" style={styles.page}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
-        <Text style={styles.meta}>
-          {generatedAtLabel}: {new Date().toLocaleString()}
-        </Text>
-      </View>
+    {partitionStockAgingPdfGroups(groups).map((pageGroups, index) => (
+      <Page key={index} size="A4" orientation="landscape" style={styles.page}>
+        {index === 0 && (
+          <View style={styles.header}>
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
+            <Text style={styles.meta}>
+              {generatedAtLabel}: {new Date().toLocaleString()}
+            </Text>
+          </View>
+        )}
 
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <View style={[styles.cell, styles.colLocation]}>
-            <Text style={styles.tableHeaderText}>{warehouseLocationLabel}</Text>
+        <View style={styles.table}>
+          <View style={styles.tableHeader}>
+            <View style={[styles.cell, styles.colLocation]}>
+              <Text style={styles.tableHeaderText}>{warehouseLocationLabel}</Text>
+            </View>
+            <View style={[styles.cell, styles.colDetail]}>
+              <Text style={styles.tableHeaderText}>{detailLabel}</Text>
+            </View>
+            <View style={[styles.cell, styles.colAge]}>
+              <Text style={[styles.tableHeaderText, styles.right]}>{ageDaysLabel}</Text>
+            </View>
+            <View style={[styles.cell, styles.colQty]}>
+              <Text style={[styles.tableHeaderText, styles.right]}>{qtyOnHandLabel}</Text>
+            </View>
+            <View style={[styles.cell, styles.colQty]}>
+              <Text style={[styles.tableHeaderText, styles.right]}>{qtyReservedLabel}</Text>
+            </View>
+            <View style={[styles.cell, styles.colQty]}>
+              <Text style={[styles.tableHeaderText, styles.right]}>{qtyAvailableLabel}</Text>
+            </View>
+            <View style={[styles.cell, styles.colValue]}>
+              <Text style={[styles.tableHeaderText, styles.right]}>{stockValueLabel}</Text>
+            </View>
           </View>
-          <View style={[styles.cell, styles.colBatch]}>
-            <Text style={styles.tableHeaderText}>{batchLabel}</Text>
-          </View>
-          <View style={[styles.cell, styles.colAge]}>
-            <Text style={[styles.tableHeaderText, styles.right]}>{ageDaysLabel}</Text>
-          </View>
-          <View style={[styles.cell, styles.colQty]}>
-            <Text style={[styles.tableHeaderText, styles.right]}>{qtyOnHandLabel}</Text>
-          </View>
-          <View style={[styles.cell, styles.colQty]}>
-            <Text style={[styles.tableHeaderText, styles.right]}>{qtyReservedLabel}</Text>
-          </View>
-          <View style={[styles.cell, styles.colQty]}>
-            <Text style={[styles.tableHeaderText, styles.right]}>{qtyAvailableLabel}</Text>
-          </View>
-          <View style={[styles.cell, styles.colValue]}>
-            <Text style={[styles.tableHeaderText, styles.right]}>{stockValueLabel}</Text>
-          </View>
-          <View style={[styles.cell, styles.colUpdated]}>
-            <Text style={styles.tableHeaderText}>{updatedAtLabel}</Text>
-          </View>
+
+          {pageGroups.map((group) => (
+            <React.Fragment key={group.id}>
+              <View style={styles.groupHeader}>
+                <Text style={styles.groupTitle}>{group.title}</Text>
+                {group.subtitle && <Text style={styles.groupSubtitle}>{group.subtitle}</Text>}
+              </View>
+
+              {group.rows.map((row) => (
+                <View key={row.id} style={styles.row} wrap={false}>
+                  <View style={[styles.cell, styles.colLocation]}>
+                    <Text style={styles.cellText}>
+                      {row.warehouseName || noValueLabel}
+                    </Text>
+                    <Text style={styles.cellMuted}>{row.locationPath || noValueLabel}</Text>
+                  </View>
+                  <View style={[styles.cell, styles.colDetail]}>
+                    <Text style={styles.cellText}>
+                      {groupBy === "batch"
+                        ? row.itemName || row.itemCode || noValueLabel
+                        : row.batchCode || noValueLabel}
+                    </Text>
+                    {groupBy === "batch" && (
+                      <Text style={styles.cellMuted}>{row.itemCode || noValueLabel}</Text>
+                    )}
+                    <Text style={styles.cellMuted}>
+                      {row.batchReceivedAt
+                        ? new Date(row.batchReceivedAt).toLocaleString()
+                        : noValueLabel}
+                    </Text>
+                  </View>
+                  <View style={[styles.cell, styles.colAge]}>
+                    <Text style={[styles.cellText, styles.right]}>{String(row.batchAgeDays)}</Text>
+                    <Text style={[styles.cellMuted, styles.right]}>
+                      {row.batchAgeDuration
+                        ? ageDurationLabel(
+                            row.batchAgeDuration.years,
+                            row.batchAgeDuration.months,
+                            row.batchAgeDuration.days
+                          )
+                        : noValueLabel}
+                    </Text>
+                  </View>
+                  <View style={[styles.cell, styles.colQty]}>
+                    <Text style={[styles.cellText, styles.right]}>{row.qtyOnHand.toFixed(2)}</Text>
+                  </View>
+                  <View style={[styles.cell, styles.colQty]}>
+                    <Text style={[styles.cellText, styles.right]}>
+                      {row.qtyReserved.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={[styles.cell, styles.colQty]}>
+                    <Text style={[styles.cellText, styles.right]}>
+                      {row.qtyAvailable.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={[styles.cell, styles.colValue]}>
+                    <Text style={[styles.cellText, styles.right]}>{row.stockValue.toFixed(2)}</Text>
+                  </View>
+                </View>
+              ))}
+
+              {group.showSubtotal && (
+                <View style={styles.subtotalRow} wrap={false}>
+                  <View style={[styles.cell, styles.colLocation]}>
+                    <Text style={styles.cellBold}>{subtotalLabel}</Text>
+                    <Text style={styles.cellMuted}>{rowCountLabel(group.totalRows)}</Text>
+                  </View>
+                  <View style={[styles.cell, styles.colDetail]}>
+                    <Text style={styles.cellBold}>{oldestAgeLabel(group.oldestAgeDays)}</Text>
+                  </View>
+                  <View style={[styles.cell, styles.colAge]}>
+                    <Text style={styles.cellText}></Text>
+                  </View>
+                  <View style={[styles.cell, styles.colQty]}>
+                    <Text style={[styles.cellBold, styles.right]}>
+                      {group.subtotalQtyOnHand.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={[styles.cell, styles.colQty]}>
+                    <Text style={[styles.cellBold, styles.right]}>
+                      {group.subtotalQtyReserved.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={[styles.cell, styles.colQty]}>
+                    <Text style={[styles.cellBold, styles.right]}>
+                      {group.subtotalQtyAvailable.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={[styles.cell, styles.colValue]}>
+                    <Text style={[styles.cellBold, styles.right]}>
+                      {group.subtotalStockValue.toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </React.Fragment>
+          ))}
         </View>
 
-        {groups.map((group) => (
-          <React.Fragment key={group.itemId}>
-            <View style={styles.groupHeader}>
-              <Text style={styles.groupTitle}>{group.itemName}</Text>
-              <Text style={styles.groupSubtitle}>
-                {group.itemCode || noValueLabel}
-                {group.category ? ` • ${group.category}` : ""}
-              </Text>
-            </View>
-
-            {group.rows.map((row) => (
-              <View key={row.id} style={styles.row}>
-                <View style={[styles.cell, styles.colLocation]}>
-                  <Text style={styles.cellText}>
-                    {(row.warehouseCode || noValueLabel) +
-                      " - " +
-                      (row.warehouseName || noValueLabel)}
-                  </Text>
-                  <Text style={styles.cellMuted}>{row.locationPath || noValueLabel}</Text>
-                </View>
-                <View style={[styles.cell, styles.colBatch]}>
-                  <Text style={styles.cellText}>{row.batchCode || noValueLabel}</Text>
-                  <Text style={styles.cellMuted}>
-                    {row.batchReceivedAt
-                      ? new Date(row.batchReceivedAt).toLocaleString()
-                      : noValueLabel}
-                  </Text>
-                </View>
-                <View style={[styles.cell, styles.colAge]}>
-                  <Text style={[styles.cellText, styles.right]}>{String(row.batchAgeDays)}</Text>
-                </View>
-                <View style={[styles.cell, styles.colQty]}>
-                  <Text style={[styles.cellText, styles.right]}>{row.qtyOnHand.toFixed(2)}</Text>
-                </View>
-                <View style={[styles.cell, styles.colQty]}>
-                  <Text style={[styles.cellText, styles.right]}>{row.qtyReserved.toFixed(2)}</Text>
-                </View>
-                <View style={[styles.cell, styles.colQty]}>
-                  <Text style={[styles.cellText, styles.right]}>{row.qtyAvailable.toFixed(2)}</Text>
-                </View>
-                <View style={[styles.cell, styles.colValue]}>
-                  <Text style={[styles.cellText, styles.right]}>{row.stockValue.toFixed(2)}</Text>
-                </View>
-                <View style={[styles.cell, styles.colUpdated]}>
-                  <Text style={styles.cellText}>{new Date(row.updatedAt).toLocaleString()}</Text>
-                </View>
-              </View>
-            ))}
-
-            <View style={styles.subtotalRow}>
-              <View style={[styles.cell, styles.colLocation]}>
-                <Text style={styles.cellBold}>{itemSubtotalLabel}</Text>
-              </View>
-              <View style={[styles.cell, styles.colBatch]}>
-                <Text style={styles.cellBold}>Oldest: {group.oldestAgeDays}d</Text>
-              </View>
-              <View style={[styles.cell, styles.colAge]}>
-                <Text style={styles.cellText}></Text>
-              </View>
-              <View style={[styles.cell, styles.colQty]}>
-                <Text style={[styles.cellBold, styles.right]}>
-                  {group.subtotalQtyOnHand.toFixed(2)}
-                </Text>
-              </View>
-              <View style={[styles.cell, styles.colQty]}>
-                <Text style={[styles.cellBold, styles.right]}>
-                  {group.subtotalQtyReserved.toFixed(2)}
-                </Text>
-              </View>
-              <View style={[styles.cell, styles.colQty]}>
-                <Text style={[styles.cellBold, styles.right]}>
-                  {group.subtotalQtyAvailable.toFixed(2)}
-                </Text>
-              </View>
-              <View style={[styles.cell, styles.colValue]}>
-                <Text style={[styles.cellBold, styles.right]}>
-                  {group.subtotalStockValue.toFixed(2)}
-                </Text>
-              </View>
-              <View style={[styles.cell, styles.colUpdated]}>
-                <Text style={styles.cellBold}>
-                  {group.rows.length} {group.rows.length === 1 ? "batch" : "batches"}
-                </Text>
-              </View>
-            </View>
-          </React.Fragment>
-        ))}
-      </View>
-
-      <Text style={styles.footer}>
-        Page {currentPage} of {totalPages} • {totalRows} {totalRows === 1 ? "batch" : "batches"}
-      </Text>
-    </Page>
+        <Text
+          style={styles.footer}
+          fixed
+          render={({ pageNumber, totalPages }) => pageLabel(pageNumber, totalPages)}
+        />
+      </Page>
+    ))}
   </Document>
 );

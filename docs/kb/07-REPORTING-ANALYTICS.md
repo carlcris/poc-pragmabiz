@@ -147,39 +147,25 @@ Shows total inventory value by warehouse using the configured inventory default 
 #### Stock Aging Report
 **Endpoint**: `GET /api/reports/stock-aging`
 
-Shows how long inventory has been in stock, categorized by age buckets.
+Shows positive, non-deleted location-batch stock balances in the current business unit, grouped by item (default) or batch code in the PDF. Items without positive location-batch stock are excluded.
 
 **Parameters**:
-- `page` / `limit` (optional, paginated response)
+- `page` / `limit` (optional; normal responses default to 25 rows and allow 10–50 rows per page)
+- `exportMode=pdf` (optional; returns all matching rows in one response, ignoring `page` and `limit`)
+- `groupBy=item|batch` (optional, defaults to `item`; invalid values return `400`)
 - `search` (optional, matches item code/name, batch code, or batch-location scan code)
 - `category` (optional, category id or name)
-- `ageBucket` (optional, defaults to `90_plus`)
+- `ageBucket` (optional, defaults to `90_plus`, meaning strictly older than 90 days)
 
 **Age Buckets**: `all`, `0_30`, `31_60`, `61_90`, `91_180`, `181_plus`, `90_plus`
 
-The report applies business-unit scope before the 5,000 source-row safety cap. Requests that remain
-too broad after scope and filters return `413`; narrow category, search, or age bucket filters before
-regenerating the report.
+Company, business-unit, category, positive quantity, and non-deleted balance filters apply in the database. The API reads source rows in stable ID order in batches of up to 1,000, advancing by the actual returned row count so a lower Supabase response cap cannot silently truncate the report. An exact count verifies completeness; source-count changes during retrieval return `409` and require retrying.
 
-**Output**:
-```json
-{
-  "items": [
-    {
-      "item": "Widget ABC",
-      "warehouse": "Main Warehouse",
-      "age_distribution": {
-        "0-30_days": { "quantity": 50, "value": 425.00 },
-        "31-60_days": { "quantity": 75, "value": 637.50 },
-        "61-90_days": { "quantity": 20, "value": 170.00 },
-        "90+_days": { "quantity": 5, "value": 42.50 }
-      },
-      "total_quantity": 150,
-      "total_value": 1275.00
-    }
-  ]
-}
-```
+The existing safety ceiling is **5,000 source location-batch rows**, before search and age filtering. Requests above that ceiling return `413` without partial data. Narrow the category or business-unit scope; changing search or age filters does not reduce the source count. Accepted requests apply search, aging, sorting, summaries, and pagination on the server across the complete source dataset.
+
+PDF preview/download uses `exportMode=pdf`, including every matching row for an accepted request, rather than only the first 50 rows. Groups are ordered by their oldest stock age descending, and rows within each group are ordered by age descending. Normal paginated API rows are also sorted by age descending before pagination. Each group subtotal includes all its matching location-batch rows. Batch mode combines identical batch codes across items and warehouses within the filtered business-unit scope, including shared opening-balance codes. Missing batch codes remain separate by batch ID. Batch headers show the batch code; detail rows show item name/code and receipt date. Item mode retains item headers and batch details. Oversized and failed requests show a translated error and clear the previous preview. The warehouse/location cell shows the warehouse name only, with the full ancestor-to-leaf location-name path underneath. Warehouse and location codes are omitted, and the warehouse name is not repeated in the subtext. `locationPath` contains this names-only location address, resolved from hierarchy IDs with deduplicated, bounded ancestor queries. PDF columns show warehouse/location, batch or item details, age, on-hand/reserved/available quantities, and stock value; Updated At is not displayed. The age column shows total elapsed days with smaller calendar year/month/day subtext, calculated server-side from the batch receipt timestamp to one shared report-time snapshot. Calendar arithmetic uses UTC, actual month lengths, and leap years; month-end anniversaries clamp to the last day of shorter months. Remaining partial days are not counted. For example, 2025-01-01 to 2026-02-04 is 399 days and `1 y 1 m 3 d`. Missing/invalid receipt dates show `--` for the duration; future receipts show zero age. Zero-valued units are omitted from the localized subtext (for example, `3 m 4 d`); an entirely zero duration displays `0 d`. Calendar components are supplied as `batchAgeDuration`; sorting still uses total age in days. Group stock-row counts appear beneath the subtotal label. PDF footers show actual printed page numbers and the matching row count. PDF layout is processed in sections of at most 50 stock rows to avoid repeatedly laying out a report-sized table. These are layout sections, not data limits: every matching row remains included, group headings repeat for continued sections, and each group subtotal appears only after its final section. Long content can still wrap onto additional printed pages. PDF libraries load concurrently with the data request.
+
+**Response**: `{ data, groups, summary, pagination, filters }`. PDF mode includes server-computed `groups`: group ID, title/subtitle, `startIndex` and `rowCount` into the returned `data` array, quantity/value subtotals, and oldest age. Rows are serialized only once. Normal paginated requests return an empty `groups` array; `filters.groupBy` records the selected mode. `data` contains location-batch rows with item, warehouse/location, receipt date, age, quantities, and stock value. `summary` covers all matching rows. Normal requests paginate `data`; PDF mode returns all matches with `pagination.page = 1`, `limit = 5000`, and `totalPages = 1` (API pages, not printed PDF pages).
 
 #### Stock Movement Report
 **Endpoint**: `GET /api/reports/stock-movement`

@@ -1844,3 +1844,16 @@ redistribute stock. Concurrent allocation or location edits must not create dupl
 - Run `supabase/tests/stock-adjustment-batch-destination.sql` and
   `supabase/tests/stock-adjustment-received-date.sql` against local Supabase. Both run authenticated
   operations and roll back fixtures; duplicate rejection also checks rollback after an earlier line.
+
+
+### Stock Aging completeness regression
+
+- Create or select more than 50 matching location-batch balances within one business unit. Generate Stock Aging with All Ages and confirm the PDF includes rows after the first 50, complete item subtotals, and correct printed page numbers.
+- With more than 1,000 positive source balances (but at most 5,000), search for an item beyond the first source batch. Confirm it appears and totals include its complete matching stock. Repeat with a lower Supabase API row cap.
+- Confirm normal API requests remain paginated (10–50 rows) while `exportMode=pdf` returns all matches regardless of `page`/`limit`.
+- Above 5,000 source balances, confirm preview shows the translated size error and no stale/partial PDF. Narrow category or business-unit scope; search/age filters alone do not reduce the source count.
+- Confirm zero-stock balances, other business units, and nonmatching categories/ages remain excluded. The default age filter is strictly greater than 90 days.
+
+- PDF performance: run `npx vitest run src/components/reports/StockAgingReportPDF.test.tsx` for a 1,000-row Unicode render benchmark and row-order/subtotal partition checks. Set `STOCK_AGING_PDF_OUTPUT=/tmp/stock-aging` (writes `-item.pdf` and `-batch.pdf`) to inspect the generated PDF. Check first, continuation, and final pages; all 1,000 batch codes must appear exactly once and the item subtotal once. Layout sections contain at most 50 rows and may span multiple printed pages; this does not limit exported data. Local benchmark: approximately 25 seconds before partitioning versus 4 seconds after (rendering only, not network/database time; hardware and content affect results).
+
+- Stock Aging grouping: confirm Item is selected by default. Switch to Batch and regenerate; identical batch codes across different items/warehouses in scope share one header and subtotal, while the detail column shows each item name/code. Confirm totals and row counts match Item mode, filters still apply, and switching grouping clears the old preview. Test a batch spanning more than 50 rows: repeated section headers are allowed, but the complete batch subtotal must appear once. Missing batch codes must remain separate by batch ID. English and Chinese grouping/subtotal/row-count labels must display correctly.

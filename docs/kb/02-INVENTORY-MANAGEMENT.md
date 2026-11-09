@@ -1578,7 +1578,7 @@ Requests that would aggregate more than 5,000 source rows are rejected so the re
 
 Shows how long inventory has been in stock, categorized by age buckets (0-30, 31-60, 61-90, 90+ days).
 
-The report applies business-unit scope and rejects requests that would aggregate more than 5,000 source rows. Narrow age bucket, category, or search filters before regenerating the report.
+The report includes positive location-batch stock in the current business unit and defaults to stock strictly older than 90 days; choose All Ages to include younger stock. Choose Group By → Item (default) or Batch in report settings. Batch mode groups the same batch code across matching items/warehouses and displays item details with batch subtotals. PDF preview/download includes all matching rows, not just the first 50. Source rows are retrieved in ordered batches to avoid Supabase response truncation. Requests above 5,000 source rows are rejected with a visible error rather than a partial report. Narrow category or business-unit scope to reduce this count; search and age filters apply after the source limit. See the Stock Aging section in [Reporting & Analytics](07-REPORTING-ANALYTICS.md) for API details.
 
 ### Stock Movement Report
 

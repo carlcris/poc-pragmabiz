@@ -4,8 +4,11 @@
 
 The Mobile App module provides a native React Native Expo application for warehouse operations including picking, receiving, barcode scanning, and delivery confirmations. The app runs on iOS and Android devices.
 
-Public HTTPS builds use `https://achlers.app` as `EXPO_PUBLIC_API_BASE_URL`, configured in
-`apps/mobile/eas.json`. The `local-apk` profile uses its explicit LAN API override. Rebuild the app
+Production HTTPS builds use `https://achlers.app` as `EXPO_PUBLIC_API_BASE_URL`, configured in
+`apps/mobile/eas.json`. The `staging-apk` profile uses `https://stagingachlers.netlify.app` and
+disables automatic version increments, preserving the current app version and remote Android
+versionCode. It shares the production package and signing credentials, so it replaces the
+production app when installed. The `local-apk` profile uses its explicit LAN API override. Rebuild the app
 after changing this setting because the API URL is embedded in the mobile bundle.
 
 The `apk` profile enables automatic increments of the Android `versionCode` managed remotely

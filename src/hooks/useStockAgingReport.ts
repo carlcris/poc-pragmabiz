@@ -1,80 +1,15 @@
+import type { StockAgingReportFilters, StockAgingReportResponse } from "@/types/stock-aging-report";
 import { useQuery } from "@tanstack/react-query";
 import { STOCK_AGING_REPORT_QUERY_KEY } from "@/hooks/queryKeys";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
-export type StockAgingAgeBucket =
-  | "all"
-  | "0_30"
-  | "31_60"
-  | "61_90"
-  | "91_180"
-  | "181_plus"
-  | "90_plus";
-
-export type StockAgingReportFilters = {
-  page?: number;
-  limit?: number;
-  search?: string;
-  category?: string;
-  ageBucket?: StockAgingAgeBucket;
-  enabled?: boolean;
-};
-
-export type StockAgingReportRow = {
-  id: string;
-  itemId: string;
-  itemCode: string | null;
-  itemName: string | null;
-  category: string;
-  warehouseId: string;
-  warehouseCode: string | null;
-  warehouseName: string | null;
-  locationId: string;
-  locationCode: string | null;
-  locationName: string | null;
-  locationPath: string | null;
-  itemBatchId: string;
-  batchCode: string | null;
-  batchReceivedAt: string | null;
-  batchAgeDays: number;
-  ageBucket: Exclude<StockAgingAgeBucket, "all">;
-  qtyOnHand: number;
-  qtyReserved: number;
-  qtyAvailable: number;
-  unitCost: number;
-  stockValue: number;
-  batchLocationSku: string | null;
-  updatedAt: string;
-};
-
-export type StockAgingReportResponse = {
-  data: StockAgingReportRow[];
-  summary: {
-    rowCount: number;
-    totalQtyOnHand: number;
-    totalQtyReserved: number;
-    totalQtyAvailable: number;
-    totalStockValue: number;
-    aged90PlusRows: number;
-    aged90PlusQty: number;
-    oldestAgeDays: number;
-    uniqueLocations: number;
-    uniqueBatches: number;
-  };
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-  filters: {
-    search: string | null;
-    category: string | null;
-    ageBucket: StockAgingAgeBucket;
-    currentBusinessUnitId: string | null;
-  };
-};
+export class StockAgingReportError extends Error {
+  constructor(public readonly status: number) {
+    super("Failed to fetch stock aging report");
+    this.name = "StockAgingReportError";
+  }
+}
 
 export function useStockAgingReport(filters: StockAgingReportFilters) {
   const { enabled = true, ...queryFilters } = filters;
@@ -91,9 +26,12 @@ export function useStockAgingReport(filters: StockAgingReportFilters) {
       if (queryFilters.category) params.append("category", queryFilters.category);
       if (queryFilters.ageBucket) params.append("ageBucket", queryFilters.ageBucket);
 
+      if (queryFilters.groupBy) params.append("groupBy", queryFilters.groupBy);
+      if (queryFilters.exportMode) params.append("exportMode", queryFilters.exportMode);
+
       const response = await fetch(`${API_BASE_URL}/reports/stock-aging?${params.toString()}`);
       if (!response.ok) {
-        throw new Error("Failed to fetch stock aging report");
+        throw new StockAgingReportError(response.status);
       }
 
       return response.json();

@@ -12,6 +12,13 @@
       "developmentClient": true,
       "distribution": "internal"
     },
+    "staging-apk": {
+      "extends": "apk",
+      "autoIncrement": false,
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://stagingachlers.netlify.app"
+      }
+    },
     "local-apk": {
       "extends": "apk",
       "env": {

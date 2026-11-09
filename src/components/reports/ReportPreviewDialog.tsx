@@ -1,5 +1,7 @@
 "use client";
 
+import type { StockAgingAgeBucket, StockAgingGroupBy } from "@/types/stock-aging-report";
+
 import { useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Download, Eye, Loader2, Printer } from "lucide-react";
@@ -37,8 +39,7 @@ import {
 import { useShipmentsReport, type ShipmentStageFilter } from "@/hooks/useShipmentsReport";
 import {
   useStockAgingReport,
-  type StockAgingAgeBucket,
-  type StockAgingReportRow,
+  StockAgingReportError,
 } from "@/hooks/useStockAgingReport";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useTransformationEfficiencyReport } from "@/hooks/useTransformationEfficiencyReport";
@@ -329,6 +330,8 @@ function StockAgingReportPreview({
 }) {
   const tReports = useTranslations("reportsPage");
   const t = useTranslations("stockAgingReportPage");
+  const [groupBy, setGroupBy] = useState<StockAgingGroupBy>("item");
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
@@ -338,8 +341,8 @@ function StockAgingReportPreview({
 
   const reportQuery = useStockAgingReport({
     enabled: false,
-    page: 1,
-    limit: 50,
+    exportMode: "pdf",
+    groupBy,
     search: search || undefined,
     category: category === "all" ? undefined : category,
     ageBucket,
@@ -355,7 +358,8 @@ function StockAgingReportPreview({
 
   useEffect(() => {
     replacePreviewUrl(null);
-  }, [search, category, ageBucket, replacePreviewUrl]);
+    setPreviewError(null);
+  }, [search, category, ageBucket, groupBy, replacePreviewUrl]);
 
   useEffect(() => {
     onPreviewStateChange({
@@ -367,55 +371,21 @@ function StockAgingReportPreview({
 
   const handlePreview = async () => {
     setIsGeneratingPreview(true);
+    setPreviewError(null);
+    replacePreviewUrl(null);
     try {
-      const { data } = await reportQuery.refetch();
-      if (!data) return;
-
-      const previewGroups = data.data.reduce<
-        Array<{
-          itemId: string;
-          itemName: string;
-          itemCode: string | null;
-          category: string;
-          rows: StockAgingReportRow[];
-          subtotalQtyOnHand: number;
-          subtotalQtyReserved: number;
-          subtotalQtyAvailable: number;
-          subtotalStockValue: number;
-          oldestAgeDays: number;
-        }>
-      >((groups, row) => {
-        const lastGroup = groups[groups.length - 1];
-        if (lastGroup && lastGroup.itemId === row.itemId) {
-          lastGroup.rows.push(row);
-          lastGroup.subtotalQtyOnHand += row.qtyOnHand;
-          lastGroup.subtotalQtyReserved += row.qtyReserved;
-          lastGroup.subtotalQtyAvailable += row.qtyAvailable;
-          lastGroup.subtotalStockValue += row.stockValue;
-          lastGroup.oldestAgeDays = Math.max(lastGroup.oldestAgeDays, row.batchAgeDays);
-          return groups;
-        }
-
-        groups.push({
-          itemId: row.itemId,
-          itemName: row.itemName || row.itemCode || row.itemId,
-          itemCode: row.itemCode,
-          category: row.category,
-          rows: [row],
-          subtotalQtyOnHand: row.qtyOnHand,
-          subtotalQtyReserved: row.qtyReserved,
-          subtotalQtyAvailable: row.qtyAvailable,
-          subtotalStockValue: row.stockValue,
-          oldestAgeDays: row.batchAgeDays,
-        });
-
-        return groups;
-      }, []);
-
-      const [{ pdf }, { StockAgingReportPDF }] = await Promise.all([
+      const [{ data, error }, { pdf }, { StockAgingReportPDF }] = await Promise.all([
+        reportQuery.refetch(),
         import("@react-pdf/renderer"),
         import("@/components/reports/StockAgingReportPDF"),
       ]);
+      if (error) throw error;
+      if (!data) throw new Error("Missing stock aging response");
+
+      const previewGroups = data.groups.map((group) => ({
+        ...group,
+        rows: data.data.slice(group.startIndex, group.startIndex + group.rowCount),
+      }));
 
       const blob = await pdf(
         <StockAgingReportPDF
@@ -423,35 +393,66 @@ function StockAgingReportPreview({
           subtitle={t("subtitle")}
           generatedAtLabel={t("generatedAt")}
           warehouseLocationLabel={t("warehouseLocation")}
-          batchLabel={t("batch")}
+          detailLabel={groupBy === "batch" ? t("item") : t("batch")}
+          groupBy={groupBy}
           ageDaysLabel={t("ageDays")}
+          ageDurationLabel={(years, months, days) =>
+            t("ageDuration", { years, months, days }).trim() || t("ageZero")
+          }
           qtyOnHandLabel={t("qtyOnHand")}
           qtyReservedLabel={t("qtyReserved")}
           qtyAvailableLabel={t("qtyAvailable")}
           stockValueLabel={t("stockValue")}
-          updatedAtLabel={t("updatedAt")}
-          itemSubtotalLabel={t("itemSubtotal")}
+          subtotalLabel={groupBy === "batch" ? t("batchSubtotal") : t("itemSubtotal")}
+          oldestAgeLabel={(value) => t("oldestAgeValue", { value })}
+          rowCountLabel={(count) => t("stockRowsCount", { count })}
           noValueLabel={t("noValue")}
           groups={previewGroups}
-          currentPage={data.pagination.page}
-          totalPages={data.pagination.totalPages}
-          totalRows={data.pagination.total}
+          pageLabel={(page, totalPages) =>
+            t("pageOfTotal", { page, totalPages, total: data.pagination.total })
+          }
         />
       ).toBlob();
 
       replacePreviewUrl(URL.createObjectURL(blob));
+    } catch (error) {
+      setPreviewError(
+        error instanceof StockAgingReportError && error.status === 413
+          ? t("reportTooLarge")
+          : t("loadError")
+      );
     } finally {
       setIsGeneratingPreview(false);
     }
   };
 
   return (
-    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-4">
       <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
         <div className="space-y-1">
           <h3 className="font-semibold">{tReports("reportSettings")}</h3>
         </div>
         <div className="mt-4 space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="stock-aging-group-by" className="text-sm font-medium">
+              {t("groupBy")}
+            </label>
+            <Select
+              value={groupBy}
+              onValueChange={(value) => {
+                if (value === "item" || value === "batch") setGroupBy(value);
+              }}
+              disabled={isGeneratingPreview}
+            >
+              <SelectTrigger id="stock-aging-group-by">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="item">{t("item")}</SelectItem>
+                <SelectItem value="batch">{t("batch")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("itemSearch")}</label>
             <Input
@@ -506,7 +507,12 @@ function StockAgingReportPreview({
         </div>
       </div>
 
-      <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className="flex h-full min-h-0 flex-col gap-4 lg:col-span-3">
+        {previewError && (
+          <p role="alert" className="text-sm text-destructive">
+            {previewError}
+          </p>
+        )}
         <PreviewFrame
           url={previewUrl}
           isGenerating={isGeneratingPreview}

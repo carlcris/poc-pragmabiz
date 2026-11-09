@@ -39,6 +39,7 @@ Run EAS from this `apps/mobile` directory so it uses this app's Expo project and
 npm run build:android:local
 npm run build:android:apk:local
 eas build --platform android --profile local-apk --local
+eas build --platform android --profile staging-apk --local
 ```
 
 The `apk` profile enables `autoIncrement`, and `local-apk` inherits it. Builds increment the
@@ -53,6 +54,10 @@ The `local-apk` profile embeds the private LAN API address configured in `eas.js
 Android cleartext traffic only for that HTTP build. Confirm that the address belongs to the API
 server on the current network before building. The device and API server must be on the same LAN,
 and the API server must listen on a non-loopback interface.
+
+The `staging-apk` profile uses `https://stagingachlers.netlify.app` with `autoIncrement: false`,
+preserving the current app version and remote Android versionCode. It shares the production
+Android package and signing credentials, so installing it replaces the production app.
 
 All other EAS profiles use the public HTTPS API at `https://achlers.app` and retain
 Android's default cleartext-traffic restriction.
