@@ -716,8 +716,8 @@ function ItemsPageContent() {
                         </div>
                       </TableCell>
                       <TableCell className="font-medium tabular-nums">{item.code}</TableCell>
-                      <TableCell className="w-72 max-w-72 whitespace-normal break-words text-primary">
-                        <div className="font-medium leading-snug hover:underline" title={item.name}>
+                      <TableCell className="w-72 max-w-72 whitespace-normal break-words text-violet-700 dark:text-violet-300">
+                        <div className="font-semibold leading-snug hover:underline" title={item.name}>
                           {item.name}
                         </div>
                         {item.chineseName ? (
