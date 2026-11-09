@@ -113,3 +113,18 @@ it("disables paging while a request is in flight", () => {
   render();
   expect(next().disabled).toBe(true);
 });
+
+it("passes the item filter to server search and resets paging when the item changes", () => {
+  render({ itemId: "item-a" });
+  next().onClick();
+  render({ itemId: "item-a" });
+  expect(state.lookup).toHaveBeenLastCalledWith(
+    "wh",
+    expect.objectContaining({ itemId: "item-a", page: 2, limit: 5 })
+  );
+  render({ itemId: "item-b" });
+  expect(state.lookup).toHaveBeenLastCalledWith(
+    "wh",
+    expect.objectContaining({ itemId: "item-b", page: 1, limit: 5 })
+  );
+});

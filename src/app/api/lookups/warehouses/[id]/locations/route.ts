@@ -76,6 +76,10 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     if (!Number.isSafeInteger(page) || page < 1 || page > 1_000_000) {
       return NextResponse.json({ error: "Invalid page" }, { status: 400 });
     }
+    const itemId = searchParams.get("itemId");
+    if (itemId !== null && !UUID_PATTERN.test(itemId)) {
+      return NextResponse.json({ error: "Invalid item" }, { status: 400 });
+    }
     const selectedId = searchParams.get("selectedId")?.trim() || null;
     if (selectedId && !UUID_PATTERN.test(selectedId)) {
       return NextResponse.json({ error: "Invalid selected location" }, { status: 400 });
@@ -110,11 +114,13 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Warehouse not found" }, { status: 404 });
     }
 
+    // Empty inner embedding filters parent locations without loading batch rows.
+    const projection =
+      "id, company_id, warehouse_id, code, name, parent_id, path_ids, location_path, location_type, is_pickable, is_storable, is_active, created_at, updated_at" +
+      (itemId ? ", stock:item_batch_locations!inner()" : "");
     let query = adminSupabase
       .from("warehouse_locations")
-      .select(
-        "id, company_id, warehouse_id, code, name, parent_id, path_ids, location_path, location_type, is_pickable, is_storable, is_active, created_at, updated_at"
-      )
+      .select(projection)
       .eq("company_id", companyId)
       .eq("warehouse_id", warehouseId)
       .is("deleted_at", null)
@@ -122,6 +128,14 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       .order("id", { ascending: true })
       .range((page - 1) * limit, page * limit);
 
+    if (itemId) {
+      query = query
+        .eq("stock.item_id", itemId)
+        .eq("stock.company_id", companyId)
+        .eq("stock.warehouse_id", warehouseId)
+        .is("stock.deleted_at", null)
+        .gt("stock.qty_on_hand", 0);
+    }
     if (!includeInactive) query = query.eq("is_active", true);
     if (excludeSubtreeId) query = query.not("path_ids", "cs", `{${excludeSubtreeId}}`);
     if (pickableOnly) query = query.eq("is_pickable", true);
@@ -138,7 +152,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       if (pattern) query = query.ilike("location_path", `%${pattern}%`);
     }
 
-    const { data: matches, error } = await query;
+    const { data: matches, error } = await query.returns<LocationOptionRow[]>();
     if (error) {
       console.error("Failed to fetch warehouse location lookup options:", error);
       return NextResponse.json({ error: "Failed to fetch warehouse locations" }, { status: 500 });
@@ -150,14 +164,20 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     if (selectedId && !selected) {
       let selectedQuery = adminSupabase
         .from("warehouse_locations")
-        .select(
-          "id, company_id, warehouse_id, code, name, parent_id, path_ids, location_path, location_type, is_pickable, is_storable, is_active, created_at, updated_at"
-        )
+        .select(projection)
         .eq("id", selectedId)
         .eq("company_id", companyId)
         .eq("warehouse_id", warehouseId)
         .is("deleted_at", null);
 
+      if (itemId) {
+        selectedQuery = selectedQuery
+          .eq("stock.item_id", itemId)
+          .eq("stock.company_id", companyId)
+          .eq("stock.warehouse_id", warehouseId)
+          .is("stock.deleted_at", null)
+          .gt("stock.qty_on_hand", 0);
+      }
       if (!includeInactive) selectedQuery = selectedQuery.eq("is_active", true);
       if (excludeSubtreeId)
         selectedQuery = selectedQuery.not("path_ids", "cs", `{${excludeSubtreeId}}`);
@@ -165,7 +185,9 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       if (storableOnly) selectedQuery = selectedQuery.eq("is_storable", true);
       if (locationType) selectedQuery = selectedQuery.eq("location_type", locationType);
 
-      const { data: selectedLocation, error: selectedError } = await selectedQuery.maybeSingle();
+      const { data: selectedLocation, error: selectedError } = await selectedQuery
+        .returns<LocationOptionRow[]>()
+        .maybeSingle();
       if (selectedError) {
         console.error("Failed to fetch selected warehouse location option:", selectedError);
         return NextResponse.json({ error: "Failed to fetch warehouse locations" }, { status: 500 });

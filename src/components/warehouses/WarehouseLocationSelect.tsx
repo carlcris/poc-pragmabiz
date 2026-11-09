@@ -22,6 +22,7 @@ export type WarehouseLocationOption = {
 
 type WarehouseLocationSelectProps = {
   warehouseId: string | null | undefined;
+  itemId?: string;
   value: string;
   onValueChange: (value: string) => void;
   selectedOption?: WarehouseLocationOption | null;
@@ -42,6 +43,7 @@ type WarehouseLocationSelectProps = {
 
 export function WarehouseLocationSelect({
   warehouseId,
+  itemId,
   value,
   onValueChange,
   selectedOption = null,
@@ -69,6 +71,7 @@ export function WarehouseLocationSelect({
   const debouncedSearch = useDebouncedValue(search.trim(), 300);
   const scope = JSON.stringify([
     warehouseId,
+    itemId,
     debouncedSearch,
     includeInactive,
     storableOnly,
@@ -84,6 +87,7 @@ export function WarehouseLocationSelect({
     value && (lastSelectedOption?.id !== value || !lastSelectedOption.locationNamePath)
   );
   const { data, isFetching } = useLookupWarehouseLocations(warehouseId, {
+    itemId,
     search: debouncedSearch || undefined,
     limit: 5,
     page,

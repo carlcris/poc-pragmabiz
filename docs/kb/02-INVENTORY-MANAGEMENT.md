@@ -333,7 +333,9 @@ converted quantities must be positive with at most two decimal places; the base 
 source rack’s available base quantity and blocks a converted total above it (1 box of 144 cannot
 move from a source with 58). Reserved stock is excluded. Submission is blocked if location stock
 cannot be loaded; the database rechecks availability transactionally to handle concurrent changes. The
-warehouse and rack selectors search the server and initially return at most five options. The
+warehouse and rack selectors search the server and initially return at most five options.
+**From Location** lists only locations holding positive on-hand stock of the selected item in the
+source warehouse; this filter also applies to search, later pages, and selected-location lookup. The
 destination warehouse need not already hold the item. Both warehouses must be active and belong
 to the current business unit, and both racks must be active storage locations. Submission posts
 immediately; it does not create a Stock Request, Delivery Note, or in-transit receipt workflow.

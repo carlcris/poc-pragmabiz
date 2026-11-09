@@ -28,6 +28,7 @@ vi.mock("@/lib/warehouse-location-name-path", () => ({
 }));
 
 // Rack 01's code sorts after Rack 02-07's codes, reproducing the production omission.
+const itemId = "10000000-0000-4000-8000-000000000001";
 const locations = Array.from({ length: 7 }, (_, i) => {
   const rack = String(i + 1).padStart(2, "0");
   return {
@@ -44,6 +45,13 @@ const locations = Array.from({ length: 7 }, (_, i) => {
     is_pickable: true,
     location_type: "bin",
     deleted_at: null,
+    stock: {
+      item_id: itemId,
+      company_id: "company",
+      warehouse_id: "warehouse",
+      deleted_at: null,
+      qty_on_hand: i % 2 === 0 ? 10 : 0,
+    },
   };
 });
 
@@ -60,7 +68,18 @@ function query(table: string) {
     eq: (column: string, value: unknown) => {
       state.operations.push(["eq", column, value]);
       if (table === "warehouse_locations")
-        rows = rows.filter((row) => Reflect.get(row, column) === value);
+        rows = rows.filter(
+          (row) =>
+            (column.startsWith("stock.")
+              ? Reflect.get(row.stock, column.slice(6))
+              : Reflect.get(row, column)) === value
+        );
+      return builder;
+    },
+    returns: () => builder,
+    gt: (column: string, value: number) => {
+      state.operations.push(["gt", column, value]);
+      rows = rows.filter((row) => Number(Reflect.get(row.stock, column.slice(6))) > value);
       return builder;
     },
     is: (...args: unknown[]) => {
@@ -195,4 +214,35 @@ it("returns safe errors", async () => {
   expect(response.status).toBe(500);
   expect(await response.text()).not.toContain("private details");
   log.mockRestore();
+});
+
+it("filters item stock before paging and excludes empty selected locations", async () => {
+  const first = await (await request(`itemId=${itemId}&limit=2`)).json();
+  const second = await (
+    await request(`itemId=${itemId}&limit=2&page=2&selectedId=${locations[1].id}`)
+  ).json();
+  expect(first.data.map((row: { id: string }) => row.id)).toEqual([
+    locations[0].id,
+    locations[2].id,
+  ]);
+  expect(first.hasMore).toBe(true);
+  expect(second.data.map((row: { id: string }) => row.id)).toEqual([
+    locations[4].id,
+    locations[6].id,
+  ]);
+  expect(second.hasMore).toBe(false);
+  expect(second.selected).toBeNull();
+  expect(state.operations).toContainEqual(["eq", "stock.company_id", "company"]);
+  expect(state.operations).toContainEqual(["eq", "stock.warehouse_id", "warehouse"]);
+  expect(state.operations).toContainEqual(["is", "stock.deleted_at", null]);
+});
+it("searches only stocked locations of the requested item", async () => {
+  const empty = await (await request(`itemId=${itemId}&search=Rack%2002`)).json();
+  expect(empty.data).toEqual([]);
+  const other = await (await request("itemId=20000000-0000-4000-8000-000000000001")).json();
+  expect(other.data).toEqual([]);
+});
+it("rejects malformed item filters", async () => {
+  expect((await request("itemId=invalid")).status).toBe(400);
+  expect(state.from).not.toHaveBeenCalled();
 });

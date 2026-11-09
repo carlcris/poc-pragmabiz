@@ -240,6 +240,11 @@ These are the records everything else in the app is built on. Before testing any
 
 ### Move Stock from the Item Locations tab
 
+Verify **From Location** includes only locations with positive on-hand stock of this item in the
+selected source warehouse, including when searching and paging. Empty locations and locations
+holding only other items must be absent. Empty destination locations remain selectable. After
+moving all stock out of a source, reopen the dialog and verify that source is no longer offered.
+
 Open an item's **Locations** tab and click **Move Stock**. Choose source and destination
 warehouses/racks in the current business unit, then enter a positive quantity and select its unit.
 The base unit is selected initially. Entered and converted quantities allow at most two decimal places. The move posts immediately. `create` access to both Stock

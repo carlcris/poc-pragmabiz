@@ -174,6 +174,7 @@ export function MoveStockDialog({
             <WarehouseLocationSelect
               key={sourceWarehouseId}
               warehouseId={sourceWarehouseId}
+              itemId={itemId}
               value={fromLocationId}
               storableOnly
               disabled={moveStock.isPending}

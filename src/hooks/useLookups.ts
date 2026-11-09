@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { ITEM_LOCATIONS_QUERY_KEY } from "@/hooks/queryKeys";
 import { apiClient } from "@/lib/api";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { useAuthStore } from "@/stores/authStore";
@@ -117,6 +118,7 @@ export function useLookupWarehouses(params: {
 export function useLookupWarehouseLocations(
   warehouseId: string | null | undefined,
   params?: {
+    itemId?: string;
     search?: string;
     limit?: number;
     page?: number;
@@ -130,7 +132,7 @@ export function useLookupWarehouseLocations(
 ) {
   return useQuery({
     queryKey: [
-      "lookups",
+      params?.itemId ? ITEM_LOCATIONS_QUERY_KEY : "lookups",
       "warehouse_locations",
       warehouseId ?? null,
       params?.search ?? "",
@@ -142,6 +144,7 @@ export function useLookupWarehouseLocations(
       params?.locationType ?? null,
       params?.excludeSubtreeId ?? null,
       params?.pickableOnly ?? false,
+      params?.itemId ?? null,
     ],
     enabled: !!warehouseId,
     queryFn: () =>
@@ -149,6 +152,7 @@ export function useLookupWarehouseLocations(
         `/api/lookups/warehouses/${warehouseId!}/locations`,
         {
           params: {
+            itemId: params?.itemId,
             search: params?.search,
             page: params?.page ?? 1,
             limit: params?.limit ?? 5,
