@@ -682,11 +682,7 @@ export default function StockAdjustmentsPage() {
                     <div className="text-xs font-medium uppercase text-muted-foreground">
                       {t("location")}
                     </div>
-                    <div className="mt-1">
-                      {adjustmentToView.locationName?.trim() ||
-                        adjustmentToView.locationCode ||
-                        t("noLocation")}
-                    </div>
+                    <div className="mt-1">{adjustmentToView.locationPath || t("noLocation")}</div>
                   </div>
                   <div>
                     <div className="text-xs font-medium uppercase text-muted-foreground">

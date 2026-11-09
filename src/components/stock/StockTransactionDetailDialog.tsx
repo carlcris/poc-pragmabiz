@@ -69,12 +69,14 @@ interface TransactionDetail {
   fromLocationId?: string | null;
   fromLocationCode?: string | null;
   fromLocationName?: string | null;
+  fromLocationPath?: string | null;
   toWarehouseId: string | null;
   toWarehouseCode: string | null;
   toWarehouseName: string | null;
   toLocationId?: string | null;
   toLocationCode?: string | null;
   toLocationName?: string | null;
+  toLocationPath?: string | null;
   referenceType: string | null;
   referenceId: string | null;
   status: string;
@@ -107,6 +109,11 @@ export function StockTransactionDetailDialog({
     },
     enabled: !!transactionId && open,
   });
+
+  const sourceLocationPath =
+    transaction?.transactionType === "in"
+      ? transaction.toLocationPath
+      : transaction?.fromLocationPath;
 
   const getTransactionTypeIcon = (type: TransactionType) => {
     switch (type) {
@@ -334,10 +341,9 @@ export function StockTransactionDetailDialog({
                     <p className="text-sm font-semibold">
                       {transaction.warehouseCode} - {transaction.warehouseName}
                     </p>
-                    {(transaction.fromLocationCode || transaction.fromLocationName) && (
+                    {sourceLocationPath && (
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {t("location")}: {transaction.fromLocationCode}
-                        {transaction.fromLocationName ? ` - ${transaction.fromLocationName}` : ""}
+                        {t("location")}: {sourceLocationPath}
                       </p>
                     )}
                   </div>
@@ -351,10 +357,9 @@ export function StockTransactionDetailDialog({
                         <p className="text-sm font-semibold">
                           {transaction.toWarehouseCode} - {transaction.toWarehouseName}
                         </p>
-                        {(transaction.toLocationCode || transaction.toLocationName) && (
+                        {transaction.toLocationPath && (
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {t("location")}: {transaction.toLocationCode}
-                            {transaction.toLocationName ? ` - ${transaction.toLocationName}` : ""}
+                            {t("location")}: {transaction.toLocationPath}
                           </p>
                         )}
                       </div>

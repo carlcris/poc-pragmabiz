@@ -121,14 +121,14 @@ export default function StockTransactionsPage() {
 
   const formatLocationLabel = (transaction: (typeof transactions)[number]) => {
     if (transaction.transactionType === "transfer") {
-      const fromLabel = transaction.fromLocationCode || "-";
-      const toLabel = transaction.toLocationCode || "-";
+      const fromLabel = transaction.fromLocationPath || "-";
+      const toLabel = transaction.toLocationPath || "-";
       return `${fromLabel} → ${toLabel}`;
     }
     if (transaction.transactionType === "in") {
-      return transaction.toLocationCode || "-";
+      return transaction.toLocationPath || "-";
     }
-    return transaction.fromLocationCode || "-";
+    return transaction.fromLocationPath || "-";
   };
 
   const formatWarehouseCell = (transaction: (typeof transactions)[number]) => {
@@ -139,7 +139,7 @@ export default function StockTransactionsPage() {
       return {
         warehouse: warehouseLabel,
         location: locationLabel,
-        transfer: `${transaction.toWarehouseCode} / ${transaction.toLocationCode || "-"}`,
+        transfer: `${transaction.toWarehouseCode} / ${transaction.toLocationPath || "-"}`,
       };
     }
 

@@ -1,3 +1,4 @@
+import { fetchStockTransactionLocationPaths } from "@/lib/stock-transaction-location-paths";
 import {
   setActivityContextIfAvailable,
   withActivityLogging,
@@ -49,12 +50,12 @@ type TransactionListItemRow = {
           | { id: string; warehouse_code: string | null; warehouse_name: string | null }[]
           | null;
         fromLocation:
-          | { id: string; code: string | null; name: string | null }
-          | { id: string; code: string | null; name: string | null }[]
+          | { id: string; code: string | null; name: string | null; path_ids: string[] }
+          | { id: string; code: string | null; name: string | null; path_ids: string[] }[]
           | null;
         toLocation:
-          | { id: string; code: string | null; name: string | null }
-          | { id: string; code: string | null; name: string | null }[]
+          | { id: string; code: string | null; name: string | null; path_ids: string[] }
+          | { id: string; code: string | null; name: string | null; path_ids: string[] }[]
           | null;
         creator:
           | { id: string; first_name: string | null; last_name: string | null }
@@ -85,12 +86,12 @@ type TransactionListItemRow = {
           | { id: string; warehouse_code: string | null; warehouse_name: string | null }[]
           | null;
         fromLocation:
-          | { id: string; code: string | null; name: string | null }
-          | { id: string; code: string | null; name: string | null }[]
+          | { id: string; code: string | null; name: string | null; path_ids: string[] }
+          | { id: string; code: string | null; name: string | null; path_ids: string[] }[]
           | null;
         toLocation:
-          | { id: string; code: string | null; name: string | null }
-          | { id: string; code: string | null; name: string | null }[]
+          | { id: string; code: string | null; name: string | null; path_ids: string[] }
+          | { id: string; code: string | null; name: string | null; path_ids: string[] }[]
           | null;
         creator:
           | { id: string; first_name: string | null; last_name: string | null }
@@ -254,8 +255,8 @@ async function GETHandler(request: NextRequest) {
           created_at,
           warehouse:warehouses!stock_transactions_warehouse_id_fkey(id, warehouse_code, warehouse_name),
           toWarehouse:warehouses!stock_transactions_to_warehouse_id_fkey(id, warehouse_code, warehouse_name),
-          fromLocation:warehouse_locations!stock_transactions_from_location_id_fkey(id, code, name),
-          toLocation:warehouse_locations!stock_transactions_to_location_id_fkey(id, code, name),
+          fromLocation:warehouse_locations!stock_transactions_from_location_id_fkey(id, code, name, path_ids),
+          toLocation:warehouse_locations!stock_transactions_to_location_id_fkey(id, code, name, path_ids),
           creator:users!stock_transactions_created_by_fkey(id, first_name, last_name)
         ),
         item:items!inner(
@@ -331,6 +332,16 @@ async function GETHandler(request: NextRequest) {
     // Format stock transactions
     const typedTransactionItems = (transactionItems || []) as unknown as TransactionListItemRow[];
 
+    const locations = typedTransactionItems.flatMap((item) => {
+      const transaction = pickFirst(item.transaction);
+      return [pickFirst(transaction?.fromLocation), pickFirst(transaction?.toLocation)].filter(
+        (location) => location !== null
+      );
+    });
+    const locationPaths = await fetchStockTransactionLocationPaths(supabase, companyId, locations);
+    const formatLocationPath = (location: (typeof locations)[number] | null) =>
+      location ? locationPaths.get(location.id) || null : null;
+
     const formattedTransactions = typedTransactionItems
       .map((item) => {
         const transaction = pickFirst(item.transaction);
@@ -364,12 +375,16 @@ async function GETHandler(request: NextRequest) {
             fromLocationRecord?.code ||
             (isPutawayTransfer(transaction) ? PUTAWAY_LOCATION_LABEL : ""),
           fromLocationName: fromLocationRecord?.name || "",
+          fromLocationPath:
+            formatLocationPath(fromLocationRecord) ||
+            (isPutawayTransfer(transaction) ? PUTAWAY_LOCATION_LABEL : null),
           toWarehouseId: transaction.to_warehouse_id,
           toWarehouseCode: toWarehouseRecord?.warehouse_code || "",
           toWarehouseName: toWarehouseRecord?.warehouse_name || "",
           toLocationId: transaction.to_location_id,
           toLocationCode: toLocationRecord?.code || "",
           toLocationName: toLocationRecord?.name || "",
+          toLocationPath: formatLocationPath(toLocationRecord),
           quantity: parseFloat(String(item.quantity ?? 0)),
           uom: uomRecord?.code || "",
           unitCost: parseFloat(String(item.unit_cost ?? 0)),

@@ -15,12 +15,14 @@ export interface StockTransaction {
   fromLocationId?: string | null;
   fromLocationCode?: string | null;
   fromLocationName?: string | null;
+  fromLocationPath?: string | null;
   toWarehouseId?: string;
   toWarehouseCode?: string;
   toWarehouseName?: string;
   toLocationId?: string | null;
   toLocationCode?: string | null;
   toLocationName?: string | null;
+  toLocationPath?: string | null;
   quantity: number;
   uom: string;
   referenceType?: string;

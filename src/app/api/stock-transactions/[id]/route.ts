@@ -1,3 +1,5 @@
+import type { Database } from "@/types/database.types";
+import { fetchStockTransactionLocationPaths } from "@/lib/stock-transaction-location-paths";
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -31,6 +33,45 @@ type StockTransactionItemRow = {
   notes: string | null;
 };
 
+type TransactionWarehouse = {
+  id: string;
+  warehouse_code: string | null;
+  warehouse_name: string | null;
+};
+
+type TransactionLocation = {
+  id: string;
+  code: string;
+  name: string | null;
+  path_ids: string[];
+};
+
+type StockTransactionDetailRow = Pick<
+  Database["public"]["Tables"]["stock_transactions"]["Row"],
+  | "id"
+  | "transaction_code"
+  | "transaction_type"
+  | "transaction_date"
+  | "warehouse_id"
+  | "from_location_id"
+  | "to_warehouse_id"
+  | "to_location_id"
+  | "reference_type"
+  | "reference_id"
+  | "status"
+  | "notes"
+  | "created_by"
+  | "created_at"
+  | "updated_at"
+> & {
+  items: StockTransactionItemRow[];
+  warehouse: TransactionWarehouse | null;
+  toWarehouse: TransactionWarehouse | null;
+  fromLocation: TransactionLocation | null;
+  toLocation: TransactionLocation | null;
+  creator: { id: string; first_name: string | null; last_name: string | null } | null;
+};
+
 const PUTAWAY_LOCATION_LABEL = "PUTAWAY";
 
 const isPutawayTransfer = (
@@ -54,7 +95,9 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       .from("stock_transactions")
       .select(
         `
-        *,
+        id, transaction_code, transaction_type, transaction_date,
+        warehouse_id, from_location_id, to_warehouse_id, to_location_id,
+        reference_type, reference_id, status, notes, created_by, created_at, updated_at,
         items:stock_transaction_items(
           id,
           item_id,
@@ -77,19 +120,25 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
         ),
         warehouse:warehouses!stock_transactions_warehouse_id_fkey(id, warehouse_code, warehouse_name),
         toWarehouse:warehouses!stock_transactions_to_warehouse_id_fkey(id, warehouse_code, warehouse_name),
-        fromLocation:warehouse_locations!stock_transactions_from_location_id_fkey(id, code, name),
-        toLocation:warehouse_locations!stock_transactions_to_location_id_fkey(id, code, name),
+        fromLocation:warehouse_locations!stock_transactions_from_location_id_fkey(id, code, name, path_ids),
+        toLocation:warehouse_locations!stock_transactions_to_location_id_fkey(id, code, name, path_ids),
         creator:users!stock_transactions_created_by_fkey(id, first_name, last_name)
       `
       )
       .eq("id", id)
       .eq("company_id", companyId)
       .is("deleted_at", null)
+      .returns<StockTransactionDetailRow[]>()
       .single();
 
     if (txError || !transaction) {
       return NextResponse.json({ error: "Stock transaction not found" }, { status: 404 });
     }
+
+    const locations = [transaction.fromLocation, transaction.toLocation].filter(
+      (location) => location !== null
+    );
+    const locationPaths = await fetchStockTransactionLocationPaths(supabase, companyId, locations);
 
     // Format response
     const typedItems = (transaction.items || []) as StockTransactionItemRow[];
@@ -106,12 +155,16 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
         transaction.fromLocation?.code ||
         (isPutawayTransfer(transaction) ? PUTAWAY_LOCATION_LABEL : null),
       fromLocationName: transaction.fromLocation?.name,
+      fromLocationPath:
+        locationPaths.get(transaction.from_location_id || "") ||
+        (isPutawayTransfer(transaction) ? PUTAWAY_LOCATION_LABEL : null),
       toWarehouseId: transaction.to_warehouse_id,
       toWarehouseCode: transaction.toWarehouse?.warehouse_code,
       toWarehouseName: transaction.toWarehouse?.warehouse_name,
       toLocationId: transaction.to_location_id,
       toLocationCode: transaction.toLocation?.code,
       toLocationName: transaction.toLocation?.name,
+      toLocationPath: locationPaths.get(transaction.to_location_id || "") || null,
       referenceType: transaction.reference_type,
       referenceId: transaction.reference_id,
       status: transaction.status,
