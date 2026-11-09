@@ -1092,7 +1092,7 @@ before writing the draft.
 The Add Item and Edit Item dialogs accept quantities in active item unit options, using their
 configured display labels (for example, BOX (144)). New lines initially select the base unit.
 Saved lines retain the entered quantity and selected unit when reopened; difference columns show
-that entry alongside its base-unit equivalent. Entering 2 boxes of 144 adjusts 288 base units.
+that entry, with a secondary base-unit equivalent only when an alternate unit was selected. Entering 2 boxes of 144 adjusts 288 base units.
 Current quantity, new stock level, posting, and value impact continue to use base units; unit cost
 remains per base unit. Create/update lines send `enteredQty` (the unsigned adjustment delta) and
 `enteredUnitOptionId` (null for base). The transactional save validates the conversion and stores

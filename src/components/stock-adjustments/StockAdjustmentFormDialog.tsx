@@ -571,9 +571,11 @@ export function StockAdjustmentFormDialog({
                                       (item.enteredQty ?? Math.abs(difference))
                                   )}{" "}
                                   {item.enteredUnitLabel || item.uomName}
-                                  <div className="text-xs font-normal text-muted-foreground">
-                                    {formatQty(difference)} {item.uomName}
-                                  </div>
+                                  {item.enteredUnitOptionId && (
+                                    <div className="text-xs font-normal text-muted-foreground">
+                                      {formatQty(difference)} {item.uomName}
+                                    </div>
+                                  )}
                                 </TableCell>
                                 <TableCell className="text-right tabular-nums">
                                   {formatCurrency(item.unitCost)}

@@ -232,9 +232,11 @@ export function StockAdjustmentDetailsDialog({
                           <dd className={cn("font-semibold", toneClass(item.difference))}>
                             {formatEnteredDifference(item)}
                           </dd>
-                          <dd className="text-xs text-muted-foreground">
-                            {formatBaseDifference(item)}
-                          </dd>
+                          {item.enteredUnitOptionId && (
+                            <dd className="text-xs text-muted-foreground">
+                              {formatBaseDifference(item)}
+                            </dd>
+                          )}
                         </div>
                         <div>
                           <dt className="text-xs text-muted-foreground">{tForm("unitCost")}</dt>
@@ -302,9 +304,11 @@ export function StockAdjustmentDetailsDialog({
                             )}
                           >
                             {formatEnteredDifference(item)}
-                            <div className="text-xs font-normal text-muted-foreground">
-                              {formatBaseDifference(item)}
-                            </div>
+                            {item.enteredUnitOptionId && (
+                              <div className="text-xs font-normal text-muted-foreground">
+                                {formatBaseDifference(item)}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
                             {formatCurrency(item.unitCost)}

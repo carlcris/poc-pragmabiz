@@ -1011,6 +1011,7 @@ Entered-unit persistence checks (migration `20261109100000_stock_adjustment_ente
 
 - Save an increase of 1 BOX (144), reopen the draft and its line editor, and confirm the quantity
   remains 1 with BOX selected. Detail and draft tables must show the entered amount and base delta.
+  For base-unit entries, confirm the change appears only once in draft, desktop detail, and mobile detail views.
 - Edit to 1.5 BOX, save, and post; stock must increase by 216 base units. Repeat a decrease of
   1 BOX and confirm stock decreases by 144 while the saved entry remains 1 BOX.
 - Change an item's unit label after saving and confirm the saved label remains visible. If the
