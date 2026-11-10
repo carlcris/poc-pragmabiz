@@ -1,3 +1,4 @@
+import { EXPIRED_BATCHES_REPORT_QUERY_KEY } from "@/hooks/queryKeys";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -113,6 +114,7 @@ export function usePostStockAdjustment() {
       queryClient.invalidateQueries({ queryKey: ["warehouse-locations"] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [ITEMS_STATS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [ITEMS_STOCK_QUERY_KEY] });

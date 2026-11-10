@@ -1,3 +1,4 @@
+import { EXPIRED_BATCHES_REPORT_QUERY_KEY } from "@/hooks/queryKeys";
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { salesOrdersApi } from "@/lib/api/sales-orders";
 import type {
@@ -60,6 +61,7 @@ export function useDeleteSalesOrder() {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
       queryClient.invalidateQueries({ queryKey: ["quotations"] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
       toast.success("Sales order deleted successfully");
     },
     onError: (error: Error) => {
@@ -77,6 +79,7 @@ export function useConfirmOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
       toast.success("Sales order confirmed successfully");
     },
     onError: (error: Error) => {
@@ -124,6 +127,7 @@ export function useCancelOrder() {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
       queryClient.invalidateQueries({ queryKey: ["quotations"] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
       toast.success("Sales order cancelled");
     },
     onError: (error: Error) => {
@@ -149,6 +153,7 @@ export function useConvertToInvoice() {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
       toast.success("Sales order converted to invoice successfully");
     },
     onError: (error: Error) => {

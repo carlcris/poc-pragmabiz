@@ -144,6 +144,19 @@ Shows total inventory value by warehouse using the configured inventory default 
 }
 ```
 
+#### Expired Batches
+
+Available from **Reports → Inventory → Expired Batches**. Includes only non-deleted batches with `expiration_date` strictly before the selected date and `qty_on_hand > 0`. Exhausted batches, unset expiration dates, and batches expiring on the selected date are excluded. This uses saved dates for all item origins; it does not recalculate JIS dates. The date defaults to the viewer's local today. Quantities reflect current stock, not a historical inventory snapshot.
+
+The report follows Stock Aging’s left settings panel and right PDF preview layout. No report data is fetched until Preview is clicked; there is no interactive result table or pagination control. Changing filters clears the prior preview. PDF detail columns show batches in Item mode and item code/name in Batch mode. Group headings repeat across pages; each group ends with quantity subtotals per base unit. Empty results generate an explicit empty-report PDF.
+
+Users can group by Item (default) or Batch and filter by warehouse, category, and item code/name or batch-code search. Batch grouping combines the same batch code across items and warehouses within the permitted scope. Rows show item, warehouse, batch, expiration, days expired, on-hand/reserved/available quantities, and base unit. Groups are ordered by label/key; rows within groups by expiration and batch ID. No quantities across different units are summed.
+
+`GET /api/reports/expired-batches` requires Reports view permission before report work. It calls invoker RPC `get_expired_batches_report`, applying company, accessible-business-unit membership, and selected-business-unit scope. `asOf=YYYY-MM-DD` is required; `groupBy=item|batch` defaults to item. Optional filters: `warehouseId`, `categoryId`, `search` (100 characters). Normal `page`/`limit` paginate complete groups, default 20 and maximum 50 groups. Each response is bounded to 500 batch rows; oversized pages return safe HTTP 413 requiring narrower filters. `exportMode=pdf` exports all matching groups from page one, with an explicit 500-row cap and HTTP 413 instead of partial output. PDF preview supports the shared download/print actions and repeats group labels across PDF pages.
+
+The report query key includes business-unit context and all filters. Expiration edits and relevant inventory mutations invalidate the report cache; preview URLs are cleared when invalidated. Migration `20261110110000_expired_batches_report.sql` adds the RPC and partial company/expiration index. Authenticated SQL tests: `supabase/tests/expired-batches-report.sql`.
+
+
 #### Stock Aging Report
 **Endpoint**: `GET /api/reports/stock-aging`
 

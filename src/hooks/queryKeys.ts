@@ -30,3 +30,5 @@ export const PRODUCT_MOVEMENT_REPORT_QUERY_KEY = "product-movement-report";
 export const STOCK_LEDGER_QUERY_KEY = "stock-ledger";
 export const INVENTORY_RESERVATIONS_QUERY_KEY = "inventory-reservations";
 export const USER_PROFILE_QUERY_KEY = "user-profile";
+
+export const EXPIRED_BATCHES_REPORT_QUERY_KEY = "expired-batches-report";

@@ -49,6 +49,16 @@ describe("stock adjustment cache refresh", () => {
     }
   );
 
+  it("marks expired batch reports stale after posting", () => {
+    const client = state.client!;
+    const key = ["expired-batches-report", "bu", { groupBy: "item" }];
+    client.setQueryData(key, { data: [] });
+    usePostStockAdjustment();
+    state.onSuccess!();
+    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+    client.clear();
+  });
+
   it("refetches mounted Locations and marks cached stock stale after posting", async () => {
     const client = state.client!;
     const locationsKey = [ITEM_LOCATIONS_QUERY_KEY, "item-1", "bu-1"];

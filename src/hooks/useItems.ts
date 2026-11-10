@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { itemsApi } from "@/lib/api/items";
-import { ITEMS_QUERY_KEY, ITEMS_STATS_QUERY_KEY } from "@/hooks/queryKeys";
+import {
+  ITEMS_QUERY_KEY,
+  ITEMS_STATS_QUERY_KEY,
+  EXPIRED_BATCHES_REPORT_QUERY_KEY,
+} from "@/hooks/queryKeys";
 import { useRealtimeDomainInvalidation } from "@/hooks/useRealtimeDomainInvalidation";
 import type {
   Item,
@@ -18,6 +22,7 @@ const LOOKUP_MAX_LIMIT = 50;
 const invalidateInventoryQueries = (queryClient: ReturnType<typeof useQueryClient>) => {
   queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY] });
   queryClient.invalidateQueries({ queryKey: [ITEMS_STATS_QUERY_KEY] });
+  queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
 };
 
 export interface ItemsFilters extends ItemFilters {

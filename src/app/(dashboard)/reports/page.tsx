@@ -33,6 +33,7 @@ type ReportStatus = "implemented" | "coming-soon" | "in-development";
 type SupportedReportPreviewType =
   | "inventory"
   | "stock-aging"
+  | "expired-batches"
   | "shipments"
   | "stock"
   | "item-location-batch"
@@ -117,6 +118,15 @@ export default function ReportsPage() {
             businessValue: t("stockReportsValue"),
             previewType: "stock",
             icon: Package,
+          },
+          {
+            id: "expired-batches",
+            name: t("expiredBatchesName"),
+            description: t("expiredBatchesDescription"),
+            status: "implemented",
+            businessValue: t("expiredBatchesValue"),
+            previewType: "expired-batches",
+            icon: Clock,
           },
           {
             id: "stock-aging",
@@ -501,8 +511,7 @@ export default function ReportsPage() {
     .map((category) => ({
       ...category,
       reports: category.reports.filter(
-        (report) =>
-          report.status !== "coming-soon" && hasCapabilities(report.requiredCapabilities)
+        (report) => report.status !== "coming-soon" && hasCapabilities(report.requiredCapabilities)
       ),
     }))
     .filter((category) => category.reports.length > 0);

@@ -1,3 +1,4 @@
+import { EXPIRED_BATCHES_REPORT_QUERY_KEY } from "@/hooks/queryKeys";
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { pickListsApi } from "@/lib/api/pick-lists";
@@ -97,6 +98,7 @@ export function useCreatePickList() {
       queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["delivery-notes"] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
     },
   });
 }
@@ -113,6 +115,7 @@ export function useUpdatePickListStatus() {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
       toast.success("Pick list status updated");
     },
     onError: (error: unknown) => {
@@ -131,6 +134,7 @@ export function useUpdatePickListItems() {
       syncPickListCaches(queryClient, updated);
       queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
     },
   });
 }

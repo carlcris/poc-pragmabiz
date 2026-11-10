@@ -23,9 +23,11 @@ it("refetches active batch views, stales other locations and adjustments, and pr
   const client = state.client!;
   const active = [ITEM_LOCATIONS_QUERY_KEY, "item", "bu", "location-a", 1];
   const inactive = [ITEM_LOCATIONS_QUERY_KEY, "item", "bu", "location-b", 2];
+  const report = ["expired-batches-report", "bu", { groupBy: "item" }];
   const adjustment = ["stock-adjustments", "draft"];
   const unrelated = [ITEM_LOCATIONS_QUERY_KEY, "other-item"];
-  for (const key of [active, inactive, adjustment, unrelated]) client.setQueryData(key, "old");
+  for (const key of [active, inactive, adjustment, unrelated, report])
+    client.setQueryData(key, "old");
   const fetch = vi.fn(async () => "new");
   const observer = new QueryObserver(client, { queryKey: active, queryFn: fetch });
   const stop = observer.subscribe(() => {});
@@ -35,6 +37,7 @@ it("refetches active batch views, stales other locations and adjustments, and pr
   expect(client.getQueryData(active)).toBe("new");
   expect(client.getQueryState(inactive)?.isInvalidated).toBe(true);
   expect(client.getQueryState(adjustment)?.isInvalidated).toBe(true);
+  expect(client.getQueryState(report)?.isInvalidated).toBe(true);
   expect(client.getQueryState(unrelated)?.isInvalidated).toBe(false);
   stop();
   client.clear();

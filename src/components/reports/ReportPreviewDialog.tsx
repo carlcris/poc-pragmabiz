@@ -1,5 +1,6 @@
 "use client";
 
+import { ExpiredBatchesReportPreview } from "./ExpiredBatchesReportPreview";
 import type { StockAgingAgeBucket, StockAgingGroupBy } from "@/types/stock-aging-report";
 
 import { useEffect, useMemo, useState } from "react";
@@ -37,10 +38,7 @@ import {
   type StockValuationFilters,
 } from "@/hooks/useStockReports";
 import { useShipmentsReport, type ShipmentStageFilter } from "@/hooks/useShipmentsReport";
-import {
-  useStockAgingReport,
-  StockAgingReportError,
-} from "@/hooks/useStockAgingReport";
+import { useStockAgingReport, StockAgingReportError } from "@/hooks/useStockAgingReport";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useTransformationEfficiencyReport } from "@/hooks/useTransformationEfficiencyReport";
 import { useTransformationTemplates } from "@/hooks/useTransformationTemplates";
@@ -75,6 +73,7 @@ import {
 type SupportedReportPreviewType =
   | "inventory"
   | "stock-aging"
+  | "expired-batches"
   | "shipments"
   | "stock"
   | "item-location-batch"
@@ -2377,6 +2376,13 @@ export function ReportPreviewDialog({
         <div className="min-h-0 flex-1 overflow-hidden px-6 py-5">
           {reportType === "inventory" && (
             <InventoryReportPreview
+              open={open}
+              reportName={reportName}
+              onPreviewStateChange={setPreviewState}
+            />
+          )}
+          {reportType === "expired-batches" && (
+            <ExpiredBatchesReportPreview
               open={open}
               reportName={reportName}
               onPreviewStateChange={setPreviewState}

@@ -1,3 +1,4 @@
+import { EXPIRED_BATCHES_REPORT_QUERY_KEY } from "@/hooks/queryKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
 import {
@@ -65,6 +66,7 @@ export function useCreateDeliveryNote() {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
     },
     onError: () => {
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
@@ -110,6 +112,7 @@ export function useConfirmDeliveryNote() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
     },
   });
 }
@@ -133,6 +136,7 @@ export function useQueuePickingDeliveryNote() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
     },
   });
 }
@@ -159,6 +163,7 @@ export function useDispatchDeliveryNote() {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
     },
   });
@@ -183,6 +188,7 @@ export function useReceiveDeliveryNote() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
     },
@@ -239,6 +245,7 @@ export function useSubmitDeliveryNoteReceiving() {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
     },
   });
@@ -262,6 +269,7 @@ export function useAcceptDeliveryNoteReceivingException() {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
     },
   });
 }
@@ -297,6 +305,7 @@ export function useAcceptDeliveryNoteReceivingOverage() {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
     },
   });
 }
@@ -323,6 +332,7 @@ export function useVoidDeliveryNote() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
     },
   });
 }
@@ -348,6 +358,7 @@ export function useAdjustDispatchedDeliveryNoteItem() {
       queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
     },
@@ -368,6 +379,7 @@ export function useAddDeliveryNoteItems() {
       queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
     },
   });
 }

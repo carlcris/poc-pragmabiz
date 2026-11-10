@@ -1,3 +1,4 @@
+import { EXPIRED_BATCHES_REPORT_QUERY_KEY } from "@/hooks/queryKeys";
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   GRNS_QUERY_KEY,
@@ -116,6 +117,7 @@ export function useConfirmGRN() {
       queryClient.invalidateQueries({ queryKey: [ITEMS_STATS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [STOCK_TRANSACTIONS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [STOCK_BALANCES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [REORDER_ALERTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });

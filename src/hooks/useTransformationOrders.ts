@@ -1,3 +1,4 @@
+import { EXPIRED_BATCHES_REPORT_QUERY_KEY } from "@/hooks/queryKeys";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { transformationOrdersApi } from "@/lib/api/transformation-orders";
@@ -70,6 +71,7 @@ export function useCreateTransformationOrder() {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["transformation-templates"] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
     },
   });
 }
@@ -88,6 +90,7 @@ export function useUpdateTransformationOrder() {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY, variables.id] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
       toast.success("Transformation order updated successfully");
     },
     onError: (error: unknown) => {
@@ -108,6 +111,7 @@ export function useDeleteTransformationOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
       toast.success("Transformation order deleted successfully");
     },
     onError: (error: unknown) => {
@@ -129,6 +133,7 @@ export function useReleaseTransformationOrder() {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY, id] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
       toast.success(response.message || "Order released successfully");
     },
     onError: (error: unknown) => {
@@ -163,6 +168,7 @@ export function useExecuteTransformationOrder() {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY, variables.id] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
+      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["item-warehouse"] });
       queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
       toast.success(response.message || "Transformation executed successfully");

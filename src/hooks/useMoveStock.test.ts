@@ -29,6 +29,7 @@ it("refreshes loaded warehouse location quantities and marks inactive locations 
   const before = { bin1: 500, bin2: 0 };
   const after = { bin1: 0, bin2: 500 };
   const keys = [
+    ["expired-batches-report", "bu", { groupBy: "batch" }],
     [
       ITEM_LOCATIONS_QUERY_KEY,
       "warehouse_locations",

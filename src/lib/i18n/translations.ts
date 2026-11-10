@@ -3870,6 +3870,7 @@ export type TranslationKeys = {
   purchaseReceiptViewDialog: Record<string, string>;
   purchaseReceiptDetailPage: Record<string, string>;
   reportsPage: Record<string, string>;
+  expiredBatchesReport: Record<string, string>;
   inventoryReportPage: Record<string, string>;
   stockReportsPage: Record<string, string>;
   stockAgingReportPage: Record<string, string>;
@@ -9500,7 +9501,36 @@ export const translations: Record<Locale, TranslationKeys> = {
       received: "Received",
       noValue: "—",
     },
+    expiredBatchesReport: {
+      title: "Expired Batches",
+      description:
+        "Batches expired before the selected date with stock on hand. Exhausted batches are excluded.",
+      asOf: "Expired before",
+      groupBy: "Group by",
+      item: "Item",
+      batch: "Batch",
+      warehouse: "Warehouse",
+      category: "Category",
+      search: "Search item or batch",
+      expiration: "Expiration Date",
+      daysExpired: "Days Expired",
+      onHand: "On Hand",
+      reserved: "Reserved",
+      available: "Available",
+      unit: "Unit",
+      summary: "{count} expired batches before {date}",
+      empty: "No expired batches with stock match these filters.",
+      loadError: "Could not load the report. Check the date and try again.",
+      tooLarge:
+        "More than 500 batch rows match this PDF. Narrow the warehouse, category, or search filters.",
+      itemSubtotal: "Item Subtotal",
+      batchSubtotal: "Batch Subtotal",
+      generatedAt: "Generated At",
+    },
     reportsPage: {
+      expiredBatchesName: "Expired Batches",
+      expiredBatchesDescription: "Expired batches with stock, grouped by item or batch.",
+      expiredBatchesValue: "Find expired stock for review and removal.",
       title: "Reports Directory",
       subtitle: "Comprehensive reporting suite for business intelligence and operational insights",
       totalReports: "Total Reports",
@@ -16393,7 +16423,34 @@ export const translations: Record<Locale, TranslationKeys> = {
       received: "已收货",
       noValue: "—",
     },
+    expiredBatchesReport: {
+      title: "过期批次",
+      description: "到期日期早于所选日期且仍有现存库存的批次，不包含已耗尽批次。",
+      asOf: "到期日期早于",
+      groupBy: "分组方式",
+      item: "商品",
+      batch: "批次",
+      warehouse: "仓库",
+      category: "类别",
+      search: "搜索商品或批次",
+      expiration: "到期日期",
+      daysExpired: "过期天数",
+      onHand: "现存数量",
+      reserved: "预留数量",
+      available: "可用数量",
+      unit: "单位",
+      summary: "{date} 之前到期的批次：{count} 个",
+      empty: "没有符合筛选条件且仍有库存的过期批次。",
+      loadError: "无法加载报表。请检查日期后重试。",
+      tooLarge: "此 PDF 超过 500 条批次记录。请缩小仓库、类别或搜索范围。",
+      itemSubtotal: "商品小计",
+      batchSubtotal: "批次小计",
+      generatedAt: "生成时间",
+    },
     reportsPage: {
+      expiredBatchesName: "过期批次",
+      expiredBatchesDescription: "按商品或批次分组查看仍有库存的过期批次。",
+      expiredBatchesValue: "识别需审核和处理的过期库存。",
       title: "报表目录",
       subtitle: "面向商业智能和运营洞察的综合报表套件",
       totalReports: "报表总数",

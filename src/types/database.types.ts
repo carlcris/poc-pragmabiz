@@ -12699,6 +12699,20 @@ export type Database = {
           warehouse_breakdown: Json;
         }[];
       };
+      get_expired_batches_report: {
+        Args: {
+          p_as_of: string;
+          p_business_unit_id?: string;
+          p_category_id?: string;
+          p_company_id: string;
+          p_group_by?: string;
+          p_limit?: number;
+          p_page?: number;
+          p_search?: string;
+          p_warehouse_id?: string;
+        };
+        Returns: Json;
+      };
       get_inventory_batch_reconciliation_mismatches: {
         Args: { p_company_id?: string; p_tolerance?: number };
         Returns: {

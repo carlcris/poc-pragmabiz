@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
-import { ITEM_LOCATIONS_QUERY_KEY } from "@/hooks/queryKeys";
+import { ITEM_LOCATIONS_QUERY_KEY, EXPIRED_BATCHES_REPORT_QUERY_KEY } from "@/hooks/queryKeys";
 import { STOCK_ADJUSTMENTS_QUERY_KEY } from "@/hooks/useStockAdjustments";
 
 export function useUpdateItemBatchExpiration(itemId: string) {
@@ -19,6 +19,7 @@ export function useUpdateItemBatchExpiration(itemId: string) {
       ),
     onSuccess: async () => {
       await Promise.all([
+        client.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] }),
         client.invalidateQueries({ queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId] }),
         client.invalidateQueries({ queryKey: [STOCK_ADJUSTMENTS_QUERY_KEY] }),
       ]);
