@@ -2,6 +2,7 @@ export type ItemLocationBatch = {
   id: string;
   batchCode: string;
   receivedAt: string;
+  expirationDate: string | null;
   qtyOnHand: number;
   qtyReserved: number;
   qtyAvailable: number;

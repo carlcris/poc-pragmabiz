@@ -67,9 +67,9 @@ SELECT company_id, item_id, source_warehouse_id, 20, 2, 3, source_location_id, a
 FROM stock_move_test_context;
 
 INSERT INTO public.item_batches (id, company_id, item_id, warehouse_id, batch_code, received_at,
-  qty_on_hand, qty_reserved, created_by, updated_by)
+  expiration_date, qty_on_hand, qty_reserved, created_by, updated_by)
 SELECT batch.id, context.company_id, context.item_id, context.source_warehouse_id, batch.code,
-  batch.received_at, batch.quantity, batch.reserved, context.actor_id, context.actor_id
+  batch.received_at, CASE WHEN batch.id = context.old_batch_id THEN DATE '2027-02-10' ELSE NULL END, batch.quantity, batch.reserved, context.actor_id, context.actor_id
 FROM stock_move_test_context context CROSS JOIN LATERAL (VALUES
   (context.old_batch_id, context.old_batch_code, NOW() - INTERVAL '10 days', 10, 2),
   (context.new_batch_id, context.new_batch_code, NOW() - INTERVAL '1 day', 7, 0)
@@ -90,7 +90,7 @@ CREATE FUNCTION pg_temp.stock_move_snapshot() RETURNS JSONB LANGUAGE SQL AS $$
       stock.reserved_stock, stock.putaway_qty, stock.default_location_id) ORDER BY stock.id)
       FROM public.item_warehouse stock JOIN stock_move_test_context context ON stock.item_id = context.item_id
       AND stock.warehouse_id IN (context.source_warehouse_id, context.destination_warehouse_id)),
-    'batches', (SELECT jsonb_agg(jsonb_build_array(batch.id, batch.batch_code, batch.received_at,
+    'batches', (SELECT jsonb_agg(jsonb_build_array(batch.id, batch.batch_code, batch.received_at, batch.expiration_date,
       batch.qty_on_hand, batch.qty_reserved) ORDER BY batch.id)
       FROM public.item_batches batch JOIN stock_move_test_context context ON batch.item_id = context.item_id
       AND batch.warehouse_id IN (context.source_warehouse_id, context.destination_warehouse_id)),
@@ -138,6 +138,7 @@ DECLARE
   v_receipt_id UUID;
   v_summary RECORD;
   v_source_quantity NUMERIC;
+  v_expiration_case RECORD;
 BEGIN
   SELECT actor_id, company_id, business_unit_id, item_id, source_warehouse_id,
     destination_warehouse_id, foreign_warehouse_id, source_location_id, destination_location_id,
@@ -287,7 +288,8 @@ BEGIN
     OR (SELECT qty_on_hand FROM public.item_batches WHERE id = v_context.new_batch_id) IS DISTINCT FROM 6
     OR EXISTS (SELECT 1 FROM public.item_batches destination JOIN public.item_batches source
       ON source.batch_code = destination.batch_code AND source.warehouse_id = v_context.source_warehouse_id
-      WHERE destination.warehouse_id = v_context.destination_warehouse_id AND destination.received_at <> source.received_at)
+      WHERE destination.warehouse_id = v_context.destination_warehouse_id AND  (destination.received_at IS DISTINCT FROM source.received_at
+        OR destination.expiration_date IS DISTINCT FROM source.expiration_date))
     OR EXISTS (SELECT 1 FROM public.item_batch_locations WHERE warehouse_id = v_context.destination_warehouse_id AND batch_location_sku IS NULL) THEN
     RAISE EXCEPTION 'Warehouse move failed FIFO, identity, stock, SKU, or movement audit verification';
   END IF;
@@ -328,6 +330,48 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'TEST_FAILURE_AFTER_BATCH_WRITE' THEN RAISE; END IF; END;
   PERFORM set_config('test.fail_stock_move', 'no', TRUE);
   IF v_before IS DISTINCT FROM pg_temp.stock_move_snapshot() THEN RAISE EXCEPTION 'Late failure left partial stock or audit writes'; END IF;
+
+  -- Expiration is part of merge identity: dates must match, including unset values.
+  FOR v_expiration_case IN
+    SELECT dates.source_date, dates.destination_date
+    FROM (VALUES (DATE '2027-02-10', DATE '2027-03-10'),
+      (DATE '2027-02-10', NULL::DATE), (NULL::DATE, DATE '2027-02-10')) dates(source_date,destination_date)
+  LOOP
+    BEGIN
+      UPDATE public.item_batches SET expiration_date=v_expiration_case.source_date
+      WHERE id=v_context.new_batch_id;
+      UPDATE public.item_batches SET expiration_date=v_expiration_case.destination_date
+      WHERE warehouse_id=v_context.destination_warehouse_id AND batch_code='MOVE-NEW';
+      v_before := pg_temp.stock_move_snapshot();
+      BEGIN
+        PERFORM public.move_stock_transactionally(v_context.business_unit_id,v_context.item_id,
+          v_context.source_warehouse_id,v_context.destination_warehouse_id,
+          v_context.source_location_id,v_context.destination_location_id,1);
+        RAISE EXCEPTION 'TEST_EXPECTED_EXPIRATION_CONFLICT';
+      EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_BATCH_CONFLICT' THEN RAISE; END IF; END;
+      IF v_before IS DISTINCT FROM pg_temp.stock_move_snapshot() THEN
+        RAISE EXCEPTION 'Expiration conflict left partial stock, date, or audit writes'; END IF;
+      RAISE EXCEPTION USING ERRCODE='ZX059', MESSAGE='Restore expiration fixtures';
+    EXCEPTION WHEN SQLSTATE 'ZX059' THEN NULL;
+    END;
+  END LOOP;
+  -- Matching non-null and null expirations both allow merges without changing dates.
+  FOR v_expiration_case IN SELECT dates.expiration FROM (VALUES (DATE '2027-02-10'),(NULL::DATE)) dates(expiration)
+  LOOP
+    BEGIN
+      UPDATE public.item_batches SET expiration_date=v_expiration_case.expiration
+      WHERE id=v_context.new_batch_id OR (warehouse_id=v_context.destination_warehouse_id AND batch_code='MOVE-NEW');
+      PERFORM public.move_stock_transactionally(v_context.business_unit_id,v_context.item_id,
+        v_context.source_warehouse_id,v_context.destination_warehouse_id,
+        v_context.source_location_id,v_context.destination_location_id,1);
+      IF EXISTS(SELECT 1 FROM public.item_batches WHERE batch_code='MOVE-NEW'
+        AND warehouse_id IN(v_context.source_warehouse_id,v_context.destination_warehouse_id)
+        AND expiration_date IS DISTINCT FROM v_expiration_case.expiration) THEN
+        RAISE EXCEPTION 'Matching merge changed expiration'; END IF;
+      RAISE EXCEPTION USING ERRCODE='ZX059', MESSAGE='Restore expiration fixtures';
+    EXCEPTION WHEN SQLSTATE 'ZX059' THEN NULL;
+    END;
+  END LOOP;
 
   UPDATE public.item_batches SET received_at = received_at + INTERVAL '1 hour'
   WHERE warehouse_id = v_context.destination_warehouse_id AND batch_code = 'MOVE-NEW';

@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { format as formatDate } from "date-fns";
+import { cn } from "@/lib/utils";
+import { useCanEdit } from "@/hooks/usePermissions";
+import { RESOURCES } from "@/constants/resources";
+import { ItemBatchExpirationDialog } from "./ItemBatchExpirationDialog";
 import { useFormatter, useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
@@ -38,9 +43,13 @@ export function ItemLocationBatches({
   onPrint,
 }: ItemLocationBatchesProps) {
   const [page, setPage] = useState(1);
+  const [editingBatch, setEditingBatch] = useState<ItemLocationBatch | null>(null);
+  const canEdit = useCanEdit(RESOURCES.ITEMS);
+  const hasActions = canPrint || canEdit;
   const t = useTranslations("itemLocationsTab");
   const common = useTranslations("common");
   const format = useFormatter();
+  const today = formatDate(new Date(), "yyyy-MM-dd");
   const businessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
   const query = useQuery<{ data: ItemLocation[] }>({
     queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId, businessUnitId, locationId, page],
@@ -61,46 +70,82 @@ export function ItemLocationBatches({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("batchCode")}</TableHead>
-              <TableHead>{t("receivedDate")}</TableHead>
-              <TableHead className="text-right">{t("onHand")}</TableHead>
-              <TableHead className="text-right">{t("reserved")}</TableHead>
-              <TableHead className="text-right">{t("available")}</TableHead>
-              {canPrint ? <TableHead className="text-right">{common("actions")}</TableHead> : null}
+              <TableHead className="whitespace-nowrap">{t("batchCode")}</TableHead>
+              <TableHead className="whitespace-nowrap px-3">{t("receivedDate")}</TableHead>
+              <TableHead className="whitespace-nowrap px-3">{t("expirationDate")}</TableHead>
+              <TableHead className="whitespace-nowrap px-3 text-right">{t("onHand")}</TableHead>
+              <TableHead className="whitespace-nowrap px-3 text-right">{t("reserved")}</TableHead>
+              <TableHead className="whitespace-nowrap px-3 text-right">{t("available")}</TableHead>
+              {hasActions ? (
+                <TableHead className="whitespace-nowrap px-3 text-right">
+                  {common("actions")}
+                </TableHead>
+              ) : null}
             </TableRow>
           </TableHeader>
           <TableBody>
             {query.isLoading
               ? Array.from({ length: 2 }, (_, index) => (
                   <TableRow key={`batch-skeleton-${index}`}>
-                    <TableCell colSpan={canPrint ? 6 : 5}>
+                    <TableCell colSpan={hasActions ? 7 : 6}>
                       <Skeleton className="h-5 w-full" />
                     </TableCell>
                   </TableRow>
                 ))
               : batches.map((batch) => (
                   <TableRow key={batch.id}>
-                    <TableCell className="font-medium">{batch.batchCode}</TableCell>
-                    <TableCell>{format.dateTime(new Date(batch.receivedAt))}</TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="whitespace-nowrap font-medium">
+                      {batch.batchCode}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap px-3">
+                      {format.dateTime(new Date(batch.receivedAt))}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        "whitespace-nowrap px-3",
+                        batch.expirationDate && batch.expirationDate < today && "text-destructive"
+                      )}
+                    >
+                      {batch.expirationDate
+                        ? format.dateTime(new Date(`${batch.expirationDate}T00:00:00Z`), {
+                            timeZone: "UTC",
+                          })
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap px-3 text-right tabular-nums">
                       {format.number(batch.qtyOnHand)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="whitespace-nowrap px-3 text-right tabular-nums">
                       {format.number(batch.qtyReserved)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
+                    <TableCell className="whitespace-nowrap px-3 text-right tabular-nums">
                       {format.number(batch.qtyAvailable)}
                     </TableCell>
-                    {canPrint ? (
-                      <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={printDisabled}
-                          onClick={() => onPrint(batch)}
-                        >
-                          {t("printBatchQr")}
-                        </Button>
+                    {hasActions ? (
+                      <TableCell className="whitespace-nowrap px-3 text-right">
+                        <div className="flex justify-end gap-1">
+                          {canEdit ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="px-2"
+                              onClick={() => setEditingBatch(batch)}
+                            >
+                              {t("editExpiration")}
+                            </Button>
+                          ) : null}
+                          {canPrint ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="px-2"
+                              disabled={printDisabled}
+                              onClick={() => onPrint(batch)}
+                            >
+                              {t("printBatchQr")}
+                            </Button>
+                          ) : null}
+                        </div>
                       </TableCell>
                     ) : null}
                   </TableRow>
@@ -108,6 +153,13 @@ export function ItemLocationBatches({
           </TableBody>
         </Table>
       </div>
+      {canEdit && editingBatch ? (
+        <ItemBatchExpirationDialog
+          itemId={itemId}
+          batch={editingBatch}
+          onClose={() => setEditingBatch(null)}
+        />
+      ) : null}
       {batchCount > pageSize ? (
         <DataTablePagination
           currentPage={page}

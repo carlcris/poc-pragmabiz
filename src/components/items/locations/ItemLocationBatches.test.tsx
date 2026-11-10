@@ -6,24 +6,33 @@ import { ItemLocationBatches } from "./ItemLocationBatches";
 
 const state = vi.hoisted(() => ({
   page: 1,
+  canEdit: false,
   nextPage: undefined as undefined | ((page: number) => void),
   printed: vi.fn(),
   print: undefined as undefined | (() => void),
 }));
 vi.mock("react", async (load) => ({
   ...(await load<typeof import("react")>()),
-  useState: () => [
-    state.page,
-    (page: number) => {
-      state.page = page;
-    },
-  ],
+  useState: (initial: unknown) =>
+    initial === null
+      ? [null, vi.fn()]
+      : [
+          state.page,
+          (page: number) => {
+            state.page = page;
+          },
+        ],
 }));
+vi.mock("@/hooks/usePermissions", () => ({ useCanEdit: () => state.canEdit }));
+vi.mock("./ItemBatchExpirationDialog", () => ({ ItemBatchExpirationDialog: () => null }));
 vi.mock("@/stores/businessUnitStore", () => ({ useBusinessUnitStore: () => "bu" }));
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: keyof typeof translations.en.itemLocationsTab) =>
     translations.en.itemLocationsTab[key] ?? key,
-  useFormatter: () => ({ number: String, dateTime: () => "2026-01-01" }),
+  useFormatter: () => ({
+    number: String,
+    dateTime: (date: Date) => date.toISOString().slice(0, 10),
+  }),
 }));
 vi.mock("@tanstack/react-query", () => ({
   useQuery: ({ queryKey }: { queryKey: unknown[] }) => {
@@ -43,6 +52,7 @@ vi.mock("@tanstack/react-query", () => ({
                     qtyAvailable: 0,
                     qtyReserved: 0,
                     receivedAt: "2026-01-01",
+                    expirationDate: null,
                   }))
                 : [
                     {
@@ -52,6 +62,7 @@ vi.mock("@tanstack/react-query", () => ({
                       qtyAvailable: 50,
                       qtyReserved: 0,
                       receivedAt: "2026-02-01",
+                      expirationDate: "2026-05-01",
                     },
                   ],
           },
@@ -86,6 +97,7 @@ vi.mock("@/components/ui/button", () => ({
 }));
 beforeEach(() => {
   state.page = 1;
+  state.canEdit = false;
   state.nextPage = undefined;
   state.printed.mockReset();
 });
@@ -101,13 +113,56 @@ it("reaches and prints the stocked batch after twenty exhausted batches", () => 
       />
     );
   expect(render()).toContain("21 batches / 2 pages");
+  expect(render()).toContain("Expiration Date");
+  expect(render()).toContain("—");
   expect(state.nextPage).toBeDefined();
   state.nextPage!(2);
   const html = render();
   expect(html).toContain("STOCKED");
+  expect(html).toContain("2026-05-01");
   expect(html).not.toContain("EMPTY-");
   state.print!();
   expect(state.printed).toHaveBeenCalledWith(
     expect.objectContaining({ id: "stocked", qtyOnHand: 50 })
   );
+});
+
+it("shows expiration editing only to item editors", () => {
+  const render = () =>
+    renderToStaticMarkup(
+      <ItemLocationBatches
+        itemId="item"
+        locationId="rack"
+        canPrint={false}
+        printDisabled={false}
+        onPrint={state.printed}
+      />
+    );
+  expect(render()).not.toContain("Edit Expiration");
+  state.canEdit = true;
+  expect(render()).toContain("Edit Expiration");
+});
+
+it.each([
+  [2, true],
+  [1, false],
+  [0, false],
+])("highlights only dates before today (May day %s)", (day, expired) => {
+  vi.useFakeTimers();
+  try {
+    vi.setSystemTime(new Date(2026, 4, day, 12));
+    state.page = 2;
+    const html = renderToStaticMarkup(
+      <ItemLocationBatches
+        itemId="item"
+        locationId="rack"
+        canPrint={false}
+        printDisabled={false}
+        onPrint={state.printed}
+      />
+    );
+    expect(html.includes("text-destructive")).toBe(expired);
+  } finally {
+    vi.useRealTimers();
+  }
 });

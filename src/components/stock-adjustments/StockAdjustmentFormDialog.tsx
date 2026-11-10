@@ -166,6 +166,7 @@ export function StockAdjustmentFormDialog({
           batchLocationSku: item.batchLocationSku || "",
           batchCode: item.batchCode || "",
           batchReceivedAt: item.batchReceivedAt || "",
+          batchExpirationDate: item.batchExpirationDate || "",
           batchWarehouseLocationId: item.batchWarehouseLocationId || "",
           batchLocationCode: item.batchLocationCode || "",
           batchLocationName: item.batchLocationName || "",

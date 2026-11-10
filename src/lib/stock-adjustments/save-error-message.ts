@@ -13,6 +13,8 @@ export const getStockAdjustmentSaveErrorMessage = (
       return t("batchAlreadyExistsInWarehouse");
     case "STOCK_ADJUSTMENT_BATCH_LOCATION_INCREASE_REQUIRED":
       return t("batchLocationIncreaseRequired");
+    case "STOCK_ADJUSTMENT_EXPIRATION_DATE_INVALID":
+      return t("expirationDateInvalid");
     case "STOCK_ADJUSTMENT_RECEIVED_DATE_INVALID":
       return t("receivedDateInvalid");
     case "STOCK_ADJUSTMENT_RECEIVED_DATE_CONFLICT":

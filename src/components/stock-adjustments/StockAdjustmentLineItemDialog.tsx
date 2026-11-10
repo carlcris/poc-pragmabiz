@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { format } from "date-fns";
+import { getJisGlassExpirationDate } from "@/lib/stock-adjustments/jis-glass-expiration-date";
 import {
   createStockAdjustmentLineItemSchema,
   type StockAdjustmentLineItemFormValues,
@@ -98,6 +99,8 @@ export function StockAdjustmentLineItemDialog({
       batchLocationSku: "",
       batchCode: "",
       batchReceivedAt: "",
+      batchExpirationDate: "",
+      batchExpirationDateOverridden: false,
       batchWarehouseLocationId: "",
       batchLocationCode: "",
       batchLocationName: "",
@@ -121,6 +124,7 @@ export function StockAdjustmentLineItemDialog({
       const adjustmentDifference = item.adjustedQty - item.currentQty;
       form.reset({
         ...item,
+        batchExpirationDateOverridden: item.batchExpirationDateOverridden ?? true,
         batchEntryMode: item.itemBatchLocationId || item.itemBatchId ? "existing" : "new",
         adjustmentAmount: Math.abs(adjustmentDifference),
         adjustmentType: adjustmentDifference < 0 ? "remove" : "add",
@@ -134,6 +138,8 @@ export function StockAdjustmentLineItemDialog({
         batchLocationSku: "",
         batchCode: "",
         batchReceivedAt: "",
+        batchExpirationDate: "",
+        batchExpirationDateOverridden: false,
         batchWarehouseLocationId: "",
         batchLocationCode: "",
         batchLocationName: "",
@@ -160,6 +166,33 @@ export function StockAdjustmentLineItemDialog({
   const { data: selectedItemResponse } = useItem(watchedItemId);
   const selectedItem =
     selectedItemResponse?.data ?? items.find((candidate) => candidate.id === watchedItemId) ?? null;
+
+  const receivedDate = form.watch("batchReceivedAt") || "";
+  const expirationOverridden = form.watch("batchExpirationDateOverridden");
+  const defaultExpirationDate = getJisGlassExpirationDate(
+    selectedItemResponse?.data?.id === watchedItemId ? selectedItemResponse.data : null,
+    receivedDate
+  );
+
+  useEffect(() => {
+    if (
+      open &&
+      form.getValues("batchEntryMode") === "new" &&
+      !form.getValues("batchExpirationDateOverridden") &&
+      form.getValues("itemId") === watchedItemId &&
+      (form.getValues("batchReceivedAt") || "") === receivedDate
+    ) {
+      form.setValue("batchExpirationDate", defaultExpirationDate);
+    }
+  }, [
+    open,
+    batchEntryMode,
+    expirationOverridden,
+    defaultExpirationDate,
+    watchedItemId,
+    receivedDate,
+    form,
+  ]);
 
   const unitOptions = (selectedItemResponse?.data.unitOptions ?? []).filter(
     (option) =>
@@ -301,6 +334,8 @@ export function StockAdjustmentLineItemDialog({
       form.setValue("batchLocationSku", "");
       form.setValue("batchCode", "");
       form.setValue("batchReceivedAt", "");
+      form.setValue("batchExpirationDate", "");
+      form.setValue("batchExpirationDateOverridden", false);
       form.setValue("batchWarehouseLocationId", "");
       form.setValue("batchLocationCode", "");
       form.setValue("batchLocationName", "");
@@ -352,6 +387,8 @@ export function StockAdjustmentLineItemDialog({
     form.setValue("batchLocationSku", "");
     form.setValue("batchCode", "");
     form.setValue("batchReceivedAt", value === "new" ? format(new Date(), "yyyy-MM-dd") : "");
+    form.setValue("batchExpirationDate", "");
+    form.setValue("batchExpirationDateOverridden", false);
     form.setValue("batchWarehouseLocationId", value === "new" ? locationId || "" : "");
     form.setValue("batchLocationCode", "");
     form.setValue("batchLocationName", "");
@@ -764,9 +801,29 @@ export function StockAdjustmentLineItemDialog({
                             </FormItem>
                           )}
                         />
+                        <FormField
+                          control={form.control}
+                          name="batchExpirationDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{t("expirationDateLabel")}</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="date"
+                                  {...field}
+                                  onChange={(event) => {
+                                    form.setValue("batchExpirationDateOverridden", true);
+                                    field.onChange(event.target.value);
+                                  }}
+                                  value={field.value || ""}
+                                  className="bg-background"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </div>
-                      <p className="text-xs text-muted-foreground">{t("manualBatchCodeHint")}</p>
-                      <p className="text-xs text-muted-foreground">{t("receivedDateHint")}</p>
                     </div>
                   </div>
                 )}

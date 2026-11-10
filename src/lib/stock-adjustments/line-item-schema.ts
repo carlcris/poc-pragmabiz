@@ -1,10 +1,12 @@
 import { z } from "zod";
+import { batchExpirationDateSchema } from "./batch-expiration-date";
 import { batchReceivedDateSchema } from "./batch-received-date";
 
 export const createStockAdjustmentLineItemSchema = (
   tValidation: (
     key:
       | "receivedDateInvalid"
+      | "expirationDateInvalid"
       | "itemRequired"
       | "batchRequired"
       | "uomRequired"
@@ -28,6 +30,8 @@ export const createStockAdjustmentLineItemSchema = (
       batchLocationSku: z.string().optional(),
       batchCode: z.string().optional(),
       batchReceivedAt: z.string().optional(),
+      batchExpirationDate: z.string().optional(),
+      batchExpirationDateOverridden: z.boolean().optional(),
       batchWarehouseLocationId: z.string().optional(),
       batchLocationCode: z.string().optional(),
       batchLocationName: z.string().optional(),
@@ -72,6 +76,17 @@ export const createStockAdjustmentLineItemSchema = (
           code: z.ZodIssueCode.custom,
           message: tValidation("receivedDateInvalid"),
           path: ["batchReceivedAt"],
+        });
+      }
+
+      if (
+        value.batchEntryMode === "new" &&
+        !batchExpirationDateSchema.safeParse(value.batchExpirationDate || null).success
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: tValidation("expirationDateInvalid"),
+          path: ["batchExpirationDate"],
         });
       }
 

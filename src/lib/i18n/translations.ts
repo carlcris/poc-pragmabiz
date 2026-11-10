@@ -3435,6 +3435,15 @@ export type TranslationKeys = {
     moveStockError: string;
     batchCode: string;
     receivedDate: string;
+    expirationDate: string;
+    editExpiration: string;
+    clearExpiration: string;
+    expirationBatchDescription: string;
+    expirationInvalid: string;
+    expirationNotFound: string;
+    expirationForbidden: string;
+    expirationSaveFailed: string;
+
     moveDialogTitle: string;
     moveDialogDescription: string;
     sourceWarehouseLabel: string;
@@ -3757,10 +3766,9 @@ export type TranslationKeys = {
     noBatches: string;
     loadingBatches: string;
     receivedDateLabel: string;
-    receivedDateHint: string;
+    expirationDateLabel: string;
     manualBatchCodeLabel: string;
     manualBatchCodePlaceholder: string;
-    manualBatchCodeHint: string;
     newBatchIncreaseOnlyHint: string;
     batchOptionMeta: string;
     unassignedLocation: string;
@@ -3804,6 +3812,7 @@ export type TranslationKeys = {
     batchAlreadyExistsInWarehouse: string;
     saveFailed: string;
     receivedDateInvalid: string;
+    expirationDateInvalid: string;
     receivedDateConflict: string;
     saveNotFound: string;
     saveNotDraft: string;
@@ -7683,6 +7692,15 @@ export const translations: Record<Locale, TranslationKeys> = {
       moveStockError: "Failed to move stock",
       batchCode: "Batch Code",
       receivedDate: "Received Date",
+      expirationDate: "Expiration Date",
+      editExpiration: "Edit Expiration",
+      clearExpiration: "Clear Date",
+      expirationBatchDescription: "Batch {batch}. Changes apply to all locations holding this batch.",
+      expirationInvalid: "Enter a valid expiration date or clear it.",
+      expirationNotFound: "This batch is no longer available. Close this dialog and refresh the list.",
+      expirationForbidden: "You cannot edit batch expiration dates. Ask an administrator for access.",
+      expirationSaveFailed: "Could not save the expiration date. Try again.",
+
       moveDialogTitle: "Move Stock",
       moveDialogDescription:
         "Move stock between storage locations or warehouses in the same business unit.",
@@ -8024,12 +8042,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       noBatches: "No batches found",
       loadingBatches: "Loading batches...",
       receivedDateLabel: "Received Date",
-      receivedDateHint:
-        "Enter when the stock originally arrived. Past dates are allowed for initial inventory; this date determines batch age.",
+      expirationDateLabel: "Expiration Date (optional)",
       manualBatchCodeLabel: "New Batch Code",
       manualBatchCodePlaceholder: "Enter batch code",
-      manualBatchCodeHint:
-        "This batch will be created at the selected adjustment location when the draft is saved.",
       newBatchIncreaseOnlyHint: "Not available for a new batch",
       batchOptionMeta: "{qty} units at {location}",
       unassignedLocation: "Unassigned location",
@@ -8101,6 +8116,7 @@ export const translations: Record<Locale, TranslationKeys> = {
         "The warehouse cannot be changed. Create a new adjustment for the other warehouse.",
       saveFailed: "Could not save the stock adjustment. Review the details and try again.",
       receivedDateInvalid: "Enter a valid received date for each new batch.",
+      expirationDateInvalid: "Enter a valid expiration date or leave it blank for each new batch.",
       receivedDateConflict:
         "This batch already has a different received date. Use its original date or a different batch code.",
       batchAvailabilityCheckFailed:
@@ -14647,6 +14663,15 @@ export const translations: Record<Locale, TranslationKeys> = {
       moveStockError: "移动库存失败",
       batchCode: "批次编码",
       receivedDate: "收货日期",
+      expirationDate: "到期日期",
+      editExpiration: "编辑到期日期",
+      clearExpiration: "清空日期",
+      expirationBatchDescription: "批次 {batch}。更改将应用于存放此批次的所有库位。",
+      expirationInvalid: "请输入有效的到期日期，或清空日期。",
+      expirationNotFound: "此批次已不可用。请关闭此对话框并刷新列表。",
+      expirationForbidden: "您无权编辑批次到期日期。请联系管理员获取权限。",
+      expirationSaveFailed: "无法保存到期日期。请重试。",
+
       moveDialogTitle: "移动库存",
       moveDialogDescription: "在同一业务单元内的库位或仓库之间移动库存。",
       sourceWarehouseLabel: "来源仓库",
@@ -14972,11 +14997,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       noBatches: "未找到批次",
       loadingBatches: "正在加载批次...",
       receivedDateLabel: "收货日期",
-      receivedDateHint:
-        "请输入库存最初到货的日期。期初库存可填写过去的日期；此日期用于确定批次库龄。",
+      expirationDateLabel: "到期日期（可选）",
       manualBatchCodeLabel: "新批次编码",
       manualBatchCodePlaceholder: "输入批次编码",
-      manualBatchCodeHint: "保存草稿时，将在所选调整库位创建此批次。",
       newBatchIncreaseOnlyHint: "新批次不可使用",
       batchOptionMeta: "{location} 的 {qty} 单位",
       unassignedLocation: "未分配库位",
@@ -15037,6 +15060,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       saveWarehouseImmutable: "无法更改仓库。请为其他仓库创建新的调整。",
       saveFailed: "无法保存库存调整。请检查详细信息后重试。",
       receivedDateInvalid: "请为每个新批次输入有效的收货日期。",
+      expirationDateInvalid: "请为每个新批次输入有效的到期日期，或留空。",
       receivedDateConflict: "此批次已有不同的收货日期。请使用原收货日期或其他批次编码。",
       batchAvailabilityCheckFailed: "无法验证批次编码。请检查网络连接，或修改编码后重试。",
     },

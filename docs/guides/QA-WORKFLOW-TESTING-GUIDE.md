@@ -1066,6 +1066,12 @@ Phase 1 requires only the function-definition migration
 `20261108130000_stock_adjustment_existing_batch_destination.sql`; do not run a seed/reset or backfill.
 Cross-warehouse batches are deferred to `docs/plans/cross-warehouse-batches-phase-2-handover.md`.
 
+Verify **Inventory Items → Locations → batch table** shows the saved Expiration Date beside Received Date, and a dash for unset dates, including on later batch pages.
+
+Existing JIS glass backfill: run `supabase/scripts/backfill-jis-glass-batch-expiration.sql` in the PostgreSQL/Supabase SQL Editor after setting its company ID. It defaults to a rollback-only dry run; change the final statement to `COMMIT` to persist. It fills only null expiration dates with receipt date plus three calendar months, excludes acrylic and ambiguous-origin glass, and preserves existing dates. A manually cleared date is also null and will be filled by this one-time script.
+
+Manual expiration checks: In **New Batch**, enter an optional **Expiration Date**, edit or clear it before saving, and verify `item_batches.expiration_date` matches the submitted date or remains null. Test both a new adjustment and a new batch added to an existing draft. Past dates are allowed; impossible dates must show translated validation feedback. Verify JIS glass defaults to three calendar months after receipt, including month-end and leap-year cases. Changing receipt updates the default until expiration is manually edited or cleared. Verify the override survives later receipt changes and reopening the unsaved line. Local, acrylic, ambiguous-origin, and non-glass items remain unset. Run `supabase/tests/stock-adjustment-expiration-date.sql` to verify persistence and rollback without leaving test data.
+
 For each line, choose either **Existing Batch** or **New Batch**. Verify the Stock Preview panel updates as the direction, quantity, and unit change, and that a decrease larger than the batch's on-hand quantity shows a warning and disables saving the line. Creating a new batch requires a selected adjustment location, a unique batch code at that location, a Received Date, and a positive stock increase. Received Date defaults to today and can be backdated for initial inventory; it determines batch age. Verify a historical date survives saving and reopening the draft, and that a later draft edit preserves it. Reusing a batch code from another location with a different received date must show a conflict and leave existing dates unchanged. Saving the draft creates the zero-quantity batch/location identity transactionally; posting applies the entered increase to inventory.
 
 **Who can do it**: edit access to Stock Adjustments (posting uses the same permission as editing).
@@ -1875,3 +1881,19 @@ redistribute stock. Concurrent allocation or location edits must not create dupl
 - PDF performance: run `npx vitest run src/components/reports/StockAgingReportPDF.test.tsx` for a 1,000-row Unicode render benchmark and row-order/subtotal partition checks. Set `STOCK_AGING_PDF_OUTPUT=/tmp/stock-aging` (writes `-item.pdf` and `-batch.pdf`) to inspect the generated PDF. Check first, continuation, and final pages; all 1,000 batch codes must appear exactly once and the item subtotal once. Layout sections contain at most 50 rows and may span multiple printed pages; this does not limit exported data. Local benchmark: approximately 25 seconds before partitioning versus 4 seconds after (rendering only, not network/database time; hardware and content affect results).
 
 - Stock Aging grouping: confirm Item is selected by default. Switch to Batch and regenerate; identical batch codes across different items/warehouses in scope share one header and subtotal, while the detail column shows each item name/code. Confirm totals and row counts match Item mode, filters still apply, and switching grouping clears the old preview. Test a batch spanning more than 50 rows: repeated section headers are allowed, but the complete batch subtotal must appear once. Missing batch codes must remain separate by batch ID. English and Chinese grouping/subtotal/row-count labels must display correctly.
+
+### Batch expiration during Move Stock
+
+- Move a batch with an expiration date to a warehouse without that batch. Verify the destination
+  retains the exact date. Repeat with an unset expiration; it must remain unset.
+- Move into an existing same-code batch with matching received and expiration dates. Verify the
+  merge succeeds without changing either date. Matching unset expirations also allow merging.
+- Test differing expiration dates, source-only expiration, and destination-only expiration. Each
+  must return `STOCK_MOVE_BATCH_CONFLICT` and preserve all source/destination quantities, dates,
+  reservations, and transaction records.
+- Run `supabase/tests/stock-move.sql` on local Supabase. The authenticated suite verifies these
+  scenarios together with FIFO, same-warehouse moves, permissions, and rollback after writes;
+  all fixtures roll back.
+
+
+Batch expiration editing: In **Inventory Items → Locations → Batches**, users with Items edit permission can choose **Edit Expiration**, enter a date or **Clear Date**, and **Save**. Cancel discards changes. The date belongs to the batch and applies to all its locations. The PATCH endpoint `/api/items/[id]/batch-locations/[batchLocationId]/expiration` accepts only `{ expirationDate: "YYYY-MM-DD" | null }`, validates company and business-unit access, and performs one batch update. Invalid dates, unavailable batches, and denied access return safe errors. Successful saves refresh active item location views and mark cached location pages and stock adjustments stale. Verify edits and clearing without reloading, permission denial, and that failed saves leave the dialog open for retry.

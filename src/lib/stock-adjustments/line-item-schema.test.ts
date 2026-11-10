@@ -66,3 +66,28 @@ it("retains entered units without changing the base-unit delta", () => {
     adjustmentAmount: 144,
   });
 });
+
+const newBatch = {
+  ...line,
+  itemBatchId: undefined,
+  batchEntryMode: "new",
+  batchCode: "NEW",
+  batchReceivedAt: "2026-11-10",
+};
+it.each([undefined, "", "2027-02-10", "2024-02-29", "1999-01-01"])(
+  "accepts optional manual expiration %s",
+  (batchExpirationDate) => {
+    expect(schema.safeParse({ ...newBatch, batchExpirationDate }).success).toBe(true);
+  }
+);
+it.each(["2025-02-29", "2026-13-01", "0000-01-01", "not-a-date"])(
+  "rejects invalid expiration %s",
+  (batchExpirationDate) => {
+    const result = schema.safeParse({ ...newBatch, batchExpirationDate });
+    expect(result.success).toBe(false);
+    if (!result.success)
+      expect(result.error.issues).toContainEqual(
+        expect.objectContaining({ message: "expirationDateInvalid", path: ["batchExpirationDate"] })
+      );
+  }
+);

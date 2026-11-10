@@ -1,3 +1,7 @@
+import {
+  batchExpirationDateSchema,
+  getBatchExpirationDateError,
+} from "@/lib/stock-adjustments/batch-expiration-date";
 import { stockAdjustmentEnteredUnitSchema } from "@/lib/stock-adjustments/entered-unit-schema";
 import { getStockAdjustmentSaveError } from "@/lib/stock-adjustments/save-errors";
 import {
@@ -61,6 +65,7 @@ type StockAdjustmentItemInput = {
   itemBatchLocationId?: string | null;
   batchCode?: string | null;
   batchReceivedDate?: string;
+  batchExpirationDate?: string | null;
   itemBatchId?: string;
   enteredQty: number;
   enteredUnitOptionId: string | null;
@@ -119,10 +124,12 @@ type BatchLocationRow = {
     | {
         batch_code: string | null;
         received_at: string | null;
+        expiration_date: string | null;
       }
     | {
         batch_code: string | null;
         received_at: string | null;
+        expiration_date: string | null;
       }[]
     | null;
   warehouse_location:
@@ -423,7 +430,8 @@ async function GETHandler(request: NextRequest) {
               location_id,
               item_batch:item_batches!item_batch_locations_item_batch_id_fkey(
                 batch_code,
-                received_at
+                received_at,
+                expiration_date
               ),
               warehouse_location:warehouse_locations!item_batch_locations_location_id_fkey(
                 code,
@@ -520,6 +528,7 @@ async function GETHandler(request: NextRequest) {
               batchLocationSku: batchLocation?.batch_location_sku || null,
               batchCode: itemBatch?.batch_code || null,
               batchReceivedAt: itemBatch?.received_at || null,
+              batchExpirationDate: itemBatch?.expiration_date || null,
               batchWarehouseLocationId: batchLocation?.location_id || null,
               batchLocationCode: batchWarehouseLocation?.code || null,
               batchLocationName: batchWarehouseLocation?.name || null,
@@ -648,6 +657,22 @@ async function POSTHandler(request: NextRequest) {
     ) {
       const error = getBatchReceivedDateError("SA001")!;
       return NextResponse.json({ error: error.error, code: error.code }, { status: error.status });
+    }
+
+    if (
+      body.items?.some(
+        (item) =>
+          item.batchExpirationDate !== undefined &&
+          (Boolean(item.itemBatchLocationId) ||
+            Boolean(item.itemBatchId) ||
+            !batchExpirationDateSchema.safeParse(item.batchExpirationDate).success)
+      )
+    ) {
+      const failure = getBatchExpirationDateError();
+      return NextResponse.json(
+        { error: failure.error, code: failure.code },
+        { status: failure.status }
+      );
     }
 
     if (body.items?.some((item) => !stockAdjustmentEnteredUnitSchema.safeParse(item).success)) {

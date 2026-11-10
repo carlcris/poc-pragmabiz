@@ -35,6 +35,7 @@ export interface StockAdjustmentItem {
   batchLocationSku?: string | null;
   batchCode?: string | null;
   batchReceivedAt?: string | null;
+  batchExpirationDate?: string | null;
   batchWarehouseLocationId?: string | null;
   batchLocationCode?: string | null;
   batchLocationName?: string | null;
@@ -103,6 +104,7 @@ export interface CreateStockAdjustmentRequest {
     itemBatchId?: string;
     batchCode?: string | null;
     batchReceivedDate?: string;
+    batchExpirationDate?: string | null;
     enteredQty: number;
     enteredUnitOptionId: string | null;
     currentQty: number;
@@ -126,6 +128,7 @@ export interface UpdateStockAdjustmentRequest {
     itemBatchId?: string;
     batchCode?: string | null;
     batchReceivedDate?: string;
+    batchExpirationDate?: string | null;
     enteredQty: number;
     enteredUnitOptionId: string | null;
     currentQty: number;

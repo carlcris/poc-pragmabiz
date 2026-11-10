@@ -3121,6 +3121,7 @@ export type Database = {
           created_at: string;
           created_by: string | null;
           deleted_at: string | null;
+          expiration_date: string | null;
           id: string;
           item_id: string;
           qty_available: number | null;
@@ -3138,6 +3139,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
+          expiration_date?: string | null;
           id?: string;
           item_id: string;
           qty_available?: number | null;
@@ -3155,6 +3157,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           deleted_at?: string | null;
+          expiration_date?: string | null;
           id?: string;
           item_id?: string;
           qty_available?: number | null;

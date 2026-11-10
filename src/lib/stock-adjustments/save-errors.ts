@@ -3,7 +3,10 @@ import {
   STOCK_ADJUSTMENT_DATE_ERROR_CODES,
 } from "./batch-received-date";
 
+import { getBatchExpirationDateError } from "./batch-expiration-date";
+
 export const STOCK_ADJUSTMENT_SAVE_ERROR_CODES = [
+  "STOCK_ADJUSTMENT_EXPIRATION_DATE_INVALID",
   ...STOCK_ADJUSTMENT_DATE_ERROR_CODES,
   "STOCK_ADJUSTMENT_ENTERED_UNIT_INVALID",
   "STOCK_ADJUSTMENT_BATCH_ALREADY_EXISTS",
@@ -216,6 +219,7 @@ const knownFailures = new Map<
 export const getStockAdjustmentSaveError = (
   failure: { code?: string; message?: string } | null | undefined
 ) => {
+  if (failure?.code === "SA005") return getBatchExpirationDateError();
   if (failure?.code === "SA003") {
     return {
       code: "STOCK_ADJUSTMENT_BATCH_ALREADY_EXISTS" as const,

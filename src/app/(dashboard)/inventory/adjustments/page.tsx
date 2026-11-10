@@ -240,7 +240,10 @@ export default function StockAdjustmentsPage() {
       itemBatchId: item.itemBatchId,
       batchCode: item.batchCode,
       ...(!item.itemBatchLocationId && !item.itemBatchId
-        ? { batchReceivedDate: item.batchReceivedAt }
+        ? {
+            batchReceivedDate: item.batchReceivedAt,
+            batchExpirationDate: item.batchExpirationDate || null,
+          }
         : {}),
       enteredQty: item.enteredQty!,
       enteredUnitOptionId: item.enteredUnitOptionId ?? null,
