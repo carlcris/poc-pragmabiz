@@ -8,6 +8,7 @@ export const warehouseLocationErrorCodes = [
   "LOCATION_HIERARCHY_CYCLE",
   "LOCATION_HAS_CHILDREN",
   "LOCATION_IN_USE",
+  "LOCATION_IS_PREFERRED",
   "LOCATION_TYPE_INVALID",
   "LOCATION_WAREHOUSE_INVALID",
   "LOCATION_OWNERSHIP_IMMUTABLE",
@@ -38,6 +39,8 @@ export function warehouseLocationErrorResponse(error: { message: string; code?: 
     LOCATION_PARENT_INVALID: "Select an active parent in the same warehouse.",
     LOCATION_HIERARCHY_CYCLE: "A location cannot be its own ancestor. Choose another parent.",
     LOCATION_HAS_CHILDREN: "Manage child locations before disabling or deleting this location.",
+    LOCATION_IS_PREFERRED:
+      "This location is still preferred by an item. Reassign or clear its preferred location before deleting.",
     LOCATION_IN_USE: "Move stock and finish or cancel open work before changing this location.",
     LOCATION_TYPE_INVALID: "Select a supported location type.",
     LOCATION_WAREHOUSE_INVALID: "Select an available warehouse.",
@@ -52,7 +55,12 @@ export function warehouseLocationErrorResponse(error: { message: string; code?: 
   return NextResponse.json(
     { error: messages[code], code },
     {
-      status: ["LOCATION_HAS_CHILDREN", "LOCATION_IN_USE", "LOCATION_CODE_EXISTS"].includes(code)
+      status: [
+        "LOCATION_HAS_CHILDREN",
+        "LOCATION_IN_USE",
+        "LOCATION_IS_PREFERRED",
+        "LOCATION_CODE_EXISTS",
+      ].includes(code)
         ? 409
         : 400,
     }

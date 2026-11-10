@@ -17,6 +17,7 @@ import {
   Pencil,
   Plus,
   SearchX,
+  Trash2,
 } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiClient, getApiErrorCode } from "@/lib/api";
@@ -33,6 +34,8 @@ import {
 } from "@/components/warehouses/AddMultipleWarehouseLocationsDialog";
 import { CopyWarehouseLocationStructureDialog } from "@/components/warehouses/CopyWarehouseLocationStructureDialog";
 import { MoveWarehouseLocationDialog } from "@/components/warehouses/MoveWarehouseLocationDialog";
+import { DeleteWarehouseLocationDialog } from "@/components/warehouses/DeleteWarehouseLocationDialog";
+import { useDeleteWarehouseLocation } from "@/hooks/useDeleteWarehouseLocation";
 import { WarehouseLocationSummary } from "@/components/warehouses/WarehouseLocationSummary";
 import { WarehouseLocationTree } from "@/components/warehouses/WarehouseLocationTree";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -70,7 +73,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useCanCreate, useCanEdit, useCanView } from "@/hooks/usePermissions";
+import { useCanCreate, useCanDelete, useCanEdit, useCanView } from "@/hooks/usePermissions";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { RESOURCES } from "@/constants/resources";
 import {
@@ -127,6 +130,7 @@ const capacityTone = (status: WarehouseLocation["capacityStatus"]) => {
 
 export default function WarehouseLocationsPage() {
   const t = useTranslations("warehouseLocationsPage");
+  const canDelete = useCanDelete(RESOURCES.MANAGE_LOCATIONS);
   const canCreate = useCanCreate(RESOURCES.MANAGE_LOCATIONS);
   const canEdit = useCanEdit(RESOURCES.MANAGE_LOCATIONS);
   const canViewWarehouse = useCanView(RESOURCES.WAREHOUSES);
@@ -150,6 +154,7 @@ export default function WarehouseLocationsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogState, setDialogState] = useState<LocationDialogState | null>(null);
   const [dialogKey, setDialogKey] = useState(0);
+  const [deleteTarget, setDeleteTarget] = useState<CopyTarget | null>(null);
   const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null);
   const [moveOpen, setMoveOpen] = useState(false);
   const [moveKey, setMoveKey] = useState(0);
@@ -238,6 +243,7 @@ export default function WarehouseLocationsPage() {
       ? t(warehouseLocationTypeLabelKeys[locationType])
       : locationType;
 
+  const deleteLocation = useDeleteWarehouseLocation(warehouseId);
   const invalidateLocationQueries = useInvalidateWarehouseLocations(warehouseId);
 
   const createLocation = useMutation({
@@ -418,6 +424,7 @@ export default function WarehouseLocationsPage() {
               <WarehouseLocationSummary
                 location={selected}
                 canEdit={canEdit}
+                onDelete={canDelete ? () => setDeleteTarget(selected) : undefined}
                 isToggling={toggleLocation.isPending}
                 onEdit={() => openLocationDialog({ mode: "edit", location: selected })}
                 onMove={() => openMoveDialog(selected)}
@@ -697,6 +704,15 @@ export default function WarehouseLocationsPage() {
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
+                                      {canDelete ? (
+                                        <DropdownMenuItem
+                                          className="text-destructive focus:text-destructive"
+                                          onClick={() => setDeleteTarget(location)}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                          <span>{t("deleteLocation")}</span>
+                                        </DropdownMenuItem>
+                                      ) : null}
                                       {isSearching ? (
                                         <DropdownMenuItem
                                           onClick={() => goToLocation(location.parentId ?? null)}
@@ -780,6 +796,21 @@ export default function WarehouseLocationsPage() {
             ) : null}
           </div>
         </div>
+
+        {deleteTarget && canDelete ? (
+          <DeleteWarehouseLocationDialog
+            location={deleteTarget}
+            isPending={deleteLocation.isPending}
+            onClose={() => setDeleteTarget(null)}
+            onDelete={async () => {
+              await deleteLocation.mutateAsync(deleteTarget.id);
+              if (selectedId === deleteTarget.id) goToLocation(deleteTarget.parentId ?? null);
+              setPage(1);
+              setDeleteTarget(null);
+              toast.success(t("locationDeleted"));
+            }}
+          />
+        ) : null}
 
         <Dialog open={structureOpen} onOpenChange={setStructureOpen}>
           <DialogContent className="max-h-dvh overflow-y-auto">

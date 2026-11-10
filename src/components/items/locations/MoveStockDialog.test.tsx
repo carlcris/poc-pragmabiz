@@ -7,6 +7,7 @@ import { translations } from "@/lib/i18n/translations";
 import { MoveStockDialog } from "./MoveStockDialog";
 
 const state = vi.hoisted(() => ({
+  locale: "en" as "en" | "zh",
   sourceData: undefined as { data: ItemLocation[] } | undefined,
   error: null as Error | null,
   isPending: false,
@@ -48,7 +49,7 @@ vi.mock("next-intl", () => ({
     ) =>
       Object.entries(values ?? {}).reduce(
         (text, [name, value]) => text.replace(`{${name}}`, String(value)),
-        translations.en.itemLocationsTab[key]
+        translations[state.locale].itemLocationsTab[key]
       ),
 }));
 vi.mock("@/components/warehouses/WarehouseSelect", () => ({
@@ -132,6 +133,7 @@ const setQuantity = (quantity: string, unit = "base") => {
   ];
 };
 beforeEach(() => {
+  state.locale = "en";
   state.values = [];
   state.mutate.mockClear();
   state.submit = undefined;
@@ -241,6 +243,31 @@ describe("Move Stock dialog", () => {
     expect(html).toContain("reduce the quantity, or select another source");
     expect(html).toContain("Source Warehouse");
   });
+
+  it.each([
+    [
+      "en",
+      "expiration date",
+      "unset expiration date",
+      "correct any inaccurate records",
+      "select another warehouse",
+    ],
+    ["zh", "有效期不同", "一方未设置有效期", "更正不准确的记录", "选择其他仓库"],
+  ] as const)(
+    "explains expiration-only batch conflicts in %s",
+    (locale, mismatch, unset, correction, alternative) => {
+      state.locale = locale;
+      state.error = new Error("safe fallback", { cause: { code: "STOCK_MOVE_BATCH_CONFLICT" } });
+      const html = renderDialog();
+      expect(html).toContain('role="alert"');
+      expect(html).toContain(mismatch);
+      expect(html).toContain(unset);
+      expect(html).toContain(correction);
+      expect(html).toContain(alternative);
+      expect(html).toContain('id="move-stock-quantity"');
+      expect(html).not.toContain("safe fallback");
+    }
+  );
 
   it("keeps unexpected exception text out of the dialog", () => {
     state.error = new Error("private database exception");

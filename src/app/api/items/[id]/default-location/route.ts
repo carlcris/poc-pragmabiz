@@ -101,6 +101,15 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
         .eq("id", itemWarehouse.id);
 
       if (updateError) {
+        if (updateError.message === "LOCATION_STORAGE_UNAVAILABLE") {
+          return NextResponse.json(
+            {
+              error: "Choose an active location that allows stock storage.",
+              code: "LOCATION_STORAGE_UNAVAILABLE",
+            },
+            { status: 409 }
+          );
+        }
         console.error("Failed to update default location", updateError);
         return NextResponse.json({ error: "Failed to update default location" }, { status: 500 });
       }
@@ -123,6 +132,15 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       });
 
       if (insertError) {
+        if (insertError.message === "LOCATION_STORAGE_UNAVAILABLE") {
+          return NextResponse.json(
+            {
+              error: "Choose an active location that allows stock storage.",
+              code: "LOCATION_STORAGE_UNAVAILABLE",
+            },
+            { status: 409 }
+          );
+        }
         console.error("Failed to set default location", insertError);
         return NextResponse.json({ error: "Failed to set default location" }, { status: 500 });
       }

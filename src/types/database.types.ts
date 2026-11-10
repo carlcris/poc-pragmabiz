@@ -12484,6 +12484,10 @@ export type Database = {
         Args: { p_order_id: string };
         Returns: string;
       };
+      delete_warehouse_location: {
+        Args: { p_business_unit_id: string; p_location_id: string };
+        Returns: undefined;
+      };
       ensure_default_manufacturing_workstations: {
         Args: { p_business_unit_id?: string; p_company_id: string };
         Returns: undefined;

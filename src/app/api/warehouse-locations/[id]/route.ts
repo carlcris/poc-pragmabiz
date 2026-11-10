@@ -270,6 +270,73 @@ async function PATCHHandler(request: NextRequest, { params }: RouteContext) {
   }
 }
 
+async function DELETEHandler(_request: NextRequest, { params }: RouteContext) {
+  try {
+    const unauthorized = await requirePermission(RESOURCES.MANAGE_LOCATIONS, "delete");
+    if (unauthorized) return unauthorized;
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, currentBusinessUnitId } = context;
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: "Business unit context required", code: "BUSINESS_UNIT_CONTEXT_REQUIRED" },
+        { status: 400 }
+      );
+    }
+    const { id } = await params;
+    if (!UUID_REGEX.test(id)) {
+      return NextResponse.json(
+        { error: "Invalid location id", code: "INVALID_LOCATION_ID" },
+        { status: 400 }
+      );
+    }
+    const { error } = await supabase.rpc("delete_warehouse_location", {
+      p_business_unit_id: currentBusinessUnitId,
+      p_location_id: id,
+    });
+    if (error) {
+      console.error("Failed to delete warehouse location", error);
+      if (
+        error.message === "WAREHOUSE_LOCATION_NOT_FOUND" ||
+        error.message === "LOCATION_WAREHOUSE_INVALID"
+      ) {
+        return NextResponse.json(
+          { error: "Warehouse location not found", code: "WAREHOUSE_LOCATION_NOT_FOUND" },
+          { status: 404 }
+        );
+      }
+      if (error.message === "LOCATION_DELETE_FORBIDDEN") {
+        return NextResponse.json(
+          {
+            error: "You do not have permission to delete locations",
+            code: "LOCATION_DELETE_FORBIDDEN",
+          },
+          { status: 403 }
+        );
+      }
+      const knownError = warehouseLocationErrorResponse(error);
+      if (knownError) return knownError;
+      return NextResponse.json(
+        { error: "Failed to delete location", code: "WAREHOUSE_LOCATION_DELETE_FAILED" },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    console.error("Unexpected warehouse location deletion error", error);
+    return NextResponse.json(
+      { error: "Failed to delete location", code: "WAREHOUSE_LOCATION_DELETE_FAILED" },
+      { status: 500 }
+    );
+  }
+}
+
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "warehouse_locations",
+  route: "/api/warehouse-locations/[id]",
+});
+
 export const GET = withActivityLogging(GETHandler, {
   action: "view",
   resourceType: "warehouse_locations",

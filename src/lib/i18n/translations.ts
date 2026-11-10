@@ -646,6 +646,15 @@ export type TranslationKeys = {
     description: string;
   };
   warehouseLocationsPage: {
+    deleteLocation: string;
+    deleteLocationTitle: string;
+    deleteLocationDescription: string;
+    locationDeleted: string;
+    deleteLocationError: string;
+    deleteLocationInUse: string;
+    deletingLocation: string;
+    deleteLocationForbidden: string;
+
     editConflict: string;
     parentLocation: string;
     parentHelp: string;
@@ -659,6 +668,7 @@ export type TranslationKeys = {
     hierarchyCycle: string;
     hasChildren: string;
     locationInUse: string;
+    locationIsPreferred: string;
     ownershipImmutable: string;
     typeZone: string;
     typeAisle: string;
@@ -4726,6 +4736,18 @@ export const translations: Record<Locale, TranslationKeys> = {
         "Leave empty to use the whole warehouse. Selecting a location includes its eligible descendants; FIFO still applies across all selected sources.",
     },
     warehouseLocationsPage: {
+      deleteLocation: "Delete location",
+      deleteLocationTitle: "Delete {location}?",
+      deleteLocationDescription:
+        "Only empty locations can be deleted. Remove all child locations, move any stock, and finish or cancel reservations and pending putaway first. Historical records will be preserved.",
+      locationDeleted: "Location deleted",
+      deleteLocationError: "Could not delete this location. Refresh and try again.",
+      deleteLocationInUse:
+        "Cannot delete: move remaining stock, release reservations, and complete or cancel putaway tasks first.",
+      deletingLocation: "Deleting…",
+      deleteLocationForbidden:
+        "You do not have permission to delete locations. Contact your administrator.",
+
       editConflict: "The location changed during this operation. Refresh and retry.",
       parentLocation: "Parent location",
       parentHelp:
@@ -4741,6 +4763,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       hierarchyCycle:
         "A location cannot be inside itself or its descendants. Choose another parent.",
       hasChildren: "Manage child locations before disabling or deleting this location.",
+      locationIsPreferred:
+        "This location is still preferred by an item. Reassign or clear its preferred location before deleting.",
       locationInUse: "Move stock and finish or cancel open work before changing this location.",
       ownershipImmutable: "Use Move Stock to transfer inventory to another warehouse.",
       typeZone: "Zone",
@@ -7696,10 +7720,13 @@ export const translations: Record<Locale, TranslationKeys> = {
       expirationDate: "Expiration Date",
       editExpiration: "Edit Expiration",
       clearExpiration: "Clear Date",
-      expirationBatchDescription: "Batch {batch}. Changes apply to all locations holding this batch.",
+      expirationBatchDescription:
+        "Batch {batch}. Changes apply to all locations holding this batch.",
       expirationInvalid: "Enter a valid expiration date or clear it.",
-      expirationNotFound: "This batch is no longer available. Close this dialog and refresh the list.",
-      expirationForbidden: "You cannot edit batch expiration dates. Ask an administrator for access.",
+      expirationNotFound:
+        "This batch is no longer available. Close this dialog and refresh the list.",
+      expirationForbidden:
+        "You cannot edit batch expiration dates. Ask an administrator for access.",
       expirationSaveFailed: "Could not save the expiration date. Try again.",
 
       moveDialogTitle: "Move Stock",
@@ -7731,7 +7758,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       moveDestinationUnavailable:
         "The destination stock record is inactive or deleted. Restore it or select another destination.",
       moveBatchConflict:
-        "The destination has the same batch code with a different receipt date, or a deleted batch. Resolve the batch record or select another warehouse.",
+        "The destination has the same batch code with a different receipt or expiration date (including an unset expiration date), or a deleted batch. Review the batch dates and correct any inaccurate records, or select another warehouse.",
       selectWarehouse: "Select warehouse",
       fromLocationLabel: "From Location",
       toLocationLabel: "To Location",
@@ -9873,7 +9900,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       unknown: "Unknown",
       reset: "Reset",
       loadError: "Failed to load stock aging report. Please try again.",
-      reportTooLarge: "This report exceeds 5,000 source rows. Narrow the category or switch business unit, then try again. Search and age filters do not reduce this limit.",
+      reportTooLarge:
+        "This report exceeds 5,000 source rows. Narrow the category or switch business unit, then try again. Search and age filters do not reduce this limit.",
       warehousesCaption: "{count} warehouses covered",
       rowsCaption: "{count} grouped rows",
       agingBasedOnReceiptDate: "Aging is based on batch receipt date.",
@@ -9883,7 +9911,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       batchSubtotal: "Batch Subtotal",
       oldestAgeValue: "Oldest: {value} days",
       stockRowsCount: "{count} stock rows",
-      ageDuration: "{years, plural, =0 {} other {# y }}{months, plural, =0 {} other {# m }}{days, plural, =0 {} other {# d}}",
+      ageDuration:
+        "{years, plural, =0 {} other {# y }}{months, plural, =0 {} other {# m }}{days, plural, =0 {} other {# d}}",
       ageZero: "0 d",
       itemSubtotal: "Item Subtotal",
       oldestStockForItem: "Oldest in item: {value} days",
@@ -11828,6 +11857,16 @@ export const translations: Record<Locale, TranslationKeys> = {
         "留空使用整个仓库。选择库位后会包含符合条件的下级库位；所有选定来源仍遵循先进先出。",
     },
     warehouseLocationsPage: {
+      deleteLocation: "删除库位",
+      deleteLocationTitle: "删除 {location}？",
+      deleteLocationDescription:
+        "只能删除空库位。请先移除所有子库位、移走库存，并完成或取消预留和待上架任务。历史记录将予以保留。",
+      locationDeleted: "库位已删除",
+      deleteLocationError: "无法删除此库位。请刷新后重试。",
+      deleteLocationInUse: "无法删除：请先移走库存、释放预留，并完成或取消上架任务。",
+      deletingLocation: "正在删除…",
+      deleteLocationForbidden: "您没有删除库位的权限。请联系管理员。",
+
       editConflict: "操作期间库位已发生变更。请刷新后重试。",
       parentLocation: "上级库位",
       parentHelp: "可选。留空表示仓库直属库位；任意库位类型均可包含其他类型。",
@@ -11841,6 +11880,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       parentInvalid: "请选择同一仓库中的有效上级库位。",
       hierarchyCycle: "库位不能位于自身或其下级之内。请选择其他上级库位。",
       hasChildren: "停用或删除此库位前，请先处理下级库位。",
+      locationIsPreferred: "此库位仍是商品的首选库位。请先更改或清除该商品的首选库位，再删除。",
       locationInUse: "更改此库位前，请先移走库存并完成或取消未完成的作业。",
       ownershipImmutable: "请使用库存移动功能将库存转移至其他仓库。",
       typeZone: "区域",
@@ -14724,7 +14764,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       moveInsufficientStock: "来源库位的可用库存不足。请刷新库存、减少数量或选择其他来源库位。",
       moveDestinationUnavailable: "目标库存记录已停用或删除。请恢复记录或选择其他目标。",
       moveBatchConflict:
-        "目标仓库存在相同批次代码但收货日期不同的记录，或已删除的批次。请解决批次记录冲突或选择其他仓库。",
+        "目标仓库存在相同批次代码但收货日期或有效期不同的记录（包括一方未设置有效期），或已删除的批次。请核对批次日期并更正不准确的记录，或选择其他仓库。",
       selectWarehouse: "选择仓库",
       fromLocationLabel: "来源库位",
       toLocationLabel: "目标库位",
@@ -16771,7 +16811,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       unknown: "未知",
       reset: "重置",
       loadError: "加载库存库龄报表失败。请重试。",
-      reportTooLarge: "此报表超过 5,000 条来源记录。请缩小类别范围或切换业务单位后重试。搜索和库龄筛选不会减少此限制所统计的记录数。",
+      reportTooLarge:
+        "此报表超过 5,000 条来源记录。请缩小类别范围或切换业务单位后重试。搜索和库龄筛选不会减少此限制所统计的记录数。",
       warehousesCaption: "覆盖 {count} 个仓库",
       rowsCaption: "{count} 个分组行",
       agingBasedOnReceiptDate: "库龄基于批次收货日期计算。",
@@ -16781,7 +16822,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       batchSubtotal: "批次小计",
       oldestAgeValue: "最久库龄：{value} 天",
       stockRowsCount: "{count} 条库存记录",
-      ageDuration: "{years, plural, =0 {} other {# 年 }}{months, plural, =0 {} other {# 月 }}{days, plural, =0 {} other {# 天}}",
+      ageDuration:
+        "{years, plural, =0 {} other {# 年 }}{months, plural, =0 {} other {# 月 }}{days, plural, =0 {} other {# 天}}",
       ageZero: "0 天",
       itemSubtotal: "商品小计",
       oldestStockForItem: "该商品最老库存：{value} 天",

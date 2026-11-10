@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormatter, useTranslations } from "next-intl";
-import { Ban, CheckCircle2, Copy, MoreVertical, Pencil } from "lucide-react";
+import { Ban, CheckCircle2, Copy, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import {
   getWarehouseLocationRestrictionMessage,
   getWarehouseLocationRestrictions,
@@ -31,6 +31,7 @@ type WarehouseLocationSummaryProps = {
   location: WarehouseLocationDetail;
   canEdit: boolean;
   isToggling: boolean;
+  onDelete?: () => void;
   onEdit: () => void;
   onMove: () => void;
   onCopy?: () => void;
@@ -41,6 +42,7 @@ export function WarehouseLocationSummary({
   location,
   canEdit,
   isToggling,
+  onDelete,
   onEdit,
   onMove,
   onCopy,
@@ -92,21 +94,27 @@ export function WarehouseLocationSummary({
               </span>
             </p>
           </div>
-          {canEdit ? (
+          {canEdit || onDelete ? (
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={onEdit}>
-                <Pencil className="mr-2 h-4 w-4" />
-                {t("edit")}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={Boolean(restrictions.move)}
-                aria-describedby={restrictions.move ? "selected-location-move-reason" : undefined}
-                onClick={onMove}
-              >
-                {t("move")}
-              </Button>
+              {canEdit ? (
+                <>
+                  <Button variant="outline" size="sm" onClick={onEdit}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    {t("edit")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={Boolean(restrictions.move)}
+                    aria-describedby={
+                      restrictions.move ? "selected-location-move-reason" : undefined
+                    }
+                    onClick={onMove}
+                  >
+                    {t("move")}
+                  </Button>
+                </>
+              ) : null}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -125,28 +133,39 @@ export function WarehouseLocationSummary({
                       <span>{t("copyStructure")}</span>
                     </DropdownMenuItem>
                   ) : null}
-                  <DropdownMenuItem
-                    disabled={Boolean(toggleReason) || isToggling}
-                    onClick={() => onToggleActive(!location.isActive)}
-                    className={cn(
-                      "items-start",
-                      location.isActive && "text-destructive focus:text-destructive"
-                    )}
-                  >
-                    {location.isActive ? (
-                      <Ban className="mt-0.5 h-4 w-4" />
-                    ) : (
-                      <CheckCircle2 className="mt-0.5 h-4 w-4" />
-                    )}
-                    <span className="flex flex-col">
-                      <span>{location.isActive ? t("disable") : t("enable")}</span>
-                      {toggleReason ? (
-                        <span className="text-xs text-muted-foreground">
-                          {restrictionText(toggleReason)}
-                        </span>
-                      ) : null}
-                    </span>
-                  </DropdownMenuItem>
+                  {onDelete ? (
+                    <DropdownMenuItem
+                      onClick={onDelete}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span>{t("deleteLocation")}</span>
+                    </DropdownMenuItem>
+                  ) : null}
+                  {canEdit ? (
+                    <DropdownMenuItem
+                      disabled={Boolean(toggleReason) || isToggling}
+                      onClick={() => onToggleActive(!location.isActive)}
+                      className={cn(
+                        "items-start",
+                        location.isActive && "text-destructive focus:text-destructive"
+                      )}
+                    >
+                      {location.isActive ? (
+                        <Ban className="mt-0.5 h-4 w-4" />
+                      ) : (
+                        <CheckCircle2 className="mt-0.5 h-4 w-4" />
+                      )}
+                      <span className="flex flex-col">
+                        <span>{location.isActive ? t("disable") : t("enable")}</span>
+                        {toggleReason ? (
+                          <span className="text-xs text-muted-foreground">
+                            {restrictionText(toggleReason)}
+                          </span>
+                        ) : null}
+                      </span>
+                    </DropdownMenuItem>
+                  ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

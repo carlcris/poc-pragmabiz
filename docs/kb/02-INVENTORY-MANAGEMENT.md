@@ -109,6 +109,17 @@ warehouse outside the active unit use explicit cross-business-unit lookup endpoi
 - **Is Active**: Enable/disable warehouse
 
 **Warehouse Locations**:
+Users with `manage_locations.delete` permission can choose **Delete location** in the row or
+selected-location actions menu and confirm deletion. Only empty leaf locations may be deleted:
+stock, reservations, pending or partially completed putaway, and any remaining child locations (including inactive children)
+block the operation. `DELETE /api/warehouse-locations/[id]` calls the transactional
+`delete_warehouse_location` RPC, which locks the warehouse and location and uses the existing
+hierarchy guards. Deletion is soft: historical references and allocated codes remain preserved.
+Deletion conflicts keep the dialog open and explicitly explain that stock, stock reservations, or
+unfinished putaway must be cleared before retrying. Successful deletion refreshes location
+lists, trees, selectors, item views, capacity and location reports; deleting the open location
+returns to its parent. Existing server filtering and bounded pagination are unchanged.
+
 The item's selected location loads current direct and subtree stock through
 `GET /api/items/[id]/location-stock-tree?warehouseId=...&locationId=...&limit=1`.
 This exact-location mode returns at most one node, including an empty selected location, and uses
@@ -1667,3 +1678,8 @@ Key inventory-related migrations:
 
 
 Batch expiration editing: In **Inventory Items → Locations → Batches**, users with Items edit permission can choose **Edit Expiration**, enter a date or **Clear Date**, and **Save**. Cancel discards changes. The date belongs to the batch and applies to all its locations. The PATCH endpoint `/api/items/[id]/batch-locations/[batchLocationId]/expiration` accepts only `{ expirationDate: "YYYY-MM-DD" | null }`, validates company and business-unit access, and performs one batch update. Invalid dates, unavailable batches, and denied access return safe errors. Successful saves refresh active item location views and mark cached location pages and stock adjustments stale. Verify edits and clearing without reloading, permission denial, and that failed saves leave the dialog open for retry.
+
+An empty warehouse location cannot be deleted while it is an item's preferred location.
+Clear or reassign the preference in the item's warehouse settings, then retry deletion.
+Preferred-location assignment and deletion are serialized in the database so concurrent
+requests cannot leave an item pointing to a deleted location.

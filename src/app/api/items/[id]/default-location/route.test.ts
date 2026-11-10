@@ -95,3 +95,19 @@ it("rejects a location outside the scoped lookup", async () => {
   expect((await request()).status).toBe(400);
   expect(state.update).not.toHaveBeenCalled();
 });
+
+it.each([true, false])(
+  "returns recovery guidance if deletion wins the assignment race (existing row: %s)",
+  async (existing) => {
+    state.existing = existing;
+    const error = { message: "LOCATION_STORAGE_UNAVAILABLE" };
+    state.update.mockReturnValue({ eq: async () => ({ error }) });
+    state.insert.mockResolvedValue({ error });
+    const response = await request();
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      code: "LOCATION_STORAGE_UNAVAILABLE",
+      error: "Choose an active location that allows stock storage.",
+    });
+  }
+);

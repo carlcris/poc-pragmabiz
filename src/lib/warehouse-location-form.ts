@@ -40,6 +40,7 @@ export const warehouseLocationUseHelpKeys = {
 } as const satisfies Record<WarehouseLocationUse, string>;
 
 export const warehouseLocationMutationErrorCodes = [
+  "LOCATION_DELETE_FORBIDDEN",
   "LOCATION_CODE_TOO_LONG",
   "LOCATION_CODE_READ_ONLY",
   "LOCATION_EDIT_CONFLICT",
@@ -47,6 +48,7 @@ export const warehouseLocationMutationErrorCodes = [
   "LOCATION_HIERARCHY_CYCLE",
   "LOCATION_HAS_CHILDREN",
   "LOCATION_IN_USE",
+  "LOCATION_IS_PREFERRED",
   "LOCATION_TYPE_INVALID",
   "LOCATION_WAREHOUSE_INVALID",
   "LOCATION_OWNERSHIP_IMMUTABLE",
@@ -63,6 +65,7 @@ export type WarehouseLocationMutationErrorCode =
   (typeof warehouseLocationMutationErrorCodes)[number];
 
 export type WarehouseLocationErrorMessageKey =
+  | "deleteLocationForbidden"
   | "codeTooLong"
   | "codeReadOnly"
   | "editConflict"
@@ -70,6 +73,7 @@ export type WarehouseLocationErrorMessageKey =
   | "hierarchyCycle"
   | "hasChildren"
   | "locationInUse"
+  | "locationIsPreferred"
   | "invalidLocation"
   | "locationNotFound"
   | "ownershipImmutable"
@@ -85,6 +89,7 @@ const errorMessageKeys: Record<
   WarehouseLocationMutationErrorCode,
   WarehouseLocationErrorMessageKey
 > = {
+  LOCATION_DELETE_FORBIDDEN: "deleteLocationForbidden",
   LOCATION_CODE_TOO_LONG: "codeTooLong",
   LOCATION_CODE_READ_ONLY: "codeReadOnly",
   LOCATION_EDIT_CONFLICT: "editConflict",
@@ -92,6 +97,7 @@ const errorMessageKeys: Record<
   LOCATION_HIERARCHY_CYCLE: "hierarchyCycle",
   LOCATION_HAS_CHILDREN: "hasChildren",
   LOCATION_IN_USE: "locationInUse",
+  LOCATION_IS_PREFERRED: "locationIsPreferred",
   LOCATION_TYPE_INVALID: "invalidLocation",
   LOCATION_WAREHOUSE_INVALID: "locationNotFound",
   LOCATION_OWNERSHIP_IMMUTABLE: "ownershipImmutable",

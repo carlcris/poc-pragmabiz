@@ -1687,7 +1687,7 @@ These apply across _every_ module above, so check them once per module rather th
    - Reorder Management's Suggestions tab is entirely unimplemented: its list endpoint always returns an empty array, so suggestions and their Approve/Reject workflow cannot be tested.
    - The Workflow settings tab's approval-requirement toggles (Purchase Order, Stock Request, Delivery Note) having no effect on the actual workflows they claim to gate.
    - A Sales Invoice payment can be recorded successfully, and the invoice marked Paid, even if the corresponding accounting-ledger entry silently fails to post — no error is surfaced to the user either way.
-5. **No consistent "in use" protection across master data.** Suppliers and Roles correctly block deletion when something else depends on them; Items, Customers, Warehouses, and Warehouse Locations do not — treat every master-data delete as its own test rather than assuming the app protects itself consistently.
+5. **No consistent "in use" protection across master data.** Suppliers, Roles, and Warehouse Locations block deletion for their supported dependency checks; Items, Customers, and Warehouses do not consistently do so — treat every master-data delete as its own test rather than assuming the app protects itself consistently.
 6. **Several master-data types can't be created from inside the app at all** — Item Categories, Units of Measure, Business Units, and new User accounts all have to be set up ahead of time by whoever administers the test environment. Confirm this setup is done before test cycles start, since there's no in-app fallback if one is missing.
 7. **Newer vs. older modules behave differently on failure.** The newer modules (goods receiving, load lists, deliveries, transformations, job orders, manufacturing, putaway) are built so a failure partway through leaves nothing half-done. Some older modules (legacy purchase-order receiving and invoice sending) do their work in several separate steps — these are worth extra stress-testing for partial-failure states, e.g. what happens if the connection drops mid-action.
 
@@ -1695,6 +1695,13 @@ These apply across _every_ module above, so check them once per module rather th
 
 Run the following rollback-only SQL checks against a seeded local database with `psql -v ON_ERROR_STOP=1`:
 
+- `supabase/tests/warehouse-location-delete.sql`: authenticated empty active/inactive location
+  deletion, child and stock restrictions, pending/partial putaway, preserved history, duplicate
+  deletion, permission rejection, and rollback after an AFTER UPDATE failure. Apply
+  `20261110120000_delete_empty_warehouse_location.sql` first. In the UI, delete an empty row and
+  the currently open location; confirm the table/tree/selectors refresh without reloading and
+  the open location returns to its parent. Check that a blocked deletion keeps the dialog open
+  with translated recovery guidance and that users without Delete permission see no delete action.
 - `supabase/tests/warehouse-location-hierarchy.sql`: mixed and skipped levels, address refresh,
   cycle and cross-warehouse rejection, stocked-subtree edits, reservations, and rollback after an earlier write.
 - `supabase/tests/warehouse-location-allocation.sql`: authenticated FIFO allocation across nested
@@ -1896,7 +1903,9 @@ redistribute stock. Concurrent allocation or location edits must not create dupl
   merge succeeds without changing either date. Matching unset expirations also allow merging.
 - Test differing expiration dates, source-only expiration, and destination-only expiration. Each
   must return `STOCK_MOVE_BATCH_CONFLICT` and preserve all source/destination quantities, dates,
-  reservations, and transaction records.
+  reservations, and transaction records. With matching receipt dates, verify the open dialog
+  explains the expiration mismatch (including an unset date) in English and Chinese and advises
+  checking/correcting inaccurate batch dates or choosing another warehouse.
 - Run `supabase/tests/stock-move.sql` on local Supabase. The authenticated suite verifies these
   scenarios together with FIFO, same-warehouse moves, permissions, and rollback after writes;
   all fixtures roll back.
@@ -1906,3 +1915,9 @@ Batch expiration editing: In **Inventory Items → Locations → Batches**, user
 
 
 Expired Batches report checks: Open **Reports → Inventory → Expired Batches**. Verify the Stock Aging-style settings sidebar and PDF placeholder, with no automatic report fetch or interactive table. Click Preview and verify Item/Batch grouping, conditional batch/item detail columns, per-unit group subtotals, search, category/warehouse filters, and PDF download/print. Only expiration dates before the selected date with positive on-hand stock qualify; test exhausted, future, same-day, and unset expiration dates. Confirm batches disappear immediately after clearing/changing expiration or exhausting stock. Check current-business-unit and company isolation, Reports permission denial, and safe 413 errors for more than 500 rows per group page or PDF. Run `supabase/tests/expired-batches-report.sql` against seeded local Supabase; all fixtures roll back. PDF render regression coverage is in `ExpiredBatchesReportPDF.test.tsx`.
+
+- Preferred-location deletion regression: assign an empty location as an item's preferred
+  location, then delete it. Expect translated guidance to clear or reassign the preference;
+  both the location and preference must remain unchanged. Clear the preference and retry;
+  deletion must succeed. Assigning that deleted location must return
+  `LOCATION_STORAGE_UNAVAILABLE` without changing the preference.
