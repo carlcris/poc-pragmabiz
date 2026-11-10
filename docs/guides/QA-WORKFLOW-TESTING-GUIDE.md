@@ -1805,6 +1805,12 @@ Deploy `20261108120000_generate_hierarchical_location_codes.sql` and the matchin
 same coordinated release: old code-entry, batch-prefix, and copy-code-replacement payloads are no
 longer supported. No historical codes are backfilled by this migration.
 
+Also deploy `20261110030000_fix_warehouse_location_code_sequence_access.sql`. Location allocation
+uses the shared generator result without requiring authenticated access to `document_code_sequences`.
+The generator preserves numbers wider than its padding width. Run
+`supabase/tests/warehouse-location-codes.sql` to verify authenticated create, batch, copy, move,
+and rollback with sequence-table SELECT revoked; privileged sequence assertions run separately.
+
 Item Locations tab checks: for an item stored on a rack and in a bin inside it, the warehouse header
 shows total on-hand and the preferred location by name. The tree shows the rack with the combined
 total; Expand All opens every stocked branch in every warehouse section (reopening collapsed ones)
