@@ -358,21 +358,27 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
         />
       )
     ) : (
-      <p className="py-10 text-center text-sm text-muted-foreground">{t("selectLocationHint")}</p>
+      <p className="py-6 text-center text-sm text-muted-foreground sm:py-10">
+        {t("selectLocationHint")}
+      </p>
     );
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+      {/* Phones trim the card padding so warehouse sections and batches keep their width. */}
+      <CardHeader className="max-md:p-4">
+        {/* Title and actions share a row only from xl; narrower cards stack them so the
+            two buttons stay side by side instead of wrapping into a ragged column. */}
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0">
             <CardTitle>{t("title")}</CardTitle>
             <CardDescription>{t("description")}</CardDescription>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 xl:shrink-0">
             {canViewWarehouses ? (
               <Button
                 variant="outline"
+                className="flex-1 max-md:h-11 sm:flex-none"
                 onClick={() => setLocationMapDialogOpen(true)}
                 disabled={!item || !currentBusinessUnitId}
               >
@@ -382,6 +388,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
             ) : null}
             {canMoveStock ? (
               <Button
+                className="flex-1 max-md:h-11 sm:flex-none"
                 onClick={() => openMoveDialog(null)}
                 disabled={warehouses.length === 0 || !item}
               >
@@ -391,7 +398,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 max-md:px-4 max-md:pb-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Input
             value={locationSearch}
@@ -408,6 +415,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
               type="button"
               variant="ghost"
               size="sm"
+              className="max-md:h-11"
               disabled={
                 isSearching ||
                 warehouses.length === 0 ||
@@ -426,6 +434,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
               type="button"
               variant="ghost"
               size="sm"
+              className="max-md:h-11"
               disabled={isSearching || !treeExpansion.canCollapseAll}
               onClick={treeExpansion.collapseAll}
             >
@@ -508,7 +517,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                   aria-labelledby={`item-warehouse-${warehouse.warehouseId}`}
                   className="overflow-hidden rounded-md border"
                 >
-                  <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b bg-muted/30 px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-3 border-b bg-muted/30 px-3 py-3 sm:px-4">
                     <button
                       type="button"
                       aria-expanded={!isCollapsed}
@@ -537,56 +546,64 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                         </span>
                       </span>
                     </button>
-                    <div>
-                      <div className="text-xs text-muted-foreground">{t("preferredLocation")}</div>
-                      <div className="flex items-center gap-2 text-sm font-medium">
-                        <span
-                          className="max-w-48 truncate"
-                          title={warehouse.defaultLocationNamePath ?? undefined}
-                        >
-                          {warehouse.defaultLocationName ?? t("preferredNotSet")}
-                        </span>
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="h-auto p-0"
-                          onClick={() => openPreferredDialog(warehouse)}
-                        >
-                          {t("changePreferredLocation")}
-                        </Button>
+                    {/* Phones: a 2 × 2 grid; from sm the stats sit in the wrapping row as before. */}
+                    <div className="grid w-full grid-cols-2 gap-3 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-x-6">
+                      <div>
+                        <div className="text-xs text-muted-foreground">
+                          {t("preferredLocation")}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <span
+                            className="max-w-48 truncate"
+                            title={warehouse.defaultLocationNamePath ?? undefined}
+                          >
+                            {warehouse.defaultLocationName ?? t("preferredNotSet")}
+                          </span>
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="relative h-auto p-0 after:absolute after:-inset-x-2 after:-inset-y-3"
+                            onClick={() => openPreferredDialog(warehouse)}
+                          >
+                            {t("changePreferredLocation")}
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs text-muted-foreground">{t("onHand")}</div>
-                      <div className="text-sm font-semibold tabular-nums">
-                        {formatQty(warehouse.qtyOnHand, locale)}
+                      <div className="sm:text-right">
+                        <div className="text-xs text-muted-foreground">{t("onHand")}</div>
+                        <div className="text-sm font-semibold tabular-nums">
+                          {formatQty(warehouse.qtyOnHand, locale)}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs text-muted-foreground">{t("reserved")}</div>
-                      <div className="text-sm font-semibold tabular-nums">
-                        {formatQty(warehouse.qtyReserved, locale)}
+                      <div className="sm:text-right">
+                        <div className="text-xs text-muted-foreground">{t("reserved")}</div>
+                        <div className="text-sm font-semibold tabular-nums">
+                          {formatQty(warehouse.qtyReserved, locale)}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs text-muted-foreground">{t("maxStock")}</div>
-                      <div className="text-sm font-semibold tabular-nums">
-                        {warehouse.maxQuantity == null
-                          ? "--"
-                          : formatQty(warehouse.maxQuantity, locale)}
+                      <div className="sm:text-right">
+                        <div className="text-xs text-muted-foreground">{t("maxStock")}</div>
+                        <div className="text-sm font-semibold tabular-nums">
+                          {warehouse.maxQuantity == null
+                            ? "--"
+                            : formatQty(warehouse.maxQuantity, locale)}
+                        </div>
                       </div>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
+                      className="max-md:h-11"
                       onClick={() => openMaxStockDialog(warehouse)}
                     >
                       {t("editMaxStock")}
                     </Button>
                   </div>
                   {isCollapsed ? null : (
-                    <div className="flex flex-col lg:flex-row">
-                      <div className="border-b lg:w-96 lg:shrink-0 lg:border-b-0 lg:border-r">
+                    <div className="flex flex-col xl:flex-row">
+                      {/* Side by side only from xl: below that the 24rem tree would squeeze
+                          the batch panel beside the sidebar. */}
+                      <div className="border-b xl:w-96 xl:shrink-0 xl:border-b-0 xl:border-r">
                         <ItemLocationStockTree
                           itemId={itemId}
                           warehouseId={warehouse.warehouseId}
@@ -605,7 +622,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                           }
                         />
                       </div>
-                      <div className="min-w-0 flex-1 p-4">{renderPanel(warehouse)}</div>
+                      <div className="min-w-0 flex-1 p-3 sm:p-4">{renderPanel(warehouse)}</div>
                     </div>
                   )}
                 </section>

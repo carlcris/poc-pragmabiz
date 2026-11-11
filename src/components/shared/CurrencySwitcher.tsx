@@ -27,12 +27,12 @@ export function CurrencySwitcher() {
   };
 
   if (!mounted) {
-    return <Skeleton className="h-10 w-[140px]" />;
+    return <Skeleton className="h-10 w-24 xl:w-[140px]" />;
   }
 
   return (
     <Select value={currentCurrency.code} onValueChange={handleCurrencyChange}>
-      <SelectTrigger className="w-[140px]">
+      <SelectTrigger className="w-auto gap-2 xl:w-[140px]">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

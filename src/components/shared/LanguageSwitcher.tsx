@@ -33,17 +33,18 @@ export function LanguageSwitcher() {
   if (!mounted) {
     return (
       <div className="flex items-center gap-2">
-        <Globe className="h-4 w-4 text-muted-foreground" />
-        <Skeleton className="h-10 w-[140px]" />
+        <Globe className="hidden h-4 w-4 text-muted-foreground xl:block" />
+        <Skeleton className="h-10 w-24 xl:w-[140px]" />
       </div>
     );
   }
 
   return (
     <div className="flex items-center gap-2">
-      <Globe className="h-4 w-4 text-muted-foreground" />
+      {/* Compact below xl so the header leaves the breadcrumb room beside the sidebar. */}
+      <Globe className="hidden h-4 w-4 text-muted-foreground xl:block" />
       <Select value={locale} onValueChange={handleLanguageChange}>
-        <SelectTrigger className="w-[140px]">
+        <SelectTrigger className="w-auto gap-2 xl:w-[140px]">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

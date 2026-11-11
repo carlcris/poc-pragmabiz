@@ -431,6 +431,8 @@ export type TranslationKeys = {
     goToPreviousPage: string;
     goToNextPage: string;
     goToLastPage: string;
+    previous: string;
+    next: string;
   };
   navigation: Record<string, string>;
   quickActions: {
@@ -3069,6 +3071,9 @@ export type TranslationKeys = {
     editAriaLabel: string;
     deleteAriaLabel: string;
     moreActions: string;
+    filters: string;
+    warehouse: string;
+    clearAllFilters: string;
   };
   stockInTransitPage: {
     title: string;
@@ -3264,6 +3269,7 @@ export type TranslationKeys = {
     addCustomField: string;
     deleteCustomField: string;
     moreCustomFieldActions: string;
+    moreUnitOptionActions: string;
     addCustomFieldTitle: string;
     editCustomFieldTitle: string;
     customFieldDialogDescription: string;
@@ -3447,6 +3453,7 @@ export type TranslationKeys = {
     receivedDate: string;
     expirationDate: string;
     editExpiration: string;
+    moreBatchActions: string;
     clearExpiration: string;
     expirationBatchDescription: string;
     expirationInvalid: string;
@@ -3518,6 +3525,7 @@ export type TranslationKeys = {
     addPrice: string;
     deleteSuccess: string;
     deleteError: string;
+    morePriceActions: string;
     empty: string;
     emptyDescription: string;
     priceTier: string;
@@ -4488,6 +4496,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       goToPreviousPage: "Go to previous page",
       goToNextPage: "Go to next page",
       goToLastPage: "Go to last page",
+      previous: "Previous",
+      next: "Next",
     },
     navigation: {
       loadingDestination: "Loading {destination}…",
@@ -7280,7 +7290,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       totalAvailableValue: "Total Available Value",
       totalAvailableValueDescription: "Current sellable stock",
       lowStock: "Low Stock",
-      lowStockDescription: "At or below reorder point",
+      lowStockDescription: "Needs reorder",
       outOfStock: "Out of Stock",
       outOfStockDescription: "No available inventory",
       searchPlaceholder: "Search by item, supplier code, or name...",
@@ -7322,6 +7332,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       editAriaLabel: "Edit",
       deleteAriaLabel: "Delete",
       moreActions: "More",
+      filters: "Filters",
+      warehouse: "Warehouse",
+      clearAllFilters: "Clear All",
     },
     stockInTransitPage: {
       title: "Stock In Transit",
@@ -7522,6 +7535,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       addCustomField: "Add Field",
       deleteCustomField: "Delete custom field",
       moreCustomFieldActions: "More custom field actions",
+      moreUnitOptionActions: "More unit option actions",
       addCustomFieldTitle: "Add Custom Field",
       editCustomFieldTitle: "Edit Custom Field",
       customFieldDialogDescription: "Save a single custom field for this item.",
@@ -7719,6 +7733,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       receivedDate: "Received Date",
       expirationDate: "Expiration Date",
       editExpiration: "Edit Expiration",
+      moreBatchActions: "More batch actions",
       clearExpiration: "Clear Date",
       expirationBatchDescription:
         "Batch {batch}. Changes apply to all locations holding this batch.",
@@ -7805,6 +7820,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       addPrice: "Add Price",
       deleteSuccess: "Price deleted successfully",
       deleteError: "Failed to delete price",
+      morePriceActions: "More price actions",
       empty: "No prices found for this item.",
       emptyDescription: "Add your first price tier to get started.",
       priceTier: "Price Tier",
@@ -11614,6 +11630,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       goToPreviousPage: "转到上一页",
       goToNextPage: "转到下一页",
       goToLastPage: "转到最后一页",
+      previous: "上一页",
+      next: "下一页",
     },
     navigation: {
       loadingDestination: "正在加载{destination}…",
@@ -14314,7 +14332,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       totalAvailableValue: "可用库存总值",
       totalAvailableValueDescription: "当前可销售库存",
       lowStock: "低库存",
-      lowStockDescription: "已达到或低于补货点",
+      lowStockDescription: "需要补货",
       outOfStock: "缺货",
       outOfStockDescription: "没有可用库存",
       searchPlaceholder: "按商品编码、供应商编码或名称搜索...",
@@ -14355,6 +14373,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       editAriaLabel: "编辑",
       deleteAriaLabel: "删除",
       moreActions: "更多",
+      filters: "筛选",
+      warehouse: "仓库",
+      clearAllFilters: "全部清除",
     },
     stockInTransitPage: {
       title: "在途库存",
@@ -14550,6 +14571,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       addCustomField: "新增字段",
       deleteCustomField: "删除自定义字段",
       moreCustomFieldActions: "更多自定义字段操作",
+      moreUnitOptionActions: "更多单位选项操作",
       addCustomFieldTitle: "新增自定义字段",
       editCustomFieldTitle: "编辑自定义字段",
       customFieldDialogDescription: "为此商品保存一个自定义字段。",
@@ -14735,6 +14757,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       receivedDate: "收货日期",
       expirationDate: "到期日期",
       editExpiration: "编辑到期日期",
+      moreBatchActions: "更多批次操作",
       clearExpiration: "清空日期",
       expirationBatchDescription: "批次 {batch}。更改将应用于存放此批次的所有库位。",
       expirationInvalid: "请输入有效的到期日期，或清空日期。",
@@ -14809,6 +14832,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       addPrice: "新增价格",
       deleteSuccess: "价格删除成功",
       deleteError: "删除价格失败",
+      morePriceActions: "更多价格操作",
       empty: "此商品暂无价格。",
       emptyDescription: "添加第一个价格层级以开始使用。",
       priceTier: "价格层级",

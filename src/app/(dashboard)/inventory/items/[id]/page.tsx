@@ -29,7 +29,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +62,18 @@ import { MetricCard } from "@/components/shared/MetricCard";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { EditGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
+
+// Three short numbers fit one row on phones once the cards drop their desktop padding and icon.
+const stockMetricCardLayout = {
+  className: "h-full",
+  headerClassName: "max-md:p-3 max-md:pb-1",
+  contentClassName: "max-md:min-h-0 max-md:p-3 max-md:pt-0",
+  iconClassName: "hidden h-4 w-4 text-muted-foreground md:block",
+  valueClassName: "text-lg font-bold md:text-2xl",
+};
+
+const detailTabTriggerClassName =
+  "group relative min-h-11 min-w-max flex-none gap-2 rounded-full border border-border/40 bg-transparent px-3.5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30 sm:px-5";
 
 type ItemDetailsPageProps = {
   params: Promise<{ id: string }>;
@@ -249,20 +268,35 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
-              <Skeleton className="h-8 w-72" />
-              <Skeleton className="h-4 w-80" />
+              <Skeleton className="h-8 w-48 sm:w-72" />
+              <Skeleton className="h-4 w-56 sm:w-80" />
             </div>
             <Skeleton className="h-10 w-28" />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            <MetricCard title={t("availableQtyLabel")} icon={Package} isLoading />
-            <MetricCard title={t("reservedQtyLabel")} icon={Lock} isLoading />
-            <MetricCard title={t("onHandLabel")} icon={Warehouse} isLoading />
+          <div className="grid grid-cols-3 gap-2 md:gap-4">
+            <MetricCard
+              title={t("availableQtyLabel")}
+              icon={Package}
+              isLoading
+              {...stockMetricCardLayout}
+            />
+            <MetricCard
+              title={t("reservedQtyLabel")}
+              icon={Lock}
+              isLoading
+              {...stockMetricCardLayout}
+            />
+            <MetricCard
+              title={t("onHandLabel")}
+              icon={Warehouse}
+              isLoading
+              {...stockMetricCardLayout}
+            />
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList>
+            <TabsList className="scrollbar-hide max-w-full justify-start overflow-x-auto">
               <TabsTrigger value="overview">{t("overviewTab")}</TabsTrigger>
               <TabsTrigger value="unitOptions">{t("unitOptionsTab")}</TabsTrigger>
               <TabsTrigger value="ledger">{t("ledgerTab")}</TabsTrigger>
@@ -400,14 +434,29 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <MetricCard title={t("availableQtyLabel")} icon={Package} value="--" />
-          <MetricCard title={t("reservedQtyLabel")} icon={Lock} value="--" />
-          <MetricCard title={t("onHandLabel")} icon={Warehouse} value="--" />
+        <div className="grid grid-cols-3 gap-2 md:gap-4">
+          <MetricCard
+            title={t("availableQtyLabel")}
+            icon={Package}
+            value="--"
+            {...stockMetricCardLayout}
+          />
+          <MetricCard
+            title={t("reservedQtyLabel")}
+            icon={Lock}
+            value="--"
+            {...stockMetricCardLayout}
+          />
+          <MetricCard
+            title={t("onHandLabel")}
+            icon={Warehouse}
+            value="--"
+            {...stockMetricCardLayout}
+          />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
+          <TabsList className="scrollbar-hide max-w-full justify-start overflow-x-auto">
             <TabsTrigger value="overview">{t("overviewTab")}</TabsTrigger>
             <TabsTrigger value="unitOptions">{t("unitOptionsTab")}</TabsTrigger>
             <TabsTrigger value="ledger">{t("ledgerTab")}</TabsTrigger>
@@ -442,14 +491,14 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3 sm:items-center">
+        <div className="min-w-0">
           <h1 className="text-lg font-semibold tracking-tight sm:text-xl">{item.name}</h1>
           <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
             {item.code} • {item.category || t("noCategory")} • {itemTypeLabel}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           <EditGuard resource={RESOURCES.ITEMS}>
             <Button asChild>
               <Link href={`/inventory/items/${itemId}/edit`}>
@@ -462,59 +511,53 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
         <MetricCard
           title={t("availableQtyLabel")}
           icon={Package}
           value={formatQuantity(item.available)}
+          {...stockMetricCardLayout}
         />
         <MetricCard
           title={t("reservedQtyLabel")}
           icon={Lock}
           value={formatQuantity(item.allocated)}
+          {...stockMetricCardLayout}
         />
-        <MetricCard title={t("onHandLabel")} icon={Warehouse} value={formatQuantity(item.onHand)} />
+        <MetricCard
+          title={t("onHandLabel")}
+          icon={Warehouse}
+          value={formatQuantity(item.onHand)}
+          {...stockMetricCardLayout}
+        />
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <div className="border-b border-border/40 bg-gradient-to-r from-background via-muted/20 to-background">
           <div className="container-fluid">
-            <TabsList className="h-auto w-full justify-start gap-2 rounded-none border-b-0 bg-transparent p-0 py-2">
-              <TabsTrigger
-                value="overview"
-                className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
-              >
+            {/* One row of pills that scrolls sideways on its own instead of widening the page.
+                min-w-max keeps iOS Safari from shrinking a pill below its label. */}
+            <TabsList className="scrollbar-hide flex h-auto w-full justify-start gap-2 overflow-x-auto rounded-none border-b-0 bg-transparent p-0 py-2">
+              <TabsTrigger value="overview" className={detailTabTriggerClassName}>
                 <Package className="h-4 w-4" />
                 {t("overviewTab")}
               </TabsTrigger>
               {canViewPricingDetails && (
-                <TabsTrigger
-                  value="prices"
-                  className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
-                >
+                <TabsTrigger value="prices" className={detailTabTriggerClassName}>
                   <Tag className="h-4 w-4" />
                   {t("pricesTab")}
                 </TabsTrigger>
               )}
-              <TabsTrigger
-                value="unitOptions"
-                className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
-              >
+              <TabsTrigger value="unitOptions" className={detailTabTriggerClassName}>
                 <Ruler className="h-4 w-4" />
                 {t("unitOptionsTab")}
               </TabsTrigger>
-              <TabsTrigger
-                value="ledger"
-                className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
-              >
+              <TabsTrigger value="ledger" className={detailTabTriggerClassName}>
                 <FileText className="h-4 w-4" />
                 {t("ledgerTab")}
               </TabsTrigger>
-              <TabsTrigger
-                value="locations"
-                className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
-              >
+              <TabsTrigger value="locations" className={detailTabTriggerClassName}>
                 <Warehouse className="h-4 w-4" />
                 {t("locationsTab")}
               </TabsTrigger>
@@ -546,7 +589,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       <p className="text-xs font-medium text-muted-foreground">
                         {t("itemCodeLabel")}
                       </p>
-                      <p className="tabular-nums font-medium">{item.code}</p>
+                      <p className="font-medium tabular-nums">{item.code}</p>
                     </div>
                   </div>
 
@@ -570,7 +613,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       <p className="text-xs font-medium text-muted-foreground">
                         {t("supplierCodeLabel")}
                       </p>
-                      <p className="tabular-nums font-medium">{item.supplierCode || "-"}</p>
+                      <p className="font-medium tabular-nums">{item.supplierCode || "-"}</p>
                     </div>
                   </div>
 
@@ -676,7 +719,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       <p className="text-center text-sm text-muted-foreground">
                         {t("primaryBarcodeDescription")}
                       </p>
-                      <p className="rounded bg-muted px-3 py-2 text-center tabular-nums text-sm font-medium">
+                      <p className="rounded bg-muted px-3 py-2 text-center text-sm font-medium tabular-nums">
                         {item.primaryBarcode}
                       </p>
                     </div>
@@ -779,19 +822,22 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       </span>
                     </div>
                   )}
-                  {item.purchasePrice != null && item.listPrice != null && item.purchasePrice > 0 && (
-                    <div className="flex items-center justify-between border-t pt-2">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {t("profitMarginLabel")}
-                      </span>
-                      <span className="text-lg font-bold text-emerald-600 dark:text-emerald-500">
-                        {(((item.listPrice - item.purchasePrice) / item.purchasePrice) * 100).toFixed(
-                          1
-                        )}
-                        %
-                      </span>
-                    </div>
-                  )}
+                  {item.purchasePrice != null &&
+                    item.listPrice != null &&
+                    item.purchasePrice > 0 && (
+                      <div className="flex items-center justify-between border-t pt-2">
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {t("profitMarginLabel")}
+                        </span>
+                        <span className="text-lg font-bold text-emerald-600 dark:text-emerald-500">
+                          {(
+                            ((item.listPrice - item.purchasePrice) / item.purchasePrice) *
+                            100
+                          ).toFixed(1)}
+                          %
+                        </span>
+                      </div>
+                    )}
                 </CardContent>
               </Card>
             )}
@@ -839,6 +885,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="max-md:h-11"
                   onClick={openCreateCustomFieldDialog}
                   disabled={isCustomFieldSaving}
                 >
@@ -875,7 +922,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="h-8 px-2"
+                              className="h-8 px-2 max-md:h-11"
                               onClick={() => openEditCustomFieldDialog(field)}
                               disabled={isCustomFieldSaving}
                             >
@@ -888,7 +935,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                                   type="button"
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 w-8 p-0"
+                                  className="h-8 w-8 p-0 max-md:h-11 max-md:w-11"
                                   aria-label={t("moreCustomFieldActions")}
                                   disabled={isCustomFieldSaving}
                                 >

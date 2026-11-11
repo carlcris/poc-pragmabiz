@@ -55,6 +55,11 @@ import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
 import { ItemImage } from "@/components/items/ItemImage";
+import {
+  InventoryItemMobileList,
+  InventoryItemMobileListSkeleton,
+} from "@/components/items/InventoryItemMobileList";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { RESOURCES } from "@/constants/resources";
 import type { ItemWithStock } from "@/app/api/items/route";
 import type { XlsxCellValue } from "@/lib/export/xlsx-workbook";
@@ -80,6 +85,9 @@ function ItemsPageContent() {
   const [exportingFormat, setExportingFormat] = useState<ItemExportFormat | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<ItemInventoryRow | null>(null);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  // Phones get stacked rows and a Filters panel; md and up keep the table and inline filters.
+  const isTableLayout = useMediaQuery("(min-width: 768px)");
 
   const { formatCurrency } = useCurrency();
   const deleteItem = useDeleteItem();
@@ -225,6 +233,18 @@ function ItemsPageContent() {
   const toNumber = (value: number | string | null | undefined) => {
     const parsed = typeof value === "number" ? value : Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const activeFilterCount =
+    Number(categoryFilter !== "all") +
+    Number(Boolean(warehouseFilter)) +
+    Number(statusFilter !== "all");
+
+  const clearFilters = () => {
+    setCategoryFilter("all");
+    setWarehouseFilter("");
+    setStatusFilter("all");
+    setPage(1);
   };
 
   const handleCreateItem = () => {
@@ -444,6 +464,74 @@ function ItemsPageContent() {
     }
   };
 
+  const filterControlClassName = isTableLayout ? undefined : "h-11 w-full";
+  const searchField = (
+    <div className="relative min-w-0 flex-1 md:min-w-[200px]">
+      <Search className="absolute left-2 top-3.5 h-4 w-4 text-muted-foreground md:top-2.5" />
+      <Input
+        placeholder={t("searchPlaceholder")}
+        value={searchInput}
+        onChange={(e) => {
+          setSearchInput(e.target.value);
+        }}
+        className="h-11 pl-8 md:h-10"
+      />
+    </div>
+  );
+  const categoryFilterControl = (
+    <ItemCategorySelect
+      id="inventory-item-category-filter"
+      value={categoryFilter}
+      onValueChange={(value) => {
+        setCategoryFilter(value);
+        setPage(1);
+      }}
+      allowAll
+      buttonClassName={filterControlClassName ?? "w-48"}
+    />
+  );
+  const warehouseFilterControl = (
+    <WarehouseSelect
+      value={warehouseFilter}
+      onValueChange={(value) => {
+        setWarehouseFilter(value);
+        setPage(1);
+      }}
+      scope="current_business_unit"
+      allowAll
+      allOptionLabel={t("buInventory")}
+      showCodeInLabel={false}
+      disabled={!currentBusinessUnit?.id}
+      buttonClassName={filterControlClassName ?? "w-56"}
+    />
+  );
+  const statusFilterControl = (
+    <Select
+      value={statusFilter}
+      onValueChange={(value) => {
+        setStatusFilter(value);
+        setPage(1);
+      }}
+    >
+      <SelectTrigger
+        id="inventory-item-status-filter"
+        className={filterControlClassName ?? "w-[180px]"}
+      >
+        {/* The phone panel labels the field, so the funnel only marks the inline filter. */}
+        {isTableLayout ? <Filter className="mr-2 h-4 w-4 shrink-0" /> : null}
+        <SelectValue placeholder={tCommon("status")} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">{tCommon("allStatuses")}</SelectItem>
+        <SelectItem value="normal">{t("normal")}</SelectItem>
+        <SelectItem value="low_stock">{t("lowStock")}</SelectItem>
+        <SelectItem value="out_of_stock">{t("outOfStock")}</SelectItem>
+        <SelectItem value="overstock">{t("overstock")}</SelectItem>
+        <SelectItem value="discontinued">{t("discontinued")}</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
   return (
     <div className="flex flex-col gap-2 sm:gap-4 md:h-full md:gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -451,17 +539,15 @@ function ItemsPageContent() {
           <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight sm:text-xl">
             {t("title")}
           </h1>
-          <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
-            {t("subtitle")}
-          </p>
+          <p className="text-xs text-muted-foreground sm:text-sm">{t("subtitle")}</p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
                 disabled={Boolean(exportingFormat) || !areItemQueriesEnabled}
-                className="w-full flex-shrink-0 sm:w-auto"
+                className="h-11 w-full flex-shrink-0 sm:h-10 sm:w-auto"
               >
                 <Download className="mr-2 h-4 w-4" />
                 <span className="sm:inline">{exportingFormat ? t("exporting") : t("export")}</span>
@@ -482,7 +568,10 @@ function ItemsPageContent() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={handleCreateItem} className="w-full flex-shrink-0 sm:w-auto">
+          <Button
+            onClick={handleCreateItem}
+            className="h-11 w-full flex-shrink-0 sm:h-10 sm:w-auto"
+          >
             <Plus className="mr-2 h-4 w-4" />
             <span className="sm:inline">{t("createItem")}</span>
           </Button>
@@ -507,6 +596,7 @@ function ItemsPageContent() {
             <div
               key={stat.title}
               role={isFilterCard ? "button" : undefined}
+              aria-pressed={isFilterCard ? isActiveFilter : undefined}
               tabIndex={isFilterCard ? 0 : undefined}
               onClick={isFilterCard ? handleToggleFilter : undefined}
               onKeyDown={
@@ -521,8 +611,8 @@ function ItemsPageContent() {
               }
               className={
                 isFilterCard
-                  ? `rounded-lg transition hover:-translate-y-0.5 hover:shadow-md ${
-                      isActiveFilter ? "ring-2 ring-primary/40" : ""
+                  ? `cursor-pointer rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hover:-translate-y-0.5 md:hover:shadow-md ${
+                      isActiveFilter ? "ring-2 ring-primary" : ""
                     }`
                   : undefined
               }
@@ -530,12 +620,29 @@ function ItemsPageContent() {
               <MetricCard
                 title={stat.title}
                 icon={Icon}
+                className="h-full"
+                headerClassName="max-md:p-3 max-md:pb-1"
+                contentClassName="max-md:min-h-0 max-md:gap-1 max-md:p-3 max-md:pt-0"
                 iconClassName={`h-3 w-3 md:h-4 md:w-4 ${stat.iconColor}`}
                 value={String(stat.value)}
-                caption={stat.description}
+                caption={
+                  isFilterCard ? (
+                    <span className="flex items-start gap-1">
+                      <Filter
+                        aria-hidden="true"
+                        className={`mt-0.5 h-3 w-3 shrink-0 ${
+                          isActiveFilter ? "fill-primary text-primary" : ""
+                        }`}
+                      />
+                      {stat.description}
+                    </span>
+                  ) : (
+                    stat.description
+                  )
+                }
                 isLoading={!areItemQueriesEnabled || isStatsPending}
                 skeletonCaption={false}
-                valueClassName="text-lg md:text-2xl font-bold"
+                valueClassName="text-lg font-bold max-md:break-all md:text-2xl"
               />
             </div>
           );
@@ -544,69 +651,77 @@ function ItemsPageContent() {
 
       <div className="flex flex-col gap-2 sm:gap-3 md:min-h-0 md:flex-1 md:gap-4">
         {/* Filters */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
-          <div className="relative min-w-[200px] flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t("searchPlaceholder")}
-              value={searchInput}
-              onChange={(e) => {
-                setSearchInput(e.target.value);
-              }}
-              className="pl-8"
-            />
+        {isTableLayout ? (
+          <div className="flex flex-row flex-wrap gap-3">
+            {searchField}
+            {categoryFilterControl}
+            {warehouseFilterControl}
+            {statusFilterControl}
           </div>
-          <ItemCategorySelect
-            value={categoryFilter}
-            onValueChange={(value) => {
-              setCategoryFilter(value);
-              setPage(1);
-            }}
-            allowAll
-            buttonClassName="w-full sm:w-48"
-          />
-          <WarehouseSelect
-            value={warehouseFilter}
-            onValueChange={(value) => {
-              setWarehouseFilter(value);
-              setPage(1);
-            }}
-            scope="current_business_unit"
-            allowAll
-            allOptionLabel={t("buInventory")}
-            showCodeInLabel={false}
-            disabled={!currentBusinessUnit?.id}
-            buttonClassName="w-full sm:w-56"
-          />
-          <Select
-            value={statusFilter}
-            onValueChange={(value) => {
-              setStatusFilter(value);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <Filter className="mr-2 h-4 w-4 shrink-0" />
-              <SelectValue placeholder={tCommon("status")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{tCommon("allStatuses")}</SelectItem>
-              <SelectItem value="normal">{t("normal")}</SelectItem>
-              <SelectItem value="low_stock">{t("lowStock")}</SelectItem>
-              <SelectItem value="out_of_stock">{t("outOfStock")}</SelectItem>
-              <SelectItem value="overstock">{t("overstock")}</SelectItem>
-              <SelectItem value="discontinued">{t("discontinued")}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              {searchField}
+              <Button
+                variant="outline"
+                className="h-11 shrink-0"
+                aria-expanded={isFilterPanelOpen}
+                aria-controls="inventory-item-filters"
+                onClick={() => setIsFilterPanelOpen((open) => !open)}
+              >
+                <Filter className="h-4 w-4" />
+                {t("filters")}
+                {activeFilterCount > 0 ? (
+                  <span className="rounded-full bg-violet-700 px-1.5 text-xs font-semibold tabular-nums text-white">
+                    {activeFilterCount}
+                  </span>
+                ) : null}
+              </Button>
+            </div>
+            {/* Kept mounted while collapsed so the pickers keep their selected labels. */}
+            <div
+              id="inventory-item-filters"
+              hidden={!isFilterPanelOpen}
+              className={`${isFilterPanelOpen ? "flex" : "hidden"} flex-col gap-3 rounded-md border p-3`}
+            >
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="inventory-item-category-filter" className="text-sm font-medium">
+                  {t("category")}
+                </label>
+                {categoryFilterControl}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">{t("warehouse")}</span>
+                {warehouseFilterControl}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="inventory-item-status-filter" className="text-sm font-medium">
+                  {tCommon("status")}
+                </label>
+                {statusFilterControl}
+              </div>
+              <Button
+                variant="ghost"
+                className="h-11"
+                onClick={clearFilters}
+                disabled={activeFilterCount === 0}
+              >
+                {t("clearAllFilters")}
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div role="status" aria-live="polite" className="h-4 text-xs text-muted-foreground">
           {isFetching && !isInitialLoading ? t("refreshing") : null}
         </div>
-        {/* Table */}
-        <div className="md:min-h-0 md:flex-1">
-          {isInitialLoading ? (
-            <div className="h-[200px] overflow-y-auto overscroll-contain rounded-md border md:h-full">
+        {/* Table. md:min-h-96 keeps about four rows on short screens: the page scrolls
+            instead of the table collapsing to nothing. */}
+        <div className="md:min-h-96 md:flex-1">
+          {isInitialLoading && !isTableLayout ? (
+            <InventoryItemMobileListSkeleton rows={4} />
+          ) : isInitialLoading ? (
+            <div className="h-full overflow-y-auto overscroll-contain rounded-md border">
               <Table containerClassName="overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
@@ -681,8 +796,17 @@ function ItemsPageContent() {
             <div className="flex h-[200px] items-center justify-center text-muted-foreground md:h-full">
               {t("empty")}
             </div>
+          ) : !isTableLayout ? (
+            <InventoryItemMobileList
+              items={items}
+              renderStatus={getStatusBadge}
+              formatQuantity={(value) => Math.trunc(toNumber(value))}
+              onEditItem={handleEditItem}
+              onDeleteItem={handleDeleteItem}
+              isDeletePending={deleteItem.isPending}
+            />
           ) : (
-            <div className="h-[200px] overflow-auto overscroll-contain rounded-md border md:h-full">
+            <div className="h-full overflow-auto overscroll-contain rounded-md border">
               <Table containerClassName="min-w-[1240px] overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
@@ -717,7 +841,10 @@ function ItemsPageContent() {
                       </TableCell>
                       <TableCell className="font-medium tabular-nums">{item.code}</TableCell>
                       <TableCell className="w-72 max-w-72 whitespace-normal break-words text-violet-700 dark:text-violet-300">
-                        <div className="font-semibold leading-snug hover:underline" title={item.name}>
+                        <div
+                          className="font-semibold leading-snug hover:underline"
+                          title={item.name}
+                        >
                           {item.name}
                         </div>
                         {item.chineseName ? (
@@ -811,7 +938,7 @@ function ItemsPageContent() {
         </div>
 
         {pagination && pagination.total > 0 && (
-          <div className="sticky bottom-0 z-10 shrink-0 rounded-md border bg-card p-2 shadow-lg md:static md:shadow-none">
+          <div className="shrink-0 rounded-md border bg-card p-3 md:p-2">
             <DataTablePagination
               currentPage={page}
               totalPages={pagination.totalPages}

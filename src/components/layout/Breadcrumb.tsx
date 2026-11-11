@@ -253,22 +253,24 @@ export function Breadcrumb() {
 
   if (isDeliveryNoteDetail) {
     return (
-      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+      <nav className="flex min-w-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground sm:text-sm max-lg:[&>a:first-child+svg]:hidden max-lg:[&>a:first-child]:hidden">
         <Link
           href="/dashboard"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Home")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         <Link
           href="/inventory/delivery-notes"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Delivery Note")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
-        <span className="font-medium text-foreground">{deliveryNote?.dn_no || lastSegment}</span>
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
+        <span className="min-w-0 truncate font-medium text-foreground">
+          {deliveryNote?.dn_no || lastSegment}
+        </span>
       </nav>
     );
   }
@@ -277,30 +279,30 @@ export function Breadcrumb() {
     const jobOrderCode = frameJobOrderResponse?.data.jobOrderCode;
 
     return (
-      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+      <nav className="flex min-w-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground sm:text-sm max-lg:[&>a:first-child+svg]:hidden max-lg:[&>a:first-child]:hidden">
         <Link
           href="/dashboard"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Home")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         <Link
           href="/sales/frame-job-orders"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Job Orders")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         {jobOrderCode ? (
-          <span className="font-medium text-foreground">{jobOrderCode}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">{jobOrderCode}</span>
         ) : isFrameJobOrderLoading ? (
           <span
             aria-label={tCommon("loading")}
             className="h-4 w-40 animate-pulse rounded bg-muted"
           />
         ) : (
-          <span className="font-medium text-foreground">{t("Job Orders")}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">{t("Job Orders")}</span>
         )}
       </nav>
     );
@@ -308,32 +310,34 @@ export function Breadcrumb() {
 
   if (isQuotationCreate || isQuotationEdit) {
     return (
-      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+      <nav className="flex min-w-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground sm:text-sm max-lg:[&>a:first-child+svg]:hidden max-lg:[&>a:first-child]:hidden">
         <Link
           href="/dashboard"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Home")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         <Link
           href="/sales/quotations"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {isQuotationCreate ? t("Quotations") : t("Quotation")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         {isQuotationCreate ? (
-          <span className="font-medium text-foreground">{tCommon("new")}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">{tCommon("new")}</span>
         ) : quotation?.quotationNumber ? (
-          <span className="font-medium text-foreground">{quotation.quotationNumber}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">
+            {quotation.quotationNumber}
+          </span>
         ) : isQuotationLoading ? (
           <span
             aria-label={tCommon("loading")}
             className="h-4 w-40 animate-pulse rounded bg-muted"
           />
         ) : (
-          <span className="font-medium text-foreground">{t("Quotation")}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">{t("Quotation")}</span>
         )}
       </nav>
     );
@@ -342,37 +346,41 @@ export function Breadcrumb() {
   if (documentPage) {
     const documentListHref = `/${documentPage.module}/${documentPage.segment}`;
     return (
-      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+      <nav className="flex min-w-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground sm:text-sm max-lg:[&>a:first-child+svg]:hidden max-lg:[&>a:first-child]:hidden">
         <Link
           href="/dashboard"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Home")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         <Link
           href={documentListHref}
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t(documentPage.listLabelKey)}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         {isDocumentPageCreate ? (
-          <span className="font-medium text-foreground">{tCommon("new")}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">{tCommon("new")}</span>
         ) : documentPageNumber ? (
           isDocumentPageEdit ? (
             <>
               <Link
                 href={`${documentListHref}/${documentPageId}`}
-                className="flex items-center font-medium transition-colors hover:text-foreground"
+                className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
               >
                 {documentPageNumber}
               </Link>
-              <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="font-medium text-foreground">{tCommon("edit")}</span>
+              <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
+              <span className="min-w-0 truncate font-medium text-foreground">
+                {tCommon("edit")}
+              </span>
             </>
           ) : (
-            <span className="font-medium text-foreground">{documentPageNumber}</span>
+            <span className="min-w-0 truncate font-medium text-foreground">
+              {documentPageNumber}
+            </span>
           )
         ) : isDocumentPageLoading ? (
           <span
@@ -380,7 +388,9 @@ export function Breadcrumb() {
             className="h-4 w-40 animate-pulse rounded bg-muted"
           />
         ) : (
-          <span className="font-medium text-foreground">{t(documentPage.detailLabelKey)}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">
+            {t(documentPage.detailLabelKey)}
+          </span>
         )}
       </nav>
     );
@@ -388,22 +398,22 @@ export function Breadcrumb() {
 
   if (isSalesOrderCreate) {
     return (
-      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+      <nav className="flex min-w-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground sm:text-sm max-lg:[&>a:first-child+svg]:hidden max-lg:[&>a:first-child]:hidden">
         <Link
           href="/dashboard"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Home")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         <Link
           href="/sales/orders"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Sales Orders")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
-        <span className="font-medium text-foreground">{tCommon("new")}</span>
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
+        <span className="min-w-0 truncate font-medium text-foreground">{tCommon("new")}</span>
       </nav>
     );
   }
@@ -416,30 +426,30 @@ export function Breadcrumb() {
         : itemResponse?.data?.name || "";
 
     return (
-      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+      <nav className="flex min-w-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground sm:text-sm max-lg:[&>a:first-child+svg]:hidden max-lg:[&>a:first-child]:hidden">
         <Link
           href="/dashboard"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Home")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         <Link
           href="/inventory/items"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Item Master")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         {itemLabel ? (
-          <span className="font-medium text-foreground">{itemLabel}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">{itemLabel}</span>
         ) : isItemLoading ? (
           <span
             aria-label={tCommon("loading")}
             className="h-4 w-40 animate-pulse rounded bg-muted"
           />
         ) : (
-          <span className="font-medium text-foreground">{t("Item Master")}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">{t("Item Master")}</span>
         )}
       </nav>
     );
@@ -447,30 +457,32 @@ export function Breadcrumb() {
 
   if (isSupplierDetail) {
     return (
-      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+      <nav className="flex min-w-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground sm:text-sm max-lg:[&>a:first-child+svg]:hidden max-lg:[&>a:first-child]:hidden">
         <Link
           href="/dashboard"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Home")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         <Link
           href="/purchasing/suppliers"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Suppliers")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         {supplier ? (
-          <span className="font-medium text-foreground">{supplier.name || supplier.code}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">
+            {supplier.name || supplier.code}
+          </span>
         ) : isSupplierLoading ? (
           <span
             aria-label={tCommon("loading")}
             className="h-4 w-40 animate-pulse rounded bg-muted"
           />
         ) : (
-          <span className="font-medium text-foreground">{t("Suppliers")}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">{t("Suppliers")}</span>
         )}
       </nav>
     );
@@ -478,30 +490,32 @@ export function Breadcrumb() {
 
   if (isCustomerDetail) {
     return (
-      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+      <nav className="flex min-w-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground sm:text-sm max-lg:[&>a:first-child+svg]:hidden max-lg:[&>a:first-child]:hidden">
         <Link
           href="/dashboard"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Home")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         <Link
           href="/sales/customers"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Customers")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         {customer ? (
-          <span className="font-medium text-foreground">{customer.name || customer.code}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">
+            {customer.name || customer.code}
+          </span>
         ) : isCustomerLoading ? (
           <span
             aria-label={tCommon("loading")}
             className="h-4 w-40 animate-pulse rounded bg-muted"
           />
         ) : (
-          <span className="font-medium text-foreground">{t("Customers")}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">{t("Customers")}</span>
         )}
       </nav>
     );
@@ -509,22 +523,22 @@ export function Breadcrumb() {
 
   if (isWarehouseLocations || isWarehouseFloorMap) {
     return (
-      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+      <nav className="flex min-w-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground sm:text-sm max-lg:[&>a:first-child+svg]:hidden max-lg:[&>a:first-child]:hidden">
         <Link
           href="/dashboard"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Home")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         <Link
           href="/inventory/warehouses"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Warehouses")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
-        <span className="font-medium text-foreground">
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
+        <span className="min-w-0 truncate font-medium text-foreground">
           {isWarehouseFloorMap ? tWarehouses("floorMap") : t("Location")}
         </span>
       </nav>
@@ -535,71 +549,73 @@ export function Breadcrumb() {
     const orderCode = transformationOrderResponse?.data.order_code;
 
     return (
-      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+      <nav className="flex min-w-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground sm:text-sm max-lg:[&>a:first-child+svg]:hidden max-lg:[&>a:first-child]:hidden">
         <Link
           href="/dashboard"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Home")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         <Link
           href="/manufacturing/transformations"
-          className="flex items-center font-medium transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Stock Transformations")}
         </Link>
-        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
         {orderCode ? (
-          <span className="font-medium text-foreground">{orderCode}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">{orderCode}</span>
         ) : isTransformationOrderLoading ? (
           <span
             aria-label={tCommon("loading")}
             className="h-4 w-40 animate-pulse rounded bg-muted"
           />
         ) : (
-          <span className="font-medium text-foreground">{t("Transformation Order Details")}</span>
+          <span className="min-w-0 truncate font-medium text-foreground">
+            {t("Transformation Order Details")}
+          </span>
         )}
       </nav>
     );
   }
 
   return (
-    <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+    <nav className="flex min-w-0 items-center gap-1 whitespace-nowrap text-xs text-muted-foreground sm:text-sm max-lg:[&>a:first-child+svg]:hidden max-lg:[&>a:first-child]:hidden">
       <Link
         href="/dashboard"
-        className="flex items-center font-medium transition-colors hover:text-foreground"
+        className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
       >
         {t("Home")}
       </Link>
       {isReportChildPage ? (
         <>
-          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+          <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
           <Link
             href="/reports"
-            className="flex items-center font-medium transition-colors hover:text-foreground"
+            className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
           >
             {tReports("title")}
           </Link>
-          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
-          <span className="font-medium text-foreground">{currentPageLabel}</span>
+          <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
+          <span className="min-w-0 truncate font-medium text-foreground">{currentPageLabel}</span>
         </>
       ) : shouldShowParentCrumb ? (
         <>
-          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+          <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
           <Link
             href={parentPath}
-            className="flex items-center font-medium transition-colors hover:text-foreground"
+            className="flex shrink-0 items-center font-medium transition-colors hover:text-foreground"
           >
             {isAdminSettingsPage ? adminSettingsLabelMap[parentSegment] : t(parentSegment)}
           </Link>
-          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
-          <span className="font-medium text-foreground">{currentPageLabel}</span>
+          <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
+          <span className="min-w-0 truncate font-medium text-foreground">{currentPageLabel}</span>
         </>
       ) : (
         <>
-          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
-          <span className="font-medium text-foreground">{currentPageLabel}</span>
+          <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" />
+          <span className="min-w-0 truncate font-medium text-foreground">{currentPageLabel}</span>
         </>
       )}
     </nav>

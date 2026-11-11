@@ -85,6 +85,7 @@ export function ItemLocationStockPanel({
           <Button
             variant="outline"
             size="sm"
+            className="max-md:h-11"
             disabled={isSettingPreferred}
             onClick={() => onSetPreferred(node)}
           >
@@ -92,13 +93,24 @@ export function ItemLocationStockPanel({
           </Button>
         )}
         {canMoveStock && node.directAvailable > 0 ? (
-          <Button variant="outline" size="sm" onClick={() => onMoveFromHere(node)}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="max-md:h-11"
+            onClick={() => onMoveFromHere(node)}
+          >
             {t("moveFromHere")}
           </Button>
         ) : null}
       </div>
 
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <dl
+        className={
+          stats.length === 3
+            ? "grid grid-cols-3 gap-2 sm:gap-3"
+            : "grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3"
+        }
+      >
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-lg bg-muted/50 px-3 py-2">
             <dt className="text-xs text-muted-foreground">{stat.label}</dt>

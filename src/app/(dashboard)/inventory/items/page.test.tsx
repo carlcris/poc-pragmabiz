@@ -5,6 +5,7 @@ import ItemsPage from "./page";
 const mocks = vi.hoisted(() => ({
   fetching: false,
   allowed: true,
+  isTableLayout: false,
   effects: [] as Array<() => void | (() => void)>,
 }));
 vi.mock("react", async (original) => ({
@@ -14,6 +15,7 @@ vi.mock("react", async (original) => ({
   },
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("@/hooks/useMediaQuery", () => ({ useMediaQuery: () => mocks.isTableLayout }));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/hooks/useCurrency", () => ({
   useCurrency: () => ({ formatCurrency: (value: number) => `PHP ${value}` }),
@@ -64,6 +66,7 @@ vi.mock("@/components/permissions/ProtectedRoute", () => ({
   ProtectedRoute: ({ children }: { children: ReactNode }) => children,
 }));
 vi.mock("@/components/permissions/PermissionGuard", () => ({
+  AnyPermissionGuard: () => null,
   EditGuard: () => null,
   DeleteGuard: () => null,
 }));
@@ -74,6 +77,7 @@ beforeEach(() => {
   mocks.effects = [];
   mocks.fetching = false;
   mocks.allowed = true;
+  mocks.isTableLayout = false;
 });
 it("keeps existing rows visible during background refresh", () => {
   mocks.fetching = true;
@@ -99,4 +103,21 @@ it("does not schedule an initial search reset that can undo quick pagination", (
   } finally {
     vi.unstubAllGlobals();
   }
+});
+
+it("renders stacked rows and a collapsed Filters panel on phones", () => {
+  const html = renderToStaticMarkup(<ItemsPage />);
+  expect(html).not.toContain("<table");
+  expect(html).toContain('href="/inventory/items/item"');
+  expect(html).toContain("putawayQty");
+  expect(html).toContain('aria-controls="inventory-item-filters"');
+  expect(html).toMatch(/id="inventory-item-filters" hidden=""/);
+});
+
+it("keeps the table and inline filters from md up", () => {
+  mocks.isTableLayout = true;
+  const html = renderToStaticMarkup(<ItemsPage />);
+  expect(html).toContain("<table");
+  expect(html).not.toContain('id="inventory-item-filters"');
+  expect(html).toContain("md:min-h-96");
 });

@@ -71,104 +71,139 @@ export function DataTablePagination({
     return pages;
   };
 
+  const pageSizeSelect = onPageSizeChange ? (
+    <Select
+      value={`${pageSize}`}
+      onValueChange={(value) => {
+        onPageSizeChange(Number(value));
+        onPageChange(1); // Reset to first page when changing page size
+      }}
+    >
+      <SelectTrigger className="h-8 w-[70px]" aria-label={t("rowsPerPage")}>
+        <SelectValue placeholder={pageSize} />
+      </SelectTrigger>
+      <SelectContent side="top">
+        {pageSizeOptions.map((size) => (
+          <SelectItem key={size} value={`${size}`}>
+            {size}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  ) : null;
+
   return (
-    <div className="flex flex-col gap-2 px-1 md:flex-row md:items-center md:justify-between md:gap-3 md:px-2">
-      <div className="flex flex-col gap-1 text-center md:flex-row md:items-center md:gap-2 md:space-x-6 md:text-left lg:space-x-8">
-        {onPageSizeChange && (
-          <div className="flex items-center justify-center space-x-2 md:justify-start">
-            <p className="text-xs font-medium md:text-sm">{t("rowsPerPage")}</p>
-            <Select
-              value={`${pageSize}`}
-              onValueChange={(value) => {
-                onPageSizeChange(Number(value));
-                onPageChange(1); // Reset to first page when changing page size
-              }}
-            >
-              <SelectTrigger className="h-7 w-[60px] md:h-8 md:w-[70px]">
-                <SelectValue placeholder={pageSize} />
-              </SelectTrigger>
-              <SelectContent side="top">
-                {pageSizeOptions.map((size) => (
-                  <SelectItem key={size} value={`${size}`}>
-                    {size}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-        <div className="flex items-center justify-center text-xs font-medium md:w-[100px] md:text-sm">
-          {t("pageOf", { currentPage, totalPages })}
-        </div>
-        <div className="hidden text-sm text-muted-foreground md:block">
+    <>
+      {/* Phones: labelled 44px Previous/Next instead of a numbered strip that cannot fit,
+          and no rows-per-page control; the page size stays as last chosen. */}
+      <div className="flex flex-col gap-3 md:hidden">
+        <p className="text-center text-xs text-muted-foreground">
           {t("showing", { startItem, endItem, totalItems })}
+        </p>
+        <div className="flex items-center justify-between gap-2">
+          <Button
+            variant="outline"
+            className="h-11 pl-2.5 pr-3.5"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            {t("previous")}
+          </Button>
+          <span className="text-sm font-medium tabular-nums">
+            {t("pageOf", { currentPage, totalPages })}
+          </span>
+          <Button
+            variant="outline"
+            className="h-11 pl-3.5 pr-2.5"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            {t("next")}
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
-      <div className="flex items-center justify-center space-x-1 md:space-x-2">
-        <Button
-          variant="outline"
-          className="hidden h-8 w-8 p-0 lg:flex"
-          onClick={() => onPageChange(1)}
-          disabled={currentPage === 1}
-        >
-          <span className="sr-only">{t("goToFirstPage")}</span>
-          <ChevronsLeft className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          className="h-7 w-7 p-0 md:h-8 md:w-8"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-        >
-          <span className="sr-only">{t("goToPreviousPage")}</span>
-          <ChevronLeft className="h-3 w-3 md:h-4 md:w-4" />
-        </Button>
+      {/* The two groups wrap onto separate lines when the content column (not the
+          viewport) is too narrow for both, so the bar never widens the page. */}
+      <div className="hidden px-2 md:flex md:flex-wrap md:items-center md:justify-between md:gap-x-6 md:gap-y-2">
+        <div className="flex items-center space-x-6 lg:space-x-8">
+          {pageSizeSelect ? (
+            <div className="flex items-center space-x-2">
+              <p className="text-sm font-medium">{t("rowsPerPage")}</p>
+              {pageSizeSelect}
+            </div>
+          ) : null}
+          <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+            {t("pageOf", { currentPage, totalPages })}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {t("showing", { startItem, endItem, totalItems })}
+          </div>
+        </div>
+        <div className="flex items-center justify-center space-x-2">
+          <Button
+            variant="outline"
+            className="hidden h-8 w-8 p-0 lg:flex"
+            onClick={() => onPageChange(1)}
+            disabled={currentPage === 1}
+          >
+            <span className="sr-only">{t("goToFirstPage")}</span>
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            className="h-8 w-8 p-0"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            <span className="sr-only">{t("goToPreviousPage")}</span>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
 
-        {/* Page Numbers */}
-        <div className="flex items-center space-x-1">
-          {getPageNumbers().map((pageNum, idx) => {
-            if (pageNum === "...") {
+          {/* Page Numbers */}
+          <div className="flex items-center space-x-1">
+            {getPageNumbers().map((pageNum, idx) => {
+              if (pageNum === "...") {
+                return (
+                  <span key={`ellipsis-${idx}`} className="px-2 text-sm text-muted-foreground">
+                    ...
+                  </span>
+                );
+              }
               return (
-                <span
-                  key={`ellipsis-${idx}`}
-                  className="px-1 text-xs text-muted-foreground md:px-2 md:text-sm"
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "outline"}
+                  className="h-8 w-8 p-0 text-sm"
+                  onClick={() => onPageChange(pageNum as number)}
                 >
-                  ...
-                </span>
+                  {pageNum}
+                </Button>
               );
-            }
-            return (
-              <Button
-                key={pageNum}
-                variant={currentPage === pageNum ? "default" : "outline"}
-                className="h-7 w-7 p-0 text-xs md:h-8 md:w-8 md:text-sm"
-                onClick={() => onPageChange(pageNum as number)}
-              >
-                {pageNum}
-              </Button>
-            );
-          })}
-        </div>
+            })}
+          </div>
 
-        <Button
-          variant="outline"
-          className="h-7 w-7 p-0 md:h-8 md:w-8"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-        >
-          <span className="sr-only">{t("goToNextPage")}</span>
-          <ChevronRight className="h-3 w-3 md:h-4 md:w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          className="hidden h-8 w-8 p-0 lg:flex"
-          onClick={() => onPageChange(totalPages)}
-          disabled={currentPage === totalPages}
-        >
-          <span className="sr-only">{t("goToLastPage")}</span>
-          <ChevronsRight className="h-4 w-4" />
-        </Button>
+          <Button
+            variant="outline"
+            className="h-8 w-8 p-0"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            <span className="sr-only">{t("goToNextPage")}</span>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            className="hidden h-8 w-8 p-0 lg:flex"
+            onClick={() => onPageChange(totalPages)}
+            disabled={currentPage === totalPages}
+          >
+            <span className="sr-only">{t("goToLastPage")}</span>
+            <ChevronsRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

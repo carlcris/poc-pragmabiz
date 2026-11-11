@@ -349,14 +349,25 @@ export function Sidebar({
       )}
       style={{ backgroundColor: "#240032" }}
     >
-      <div className="border-b border-white/10 p-4 md:p-6">
+      {/* Below md this is the phone's only top bar (56px): menu, logo and name on the
+          left; the Header's account actions are laid over its right side. */}
+      <div className="flex h-14 items-center border-b border-white/10 px-1.5 md:block md:h-auto md:p-6">
         <div
           className={cn(
-            "flex items-center gap-4",
-            sidebarOpen ? "justify-between" : "md:justify-center"
+            "flex items-center gap-2 md:gap-4",
+            sidebarOpen ? "md:justify-between" : "md:justify-center"
           )}
         >
-          <div className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-white/15 via-white/10 to-white/5 shadow-[0_12px_30px_rgba(15,23,42,0.35)] ring-1 ring-white/15">
+          <button
+            type="button"
+            onClick={() => setIsMobileOpen((prev) => !prev)}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md text-white/90 transition-colors hover:bg-white/10 md:hidden"
+            aria-label={isMobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={isMobileOpen}
+          >
+            {isMobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+          <div className="relative flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-white/15 via-white/10 to-white/5 shadow-[0_12px_30px_rgba(15,23,42,0.35)] ring-1 ring-white/15 md:h-14 md:w-14 md:rounded-2xl">
             <Image
               src="/achlers_circle.png"
               alt="Achlers Logo"
@@ -364,35 +375,26 @@ export function Sidebar({
               className="object-contain p-0"
             />
           </div>
-          <div className={cn("space-y-1", !sidebarOpen && "hidden md:hidden")}>
+          <div className={cn("md:space-y-1", !sidebarOpen && "md:hidden")}>
             <h4 className="text-base font-semibold text-white">Achlers</h4>
-            <p className="text-sm font-medium text-white/80">Integrated Sales</p>
-            <div className="h-px w-10 bg-white/20" />
-            <p className="text-[9px] uppercase tracking-[0.3em] text-white/45">Inventory System</p>
+            <p className="hidden text-sm font-medium text-white/80 md:block">Integrated Sales</p>
+            <div className="hidden h-px w-10 bg-white/20 md:block" />
+            <p className="hidden text-[9px] uppercase tracking-[0.3em] text-white/45 md:block">
+              Inventory System
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsMobileOpen((prev) => !prev)}
-            className={cn(
-              "inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/20 text-white/80 transition-colors hover:bg-white/10 md:hidden",
-              sidebarOpen ? "ml-auto" : ""
-            )}
-            aria-label={isMobileOpen ? "Close menu" : "Open menu"}
-          >
-            {isMobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
         </div>
       </div>
 
       <div
         className={cn(
           "overflow-hidden transition-[max-height,opacity] duration-200 md:flex md:min-h-0 md:flex-1 md:flex-col md:overflow-hidden",
-          isMobileOpen ? "max-h-[calc(100vh-6.5rem)] opacity-100" : "max-h-0 opacity-0",
+          isMobileOpen ? "max-h-[calc(100vh-3.5rem)] opacity-100" : "max-h-0 opacity-0",
           "md:max-h-none md:opacity-100"
         )}
       >
         {/* Business Unit Switcher */}
-        <div className={cn("border-b border-white/10 p-3", !sidebarOpen && "hidden md:hidden")}>
+        <div className={cn("border-b border-white/10 p-3", !sidebarOpen && "md:hidden")}>
           <BusinessUnitSwitcher initialBusinessUnitName={initialBusinessUnitName} />
         </div>
 
@@ -411,7 +413,7 @@ export function Sidebar({
                       <div
                         className={cn(
                           "h-4 max-w-[120px] flex-1 rounded bg-white/10",
-                          !sidebarOpen && "hidden md:hidden"
+                          !sidebarOpen && "md:hidden"
                         )}
                       ></div>
                     </div>
@@ -419,19 +421,14 @@ export function Sidebar({
                 ))}
               </div>
             ) : (
-              <div
-                className={cn(
-                  "px-3 py-4 text-sm text-white/70",
-                  !sidebarOpen && "hidden md:hidden"
-                )}
-              >
+              <div className={cn("px-3 py-4 text-sm text-white/70", !sidebarOpen && "md:hidden")}>
                 Unable to load menu permissions.
               </div>
             )
           ) : (
             <>
               {/* Mobile and Desktop Expanded view - show full menu with text */}
-              <div className={cn(!sidebarOpen && "hidden md:hidden")}>
+              <div className={cn(!sidebarOpen && "md:hidden")}>
                 {menuItems.map((item) => {
                   const Icon = item.icon;
                   const isParentActive = !item.children && pathname === item.href;

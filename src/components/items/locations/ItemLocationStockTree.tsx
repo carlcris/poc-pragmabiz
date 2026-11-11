@@ -36,9 +36,13 @@ type TreeLevelProps = Omit<ItemLocationStockTreeProps, "warehouseLabel"> & {
 };
 
 // Arbitrary grid template: a flexible name column plus two fixed quantity columns has no preset.
+// Phones get 4rem quantity columns so location names keep enough width to read.
+const treeColumnsClassName =
+  "grid-cols-[minmax(0,1fr)_4rem_4rem] sm:grid-cols-[minmax(0,1fr)_6rem_6rem]";
 const rowClassName = (selected: boolean) =>
   cn(
-    "grid min-h-11 cursor-pointer grid-cols-[minmax(0,1fr)_6rem_6rem] items-center gap-2 rounded-md pr-3 text-sm outline-none",
+    "grid min-h-11 cursor-pointer items-center gap-2 rounded-md pr-3 text-sm outline-none",
+    treeColumnsClassName,
     "hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
     selected && "bg-primary/10"
   );
@@ -118,7 +122,7 @@ function TreeLevelPage({
                   tabIndex={-1}
                   aria-hidden
                   className={cn(
-                    "flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground",
+                    "relative flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground after:absolute after:-inset-3",
                     !isExpandable && "invisible"
                   )}
                   onClick={(event) => {
@@ -136,13 +140,13 @@ function TreeLevelPage({
                 <span className="flex min-w-0 flex-col">
                   <span
                     className={cn(
-                      "truncate",
+                      "break-words sm:truncate",
                       isSelected ? "font-semibold text-primary" : isExpandable && "font-medium"
                     )}
                   >
                     {label}
                   </span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="break-words text-xs text-muted-foreground sm:truncate">
                     {node.isDefault ? `${typeLabel} · ${t("preferredBadge")}` : typeLabel}
                   </span>
                 </span>
@@ -240,7 +244,12 @@ export function ItemLocationStockTree({
 
   return (
     <div className="flex flex-col">
-      <div className="grid grid-cols-[minmax(0,1fr)_6rem_6rem] gap-2 border-b px-3 py-2 text-xs font-medium text-muted-foreground">
+      <div
+        className={cn(
+          "grid gap-2 border-b px-3 py-2 text-xs font-medium text-muted-foreground",
+          treeColumnsClassName
+        )}
+      >
         <span>{t("whereStored")}</span>
         <span className="text-right">{t("onHand")}</span>
         <span className="text-right">{t("available")}</span>

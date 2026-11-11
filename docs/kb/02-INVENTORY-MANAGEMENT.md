@@ -69,6 +69,19 @@ Item list/detail pricing and customer price resolution without an explicit `asOf
 
 **Unit Options**:
 Each item can have multiple unit options (e.g., box, piece, dozen) with conversion factors to the base unit.
+On the item's **Unit Options** tab, **Edit** stays on the row; **Set Default**, **Activate** or
+**Deactivate**, and **Delete** are in the row's **More** menu.
+
+**Item details on phones**:
+Below 768px the stock cards sit in one row, the tab pills stay in one row that scrolls sideways on its own, and
+the Prices and Unit Options tabs show stacked rows instead of tables; price Edit and Delete are in
+each row's **More** menu. Location names in the Locations tab wrap instead of truncating.
+
+**Locations tab batches**:
+Each batch shows its code with Received Date and Expiration Date beneath, then On Hand, Reserved,
+and Available. **Edit Expiration** and **Print QR** are in the batch row's **More** menu at every
+width. Below 1024px batches render as stacked rows; the location tree sits beside the batch panel
+only from 1280px and stacks above it on narrower screens.
 
 **Barcode presentation**:
 The item details and edit screens render the generated base-unit barcode as a linear Code 128
@@ -82,6 +95,17 @@ and export show open putaway quantity separately from available stock. The wareh
 its business-unit-wide option **All Inventories**. That option aggregates warehouse inventory for the
 selected business unit and includes open putaway tasks that do not have a final warehouse yet. A
 specific warehouse filter includes only putaway tasks already assigned to that warehouse.
+
+**Phone layout**:
+Below 768px the Item Master list shows one stacked row per item instead of the table, keeping every
+column: name, Chinese name, code, category, and status, with On Hand, Allocated, Putaway Qty, and
+Available beneath. Tapping a row opens the item; **Edit** and **Delete** are in the row's **More**
+menu and keep their permission checks. Search stays visible beside a **Filters** button whose
+panel holds the category, warehouse, and status filters, an active-filter count, and **Clear All**.
+The pager scrolls with the list and uses labelled Previous and Next buttons; this pager applies to
+every list that uses the shared pagination bar. From 768px the table keeps a minimum height of
+about four rows, so short screens scroll the page instead of hiding the table. Server-side
+filtering and bounded pagination are unchanged.
 
 ```typescript
 // Example: Item with multiple units

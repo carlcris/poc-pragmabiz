@@ -2,13 +2,19 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Plus, Pencil, Trash2, CheckCircle2 } from "lucide-react";
+import { Plus, Pencil, Trash2, CheckCircle2, MoreVertical } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -123,13 +129,13 @@ export const PricesTab = ({ itemId, readOnly = false }: PricesTabProps) => {
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>{t("title")}</CardTitle>
               <CardDescription>{t("description")}</CardDescription>
             </div>
             {!readOnly && (
-              <Button onClick={handleCreatePrice}>
+              <Button onClick={handleCreatePrice} className="max-md:h-11">
                 <Plus className="mr-2 h-4 w-4" />
                 {t("addPrice")}
               </Button>
@@ -150,76 +156,152 @@ export const PricesTab = ({ itemId, readOnly = false }: PricesTabProps) => {
               <p className="mt-2 text-sm">{t("emptyDescription")}</p>
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("priceTier")}</TableHead>
-                    <TableHead>{t("tierName")}</TableHead>
-                    <TableHead className="text-right">{t("price")}</TableHead>
-                    <TableHead>{t("effectiveFrom")}</TableHead>
-                    <TableHead>{t("effectiveTo")}</TableHead>
-                    <TableHead>{t("status")}</TableHead>
-                    {!readOnly && <TableHead className="text-right">{t("actions")}</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {prices.map((price) => {
-                    const isCurrent = isCurrentPrice(price);
-                    return (
-                      <TableRow key={price.id}>
-                        <TableCell className="tabular-nums font-medium">
-                          <div className="flex items-center gap-2">
-                            {isCurrent && (
-                              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-                            )}
+            <>
+              {/* Phones: one stacked row per price instead of a seven-column table.
+                  Price lists are short, so both layouts render and CSS picks one. */}
+              <ul className="divide-y rounded-md border md:hidden">
+                {prices.map((price) => {
+                  const isCurrent = isCurrentPrice(price);
+                  return (
+                    <li key={price.id} className="flex items-start gap-3 p-3">
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center gap-2 text-sm">
+                          {isCurrent && (
+                            <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
+                          )}
+                          <span className="font-medium tabular-nums">
                             {price.priceTier.toUpperCase()}
-                          </div>
-                        </TableCell>
-                        <TableCell>{price.priceTierName}</TableCell>
-                        <TableCell className="text-right tabular-nums font-semibold">
-                          ₱{price.price.toFixed(4)}
-                        </TableCell>
-                        <TableCell className="text-sm">{formatDate(price.effectiveFrom)}</TableCell>
-                        <TableCell className="text-sm">{formatDate(price.effectiveTo)}</TableCell>
-                        <TableCell>
-                          <span
-                            className={
-                              price.isActive
-                                ? "text-sm font-medium text-green-700 dark:text-green-400"
-                                : "text-sm font-medium text-muted-foreground"
-                            }
-                          >
-                            {price.isActive ? t("active") : t("inactive")}
                           </span>
-                        </TableCell>
-                        {!readOnly && (
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditPrice(price)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeletePrice(price)}
-                                disabled={deleteMutation.isPending}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
+                          <span className="min-w-0 truncate text-muted-foreground">
+                            {price.priceTierName}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {t("effectiveFrom")}: {formatDate(price.effectiveFrom)} ·{" "}
+                          {t("effectiveTo")}: {formatDate(price.effectiveTo)}
+                        </p>
+                        <p
+                          className={
+                            price.isActive
+                              ? "text-xs font-medium text-green-700 dark:text-green-400"
+                              : "text-xs font-medium text-muted-foreground"
+                          }
+                        >
+                          {price.isActive ? t("active") : t("inactive")}
+                        </p>
+                      </div>
+                      <span className="pt-0.5 text-sm font-semibold tabular-nums">
+                        ₱{price.price.toFixed(4)}
+                      </span>
+                      {!readOnly && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className="-mr-2 -mt-2 h-11 w-11 shrink-0 p-0"
+                              aria-label={t("morePriceActions")}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem
+                              className="min-h-11"
+                              onClick={() => handleEditPrice(price)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                              {tCommon("edit")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="min-h-11 text-destructive focus:text-destructive"
+                              onClick={() => handleDeletePrice(price)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              {tCommon("delete")}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="hidden rounded-md border md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("priceTier")}</TableHead>
+                      <TableHead>{t("tierName")}</TableHead>
+                      <TableHead className="text-right">{t("price")}</TableHead>
+                      <TableHead>{t("effectiveFrom")}</TableHead>
+                      <TableHead>{t("effectiveTo")}</TableHead>
+                      <TableHead>{t("status")}</TableHead>
+                      {!readOnly && <TableHead className="text-right">{t("actions")}</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {prices.map((price) => {
+                      const isCurrent = isCurrentPrice(price);
+                      return (
+                        <TableRow key={price.id}>
+                          <TableCell className="font-medium tabular-nums">
+                            <div className="flex items-center gap-2">
+                              {isCurrent && (
+                                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                              )}
+                              {price.priceTier.toUpperCase()}
                             </div>
                           </TableCell>
-                        )}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                          <TableCell>{price.priceTierName}</TableCell>
+                          <TableCell className="text-right font-semibold tabular-nums">
+                            ₱{price.price.toFixed(4)}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {formatDate(price.effectiveFrom)}
+                          </TableCell>
+                          <TableCell className="text-sm">{formatDate(price.effectiveTo)}</TableCell>
+                          <TableCell>
+                            <span
+                              className={
+                                price.isActive
+                                  ? "text-sm font-medium text-green-700 dark:text-green-400"
+                                  : "text-sm font-medium text-muted-foreground"
+                              }
+                            >
+                              {price.isActive ? t("active") : t("inactive")}
+                            </span>
+                          </TableCell>
+                          {!readOnly && (
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditPrice(price)}
+                                  aria-label={tCommon("edit")}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeletePrice(price)}
+                                  disabled={deleteMutation.isPending}
+                                  aria-label={tCommon("delete")}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

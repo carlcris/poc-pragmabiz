@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  CheckCircle2,
+  CircleOff,
+  Loader2,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Star,
+  Trash2,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
@@ -25,6 +34,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -224,6 +239,100 @@ export const ItemUnitOptionsCard = ({
   const isMutating =
     createUnitOption.isPending || updateUnitOption.isPending || deleteUnitOption.isPending;
 
+  // Edit stays visible; secondary and destructive actions live in the row menu.
+  const renderRowActions = (unitOption: ItemUnitOption) => {
+    const canEdit = !unitOption.isBase;
+    const canSetDefault = !unitOption.isDefault;
+    const canToggleActive = !unitOption.isBase;
+    const canDelete = !unitOption.isBase && !unitOption.isDefault;
+
+    return (
+      <div className="flex justify-end gap-2">
+        {canEdit ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="max-md:h-11"
+            onClick={() => openEditDialog(unitOption)}
+            disabled={isMutating}
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+            {t("edit")}
+          </Button>
+        ) : null}
+        {canSetDefault || canToggleActive || canDelete ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-9 p-0 max-md:h-11 max-md:w-11"
+                aria-label={t("moreUnitOptionActions")}
+                disabled={isMutating}
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {canSetDefault ? (
+                <DropdownMenuItem
+                  className="max-md:min-h-11"
+                  onClick={() => setDefault(unitOption)}
+                >
+                  <Star className="h-4 w-4" />
+                  {t("setDefaultAction")}
+                </DropdownMenuItem>
+              ) : null}
+              {canToggleActive ? (
+                <DropdownMenuItem
+                  className="max-md:min-h-11"
+                  onClick={() => toggleActive(unitOption)}
+                >
+                  {unitOption.isActive ? (
+                    <CircleOff className="h-4 w-4" />
+                  ) : (
+                    <CheckCircle2 className="h-4 w-4" />
+                  )}
+                  {unitOption.isActive ? t("deactivateAction") : t("activateAction")}
+                </DropdownMenuItem>
+              ) : null}
+              {canDelete ? (
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive max-md:min-h-11"
+                  onClick={() => removeUnitOption(unitOption)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {t("deleteAction")}
+                </DropdownMenuItem>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+      </div>
+    );
+  };
+
+  const renderUnitBadges = (unitOption: ItemUnitOption) => (
+    <>
+      {unitOption.isBase ? <Badge variant="secondary">{t("baseLabel")}</Badge> : null}
+      {unitOption.isDefault ? <Badge variant="outline">{t("defaultLabel")}</Badge> : null}
+    </>
+  );
+
+  const renderStatus = (unitOption: ItemUnitOption, sizeClassName: string) => (
+    <span
+      className={
+        unitOption.isActive
+          ? `${sizeClassName} font-medium text-green-700 dark:text-green-400`
+          : `${sizeClassName} font-medium text-muted-foreground`
+      }
+    >
+      {unitOption.isActive ? t("activeLabel") : t("inactiveLabel")}
+    </span>
+  );
+
   return (
     <>
       <Card>
@@ -234,7 +343,7 @@ export const ItemUnitOptionsCard = ({
           </div>
           {editable ? (
             <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
-              <Button onClick={openCreateDialog}>
+              <Button onClick={openCreateDialog} className="max-md:h-11">
                 <Plus className="mr-2 h-4 w-4" />
                 {t("addUnitOption")}
               </Button>
@@ -255,107 +364,68 @@ export const ItemUnitOptionsCard = ({
               {editable ? <p className="mt-2">{t("noUnitOptionsDescription")}</p> : null}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t("unitLabel")}</TableHead>
-                    <TableHead>{t("qtyPerUnitLabel")}</TableHead>
-                    <TableHead>{t("barcodeLabel")}</TableHead>
-                    <TableHead>{t("statusLabel")}</TableHead>
-                    {editable ? (
-                      <TableHead className="text-right">{t("actionsLabel")}</TableHead>
-                    ) : null}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {unitOptions.map((unitOption) => (
-                    <TableRow key={unitOption.id}>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium">{unitOption.displayLabel}</div>
-                          <div className="flex flex-wrap gap-2">
-                            {unitOption.isBase ? (
-                              <Badge variant="secondary">{t("baseLabel")}</Badge>
-                            ) : null}
-                            {unitOption.isDefault ? (
-                              <Badge variant="outline">{t("defaultLabel")}</Badge>
-                            ) : null}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="tabular-nums">
-                        {unitOption.qtyPerUnit} {baseUomCode}
-                      </TableCell>
-                      <TableCell className="tabular-nums text-xs">{unitOption.barcode}</TableCell>
-                      <TableCell>
-                        <span
-                          className={
-                            unitOption.isActive
-                              ? "text-sm font-medium text-green-700 dark:text-green-400"
-                              : "text-sm font-medium text-muted-foreground"
-                          }
-                        >
-                          {unitOption.isActive ? t("activeLabel") : t("inactiveLabel")}
-                        </span>
-                      </TableCell>
+            <>
+              {/* Phones: stacked rows. Unit option lists are short, so both layouts render. */}
+              <ul className="divide-y rounded-md border md:hidden">
+                {unitOptions.map((unitOption) => (
+                  <li key={unitOption.id} className="flex items-start gap-3 p-3">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{unitOption.displayLabel}</span>
+                        {renderUnitBadges(unitOption)}
+                      </div>
+                      <p className="text-xs tabular-nums text-muted-foreground">
+                        {t("qtyPerUnitLabel")}: {unitOption.qtyPerUnit} {baseUomCode}
+                      </p>
+                      <p className="break-all text-xs tabular-nums text-muted-foreground">
+                        {t("barcodeLabel")}: {unitOption.barcode}
+                      </p>
+                      {renderStatus(unitOption, "text-xs")}
+                    </div>
+                    {editable ? renderRowActions(unitOption) : null}
+                  </li>
+                ))}
+              </ul>
+              <div className="hidden overflow-x-auto md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("unitLabel")}</TableHead>
+                      <TableHead>{t("qtyPerUnitLabel")}</TableHead>
+                      <TableHead>{t("barcodeLabel")}</TableHead>
+                      <TableHead>{t("statusLabel")}</TableHead>
                       {editable ? (
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            {!unitOption.isBase ? (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openEditDialog(unitOption)}
-                                disabled={isMutating}
-                              >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                {t("edit")}
-                              </Button>
-                            ) : null}
-                            {!unitOption.isDefault ? (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setDefault(unitOption)}
-                                disabled={isMutating}
-                              >
-                                {t("setDefaultAction")}
-                              </Button>
-                            ) : null}
-                            {!unitOption.isBase ? (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => toggleActive(unitOption)}
-                                disabled={isMutating}
-                              >
-                                {unitOption.isActive ? t("deactivateAction") : t("activateAction")}
-                              </Button>
-                            ) : null}
-                            {!unitOption.isBase && !unitOption.isDefault ? (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => removeUnitOption(unitOption)}
-                                disabled={isMutating}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                {t("deleteAction")}
-                              </Button>
-                            ) : null}
-                          </div>
-                        </TableCell>
+                        <TableHead className="text-right">{t("actionsLabel")}</TableHead>
                       ) : null}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {unitOptions.map((unitOption) => (
+                      <TableRow key={unitOption.id}>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="font-medium">{unitOption.displayLabel}</div>
+                            <div className="flex flex-wrap gap-2">
+                              {renderUnitBadges(unitOption)}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {unitOption.qtyPerUnit} {baseUomCode}
+                        </TableCell>
+                        <TableCell className="text-xs tabular-nums">{unitOption.barcode}</TableCell>
+                        <TableCell>{renderStatus(unitOption, "text-sm")}</TableCell>
+                        {editable ? (
+                          <TableCell className="text-right">
+                            {renderRowActions(unitOption)}
+                          </TableCell>
+                        ) : null}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

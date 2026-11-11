@@ -231,7 +231,7 @@ export function ExpandedLocationTree({
                 tabIndex={-1}
                 aria-hidden
                 className={cn(
-                  "flex h-5 w-5 shrink-0 items-center justify-center",
+                  "relative flex h-5 w-5 shrink-0 items-center justify-center after:absolute after:-inset-3",
                   !expandable && "invisible"
                 )}
                 onClick={(event) => {
@@ -266,10 +266,10 @@ export function ExpandedLocationTree({
               </span>
               {itemId && (
                 <>
-                  <span className="w-20 shrink-0 text-right tabular-nums">
+                  <span className="w-16 shrink-0 text-right tabular-nums sm:w-24">
                     {format.number((direct ? node.directOnHand : node.onHand) ?? 0)}
                   </span>
-                  <span className="w-20 shrink-0 text-right tabular-nums text-muted-foreground">
+                  <span className="w-16 shrink-0 text-right tabular-nums text-muted-foreground sm:w-24">
                     {format.number((direct ? node.directAvailable : node.available) ?? 0)}
                   </span>
                 </>

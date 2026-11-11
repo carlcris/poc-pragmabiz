@@ -90,9 +90,16 @@ vi.mock("@/components/shared/DataTablePagination", () => ({
   },
 }));
 vi.mock("@/components/ui/button", () => ({
-  Button: ({ onClick, children }: ComponentProps<"button">) => {
-    state.print = () => onClick?.({} as React.MouseEvent<HTMLButtonElement>);
-    return <button>{children}</button>;
+  Button: ({ children }: ComponentProps<"button">) => <button>{children}</button>,
+}));
+// The row menu renders inline so its actions are visible to the static render.
+vi.mock("@/components/ui/dropdown-menu", () => ({
+  DropdownMenu: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DropdownMenuItem: ({ onClick, children }: ComponentProps<"div">) => {
+    state.print = () => onClick?.({} as React.MouseEvent<HTMLDivElement>);
+    return <div role="menuitem">{children}</div>;
   },
 }));
 beforeEach(() => {
