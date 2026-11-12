@@ -238,6 +238,8 @@ Use the relevant skill when a task matches one of these triggers:
 - Generated document/control codes: `database-code-generation`.
 - Create/update payload contracts, insert-only fields, redacted values, or PATCH semantics: `mutation-contract-safety`.
 - Lists, reports, dashboards, search, sorting, filtering, pagination, selects, comboboxes, or autocomplete: `scalable-list-api`.
+- Every app report implementation or review: [report-implementation-workflow](.codex/skills/report-implementation-workflow/SKILL.md).
+  For PDF previews or exports, also use [continuous-report-pdf](.codex/skills/continuous-report-pdf/SKILL.md).
 - Dashboard page shells, tables, widgets, loading states, empty states, or row actions: `dashboard-page-shell`.
 - User-facing UI text, validation messages, toasts, dialogs, empty/loading/error copy, or translation migration: `i18n-translation-workflow`.
 - Field/widget/section/operation permissions, redaction, RLS permission behavior, or permission settings UI: `granular-permissions-rollout`.

@@ -43,7 +43,10 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar>
-            <AvatarFallback>{user?.name ? getInitials(user.name) : "U"}</AvatarFallback>
+            {/* Explicit text color: the phone header sets white text for its purple bar. */}
+            <AvatarFallback className="text-foreground">
+              {user?.name ? getInitials(user.name) : "U"}
+            </AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>

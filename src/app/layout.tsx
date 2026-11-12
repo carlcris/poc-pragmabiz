@@ -8,7 +8,7 @@ import { UserPreferencesProvider } from "@/contexts/UserPreferencesContext";
 import { Toaster } from "@/components/ui/sonner";
 import { SessionInvalidDialog } from "@/components/auth/SessionInvalidDialog";
 import { LogoutCleanup } from "@/components/auth/LogoutCleanup";
-import { defaultLocale, localeCookieName, locales, type Locale } from "@/lib/i18n";
+import { defaultLocale, isLocale, localeCookieName } from "@/lib/i18n";
 import { translations } from "@/lib/i18n/translations";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -21,10 +21,6 @@ export const metadata: Metadata = {
     shortcut: "/achlers_circle.png",
     apple: "/achlers_circle.png",
   },
-};
-
-const isLocale = (value: string): value is Locale => {
-  return locales.includes(value as Locale);
 };
 
 export default async function RootLayout({

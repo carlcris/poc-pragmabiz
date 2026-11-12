@@ -2,13 +2,14 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-const getServerMatch = () => false;
+const getServerMatch = () => undefined;
 
 /**
- * Tracks a CSS media query. Server rendering and hydration report `false`, then the
- * client value takes over, so callers should treat `false` as the narrow layout.
+ * Tracks a CSS media query. Server rendering and hydration report `undefined`
+ * because the viewport is unknown there; render breakpoint-neutral content (for
+ * example CSS-switched skeletons) until the client value arrives.
  */
-export function useMediaQuery(query: string): boolean {
+export function useMediaQuery(query: string): boolean | undefined {
   const subscribe = useCallback(
     (onChange: () => void) => {
       const mediaQueryList = window.matchMedia(query);

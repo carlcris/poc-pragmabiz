@@ -263,9 +263,7 @@ export function StockAdjustmentFormDialog({
       boxNumber: 1,
       qtyPerBox: item.adjustedQty,
       deliveryDate: item.batchReceivedAt || form.getValues("adjustmentDate"),
-      warehouseCode: selectedWarehouse?.code || undefined,
       locationId: item.batchWarehouseLocationId || null,
-      locationCode: item.batchLocationCode || undefined,
     });
   };
 

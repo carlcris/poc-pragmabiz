@@ -304,9 +304,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
           boxNumber: index + 1,
           qtyPerBox: selectedBatchPrintUnit.qtyPerUnit,
           deliveryDate: label.receivedAt,
-          warehouseCode: label.warehouseCode,
           locationId: label.locationId,
-          locationCode: label.locationCode,
         })
       );
       const { printBarcodeLabels } = await import("@/lib/barcode");

@@ -10,8 +10,13 @@ import {
 } from "@/components/ui/select";
 import { useCurrencyStore } from "@/stores/currencyStore";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
-export function CurrencySwitcher() {
+type CurrencySwitcherProps = {
+  triggerClassName?: string;
+};
+
+export function CurrencySwitcher({ triggerClassName }: CurrencySwitcherProps) {
   const { currencies, currentCurrency, setCurrency } = useCurrencyStore();
   const [mounted, setMounted] = useState(false);
 
@@ -27,12 +32,12 @@ export function CurrencySwitcher() {
   };
 
   if (!mounted) {
-    return <Skeleton className="h-10 w-24 xl:w-[140px]" />;
+    return <Skeleton className={cn("h-10 w-24 xl:w-[140px]", triggerClassName)} />;
   }
 
   return (
     <Select value={currentCurrency.code} onValueChange={handleCurrencyChange}>
-      <SelectTrigger className="w-auto gap-2 xl:w-[140px]">
+      <SelectTrigger className={cn("w-auto gap-2 xl:w-[140px]", triggerClassName)}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

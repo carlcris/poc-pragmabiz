@@ -12,6 +12,7 @@ Use this skill together with:
 - `scalable-list-api` for report lists, pagination, filtering, sorting, exports, and aggregate datasets.
 - `supabase-api-safety` for report API routes, Supabase queries, auth, scope, and safe API errors.
 - `typescript-contract-verification` for API, hook, PDF, and component response shapes.
+- [`continuous-report-pdf`](../continuous-report-pdf/SKILL.md) for every report that implements or changes PDF output.
 - `project-docs-sync` after implementation.
 - `supabase-migration-chain` when adding or changing report RPCs, SQL functions, views, indexes, RLS, or generated DB types.
 - `granular-permissions-rollout` when changing report permission keys, sensitive cards, redaction, or permission UI behavior.

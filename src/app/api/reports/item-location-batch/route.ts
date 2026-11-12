@@ -1,8 +1,20 @@
+import {
+  getItemLocationGroupSubtotals,
+  isItemLocationReportGroupBy,
+  orderItemLocationReportRows,
+} from "@/lib/reports/item-location-report-groups";
+import { defaultLocale, isLocale } from "@/lib/i18n";
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+
+const PDF_ROW_LIMIT = 10_000;
+const FETCH_BATCH_SIZE = 1_000;
+// Twice the full-size read count, so exports still complete when PostgREST
+// max_rows caps each read at half the batch size, while bounding tiny-read loops.
+const MAX_FETCH_BATCHES = (PDF_ROW_LIMIT / FETCH_BATCH_SIZE) * 2;
 
 type ItemLocationBatchRow = {
   id: string;
@@ -76,22 +88,50 @@ async function GETHandler(request: NextRequest) {
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
-    const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10) || 1);
-    const requestedLimit = Number.parseInt(searchParams.get("limit") || "25", 10) || 25;
-    const limit = Math.min(Math.max(requestedLimit, 10), 50);
-    const offset = (page - 1) * limit;
-
     const warehouseId = searchParams.get("warehouseId") || undefined;
     const itemId = searchParams.get("itemId") || undefined;
-    const search = (searchParams.get("search") || "").trim();
-    const stockStatus = (searchParams.get("stockStatus") || "all").trim();
-    const sortBy = (searchParams.get("sortBy") || "updated_at") as
-      | "updated_at"
-      | "qty_on_hand"
-      | "received_at";
-    const sortOrder = searchParams.get("sortOrder") === "asc" ? true : false;
+    const groupBy = searchParams.get("groupBy") || "item";
+    const includeEmpty = searchParams.get("includeEmptyBatches") || "false";
+    const locale = searchParams.get("locale") || defaultLocale;
+    if (
+      !isItemLocationReportGroupBy(groupBy) ||
+      !["true", "false"].includes(includeEmpty) ||
+      !isLocale(locale)
+    ) {
+      return NextResponse.json({ error: "Invalid report filters" }, { status: 400 });
+    }
+    const includeEmptyBatches = includeEmpty === "true";
 
-    let query = supabase
+    // Count once up front so oversized exports are refused before any row is read.
+    // Both reads apply the same company, warehouse, item, and empty-batch scope.
+    let countQuery = supabase
+      .from("item_batch_locations")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", userData.company_id)
+      .is("deleted_at", null);
+    if (warehouseId) countQuery = countQuery.eq("warehouse_id", warehouseId);
+    if (itemId) countQuery = countQuery.eq("item_id", itemId);
+    if (!includeEmptyBatches) countQuery = countQuery.gt("qty_on_hand", 0);
+    const { count, error: countError } = await countQuery;
+    if (countError) {
+      console.error("Item location report count failed:", countError);
+      return NextResponse.json(
+        { error: "Failed to fetch item location batch report" },
+        { status: 500 }
+      );
+    }
+    const total = count ?? 0;
+    if (total > PDF_ROW_LIMIT) {
+      return NextResponse.json(
+        {
+          code: "REPORT_TOO_LARGE",
+          error: "Report is too large. Narrow the warehouse or item filters.",
+        },
+        { status: 413 }
+      );
+    }
+
+    let rowQuery = supabase
       .from("item_batch_locations")
       .select(
         `
@@ -126,50 +166,55 @@ async function GETHandler(request: NextRequest) {
           location_path,
           name
         )
-      `,
-        { count: "exact" }
+      `
       )
       .eq("company_id", userData.company_id)
       .is("deleted_at", null);
+    if (warehouseId) rowQuery = rowQuery.eq("warehouse_id", warehouseId);
+    if (itemId) rowQuery = rowQuery.eq("item_id", itemId);
+    if (!includeEmptyBatches) rowQuery = rowQuery.gt("qty_on_hand", 0);
+    const query = rowQuery
+      .order(groupBy === "item" ? "item_id" : "item_batch_id", { ascending: true })
+      .order(groupBy === "item" ? "item_batch_id" : "item_id", { ascending: true })
+      .order("warehouse_id", { ascending: true })
+      .order("location_id", { ascending: true })
+      .order("id", { ascending: true });
 
-    if (warehouseId) query = query.eq("warehouse_id", warehouseId);
-    if (itemId) query = query.eq("item_id", itemId);
-
-    if (stockStatus === "zero") query = query.lte("qty_on_hand", 0);
-    if (stockStatus === "available_only") query = query.gt("qty_available", 0);
-    if (stockStatus === "reserved") query = query.gt("qty_reserved", 0);
-
-    if (search) {
-      // filter by related text and batch/location SKU
-      query = query.or(
-        [
-          `batch_location_sku.ilike.%${search}%`,
-          `item_batch.batch_code.ilike.%${search}%`,
-          `item.item_code.ilike.%${search}%`,
-          `item.item_name.ilike.%${search}%`,
-          `location.code.ilike.%${search}%`,
-          `location.name.ilike.%${search}%`,
-        ].join(",")
+    // Keep each read at or below the API row ceiling. Stop rather than publishing
+    // partial totals if the dataset changes between reads.
+    const sourceRows: ItemLocationBatchRow[] = [];
+    const seenIds = new Set<string>();
+    let fetchedBatches = 0;
+    while (sourceRows.length < total && fetchedBatches < MAX_FETCH_BATCHES) {
+      fetchedBatches += 1;
+      const nextOffset = sourceRows.length;
+      const next = await query.range(
+        nextOffset,
+        Math.min(nextOffset + FETCH_BATCH_SIZE, total) - 1
       );
+      if (next.error) {
+        console.error("Item location report batch query failed:", next.error);
+        return NextResponse.json(
+          { error: "Failed to fetch item location batch report" },
+          { status: 500 }
+        );
+      }
+      const nextRows = (next.data ?? []) as ItemLocationBatchRow[];
+      if (nextRows.length === 0 || nextRows.some((row) => seenIds.has(row.id))) break;
+      for (const row of nextRows) seenIds.add(row.id);
+      sourceRows.push(...nextRows);
     }
-
-    if (sortBy === "qty_on_hand") {
-      query = query.order("qty_on_hand", { ascending: sortOrder });
-    } else if (sortBy === "received_at") {
-      query = query.order("received_at", { foreignTable: "item_batch", ascending: sortOrder });
-    } else {
-      query = query.order("updated_at", { ascending: sortOrder });
-    }
-
-    const { data, error, count } = await query.range(offset, offset + limit - 1);
-    if (error) {
+    if (sourceRows.length !== total) {
       return NextResponse.json(
-        { error: "Failed to fetch item location batch report" },
-        { status: 500 }
+        {
+          code: "REPORT_INCOMPLETE",
+          error: "Report data changed or could not be loaded completely. Please retry.",
+        },
+        { status: 409 }
       );
     }
 
-    const rows = ((data || []) as ItemLocationBatchRow[]).map((row) => {
+    const rows = sourceRows.map((row) => {
       const item = one(row.item);
       const warehouse = one(row.warehouse);
       const location = one(row.location);
@@ -211,7 +256,7 @@ async function GETHandler(request: NextRequest) {
 
     const summary = {
       rowCount: rows.length,
-      totalRows: count || 0,
+      totalRows: total,
       totalQtyOnHand: rows.reduce((sum, r) => sum + r.qtyOnHand, 0),
       totalQtyReserved: rows.reduce((sum, r) => sum + r.qtyReserved, 0),
       totalQtyAvailable: rows.reduce((sum, r) => sum + r.qtyAvailable, 0),
@@ -222,22 +267,16 @@ async function GETHandler(request: NextRequest) {
       zeroStockRows: rows.filter((r) => r.qtyOnHand <= 0).length,
     };
 
+    const reportRows = orderItemLocationReportRows(rows, groupBy, locale);
     return NextResponse.json({
-      data: rows,
+      data: reportRows,
+      groupSubtotals: getItemLocationGroupSubtotals(reportRows, groupBy),
       summary,
-      pagination: {
-        page,
-        limit,
-        total: count || 0,
-        totalPages: Math.max(1, Math.ceil((count || 0) / limit)),
-      },
       filters: {
         warehouseId: warehouseId || null,
         itemId: itemId || null,
-        search: search || null,
-        stockStatus,
-        sortBy,
-        sortOrder: sortOrder ? "asc" : "desc",
+        groupBy,
+        includeEmptyBatches,
       },
     });
   } catch (error) {

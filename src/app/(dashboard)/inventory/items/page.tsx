@@ -87,7 +87,11 @@ function ItemsPageContent() {
   const [itemToDelete, setItemToDelete] = useState<ItemInventoryRow | null>(null);
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   // Phones get stacked rows and a Filters panel; md and up keep the table and inline filters.
-  const isTableLayout = useMediaQuery("(min-width: 768px)");
+  // The match is unknown in server HTML, so that first paint uses CSS-switched skeletons
+  // instead of committing either layout and swapping after hydration.
+  const tableLayoutMatch = useMediaQuery("(min-width: 768px)");
+  const isLayoutKnown = tableLayoutMatch !== undefined;
+  const isTableLayout = tableLayoutMatch === true;
 
   const { formatCurrency } = useCurrency();
   const deleteItem = useDeleteItem();
@@ -532,6 +536,63 @@ function ItemsPageContent() {
     </Select>
   );
 
+  const tableSkeleton = (
+    <div className="h-full overflow-y-auto overscroll-contain rounded-md border">
+      <Table containerClassName="overflow-visible">
+        <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
+          <TableRow>
+            <TableHead className="w-[80px]">{t("image")}</TableHead>
+            <TableHead>{t("itemCode")}</TableHead>
+            <TableHead className="w-72">{t("itemName")}</TableHead>
+            <TableHead>{t("category")}</TableHead>
+            <TableHead className="text-right">{t("onHand")}</TableHead>
+            <TableHead className="text-right">{t("allocated")}</TableHead>
+            <TableHead className="text-right">{t("putawayQty")}</TableHead>
+            <TableHead className="text-right">{t("available")}</TableHead>
+            <TableHead>{tCommon("status")}</TableHead>
+            <TableHead className="text-right">{tCommon("actions")}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {[...Array(10)].map((_, i) => (
+            <TableRow key={i}>
+              <TableCell>
+                <Skeleton className="h-12 w-12 rounded" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-20" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-8 w-56" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-28" />
+              </TableCell>
+              <TableCell className="text-right">
+                <Skeleton className="ml-auto h-4 w-16" />
+              </TableCell>
+              <TableCell className="text-right">
+                <Skeleton className="ml-auto h-4 w-16" />
+              </TableCell>
+              <TableCell className="text-right">
+                <Skeleton className="ml-auto h-4 w-16" />
+              </TableCell>
+              <TableCell className="text-right">
+                <Skeleton className="ml-auto h-4 w-16" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="h-4 w-16" />
+              </TableCell>
+              <TableCell className="text-right">
+                <Skeleton className="ml-auto h-8 w-16" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-2 sm:gap-4 md:h-full md:gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -651,7 +712,9 @@ function ItemsPageContent() {
 
       <div className="flex flex-col gap-2 sm:gap-3 md:min-h-0 md:flex-1 md:gap-4">
         {/* Filters */}
-        {isTableLayout ? (
+        {!isLayoutKnown ? (
+          <Skeleton className="h-11 w-full md:h-10" />
+        ) : isTableLayout ? (
           <div className="flex flex-row flex-wrap gap-3">
             {searchField}
             {categoryFilterControl}
@@ -718,63 +781,17 @@ function ItemsPageContent() {
         {/* Table. md:min-h-96 keeps about four rows on short screens: the page scrolls
             instead of the table collapsing to nothing. */}
         <div className="md:min-h-96 md:flex-1">
-          {isInitialLoading && !isTableLayout ? (
+          {!isLayoutKnown ? (
+            <>
+              <div className="md:hidden">
+                <InventoryItemMobileListSkeleton rows={4} />
+              </div>
+              <div className="h-full max-md:hidden">{tableSkeleton}</div>
+            </>
+          ) : isInitialLoading && !isTableLayout ? (
             <InventoryItemMobileListSkeleton rows={4} />
           ) : isInitialLoading ? (
-            <div className="h-full overflow-y-auto overscroll-contain rounded-md border">
-              <Table containerClassName="overflow-visible">
-                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
-                  <TableRow>
-                    <TableHead className="w-[80px]">{t("image")}</TableHead>
-                    <TableHead>{t("itemCode")}</TableHead>
-                    <TableHead className="w-72">{t("itemName")}</TableHead>
-                    <TableHead>{t("category")}</TableHead>
-                    <TableHead className="text-right">{t("onHand")}</TableHead>
-                    <TableHead className="text-right">{t("allocated")}</TableHead>
-                    <TableHead className="text-right">{t("putawayQty")}</TableHead>
-                    <TableHead className="text-right">{t("available")}</TableHead>
-                    <TableHead>{tCommon("status")}</TableHead>
-                    <TableHead className="text-right">{tCommon("actions")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[...Array(10)].map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <Skeleton className="h-12 w-12 rounded" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-20" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-8 w-56" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-28" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Skeleton className="ml-auto h-4 w-16" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Skeleton className="ml-auto h-4 w-16" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Skeleton className="ml-auto h-4 w-16" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Skeleton className="ml-auto h-4 w-16" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-16" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Skeleton className="ml-auto h-8 w-16" />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            tableSkeleton
           ) : error ? (
             <div className="flex h-[200px] items-center justify-center text-center md:h-full">
               <div>

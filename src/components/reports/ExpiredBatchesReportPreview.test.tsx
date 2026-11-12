@@ -1,6 +1,10 @@
 import { expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ExpiredBatchesReportPreview } from "./ExpiredBatchesReportPreview";
+import {
+  REPORT_PREVIEW_CONTENT_CLASS_NAME,
+  REPORT_PREVIEW_GRID_CLASS_NAME,
+} from "./report-preview-layout";
 const state = vi.hoisted(() => ({ query: vi.fn(() => ({ refetch: vi.fn(), isFetching: false })) }));
 vi.mock("@/hooks/useExpiredBatchesReport", () => ({ useExpiredBatchesReport: state.query }));
 vi.mock("@/stores/businessUnitStore", () => ({ useBusinessUnitStore: () => "bu" }));
@@ -28,8 +32,8 @@ it("uses the settings/sidebar PDF flow with only a disabled export query", () =>
   const html = renderToStaticMarkup(
     <ExpiredBatchesReportPreview open reportName="Expired Batches" onPreviewStateChange={vi.fn()} />
   );
-  expect(html).toContain("lg:grid-cols-4");
-  expect(html).toContain("lg:col-span-3");
+  expect(html).toContain(REPORT_PREVIEW_GRID_CLASS_NAME);
+  expect(html).toContain(REPORT_PREVIEW_CONTENT_CLASS_NAME);
   expect(html).toContain("reportSettings");
   expect(html).toContain("PDF placeholder");
   expect(html).not.toContain("<table");

@@ -34,6 +34,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BusinessUnitSwitcher } from "@/components/business-unit/BusinessUnitSwitcher";
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+import { CurrencySwitcher } from "@/components/shared/CurrencySwitcher";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PURCHASING_MODULE_RESOURCES, RESOURCES } from "@/constants/resources";
 import { useSidebarStore } from "@/stores/sidebarStore";
@@ -388,8 +390,10 @@ export function Sidebar({
 
       <div
         className={cn(
-          "overflow-hidden transition-[max-height,opacity] duration-200 md:flex md:min-h-0 md:flex-1 md:flex-col md:overflow-hidden",
-          isMobileOpen ? "max-h-[calc(100vh-3.5rem)] opacity-100" : "max-h-0 opacity-0",
+          // A flex column at every width so the nav below gets a bounded height and scrolls;
+          // dvh keeps the phone panel inside the visible screen when Safari's bars show.
+          "flex flex-col overflow-hidden transition-[max-height,opacity] duration-200 md:min-h-0 md:flex-1",
+          isMobileOpen ? "max-h-[calc(100dvh-3.5rem)] opacity-100" : "max-h-0 opacity-0",
           "md:max-h-none md:opacity-100"
         )}
       >
@@ -398,8 +402,15 @@ export function Sidebar({
           <BusinessUnitSwitcher initialBusinessUnitName={initialBusinessUnitName} />
         </div>
 
+        {/* Phones have no header room for these, so they live in the open menu; from md
+            the header shows them. */}
+        <div className="grid shrink-0 grid-cols-2 gap-2 border-b border-white/10 p-3 md:hidden">
+          <LanguageSwitcher triggerClassName="h-11 w-full" />
+          <CurrencySwitcher triggerClassName="h-11 w-full" />
+        </div>
+
         <nav
-          className="scrollbar-hide flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 pb-6 md:min-h-0"
+          className="scrollbar-hide min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 pb-6"
           suppressHydrationWarning
         >
           {!shouldShowMenu ? (

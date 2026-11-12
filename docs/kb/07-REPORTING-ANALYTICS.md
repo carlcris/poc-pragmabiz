@@ -735,3 +735,48 @@ return reportData
 - Forecasting and predictions
 - Mobile-optimized reports
 - Real-time streaming dashboards
+
+### Item Location (Location + Batch)
+
+The PDF preview shows exact warehouse/location paths, item and batch identifiers, location SKU,
+and on-hand, reserved, and available quantities. Choose a warehouse and/or item, then group by
+**Item** (default) or **Batch**. Batch groups combine the same batch code across items and
+warehouses, with items nested below each batch. Item grouping nests batches below each item. Exact warehouse/location rows appear
+below each nested heading. Child headings omit the Item/Batch prefix and are indented; location
+rows are indented further. Each main batch or item group ends with On Hand, Reserved, and
+Available subtotals, computed over all matching location rows on the server. Subtotals appear
+once at the true group end even across PDF rendering jobs/pages. The PDF omits the Updated column. Missing batch codes remain separate
+by batch identity. The API groups
+the complete bounded export before PDF chunking, so a group is never fragmented by fetch order.
+Warehouse and item selectors query the server with five initial results and support lookup search.
+
+**Include empty batches** is unchecked by default. Unchecked reports include only location/batch
+records with positive on-hand quantity; checking it also includes existing zero-on-hand records.
+It does not invent locations for batches that have no location record. The former stock-status,
+report search, and sorting controls are removed; ordering is deterministic within each group.
+
+`GET /api/reports/item-location-batch` is a PDF export endpoint. It accepts `warehouseId`, `itemId`,
+`groupBy=item|batch`, `includeEmptyBatches=true|false`, and `locale=en|zh`; other values return HTTP
+400. One exact count runs first: more than 10,000 matching rows returns HTTP 413 before any row is
+read. Accepted reports are then fetched in database batches of at most 1,000 rows (at most 20 reads
+if the database applies a smaller per-request cap). Groups are ordered with the requested locale's
+collation. Responses include all matching rows, `groupSubtotals` keyed by each group's last location
+row ID, and summary quantities over the full dataset; there is no `page`/`limit` pagination. Empty,
+duplicate, or short reads return HTTP 409 with retry guidance; partial reports are never exported.
+The reads are not a transactional snapshot, so concurrent updates that preserve the row count may
+still appear in the report. Report view permission, company scoping, and existing Supabase RLS
+remain in force.
+
+PDF layout and font processing run in a dedicated browser worker so large reports do not block
+page interaction. Each render job handles up to 125 rows. The next job starts with the previous
+job's last-page rows, then adds new rows so the page can fill before the report advances. `pdf-lib`
+merges the completed pages into one PDF. Group headings and subtotals stay with their rows. The full
+report title block appears only on the first page. Column headings repeat on every page, and page
+numbers run from `1 / N` to `N / N` across the merged PDF. Cancel preview or close the dialog to
+terminate rendering and release worker memory. Rendering also stops after three minutes with
+translated retry guidance. The 1,000-row database chunks and 10,000-row export cap remain unchanged.
+
+PDF downloads use the report title and the local generation date in the format
+`<report title> - YYYY-MM-DD.pdf`. The browser PDF viewer gets a named preview URL through a
+scoped service worker that reads the existing local PDF. The report dialog's **Download PDF**
+button sets the same name, including when the browser cannot activate the service worker.

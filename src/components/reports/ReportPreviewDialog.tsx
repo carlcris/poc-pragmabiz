@@ -1,10 +1,19 @@
 "use client";
 
+import {
+  REPORT_PREVIEW_GRID_CLASS_NAME,
+  REPORT_PREVIEW_SETTINGS_CLASS_NAME,
+  REPORT_PREVIEW_ACTIONS_CLASS_NAME,
+  REPORT_PREVIEW_CONTENT_CLASS_NAME,
+  REPORT_PREVIEW_FIELDS_CLASS_NAME,
+} from "./report-preview-layout";
 import { ExpiredBatchesReportPreview } from "./ExpiredBatchesReportPreview";
 import type { StockAgingAgeBucket, StockAgingGroupBy } from "@/types/stock-aging-report";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { format } from "date-fns";
 import { useLocale, useTranslations } from "next-intl";
+import { defaultLocale, isLocale } from "@/lib/i18n";
 import { Download, Eye, Loader2, Printer } from "lucide-react";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
@@ -12,6 +21,8 @@ import { useCustomers, useCustomerLedger } from "@/hooks/useCustomers";
 import { useCurrency } from "@/hooks/useCurrency";
 import { ItemCategorySelect } from "@/components/items/ItemCategorySelect";
 import type { ItemCategory } from "@/types/item-category";
+import { renderItemLocationReportPdf } from "@/lib/reports/item-location-report-pdf";
+import { getNamedPdfPreviewUrl } from "@/lib/reports/named-pdf-preview-url";
 import { useItemLocationBatchReport } from "@/hooks/useItemLocationBatchReport";
 import { useItems } from "@/hooks/useItems";
 import {
@@ -54,6 +65,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ItemSelect } from "@/components/common/ItemSelect";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -237,12 +250,12 @@ function InventoryReportPreview({
   };
 
   return (
-    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
+    <div className={REPORT_PREVIEW_GRID_CLASS_NAME}>
+      <div className={REPORT_PREVIEW_SETTINGS_CLASS_NAME}>
         <div className="space-y-1">
           <h3 className="font-semibold">{tReports("reportSettings")}</h3>
         </div>
-        <div className="mt-4 space-y-4">
+        <div className={REPORT_PREVIEW_FIELDS_CLASS_NAME}>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("itemSearch")}</label>
             <Input
@@ -289,7 +302,7 @@ function InventoryReportPreview({
             </Select>
           </div>
         </div>
-        <div className="mt-auto pt-6">
+        <div className={REPORT_PREVIEW_ACTIONS_CLASS_NAME}>
           <Button
             className="w-full"
             onClick={handlePreview}
@@ -305,7 +318,7 @@ function InventoryReportPreview({
         </div>
       </div>
 
-      <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className={REPORT_PREVIEW_CONTENT_CLASS_NAME}>
         <PreviewFrame
           url={previewUrl}
           isGenerating={isGeneratingPreview}
@@ -426,12 +439,12 @@ function StockAgingReportPreview({
   };
 
   return (
-    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-4">
-      <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
+    <div className={REPORT_PREVIEW_GRID_CLASS_NAME}>
+      <div className={REPORT_PREVIEW_SETTINGS_CLASS_NAME}>
         <div className="space-y-1">
           <h3 className="font-semibold">{tReports("reportSettings")}</h3>
         </div>
-        <div className="mt-4 space-y-4">
+        <div className={REPORT_PREVIEW_FIELDS_CLASS_NAME}>
           <div className="space-y-2">
             <label htmlFor="stock-aging-group-by" className="text-sm font-medium">
               {t("groupBy")}
@@ -490,7 +503,7 @@ function StockAgingReportPreview({
             </Select>
           </div>
         </div>
-        <div className="mt-auto pt-6">
+        <div className={REPORT_PREVIEW_ACTIONS_CLASS_NAME}>
           <Button
             className="w-full"
             onClick={handlePreview}
@@ -506,7 +519,7 @@ function StockAgingReportPreview({
         </div>
       </div>
 
-      <div className="flex h-full min-h-0 flex-col gap-4 lg:col-span-3">
+      <div className={REPORT_PREVIEW_CONTENT_CLASS_NAME}>
         {previewError && (
           <p role="alert" className="text-sm text-destructive">
             {previewError}
@@ -624,12 +637,12 @@ function ShipmentsReportPreview({
   };
 
   return (
-    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
+    <div className={REPORT_PREVIEW_GRID_CLASS_NAME}>
+      <div className={REPORT_PREVIEW_SETTINGS_CLASS_NAME}>
         <div className="space-y-1">
           <h3 className="font-semibold">{tReports("reportSettings")}</h3>
         </div>
-        <div className="mt-4 space-y-4">
+        <div className={REPORT_PREVIEW_FIELDS_CLASS_NAME}>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("search")}</label>
             <Input
@@ -672,7 +685,7 @@ function ShipmentsReportPreview({
             </Select>
           </div>
         </div>
-        <div className="mt-auto pt-6">
+        <div className={REPORT_PREVIEW_ACTIONS_CLASS_NAME}>
           <Button
             className="w-full"
             onClick={handlePreview}
@@ -688,7 +701,7 @@ function ShipmentsReportPreview({
         </div>
       </div>
 
-      <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className={REPORT_PREVIEW_CONTENT_CLASS_NAME}>
         <PreviewFrame
           url={previewUrl}
           isGenerating={isGeneratingPreview}
@@ -826,12 +839,12 @@ function ProductMovementReportPreview({
   };
 
   return (
-    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
+    <div className={REPORT_PREVIEW_GRID_CLASS_NAME}>
+      <div className={REPORT_PREVIEW_SETTINGS_CLASS_NAME}>
         <div className="space-y-1">
           <h3 className="font-semibold">{tReports("reportSettings")}</h3>
         </div>
-        <div className="mt-4 space-y-4">
+        <div className={REPORT_PREVIEW_FIELDS_CLASS_NAME}>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("search")}</label>
             <Input
@@ -863,7 +876,7 @@ function ProductMovementReportPreview({
             />
           </div>
         </div>
-        <div className="mt-auto pt-6">
+        <div className={REPORT_PREVIEW_ACTIONS_CLASS_NAME}>
           <Button
             className="w-full"
             onClick={handlePreview}
@@ -879,7 +892,7 @@ function ProductMovementReportPreview({
         </div>
       </div>
 
-      <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className={REPORT_PREVIEW_CONTENT_CLASS_NAME}>
         <PreviewFrame
           url={previewUrl}
           isGenerating={isGeneratingPreview}
@@ -1043,12 +1056,12 @@ function AccountsReceivableAgingReportPreview({
   };
 
   return (
-    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
+    <div className={REPORT_PREVIEW_GRID_CLASS_NAME}>
+      <div className={REPORT_PREVIEW_SETTINGS_CLASS_NAME}>
         <div className="space-y-1">
           <h3 className="font-semibold">{tReports("reportSettings")}</h3>
         </div>
-        <div className="mt-4 space-y-4">
+        <div className={REPORT_PREVIEW_FIELDS_CLASS_NAME}>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("asOfDate")}</label>
             <Input
@@ -1117,7 +1130,7 @@ function AccountsReceivableAgingReportPreview({
             />
           </div>
         </div>
-        <div className="mt-auto pt-6">
+        <div className={REPORT_PREVIEW_ACTIONS_CLASS_NAME}>
           <Button
             className="w-full"
             onClick={handlePreview}
@@ -1133,7 +1146,7 @@ function AccountsReceivableAgingReportPreview({
         </div>
       </div>
 
-      <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className={REPORT_PREVIEW_CONTENT_CLASS_NAME}>
         <PreviewFrame
           url={previewUrl}
           isGenerating={isGeneratingPreview}
@@ -1280,12 +1293,12 @@ function CustomerLedgerReportPreview({
   };
 
   return (
-    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
+    <div className={REPORT_PREVIEW_GRID_CLASS_NAME}>
+      <div className={REPORT_PREVIEW_SETTINGS_CLASS_NAME}>
         <div className="space-y-1">
           <h3 className="font-semibold">{tReports("reportSettings")}</h3>
         </div>
-        <div className="mt-4 space-y-4">
+        <div className={REPORT_PREVIEW_FIELDS_CLASS_NAME}>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("customer")}</label>
             <AsyncSearchCombobox<Customer>
@@ -1337,7 +1350,7 @@ function CustomerLedgerReportPreview({
             </Select>
           </div>
         </div>
-        <div className="mt-auto pt-6">
+        <div className={REPORT_PREVIEW_ACTIONS_CLASS_NAME}>
           <Button
             className="w-full"
             onClick={handlePreview}
@@ -1353,7 +1366,7 @@ function CustomerLedgerReportPreview({
         </div>
       </div>
 
-      <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className={REPORT_PREVIEW_CONTENT_CLASS_NAME}>
         <PreviewFrame
           url={previewUrl}
           isGenerating={isGeneratingPreview}
@@ -1529,12 +1542,12 @@ function StockReportsPreview({
   const activeQuery = reportMode === "movement" ? movementQuery : valuationQuery;
 
   return (
-    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
+    <div className={REPORT_PREVIEW_GRID_CLASS_NAME}>
+      <div className={REPORT_PREVIEW_SETTINGS_CLASS_NAME}>
         <div className="space-y-1">
           <h3 className="font-semibold">{tReports("reportSettings")}</h3>
         </div>
-        <div className="mt-4 space-y-4">
+        <div className={REPORT_PREVIEW_FIELDS_CLASS_NAME}>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("title")}</label>
             <Select
@@ -1688,7 +1701,7 @@ function StockReportsPreview({
             </>
           )}
         </div>
-        <div className="mt-auto pt-6">
+        <div className={REPORT_PREVIEW_ACTIONS_CLASS_NAME}>
           <Button
             className="w-full"
             onClick={handlePreview}
@@ -1704,7 +1717,7 @@ function StockReportsPreview({
         </div>
       </div>
 
-      <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className={REPORT_PREVIEW_CONTENT_CLASS_NAME}>
         <PreviewFrame
           url={previewUrl}
           isGenerating={isGeneratingPreview}
@@ -1728,195 +1741,161 @@ function ItemLocationBatchReportPreview({
 }) {
   const tReports = useTranslations("reportsPage");
   const t = useTranslations("itemLocationBatchReportPage");
-  const locale = useLocale();
+  const appLocale = useLocale();
+  const locale = isLocale(appLocale) ? appLocale : defaultLocale;
+  const renderController = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      renderController.current?.abort();
+    };
+  }, [open]);
   const [warehouseId, setWarehouseId] = useState("all");
   const [itemId, setItemId] = useState("all");
-  const [stockStatus, setStockStatus] = useState<"all" | "zero" | "available_only" | "reserved">(
-    "all"
-  );
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"updated_at" | "qty_on_hand" | "received_at">("updated_at");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const { data: itemsData } = useItems({ limit: 50 });
-  const { data: warehousesData } = useWarehouses({ limit: 50 });
-  const items = itemsData?.data || [];
-  const warehouses = warehousesData?.data || [];
+  const [groupBy, setGroupBy] = useState<"item" | "batch">("item");
+  const [includeEmptyBatches, setIncludeEmptyBatches] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [fileName, setFileName] = useState("");
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const { previewUrl, isGeneratingPreview, setIsGeneratingPreview, replacePreviewUrl } =
     usePdfPreviewState(open);
 
   const reportQuery = useItemLocationBatchReport({
     enabled: false,
-    page: 1,
-    limit: 50,
+    locale,
     warehouseId: warehouseId === "all" ? undefined : warehouseId,
     itemId: itemId === "all" ? undefined : itemId,
-    stockStatus,
-    search: search || undefined,
-    sortBy,
-    sortOrder,
+    groupBy,
+    includeEmptyBatches,
   });
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setSearch(searchInput.trim());
-    }, 300);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [searchInput]);
-
-  useEffect(() => {
     replacePreviewUrl(null);
-  }, [warehouseId, itemId, stockStatus, search, sortBy, sortOrder, replacePreviewUrl]);
+    setPreviewError(null);
+  }, [warehouseId, itemId, groupBy, includeEmptyBatches, replacePreviewUrl]);
 
   useEffect(() => {
     onPreviewStateChange({
       url: previewUrl,
       isGenerating: isGeneratingPreview,
-      fileName: `item-location-batch-report-${new Date().toISOString().slice(0, 10)}.pdf`,
+      fileName,
     });
-  }, [isGeneratingPreview, onPreviewStateChange, previewUrl]);
-
-  const formatNumber = (value: number, digits = 0) =>
-    new Intl.NumberFormat(locale, {
-      minimumFractionDigits: digits,
-      maximumFractionDigits: digits,
-    }).format(Number.isFinite(value) ? value : 0);
+  }, [fileName, isGeneratingPreview, onPreviewStateChange, previewUrl]);
 
   const handlePreview = async () => {
+    renderController.current?.abort();
+    const controller = new AbortController();
+    renderController.current = controller;
     setIsGeneratingPreview(true);
+    setPreviewError(null);
     try {
-      const { data } = await reportQuery.refetch();
+      const { data, error } = await reportQuery.refetch();
+      if (error) throw error;
       if (!data) return;
 
-      const [{ pdf }, { ItemLocationBatchReportPDF }] = await Promise.all([
-        import("@react-pdf/renderer"),
-        import("@/components/reports/ItemLocationBatchReportPDF"),
-      ]);
+      const title = t("title");
+      const generatedAt = new Date();
+      const blob = await renderItemLocationReportPdf(
+        {
+          title,
+          subtitle: t("subtitle"),
+          generatedAtLabel: tReports("generatedAt"),
+          generatedAt: generatedAt.toLocaleString(),
+          itemLabel: t("item"),
+          warehouseLocationLabel: t("warehouseLocation"),
+          batchLabel: t("batch"),
+          locationSkuLabel: t("locationSku"),
+          onHandLabel: t("onHand"),
+          reservedLabel: t("reserved"),
+          availableLabel: t("available"),
+          noValueLabel: t("noValue"),
+          groupBy,
+          noRowsLabel: t("noRows"),
+          subtotalLabel: t("subtotal"),
+          groupSubtotals: data.groupSubtotals,
+          rows: data.data,
+        },
+        controller.signal
+      );
+      if (controller.signal.aborted) return;
 
-      const blob = await pdf(
-        <ItemLocationBatchReportPDF
-          title={t("title")}
-          subtitle={t("subtitle")}
-          generatedAtLabel={tReports("generatedAt")}
-          itemLabel={t("item")}
-          warehouseLocationLabel={t("warehouseLocation")}
-          batchLabel={t("batch")}
-          locationSkuLabel={t("locationSku")}
-          onHandLabel={t("onHand")}
-          reservedLabel={t("reserved")}
-          availableLabel={t("available")}
-          updatedLabel={t("updated")}
-          noValueLabel={t("noValue")}
-          pageSummary={t("pageOfTotal", {
-            page: formatNumber(data.pagination.page),
-            totalPages: formatNumber(data.pagination.totalPages),
-            total: formatNumber(data.pagination.total),
-          })}
-          rows={data.data}
-        />
-      ).toBlob();
-
-      replacePreviewUrl(URL.createObjectURL(blob));
+      const nextFileName = `${title} - ${format(generatedAt, "yyyy-MM-dd")}.pdf`;
+      const blobUrl = URL.createObjectURL(blob);
+      const namedUrl = await getNamedPdfPreviewUrl(blobUrl, nextFileName);
+      if (controller.signal.aborted) {
+        URL.revokeObjectURL(blobUrl);
+        return;
+      }
+      setFileName(nextFileName);
+      setViewerUrl(namedUrl);
+      replacePreviewUrl(blobUrl);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setPreviewError(
+        error instanceof Error && error.message === "REPORT_TOO_LARGE"
+          ? t("tooLarge")
+          : error instanceof Error && error.message === "REPORT_INCOMPLETE"
+            ? t("incomplete")
+            : error instanceof Error && error.message === "REPORT_PDF_TIMEOUT"
+              ? t("previewTimeout")
+              : t("loadError")
+      );
     } finally {
-      setIsGeneratingPreview(false);
+      if (renderController.current === controller) setIsGeneratingPreview(false);
     }
   };
 
   return (
-    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
+    <div className={REPORT_PREVIEW_GRID_CLASS_NAME}>
+      <div className={REPORT_PREVIEW_SETTINGS_CLASS_NAME}>
         <div className="space-y-1">
           <h3 className="font-semibold">{tReports("reportSettings")}</h3>
         </div>
-        <div className="mt-4 space-y-4">
+        <fieldset
+          disabled={isGeneratingPreview}
+          className={REPORT_PREVIEW_FIELDS_CLASS_NAME}
+        >
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("warehouse")}</label>
-            <Select value={warehouseId} onValueChange={setWarehouseId}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("allWarehouses")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allWarehouses")}</SelectItem>
-                {warehouses.map((warehouse) => (
-                  <SelectItem key={warehouse.id} value={warehouse.id}>
-                    {warehouse.code} - {warehouse.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <WarehouseSelect
+              value={warehouseId === "all" ? "" : warehouseId}
+              onValueChange={(value) => setWarehouseId(value || "all")}
+              scope="current_business_unit"
+              allowAll
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("item")}</label>
-            <Select value={itemId} onValueChange={setItemId}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("allItems")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allItems")}</SelectItem>
-                {items.map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {item.code} - {item.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{t("stockStatus")}</label>
-            <Select
-              value={stockStatus}
-              onValueChange={(value) => setStockStatus(value as typeof stockStatus)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("all")}</SelectItem>
-                <SelectItem value="available_only">{t("availableOnly")}</SelectItem>
-                <SelectItem value="reserved">{t("reservedGtZero")}</SelectItem>
-                <SelectItem value="zero">{t("zeroOnHand")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{t("sortBy")}</label>
-            <Select value={sortBy} onValueChange={(value) => setSortBy(value as typeof sortBy)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="updated_at">{t("updatedAt")}</SelectItem>
-                <SelectItem value="qty_on_hand">{t("qtyOnHand")}</SelectItem>
-                <SelectItem value="received_at">{t("receivedAt")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{t("sortOrder")}</label>
-            <Select
-              value={sortOrder}
-              onValueChange={(value) => setSortOrder(value as typeof sortOrder)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="desc">{t("descending")}</SelectItem>
-                <SelectItem value="asc">{t("ascending")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{t("search")}</label>
-            <Input
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder={t("searchPlaceholder")}
+            <ItemSelect
+              value={itemId === "all" ? "" : itemId}
+              onValueChange={(value) => setItemId(value || "all")}
+              allowAll
             />
           </div>
-        </div>
-        <div className="mt-auto pt-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("groupBy")}</label>
+            <Select
+              value={groupBy}
+              onValueChange={(value) => setGroupBy(value as "item" | "batch")}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="item">{t("item")}</SelectItem>
+                <SelectItem value="batch">{t("batch")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <Checkbox
+              checked={includeEmptyBatches}
+              onCheckedChange={(checked) => setIncludeEmptyBatches(checked === true)}
+            />
+            {t("includeEmptyBatches")}
+          </label>
+        </fieldset>
+        <div className={REPORT_PREVIEW_ACTIONS_CLASS_NAME}>
           <Button
             className="w-full"
             onClick={handlePreview}
@@ -1929,11 +1908,28 @@ function ItemLocationBatchReportPreview({
             )}
             {tReports("preview")}
           </Button>
+          {isGeneratingPreview && (
+            <Button
+              variant="outline"
+              className="mt-2 w-full"
+              onClick={() => {
+                renderController.current?.abort();
+                setIsGeneratingPreview(false);
+              }}
+            >
+              {t("cancelPreview")}
+            </Button>
+          )}
         </div>
       </div>
-      <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className={REPORT_PREVIEW_CONTENT_CLASS_NAME}>
+        {previewError && (
+          <p role="alert" className="text-sm text-destructive">
+            {previewError}
+          </p>
+        )}
         <PreviewFrame
-          url={previewUrl}
+          url={previewUrl ? viewerUrl : null}
           isGenerating={isGeneratingPreview}
           emptyLabel={tReports("previewPlaceholder")}
           loadingLabel={tReports("generatingPreview")}
@@ -2037,12 +2033,12 @@ function PickingEfficiencyReportPreview({
   };
 
   return (
-    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
+    <div className={REPORT_PREVIEW_GRID_CLASS_NAME}>
+      <div className={REPORT_PREVIEW_SETTINGS_CLASS_NAME}>
         <div className="space-y-1">
           <h3 className="font-semibold">{tReports("reportSettings")}</h3>
         </div>
-        <div className="mt-4 space-y-4">
+        <div className={REPORT_PREVIEW_FIELDS_CLASS_NAME}>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("startDate")}</label>
             <Input
@@ -2105,7 +2101,7 @@ function PickingEfficiencyReportPreview({
             </Select>
           </div>
         </div>
-        <div className="mt-auto pt-6">
+        <div className={REPORT_PREVIEW_ACTIONS_CLASS_NAME}>
           <Button
             className="w-full"
             onClick={handlePreview}
@@ -2120,7 +2116,7 @@ function PickingEfficiencyReportPreview({
           </Button>
         </div>
       </div>
-      <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className={REPORT_PREVIEW_CONTENT_CLASS_NAME}>
         <PreviewFrame
           url={previewUrl}
           isGenerating={isGeneratingPreview}
@@ -2232,12 +2228,12 @@ function TransformationEfficiencyReportPreview({
   };
 
   return (
-    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
+    <div className={REPORT_PREVIEW_GRID_CLASS_NAME}>
+      <div className={REPORT_PREVIEW_SETTINGS_CLASS_NAME}>
         <div className="space-y-1">
           <h3 className="font-semibold">{tReports("reportSettings")}</h3>
         </div>
-        <div className="mt-4 space-y-4">
+        <div className={REPORT_PREVIEW_FIELDS_CLASS_NAME}>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("startDate")}</label>
             <Input
@@ -2314,7 +2310,7 @@ function TransformationEfficiencyReportPreview({
             </Select>
           </div>
         </div>
-        <div className="mt-auto pt-6">
+        <div className={REPORT_PREVIEW_ACTIONS_CLASS_NAME}>
           <Button
             className="w-full"
             onClick={handlePreview}
@@ -2329,7 +2325,7 @@ function TransformationEfficiencyReportPreview({
           </Button>
         </div>
       </div>
-      <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className={REPORT_PREVIEW_CONTENT_CLASS_NAME}>
         <PreviewFrame
           url={previewUrl}
           isGenerating={isGeneratingPreview}

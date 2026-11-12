@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  REPORT_PREVIEW_GRID_CLASS_NAME,
+  REPORT_PREVIEW_SETTINGS_CLASS_NAME,
+  REPORT_PREVIEW_CONTENT_CLASS_NAME,
+  REPORT_PREVIEW_FIELDS_CLASS_NAME,
+} from "./report-preview-layout";
 import { useEffect, useState, useRef } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { format } from "date-fns";
@@ -143,10 +149,10 @@ export function ExpiredBatchesReportPreview({ open, reportName, onPreviewStateCh
     }
   };
   return (
-    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-4">
-      <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
+    <div className={REPORT_PREVIEW_GRID_CLASS_NAME}>
+      <div className={REPORT_PREVIEW_SETTINGS_CLASS_NAME}>
         <h3 className="font-semibold">{reports("reportSettings")}</h3>
-        <div className="-mx-1 mt-4 min-h-0 flex-1 space-y-4 overflow-y-auto px-1 py-1">
+        <div className={REPORT_PREVIEW_FIELDS_CLASS_NAME}>
           <div className="space-y-2">
             <Label htmlFor="expired-group">{t("groupBy")}</Label>
             <Select
@@ -219,7 +225,7 @@ export function ExpiredBatchesReportPreview({ open, reportName, onPreviewStateCh
           </Button>
         </div>
       </div>
-      <div className="flex h-full min-h-0 flex-col gap-4 lg:col-span-3">
+      <div className={REPORT_PREVIEW_CONTENT_CLASS_NAME}>
         {error ? (
           <p role="alert" className="text-sm text-destructive">
             {error}

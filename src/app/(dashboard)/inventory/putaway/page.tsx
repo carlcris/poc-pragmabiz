@@ -94,9 +94,7 @@ const buildPutawayBarcodeLabels = (
         boxNumber,
         qtyPerBox: qtyPerUnit,
         deliveryDate: source.postedDate,
-        warehouseCode: source.warehouseCode || undefined,
         locationId: source.locationId,
-        locationCode: source.locationCode || undefined,
       };
     });
   });
@@ -256,9 +254,7 @@ export default function PutawayStationPage() {
           boxNumber: index + 1,
           qtyPerBox: selectedTask.sourceQtyPerUnit,
           deliveryDate: postResult.postedDate,
-          warehouseCode: selectedWarehouse?.code || selectedTask.warehouseCode || undefined,
           locationId: postResult.locationId,
-          locationCode: selectedLocation?.code,
         }));
 
         await printBarcodeLabels(labels);

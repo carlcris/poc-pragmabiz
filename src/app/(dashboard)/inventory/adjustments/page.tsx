@@ -200,9 +200,7 @@ export default function StockAdjustmentsPage() {
       boxNumber: 1,
       qtyPerBox: item.adjustedQty,
       deliveryDate: item.batchReceivedAt || adjustment.adjustmentDate,
-      warehouseCode: adjustment.warehouseCode,
       locationId: item.batchWarehouseLocationId || null,
-      locationCode: item.batchLocationCode || undefined,
     });
   };
 

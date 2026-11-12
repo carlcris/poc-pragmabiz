@@ -9,6 +9,8 @@ import { useItem, useItems } from "@/hooks/useItems";
 import { cn } from "@/lib/utils";
 import type { ItemMaterial, ItemPriceTier } from "@/types/item";
 
+const ALL_ITEMS_VALUE = "__all_items__";
+
 export type ItemSelectOption = {
   id: string;
   code: string;
@@ -41,6 +43,7 @@ type ItemSelectProps = {
   searchPlaceholder?: string;
   emptyMessage?: string;
   loadingMessage?: string;
+  allowAll?: boolean;
 };
 
 const toItemSelectOption = (item: {
@@ -89,6 +92,7 @@ export function ItemSelect({
   searchPlaceholder,
   emptyMessage,
   loadingMessage,
+  allowAll = false,
 }: ItemSelectProps) {
   const t = useTranslations("inventoryItemSelect");
   const [search, setSearch] = useState("");
@@ -113,11 +117,25 @@ export function ItemSelect({
     ? toItemSelectOption(selectedItemResponse.data)
     : null;
   const selectedItem = selectedOption ?? selectedItemFromPage ?? fetchedSelectedItem;
+  const allItemsOption: ItemSelectOption = {
+    id: ALL_ITEMS_VALUE,
+    code: "",
+    name: t("allItems"),
+    uom: "",
+    uomId: "",
+    listPrice: 0,
+  };
+  const activeItems = items.filter((item) => item.isActive !== false);
+  const showAllOption = allowAll && !debouncedSearch;
 
   return (
     <AsyncSearchCombobox
-      value={value}
+      value={allowAll && !value ? ALL_ITEMS_VALUE : value}
       onValueChange={(nextValue) => {
+        if (nextValue === ALL_ITEMS_VALUE) {
+          onValueChange?.("");
+          return;
+        }
         onValueChange?.(nextValue);
         const selected = items.find((item) => item.id === nextValue);
         if (selected) {
@@ -126,10 +144,12 @@ export function ItemSelect({
       }}
       searchValue={search}
       onSearchValueChange={setSearch}
-      options={items.filter((item) => item.isActive !== false)}
-      selectedOption={selectedItem}
+      options={showAllOption ? [allItemsOption, ...activeItems] : activeItems}
+      selectedOption={allowAll && !value ? allItemsOption : selectedItem}
       getOptionValue={(item) => item.id}
-      getOptionLabel={(item) => `${item.code} - ${item.name}`}
+      getOptionLabel={(item) =>
+        item.id === ALL_ITEMS_VALUE ? item.name : `${item.code} - ${item.name}`
+      }
       getOptionSearchValue={(item) => `${item.code} ${item.name}`}
       placeholder={placeholder ?? t("selectItem")}
       searchPlaceholder={searchPlaceholder ?? t("searchItems")}
@@ -137,34 +157,45 @@ export function ItemSelect({
       loadingMessage={loadingMessage ?? t("loadingItems")}
       isLoading={isLoading || isFetching}
       disabled={disabled}
-      renderOption={(item, selected) => (
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <Check className={cn("h-4 w-4 shrink-0", selected ? "opacity-100" : "opacity-0")} />
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="truncate font-medium">{showStock ? item.name : item.code}</span>
-              {showStock && (item.available ?? 0) <= 0 ? (
-                <span className="shrink-0 text-xs font-medium text-red-700">{t("outOfStock")}</span>
-              ) : null}
-              {showStock &&
-              (item.available ?? 0) > 0 &&
-              (item.available ?? 0) <= (item.reorderPoint ?? 0) ? (
-                <span className="shrink-0 text-xs font-medium text-amber-700">{t("lowStock")}</span>
-              ) : null}
-            </div>
-            <div className="truncate text-xs text-muted-foreground">
-              {showStock
-                ? `${item.code} • ${item.uom} • ${t("stockCount", {
-                    count: (item.available ?? 0).toFixed(2),
-                  })}`
-                : item.name}
-            </div>
+      renderOption={(item, selected) =>
+        item.id === ALL_ITEMS_VALUE ? (
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <Check className={cn("h-4 w-4 shrink-0", selected ? "opacity-100" : "opacity-0")} />
+            <span className="truncate font-medium">{item.name}</span>
           </div>
-          {renderTrailing ? (
-            <div className="shrink-0 text-sm font-medium">{renderTrailing(item)}</div>
-          ) : null}
-        </div>
-      )}
+        ) : (
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <Check className={cn("h-4 w-4 shrink-0", selected ? "opacity-100" : "opacity-0")} />
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate font-medium">{showStock ? item.name : item.code}</span>
+                {showStock && (item.available ?? 0) <= 0 ? (
+                  <span className="shrink-0 text-xs font-medium text-red-700">
+                    {t("outOfStock")}
+                  </span>
+                ) : null}
+                {showStock &&
+                (item.available ?? 0) > 0 &&
+                (item.available ?? 0) <= (item.reorderPoint ?? 0) ? (
+                  <span className="shrink-0 text-xs font-medium text-amber-700">
+                    {t("lowStock")}
+                  </span>
+                ) : null}
+              </div>
+              <div className="truncate text-xs text-muted-foreground">
+                {showStock
+                  ? `${item.code} • ${item.uom} • ${t("stockCount", {
+                      count: (item.available ?? 0).toFixed(2),
+                    })}`
+                  : item.name}
+              </div>
+            </div>
+            {renderTrailing ? (
+              <div className="shrink-0 text-sm font-medium">{renderTrailing(item)}</div>
+            ) : null}
+          </div>
+        )
+      }
     />
   );
 }

@@ -39,9 +39,7 @@ export type BarcodeData = {
   deliveryDate: string;
   containerNumber?: string;
   sealNumber?: string;
-  warehouseCode?: string;
   locationId?: string | null;
-  locationCode?: string;
 };
 
 /**
@@ -114,28 +112,15 @@ export async function generateBarcodeLabelsPDF(boxes: BarcodeData[]): Promise<Bl
     pdf.setFont("helvetica", "normal");
     pdf.text(fitText(pdf, box.itemCode, textMaxWidth), textX, 13);
 
-    // Let longer names use the available height without colliding with the destination.
+    // Wrap longer item names above the quantity.
     pdf.setFontSize(10);
     const itemNameY = 19;
     const itemNameLines = wrapText(pdf, box.itemName, textMaxWidth, 3);
     pdf.text(itemNameLines, textX, itemNameY);
-    const locationY = itemNameY + Math.max(0, itemNameLines.length - 1) * 4.1 + 6;
-
-    let locationLineCount = 0;
-    if (box.warehouseCode || box.locationCode) {
-      const locationInfo = [box.warehouseCode || "", box.locationCode || ""]
-        .filter(Boolean)
-        .join(" | ");
-      pdf.setFont("helvetica", "bold");
-      const locationLines = wrapText(pdf, locationInfo, textMaxWidth, 2);
-      locationLineCount = locationLines.length;
-      pdf.text(locationLines, textX, locationY);
-    }
-
-    // Place quantity directly beneath the destination, including wrapped locations.
+    // Place quantity directly beneath the item name.
     pdf.setFontSize(15);
     pdf.setFont("helvetica", "bold");
-    const quantityY = locationY + Math.max(0, locationLineCount - 1) * 4.1 + 6.5;
+    const quantityY = itemNameY + Math.max(0, itemNameLines.length - 1) * 4.1 + 6.5;
     pdf.text(fitText(pdf, `Qty: ${box.qtyPerBox}`, textMaxWidth), textX, quantityY);
 
     if (box.batchLocationSku) {

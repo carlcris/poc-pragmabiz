@@ -5,7 +5,7 @@ import ItemsPage from "./page";
 const mocks = vi.hoisted(() => ({
   fetching: false,
   allowed: true,
-  isTableLayout: false,
+  isTableLayout: false as boolean | undefined,
   effects: [] as Array<() => void | (() => void)>,
 }));
 vi.mock("react", async (original) => ({
@@ -120,4 +120,14 @@ it("keeps the table and inline filters from md up", () => {
   expect(html).toContain("<table");
   expect(html).not.toContain('id="inventory-item-filters"');
   expect(html).toContain("md:min-h-96");
+});
+
+it("renders breakpoint-switched skeletons before the viewport is known", () => {
+  mocks.isTableLayout = undefined;
+  const html = renderToStaticMarkup(<ItemsPage />);
+  expect(html).not.toContain("Existing inventory row");
+  expect(html).not.toContain('id="inventory-item-filters"');
+  expect(html).toContain('class="md:hidden"');
+  expect(html).toContain("max-md:hidden");
+  expect(html).toContain("<table");
 });

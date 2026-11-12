@@ -13,8 +13,13 @@ import { Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { languageNames, localeCookieName, locales, type Locale } from "@/lib/i18n";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
-export function LanguageSwitcher() {
+type LanguageSwitcherProps = {
+  triggerClassName?: string;
+};
+
+export function LanguageSwitcher({ triggerClassName }: LanguageSwitcherProps) {
   const locale = useLocale() as Locale;
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -34,7 +39,7 @@ export function LanguageSwitcher() {
     return (
       <div className="flex items-center gap-2">
         <Globe className="hidden h-4 w-4 text-muted-foreground xl:block" />
-        <Skeleton className="h-10 w-24 xl:w-[140px]" />
+        <Skeleton className={cn("h-10 w-24 xl:w-[140px]", triggerClassName)} />
       </div>
     );
   }
@@ -44,7 +49,7 @@ export function LanguageSwitcher() {
       {/* Compact below xl so the header leaves the breadcrumb room beside the sidebar. */}
       <Globe className="hidden h-4 w-4 text-muted-foreground xl:block" />
       <Select value={locale} onValueChange={handleLanguageChange}>
-        <SelectTrigger className="w-auto gap-2 xl:w-[140px]">
+        <SelectTrigger className={cn("w-auto gap-2 xl:w-[140px]", triggerClassName)}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

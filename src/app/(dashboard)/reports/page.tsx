@@ -618,12 +618,15 @@ export default function ReportsPage() {
                             </div>
                             <CardTitle className="text-base leading-tight">{report.name}</CardTitle>
                           </div>
-                          <Badge variant={statusConfig[report.status].variant}>
-                            <StatusIcon
-                              className={`mr-1 h-3 w-3 ${statusConfig[report.status].color}`}
-                            />
-                            {t(statusConfig[report.status].key)}
-                          </Badge>
+                          {/* Available reports need no badge; only unavailable ones are marked. */}
+                          {!isAvailable && (
+                            <Badge variant={statusConfig[report.status].variant}>
+                              <StatusIcon
+                                className={`mr-1 h-3 w-3 ${statusConfig[report.status].color}`}
+                              />
+                              {t(statusConfig[report.status].key)}
+                            </Badge>
+                          )}
                         </div>
                         <CardDescription className="text-sm leading-relaxed">
                           {report.description}

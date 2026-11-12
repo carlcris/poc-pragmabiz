@@ -12,8 +12,6 @@ const label: BarcodeData = {
   boxNumber: 1,
   qtyPerBox: 12,
   deliveryDate: "2026-10-19",
-  warehouseCode: "MAIN-WAREHOUSE",
-  locationCode: "LONG-RACK-LOCATION-CODE",
 };
 
 describe("generateBarcodeLabelsPDF", () => {
@@ -29,34 +27,29 @@ describe("generateBarcodeLabelsPDF", () => {
     }
   });
 
-  it("groups quantity directly below the warehouse and location", async () => {
-    const pdf = await generateBarcodeLabelsPDF([
-      { ...label, warehouseCode: "WH-BU02", locationCode: "WHB-A", qtyPerBox: 144 },
-    ]);
-    const pdfText = await pdf.text();
-    const location = pdfText.match(/([\d.]+)\s+([\d.]+)\s+Td\s*\(WH-BU02 \| WHB-A\) Tj/);
-    const quantity = pdfText.match(/([\d.]+)\s+([\d.]+)\s+Td\s*\(Qty: 144\) Tj/);
+  it("prints item details, batch SKU, and quantity", async () => {
+    const pdfText = await (await generateBarcodeLabelsPDF([label])).text();
 
-    expect(location).not.toBeNull();
-    expect(quantity).not.toBeNull();
-    // PDF coordinates rise upward; the baselines should be about 5 mm apart.
-    const baselineGap = Number(location?.[2]) - Number(quantity?.[2]);
-    expect(baselineGap).toBeGreaterThan(11);
-    expect(baselineGap).toBeLessThan(20);
+    expect(pdfText).toContain("BATCH-001");
+    expect(pdfText).toContain("ITEM-001");
+    expect(pdfText).toContain("BATCH-LOCATION-00001");
+    expect(pdfText).toContain("Qty: 12");
   });
 
-  it("keeps quantity inside the label below a wrapped location", async () => {
+  it("keeps quantity below a wrapped item name and inside the label", async () => {
     const pdfText = await (await generateBarcodeLabelsPDF([label])).text();
-    const location = pdfText.match(
-      /([\d.]+) TL\s+0 g\s+[\d.]+ ([\d.]+) Td\s+\(MAIN-WAREHOUSE \|\) Tj\s+T\* \(LONG-RACK-LOCATION-CODE\) Tj/
+    const name = pdfText.match(
+      /([\d.]+) TL\s+0 g\s+[\d.]+ ([\d.]+) Td\s+\(A long item name[^]*?ET/
     );
     const quantity = pdfText.match(/[\d.]+ ([\d.]+) Td\s+\(Qty: 12\) Tj/);
 
-    expect(location).not.toBeNull();
+    expect(name).not.toBeNull();
     expect(quantity).not.toBeNull();
-    const lastLocationBaseline = Number(location?.[2]) - Number(location?.[1]);
+    const wrappedLines = (name?.[0].match(/T\*/g) ?? []).length;
+    const lastNameBaseline = Number(name?.[2]) - Number(name?.[1]) * wrappedLines;
     const quantityBaseline = Number(quantity?.[1]);
-    expect(lastLocationBaseline - quantityBaseline).toBeGreaterThan(11);
+    expect(lastNameBaseline - quantityBaseline).toBeGreaterThan(11);
+    expect(lastNameBaseline - quantityBaseline).toBeLessThan(20);
     expect(quantityBaseline).toBeGreaterThan(6);
   });
 });
