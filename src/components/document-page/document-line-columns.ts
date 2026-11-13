@@ -29,7 +29,7 @@ const LINE_COLUMN_WEIGHTS: Record<DocumentLineColumn, number> = {
   damagedQty: 9,
   shortageQty: 9,
   fulfilledQty: 10,
-  outstandingQty: 11,
+  outstandingQty: 13,
   deliveredQty: 10,
   batch: 20,
   unitCost: 13,
@@ -70,6 +70,14 @@ export const getDocumentLineColumnWidth = (
   const totalWeight = columns.reduce((sum, current) => sum + LINE_COLUMN_WEIGHTS[current], 0);
   return `${(LINE_COLUMN_WEIGHTS[column] / totalWeight) * 100}%`;
 };
+
+// Each weight unit needs about 8px for its single-word header ("Outstanding" at 13 units)
+// plus cell padding, so the table's minimum width grows with the columns it shows; below
+// that width it scrolls sideways instead of overlapping headers.
+const MIN_REM_PER_WEIGHT = 0.5;
+
+export const getDocumentLineTableMinWidth = (columns: DocumentLineColumn[]) =>
+  `${columns.reduce((sum, column) => sum + LINE_COLUMN_WEIGHTS[column], 0) * MIN_REM_PER_WEIGHT}rem`;
 
 // The New item grid and the lines table share these tracks so entry fields sit over their columns.
 export const getDocumentLineGridStyle = (columns: DocumentLineColumn[]) =>

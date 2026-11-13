@@ -295,28 +295,25 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
                 {loadList.items.length}
               </span>
             </div>
-            {/* Receipt columns add width, so phones scroll the table instead of squeezing it. */}
-            <div className="mt-2 overflow-x-auto">
-              <div className="min-w-[44rem]">
-                <DocumentLinesTable
-                  rows={loadList.items.map((item) => ({
-                    key: item.id,
-                    itemCode: item.item?.code ?? "",
-                    itemName: item.item?.name ?? "",
-                    unitLabel: item.unitName,
-                    uomCode: item.itemUnitOption?.uomCode || item.uomCode || "",
-                    qtyPerUnit: item.qtyPerUnit,
-                    quantity: item.loadListQty,
-                    unitPrice: item.unitPrice,
-                    lineTotal: item.totalPrice,
-                  }))}
-                  columns={columns}
-                  currency={currency}
-                  totalAmount={canViewTotalAmount ? (loadList.totalAmount ?? null) : null}
-                  emptyTitle={t("noItemsTitle")}
-                  emptyDescription={t("noItemsViewDescription")}
-                />
-              </div>
+            <div className="mt-2">
+              <DocumentLinesTable
+                rows={loadList.items.map((item) => ({
+                  key: item.id,
+                  itemCode: item.item?.code ?? "",
+                  itemName: item.item?.name ?? "",
+                  unitLabel: item.unitName,
+                  uomCode: item.itemUnitOption?.uomCode || item.uomCode || "",
+                  qtyPerUnit: item.qtyPerUnit,
+                  quantity: item.loadListQty,
+                  unitPrice: item.unitPrice,
+                  lineTotal: item.totalPrice,
+                }))}
+                columns={columns}
+                currency={currency}
+                totalAmount={canViewTotalAmount ? (loadList.totalAmount ?? null) : null}
+                emptyTitle={t("noItemsTitle")}
+                emptyDescription={t("noItemsViewDescription")}
+              />
             </div>
           </section>
 

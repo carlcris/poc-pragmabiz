@@ -15,6 +15,7 @@ import { NavigationActivityLogger } from "@/components/activity-logging/Navigati
 import { BusinessUnitProvider } from "@/components/business-unit/BusinessUnitProvider";
 import { useLoadPermissions } from "@/hooks/usePermissions";
 import { useSidebarStore } from "@/stores/sidebarStore";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
 import { LogoutBackdrop } from "@/components/auth/LogoutBackdrop";
 
@@ -83,6 +84,10 @@ function DashboardSessionShell({
   const setPermissionScope = usePermissionStore((state) => state.setScope);
   const setPermissions = usePermissionStore((state) => state.setPermissions);
   const isSidebarOpen = useSidebarStore((state) => state.isOpen);
+  const closeSidebar = useSidebarStore((state) => state.closeSidebar);
+  // Tablets (iPad portrait and landscape) start with the sidebar folded so pages get the
+  // width; the toggle still expands it. 1280px and up keep the saved preference.
+  const isTabletWidth = useMediaQuery("(min-width: 768px) and (max-width: 1279px)") === true;
   const [hasMounted, setHasMounted] = useState(false);
   const [isUnitConverterOpen, setIsUnitConverterOpen] = useState(false);
   const pathname = usePathname();
@@ -124,6 +129,10 @@ function DashboardSessionShell({
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isTabletWidth) closeSidebar();
+  }, [isTabletWidth, closeSidebar]);
 
   // Unmount protected consumers while sign-out and navigation finish.
   if (hasMounted && !isAuthenticated) return null;

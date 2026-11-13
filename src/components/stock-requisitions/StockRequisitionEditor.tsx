@@ -265,18 +265,15 @@ export function StockRequisitionEditor({ stockRequisition }: StockRequisitionEdi
         />
 
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-          <div className="min-w-0 flex-1 overflow-hidden rounded-xl border bg-card">
-            <DocumentSection
-              id="stock-requisition-request"
-              title={t("requestTitle")}
-              description={t("requestDescription")}
-            >
-              <div className="grid gap-5 sm:grid-cols-2">
+          {/* Phones: full-bleed form (negative margin cancels the shell's p-4 gutter) instead of a card. */}
+          <div className="-mx-4 min-w-0 flex-1 overflow-hidden border-y bg-card sm:mx-0 sm:rounded-xl sm:border">
+            <section aria-label={t("requestTitle")} className="px-4 py-5 sm:px-7 sm:py-6">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5">
                 <FormField
                   control={form.control}
                   name="supplierId"
                   render={({ field }) => (
-                    <FormItem className="sm:col-span-2">
+                    <FormItem className="col-span-2 space-y-1.5">
                       <FormLabel>{t("supplier")}</FormLabel>
                       <FormControl>
                         <AsyncSearchCombobox
@@ -306,7 +303,7 @@ export function StockRequisitionEditor({ stockRequisition }: StockRequisitionEdi
                           loadingMessage={t("loadingSuppliers")}
                           isLoading={isLoadingSuppliers}
                           triggerRef={field.ref}
-                          buttonClassName="h-10"
+                          buttonClassName="h-10 px-3"
                         />
                       </FormControl>
                       <FormMessage />
@@ -318,7 +315,7 @@ export function StockRequisitionEditor({ stockRequisition }: StockRequisitionEdi
                   control={form.control}
                   name="requisitionDate"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="space-y-1.5">
                       <FormLabel>{t("requisitionDate")}</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} className="h-10" />
@@ -332,7 +329,7 @@ export function StockRequisitionEditor({ stockRequisition }: StockRequisitionEdi
                   control={form.control}
                   name="requiredByDate"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="space-y-1.5">
                       <FormLabel>{t("requiredByDate")}</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} className="h-10" />
@@ -342,7 +339,7 @@ export function StockRequisitionEditor({ stockRequisition }: StockRequisitionEdi
                   )}
                 />
               </div>
-            </DocumentSection>
+            </section>
 
             <section aria-labelledby="stock-requisition-items" className="border-t">
               <DocumentLineEntry
@@ -356,7 +353,7 @@ export function StockRequisitionEditor({ stockRequisition }: StockRequisitionEdi
                 onAdd={handleAddLine}
                 onEntryChange={setHasPendingEntry}
               />
-              <div className="px-5 pb-2 pt-5 sm:px-7">
+              <div className="px-4 pb-2 pt-5 sm:px-7">
                 <div className="flex items-center gap-2">
                   <h2 id="stock-requisition-items" className="text-sm font-semibold">
                     {t("itemsTitle")}
@@ -365,30 +362,27 @@ export function StockRequisitionEditor({ stockRequisition }: StockRequisitionEdi
                     {lines.length}
                   </span>
                 </div>
-                {/* Seven columns stay readable on phones by scrolling instead of squeezing. */}
-                <div className="mt-2 overflow-x-auto">
-                  <div className="min-w-[44rem]">
-                    <DocumentLinesTable
-                      rows={lines.map((line) => ({
-                        key: line.key,
-                        itemCode: line.itemCode,
-                        itemName: line.itemName,
-                        unitLabel: line.unitLabel,
-                        uomCode: line.uomCode,
-                        qtyPerUnit: line.qtyPerUnit,
-                        quantity: line.quantity,
-                        unitPrice: line.unitPrice,
-                        lineTotal: line.quantity * line.qtyPerUnit * line.unitPrice,
-                        isUnsaved: isEditMode && !line.savedLineId,
-                      }))}
-                      columns={columns}
-                      currency={documentCurrency}
-                      totalAmount={totalAmount}
-                      emptyTitle={t("noItemsTitle")}
-                      emptyDescription={t("noItemsDescription")}
-                      onRemove={handleRemoveLine}
-                    />
-                  </div>
+                <div className="mt-2">
+                  <DocumentLinesTable
+                    rows={lines.map((line) => ({
+                      key: line.key,
+                      itemCode: line.itemCode,
+                      itemName: line.itemName,
+                      unitLabel: line.unitLabel,
+                      uomCode: line.uomCode,
+                      qtyPerUnit: line.qtyPerUnit,
+                      quantity: line.quantity,
+                      unitPrice: line.unitPrice,
+                      lineTotal: line.quantity * line.qtyPerUnit * line.unitPrice,
+                      isUnsaved: isEditMode && !line.savedLineId,
+                    }))}
+                    columns={columns}
+                    currency={documentCurrency}
+                    totalAmount={totalAmount}
+                    emptyTitle={t("noItemsTitle")}
+                    emptyDescription={t("noItemsDescription")}
+                    onRemove={handleRemoveLine}
+                  />
                 </div>
               </div>
             </section>

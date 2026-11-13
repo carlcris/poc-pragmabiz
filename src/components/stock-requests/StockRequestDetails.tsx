@@ -297,40 +297,37 @@ export function StockRequestDetails({ stockRequest }: StockRequestDetailsProps) 
                 {items.length}
               </span>
             </div>
-            {/* Batch and delivery columns add width, so phones scroll the table instead. */}
-            <div className="mt-2 overflow-x-auto">
-              <div className="min-w-[44rem]">
-                <DocumentLinesTable
-                  rows={items.map((item) => ({
-                    key: item.id,
-                    itemCode: item.items?.item_code ?? "",
-                    itemName: item.items?.item_name ?? "",
-                    unitLabel:
-                      item.item_unit_option?.optionLabel?.trim() ||
-                      item.item_unit_option?.uomName ||
-                      item.units_of_measure?.code ||
-                      "",
-                    uomCode: item.item_unit_option?.uomCode || item.units_of_measure?.code || "",
-                    qtyPerUnit: item.item_unit_option?.qtyPerUnit ?? 1,
-                    quantity: item.requested_qty,
-                    unitPrice: null,
-                    lineTotal: null,
-                    tracking: { deliveredQty: item.dispatch_qty ?? item.received_qty ?? 0 },
-                    batch: item.selected_item_batch
-                      ? {
-                          code: item.selected_item_batch.batch_code,
-                          warehouseCode: item.selected_item_batch.warehouse?.warehouse_code,
-                        }
-                      : null,
-                    note: item.notes ?? undefined,
-                  }))}
-                  columns={columns}
-                  currency=""
-                  totalAmount={null}
-                  emptyTitle={t("noItemsTitle")}
-                  emptyDescription={t("noItemsViewDescription")}
-                />
-              </div>
+            <div className="mt-2">
+              <DocumentLinesTable
+                rows={items.map((item) => ({
+                  key: item.id,
+                  itemCode: item.items?.item_code ?? "",
+                  itemName: item.items?.item_name ?? "",
+                  unitLabel:
+                    item.item_unit_option?.optionLabel?.trim() ||
+                    item.item_unit_option?.uomName ||
+                    item.units_of_measure?.code ||
+                    "",
+                  uomCode: item.item_unit_option?.uomCode || item.units_of_measure?.code || "",
+                  qtyPerUnit: item.item_unit_option?.qtyPerUnit ?? 1,
+                  quantity: item.requested_qty,
+                  unitPrice: null,
+                  lineTotal: null,
+                  tracking: { deliveredQty: item.dispatch_qty ?? item.received_qty ?? 0 },
+                  batch: item.selected_item_batch
+                    ? {
+                        code: item.selected_item_batch.batch_code,
+                        warehouseCode: item.selected_item_batch.warehouse?.warehouse_code,
+                      }
+                    : null,
+                  note: item.notes ?? undefined,
+                }))}
+                columns={columns}
+                currency=""
+                totalAmount={null}
+                emptyTitle={t("noItemsTitle")}
+                emptyDescription={t("noItemsViewDescription")}
+              />
             </div>
           </section>
 

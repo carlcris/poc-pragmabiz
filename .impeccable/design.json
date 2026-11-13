@@ -1,0 +1,252 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-12T13:54:40Z",
+  "title": "Design System: Achlers Integrated Sales",
+  "extensions": {
+    "colorMeta": {
+      "console-violet": {
+        "role": "primary",
+        "displayName": "Console Violet",
+        "canonical": "hsl(258 45% 65%)",
+        "tonalRamp": [
+          "hsl(258 45% 15%)",
+          "hsl(258 45% 25%)",
+          "hsl(258 45% 35%)",
+          "hsl(258 45% 45%)",
+          "hsl(258 45% 55%)",
+          "hsl(258 45% 65%)",
+          "hsl(258 45% 80%)",
+          "hsl(258 45% 92%)"
+        ]
+      },
+      "secondary-lilac": {
+        "role": "secondary",
+        "displayName": "Secondary Lilac",
+        "canonical": "hsl(258 50% 85%)",
+        "tonalRamp": [
+          "hsl(258 50% 20%)",
+          "hsl(258 50% 32%)",
+          "hsl(258 50% 44%)",
+          "hsl(258 50% 56%)",
+          "hsl(258 50% 68%)",
+          "hsl(258 50% 78%)",
+          "hsl(258 50% 85%)",
+          "hsl(258 50% 94%)"
+        ]
+      },
+      "accent-lilac": {
+        "role": "tertiary",
+        "displayName": "Accent Lilac",
+        "canonical": "hsl(258 55% 75%)",
+        "tonalRamp": [
+          "hsl(258 55% 18%)",
+          "hsl(258 55% 30%)",
+          "hsl(258 55% 42%)",
+          "hsl(258 55% 54%)",
+          "hsl(258 55% 66%)",
+          "hsl(258 55% 75%)",
+          "hsl(258 55% 86%)",
+          "hsl(258 55% 95%)"
+        ]
+      },
+      "destructive-red": {
+        "role": "destructive",
+        "displayName": "Destructive Red",
+        "canonical": "hsl(0 84.2% 60.2%)",
+        "tonalRamp": [
+          "hsl(0 70% 20%)",
+          "hsl(0 72% 30%)",
+          "hsl(0 75% 40%)",
+          "hsl(0 78% 50%)",
+          "hsl(0 82% 55%)",
+          "hsl(0 84.2% 60.2%)",
+          "hsl(0 85% 78%)",
+          "hsl(0 86% 92%)"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Canvas",
+        "canonical": "hsl(0 0% 100%)",
+        "tonalRamp": [
+          "hsl(258 25% 8%)",
+          "hsl(258 20% 18%)",
+          "hsl(258 15% 30%)",
+          "hsl(258 10% 45%)",
+          "hsl(258 10% 65%)",
+          "hsl(258 15% 85%)",
+          "hsl(258 10% 95%)",
+          "hsl(0 0% 100%)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Hairline Border",
+        "canonical": "hsl(258 20% 90%)",
+        "tonalRamp": [
+          "hsl(258 20% 22%)",
+          "hsl(258 20% 34%)",
+          "hsl(258 20% 46%)",
+          "hsl(258 20% 58%)",
+          "hsl(258 20% 70%)",
+          "hsl(258 20% 82%)",
+          "hsl(258 20% 90%)",
+          "hsl(258 20% 96%)"
+        ]
+      },
+      "console-rail": {
+        "role": "structural",
+        "displayName": "Console Rail",
+        "canonical": "#240032",
+        "tonalRamp": [
+          "#1a0025",
+          "#240032",
+          "#330047",
+          "#42005c",
+          "#521a72",
+          "#6e3e91",
+          "#9a74b8",
+          "#d4c3e3"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "Title",
+        "purpose": "Page headers, card titles, dialog titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default reading size for forms, tables, descriptive text."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Form labels, button text, status text, nav item text."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-ambient",
+        "value": "shadow-sm",
+        "purpose": "Light-touch depth on cards, popovers, and panels; the default and near-only shadow in the system."
+      },
+      {
+        "name": "rail-logo-glow",
+        "value": "0 12px 30px rgba(15,23,42,0.35)",
+        "purpose": "Signature glow under the Console Rail's logo tile; a one-off brand moment, not a reusable elevation step."
+      }
+    ],
+    "motion": [
+      {
+        "name": "sidebar-transition",
+        "value": "transition-all duration-300",
+        "purpose": "Rail expand/collapse width transition."
+      },
+      {
+        "name": "color-transition",
+        "value": "transition-colors",
+        "purpose": "Default hover/focus color transition on buttons, inputs, and nav items."
+      }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Default call-to-action button; Console Violet fill.",
+      "html": "<button class=\"ds-btn-primary\">Save Changes</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 8px 16px; border-radius: 6px; background: hsl(258 45% 65%); color: #fff; font-size: 14px; font-weight: 500; font-family: Inter, system-ui, sans-serif; border: none; cursor: pointer; transition: background-color 0.2s, box-shadow 0.2s; } .ds-btn-primary:hover { background: hsl(258 45% 60%); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px hsl(258 45% 55%); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary, lower-emphasis action button.",
+      "html": "<button class=\"ds-btn-outline\">Cancel</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 8px 16px; border-radius: 6px; background: #fff; color: hsl(240 10% 3.9%); font-size: 14px; font-weight: 500; font-family: Inter, system-ui, sans-serif; border: 1px solid hsl(258 20% 90%); cursor: pointer; transition: background-color 0.2s; } .ds-btn-outline:hover { background: hsl(258 55% 75%); color: hsl(258 45% 15%); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Default text field with focus ring.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Enter value\" />",
+      "css": ".ds-input { display: flex; height: 40px; width: 100%; border-radius: 6px; border: 1px solid hsl(258 20% 90%); background: #fff; padding: 8px 12px; font-size: 14px; font-family: Inter, system-ui, sans-serif; color: hsl(240 10% 3.9%); } .ds-input::placeholder { color: hsl(258 10% 45%); } .ds-input:focus-visible { outline: none; box-shadow: 0 0 0 2px #fff, 0 0 0 4px hsl(258 45% 55%); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Standard content panel with header/content regions.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-header\">Card Title</div><div class=\"ds-card-content\">Card content goes here.</div></div>",
+      "css": ".ds-card { border-radius: 8px; border: 1px solid hsl(258 20% 90%); background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05); } .ds-card-header { padding: 24px 24px 0 24px; font-size: 18px; font-weight: 600; font-family: Inter, system-ui, sans-serif; letter-spacing: -0.01em; } .ds-card-content { padding: 24px; font-size: 14px; font-family: Inter, system-ui, sans-serif; color: hsl(240 10% 3.9%); }"
+    },
+    {
+      "name": "Status Text",
+      "kind": "custom",
+      "refersTo": "status-text",
+      "description": "Workflow/status value rendered as colored label text, never a badge.",
+      "html": "<span class=\"ds-status ds-status-green\">Completed</span>",
+      "css": ".ds-status { font-size: 14px; font-weight: 500; font-family: Inter, system-ui, sans-serif; } .ds-status-green { color: #15803d; } .ds-status-amber { color: #b45309; } .ds-status-red { color: #b91c1c; } .ds-status-muted { color: hsl(258 10% 45%); }"
+    },
+    {
+      "name": "Console Rail Nav Item",
+      "kind": "nav",
+      "refersTo": "sidebar-nav-item",
+      "description": "Navigation link in the permanently dark Console Rail; active state uses Console Violet.",
+      "html": "<a class=\"ds-rail-item ds-rail-item-active\" href=\"#\">Dashboard</a>",
+      "css": ".ds-rail-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 6px; font-size: 14px; font-weight: 500; font-family: Inter, system-ui, sans-serif; color: rgba(255,255,255,0.7); text-decoration: none; transition: background-color 0.2s, color 0.2s; } .ds-rail-item:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.95); } .ds-rail-item-active { background: hsl(258 45% 65%); color: #fff; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Operations Console",
+    "overview": "This is a serious, dark-railed control console for running one business's warehouse, sales, purchasing, and accounting operations. It is restrained and professional by design: the UI is built almost entirely in neutral white/gray surfaces with one deliberate brand signal — Console Violet — that marks primary actions, active navigation, and focus states, derived from the company logo. The system does not perform brand expression for its own sake; density, scanability, and permission-gated clarity outrank decoration throughout, in line with the product's Operate-mode mandate across inventory, sales, purchasing, accounting, manufacturing, and POS workflows. The one standing exception to the system's flatness is the Console Rail: a permanently dark, fixed navigation sidebar (#240032) that frames every authenticated screen regardless of the app's own light/dark theme. It is the system's one piece of atmosphere — white-on-dark overlays, a glowing gradient tile around the logo — while the content canvas beside it stays light, dense, and businesslike.",
+    "keyCharacteristics": [
+      "One brand accent (Console Violet) used sparingly against neutral surfaces.",
+      "A permanently dark navigation rail independent of the app's light/dark theme.",
+      "Flat-by-default surfaces; shadows are minimal, not a layered elevation system.",
+      "Status is communicated as colored text, not badges (badges are reserved for counts/tags).",
+      "Soft-square 8px radius as the default geometry, with one larger signature radius on the rail's logo tile."
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Console Violet is reserved for primary actions, active/selected states, and focus rings. It does not spread across general UI chrome — most of the interface stays neutral so dense operational data stays legible.",
+        "section": "colors"
+      },
+      {
+        "name": "The Rail Stays Dark Rule",
+        "body": "The Console Rail is a fixed structural element, not a themed surface. It never switches to a light background, regardless of the signed-in user's light/dark preference for the rest of the app.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Typeface Rule",
+        "body": "Inter is the only typeface in the system. Hierarchy comes from size and weight, never from a second font family.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Shadows are a light touch (shadow-sm) on cards and popovers, never a layered system. The one deliberate exception is the Console Rail's logo tile.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do reserve Console Violet for primary actions, active nav state, and focus rings (The One Accent Rule).",
+      "Do keep the Console Rail permanently dark (#240032) regardless of the app's light/dark theme (The Rail Stays Dark Rule).",
+      "Do render status/workflow values as colored text from the fixed tone set, not as badges.",
+      "Do use the 8px base radius for all standard controls; reserve the 16px signature radius for the rail's logo tile only.",
+      "Do keep shadows light (shadow-sm) and flat-by-default; let background-color layering do most of the depth work."
+    ],
+    "donts": [
+      "Don't let Console Violet spread across general chrome, backgrounds, or large fills outside primary actions and active/focus states.",
+      "Don't theme the Console Rail to follow light/dark mode; it is a fixed structural element.",
+      "Don't introduce a second typeface; Inter carries the full hierarchy via size and weight.",
+      "Don't use badges for workflow/status values; badges are for counts, categories, or tags only.",
+      "Don't introduce a new shadow/elevation scale; the system is flat except for the rail's one signature glow."
+    ]
+  }
+}

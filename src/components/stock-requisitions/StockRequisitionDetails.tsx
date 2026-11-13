@@ -213,36 +213,33 @@ export function StockRequisitionDetails({ stockRequisition }: StockRequisitionDe
                 {stockRequisition.items.length}
               </span>
             </div>
-            {/* Fulfillment columns add width, so phones scroll the table instead of squeezing it. */}
-            <div className="mt-2 overflow-x-auto">
-              <div className="min-w-[44rem]">
-                <DocumentLinesTable
-                  rows={stockRequisition.items.map((item) => ({
-                    key: item.id,
-                    itemCode: item.item?.code ?? "",
-                    itemName: item.item?.name ?? "",
-                    unitLabel:
-                      item.itemUnitOption?.optionLabel?.trim() ||
-                      item.itemUnitOption?.uomName ||
-                      item.uomCode ||
-                      "",
-                    uomCode: item.itemUnitOption?.uomCode || item.uomCode || "",
-                    qtyPerUnit: item.itemUnitOption?.qtyPerUnit ?? 1,
-                    quantity: item.requestedQty,
-                    unitPrice: item.unitPrice,
-                    lineTotal: item.totalPrice,
-                    tracking: {
-                      fulfilledQty: item.fulfilledQty,
-                      outstandingQty: item.outstandingQty,
-                    },
-                  }))}
-                  columns={columns}
-                  currency={currency}
-                  totalAmount={canViewTotalAmount ? stockRequisition.totalAmount : null}
-                  emptyTitle={t("noItemsTitle")}
-                  emptyDescription={t("noItemsViewDescription")}
-                />
-              </div>
+            <div className="mt-2">
+              <DocumentLinesTable
+                rows={stockRequisition.items.map((item) => ({
+                  key: item.id,
+                  itemCode: item.item?.code ?? "",
+                  itemName: item.item?.name ?? "",
+                  unitLabel:
+                    item.itemUnitOption?.optionLabel?.trim() ||
+                    item.itemUnitOption?.uomName ||
+                    item.uomCode ||
+                    "",
+                  uomCode: item.itemUnitOption?.uomCode || item.uomCode || "",
+                  qtyPerUnit: item.itemUnitOption?.qtyPerUnit ?? 1,
+                  quantity: item.requestedQty,
+                  unitPrice: item.unitPrice,
+                  lineTotal: item.totalPrice,
+                  tracking: {
+                    fulfilledQty: item.fulfilledQty,
+                    outstandingQty: item.outstandingQty,
+                  },
+                }))}
+                columns={columns}
+                currency={currency}
+                totalAmount={canViewTotalAmount ? stockRequisition.totalAmount : null}
+                emptyTitle={t("noItemsTitle")}
+                emptyDescription={t("noItemsViewDescription")}
+              />
             </div>
           </section>
 

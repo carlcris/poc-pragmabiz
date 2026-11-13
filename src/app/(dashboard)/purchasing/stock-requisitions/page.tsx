@@ -60,6 +60,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import {
+  StockRequisitionMobileList,
+  StockRequisitionMobileListSkeleton,
+} from "@/components/stock-requisitions/StockRequisitionMobileList";
 import { stockRequisitionsApi } from "@/lib/api/stock-requisitions";
 import type { StockRequisition, StockRequisitionStatus } from "@/types/stock-requisition";
 import type { StockRequisitionPDFData } from "@/lib/pdf-generator";
@@ -80,6 +85,12 @@ export default function StockRequisitionsPage() {
   const [srToUpdateStatus, setSRToUpdateStatus] = useState<StockRequisition | null>(null);
   const [nextStatus, setNextStatus] = useState<"submitted" | "cancelled" | null>(null);
   const [printingSRId, setPrintingSRId] = useState<string | null>(null);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  // Phones get stacked rows and a Filters panel; md and up keep the table and inline filters.
+  // The match is unknown in server HTML, so the first paint uses CSS-switched skeletons.
+  const tableLayoutMatch = useMediaQuery("(min-width: 768px)");
+  const isLayoutKnown = tableLayoutMatch !== undefined;
+  const isTableLayout = tableLayoutMatch === true;
 
   const { formatCurrency } = useCurrency();
   const deleteMutation = useDeleteStockRequisition();
@@ -135,8 +146,7 @@ export default function StockRequisitionsPage() {
   const buildStockRequisitionPDFData = (sr: StockRequisition): StockRequisitionPDFData => {
     const supplierLanguage = sr.supplier?.lang === "chinese" ? "chinese" : "english";
     const showTotalAmount =
-      sr.documentSettings?.showTotalAmount === true &&
-      sr.capabilities?.canViewTotalAmount === true;
+      sr.documentSettings?.showTotalAmount === true && sr.capabilities?.canViewTotalAmount === true;
     const showUnitPrice =
       sr.documentSettings?.showUnitPrice === true && sr.capabilities?.canViewUnitCost === true;
     const showLineTotal =
@@ -267,82 +277,169 @@ export default function StockRequisitionsPage() {
   const canCancelSR = (sr: StockRequisition) =>
     sr.status !== "cancelled" && sr.status !== "fulfilled";
 
+  const activeFilterCount = (statusFilter !== "all" ? 1 : 0) + (supplierFilter !== "all" ? 1 : 0);
+
+  const clearFilters = () => {
+    setStatusFilter("all");
+    setSupplierFilter("all");
+    setPage(1);
+  };
+
+  const searchField = (
+    <div className="relative flex-1">
+      <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        placeholder={t("searchPlaceholder")}
+        aria-label={t("searchPlaceholder")}
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
+        className="h-11 pl-8 md:h-10"
+      />
+    </div>
+  );
+
+  const statusFilterControl = (
+    <ClientOnly fallback={<Skeleton className="h-11 w-full md:h-10 md:w-48" />}>
+      <Select
+        value={statusFilter}
+        onValueChange={(value) => {
+          setStatusFilter(value);
+          setPage(1);
+        }}
+      >
+        <SelectTrigger id="stock-requisition-status-filter" className="h-11 w-full md:h-10 md:w-48">
+          <Filter className="mr-2 h-4 w-4" />
+          <SelectValue placeholder={t("statusPlaceholder")} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">{t("allStatus")}</SelectItem>
+          <SelectItem value="draft">{t("draft")}</SelectItem>
+          <SelectItem value="submitted">{t("submitted")}</SelectItem>
+          <SelectItem value="partially_fulfilled">{t("partiallyFulfilled")}</SelectItem>
+          <SelectItem value="fulfilled">{t("fulfilled")}</SelectItem>
+          <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
+        </SelectContent>
+      </Select>
+    </ClientOnly>
+  );
+
+  const supplierFilterControl = (
+    <ClientOnly fallback={<Skeleton className="h-11 w-full md:h-10 md:w-48" />}>
+      <Select
+        value={supplierFilter}
+        onValueChange={(value) => {
+          setSupplierFilter(value);
+          setPage(1);
+        }}
+      >
+        <SelectTrigger
+          id="stock-requisition-supplier-filter"
+          className="h-11 w-full md:h-10 md:w-48"
+        >
+          <Filter className="mr-2 h-4 w-4" />
+          <SelectValue placeholder={t("supplierPlaceholder")} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">{t("allSuppliers")}</SelectItem>
+          {suppliers.map((supplier) => (
+            <SelectItem key={supplier.id} value={supplier.id}>
+              {supplier.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </ClientOnly>
+  );
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight sm:text-xl">
+          <h1 className="text-balance text-lg font-semibold tracking-tight sm:text-xl">
             {t("title")}
           </h1>
-          <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
-            {t("subtitle")}
-          </p>
+          <p className="text-xs text-muted-foreground sm:text-sm">{t("subtitle")}</p>
         </div>
-        <Button onClick={handleCreateSR} className="w-full flex-shrink-0 sm:w-auto">
+        <Button onClick={handleCreateSR} className="h-11 w-full flex-shrink-0 sm:h-10 sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
-          <span className="sm:inline">{t("createAction")}</span>
+          <span>{t("createAction")}</span>
         </Button>
       </div>
 
       <div className="space-y-3 sm:space-y-4">
-        <div className="mb-3 flex flex-col gap-2 sm:mb-4 sm:flex-row sm:gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t("searchPlaceholder")}
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-8"
-            />
+        {!isLayoutKnown ? (
+          <Skeleton className="h-11 w-full md:h-10" />
+        ) : isTableLayout ? (
+          <div className="flex flex-row gap-3">
+            {searchField}
+            {statusFilterControl}
+            {supplierFilterControl}
           </div>
-          <ClientOnly fallback={<Skeleton className="h-10 w-full sm:w-[180px]" />}>
-            <Select
-              value={statusFilter}
-              onValueChange={(value) => {
-                setStatusFilter(value);
-                setPage(1);
-              }}
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              {searchField}
+              <Button
+                variant="outline"
+                className="h-11 shrink-0"
+                aria-expanded={isFilterPanelOpen}
+                aria-controls="stock-requisition-filters"
+                onClick={() => setIsFilterPanelOpen((open) => !open)}
+              >
+                <Filter className="h-4 w-4" />
+                {t("filters")}
+                {activeFilterCount > 0 ? (
+                  <span className="rounded-full bg-primary px-1.5 text-xs font-semibold tabular-nums text-primary-foreground">
+                    {activeFilterCount}
+                  </span>
+                ) : null}
+              </Button>
+            </div>
+            {/* Kept mounted while collapsed so the pickers keep their selected labels. */}
+            <div
+              id="stock-requisition-filters"
+              hidden={!isFilterPanelOpen}
+              className={`${isFilterPanelOpen ? "flex" : "hidden"} flex-col gap-3 rounded-md border p-3`}
             >
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder={t("statusPlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allStatus")}</SelectItem>
-                <SelectItem value="draft">{t("draft")}</SelectItem>
-                <SelectItem value="submitted">{t("submitted")}</SelectItem>
-                <SelectItem value="partially_fulfilled">{t("partiallyFulfilled")}</SelectItem>
-                <SelectItem value="fulfilled">{t("fulfilled")}</SelectItem>
-                <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </ClientOnly>
-          <ClientOnly fallback={<Skeleton className="h-10 w-full sm:w-[180px]" />}>
-            <Select
-              value={supplierFilter}
-              onValueChange={(value) => {
-                setSupplierFilter(value);
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder={t("supplierPlaceholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allSuppliers")}</SelectItem>
-                {suppliers.map((supplier) => (
-                  <SelectItem key={supplier.id} value={supplier.id}>
-                    {supplier.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </ClientOnly>
-        </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="stock-requisition-status-filter" className="text-sm font-medium">
+                  {t("status")}
+                </label>
+                {statusFilterControl}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="stock-requisition-supplier-filter" className="text-sm font-medium">
+                  {t("supplier")}
+                </label>
+                {supplierFilterControl}
+              </div>
+              <Button
+                variant="ghost"
+                className="h-11"
+                onClick={clearFilters}
+                disabled={activeFilterCount === 0}
+              >
+                {t("clearAllFilters")}
+              </Button>
+            </div>
+          </div>
+        )}
 
-        {isLoading ? (
-          <div className="max-h-[calc(100vh-400px)] overflow-auto rounded-md border">
+        {/* The table caps at the viewport but never below 24rem (about four rows), so short
+            screens scroll the page instead of collapsing the table. */}
+        {!isLayoutKnown ? (
+          <>
+            <div className="md:hidden">
+              <StockRequisitionMobileListSkeleton rows={4} />
+            </div>
+            <div className="max-md:hidden">
+              <Skeleton className="h-96 w-full" />
+            </div>
+          </>
+        ) : isLoading && !isTableLayout ? (
+          <StockRequisitionMobileListSkeleton rows={4} />
+        ) : isLoading ? (
+          <div className="max-h-[max(24rem,calc(100vh-400px))] overflow-auto rounded-md border">
             <Table className="min-w-[800px]">
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
@@ -399,94 +496,151 @@ export default function StockRequisitionsPage() {
         ) : error ? (
           <div className="py-8 text-center text-destructive">{t("loadError")}</div>
         ) : !data?.data || data.data.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            {t("emptyTitle")} {t("emptyDescription")}
+          <div className="py-10 text-center">
+            <p className="font-medium">{t("emptyTitle")}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t("emptyDescription")}</p>
           </div>
         ) : (
           <>
-            <div className="max-h-[calc(100vh-400px)] overflow-auto rounded-md border">
-              <Table className="min-w-[800px]">
-                <TableHeader className="sticky top-0 z-10 bg-background">
-                  <TableRow>
-                    <TableHead>{t("srNumber")}</TableHead>
-                    <TableHead>{t("supplier")}</TableHead>
-                    <TableHead>{t("requisitionDate")}</TableHead>
-                    <TableHead>{t("requiredBy")}</TableHead>
-                    {canViewTotalAmount && (
-                      <TableHead className="text-right">{t("totalAmount")}</TableHead>
-                    )}
-                    <TableHead className="text-center">{t("status")}</TableHead>
-                    <TableHead>{t("createdBy")}</TableHead>
-                    <TableHead className="text-right">{t("actions")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.data.map((sr) => (
-                    <TableRow
-                      key={sr.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleViewSR(sr)}
-                    >
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-blue-600" />
-                          <div>
-                            <div className="font-medium">{sr.srNumber}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {sr.businessUnit?.code}
+            {!isTableLayout ? (
+              <StockRequisitionMobileList
+                stockRequisitions={data.data}
+                canViewTotalAmount={canViewTotalAmount}
+                printingId={printingSRId}
+                renderStatus={getStatusBadge}
+                formatDate={formatDate}
+                formatAmount={formatRequisitionAmount}
+                canCancel={canCancelSR}
+                onEdit={handleEditSR}
+                onSend={(sr) => handleStatusAction(sr, "submitted")}
+                onPrint={handlePrintSR}
+                onCancel={(sr) => handleStatusAction(sr, "cancelled")}
+                onDelete={handleDeleteSR}
+              />
+            ) : (
+              <div className="max-h-[max(24rem,calc(100vh-400px))] overflow-auto rounded-md border">
+                <Table className="min-w-[800px]">
+                  <TableHeader className="sticky top-0 z-10 bg-background">
+                    <TableRow>
+                      <TableHead>{t("srNumber")}</TableHead>
+                      <TableHead>{t("supplier")}</TableHead>
+                      <TableHead>{t("requisitionDate")}</TableHead>
+                      <TableHead>{t("requiredBy")}</TableHead>
+                      {canViewTotalAmount && (
+                        <TableHead className="text-right">{t("totalAmount")}</TableHead>
+                      )}
+                      <TableHead className="text-center">{t("status")}</TableHead>
+                      <TableHead>{t("createdBy")}</TableHead>
+                      <TableHead className="text-right">{t("actions")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {data.data.map((sr) => (
+                      <TableRow
+                        key={sr.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleViewSR(sr)}
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-primary" />
+                            <div>
+                              <div className="font-medium">{sr.srNumber}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {sr.businessUnit?.code}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{sr.supplier?.name}</div>
-                          <div className="text-xs text-muted-foreground">{sr.supplier?.code}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{formatDate(sr.requisitionDate)}</TableCell>
-                      <TableCell>{formatDate(sr.requiredByDate)}</TableCell>
-                      {canViewTotalAmount && (
-                        <TableCell className="text-right font-medium">
-                          {formatRequisitionAmount(sr.totalAmount, sr.currency)}
                         </TableCell>
-                      )}
-                      <TableCell className="text-center">{getStatusBadge(sr.status)}</TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {sr.createdByUser
-                            ? `${sr.createdByUser.firstName} ${sr.createdByUser.lastName}`
-                            : t("noValue")}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatDate(sr.createdAt)}
-                        </div>
-                      </TableCell>
-                      <TableCell
-                        className="text-right"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <div className="flex items-center justify-end gap-1">
-                          {sr.status === "draft" && (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditSR(sr)}
-                                className="h-8 px-2"
-                              >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                <span>{t("edit")}</span>
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleStatusAction(sr, "submitted")}
-                                className="h-8 px-2"
-                              >
-                                <Send className="mr-2 h-4 w-4 text-blue-600" />
-                                <span>{t("send")}</span>
-                              </Button>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{sr.supplier?.name}</div>
+                            <div className="text-xs text-muted-foreground">{sr.supplier?.code}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{formatDate(sr.requisitionDate)}</TableCell>
+                        <TableCell>{formatDate(sr.requiredByDate)}</TableCell>
+                        {canViewTotalAmount && (
+                          <TableCell className="text-right font-medium">
+                            {formatRequisitionAmount(sr.totalAmount, sr.currency)}
+                          </TableCell>
+                        )}
+                        <TableCell className="text-center">{getStatusBadge(sr.status)}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {sr.createdByUser
+                              ? `${sr.createdByUser.firstName} ${sr.createdByUser.lastName}`
+                              : t("noValue")}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatDate(sr.createdAt)}
+                          </div>
+                        </TableCell>
+                        <TableCell
+                          className="text-right"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            {sr.status === "draft" && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditSR(sr)}
+                                  className="h-8 px-2"
+                                >
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  <span>{t("edit")}</span>
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleStatusAction(sr, "submitted")}
+                                  className="h-8 px-2"
+                                >
+                                  <Send className="mr-2 h-4 w-4 text-primary" />
+                                  <span>{t("send")}</span>
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      aria-label={t("actions")}
+                                    >
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                      onClick={() => handlePrintSR(sr)}
+                                      disabled={printingSRId === sr.id}
+                                    >
+                                      <Printer className="h-4 w-4" />
+                                      <span>{t("print")}</span>
+                                    </DropdownMenuItem>
+                                    {canCancelSR(sr) && (
+                                      <DropdownMenuItem
+                                        onClick={() => handleStatusAction(sr, "cancelled")}
+                                        className="text-destructive focus:text-destructive"
+                                      >
+                                        <XCircle className="h-4 w-4" />
+                                        <span>{t("cancel")}</span>
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem
+                                      onClick={() => handleDeleteSR(sr)}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      <span>{t("delete")}</span>
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </>
+                            )}
+                            {sr.status !== "draft" && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button
@@ -515,56 +669,17 @@ export default function StockRequisitionsPage() {
                                       <span>{t("cancel")}</span>
                                     </DropdownMenuItem>
                                   )}
-                                  <DropdownMenuItem
-                                    onClick={() => handleDeleteSR(sr)}
-                                    className="text-destructive focus:text-destructive"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span>{t("delete")}</span>
-                                  </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
-                            </>
-                          )}
-                          {sr.status !== "draft" && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 w-8 p-0"
-                                  aria-label={t("actions")}
-                                >
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => handlePrintSR(sr)}
-                                  disabled={printingSRId === sr.id}
-                                >
-                                  <Printer className="h-4 w-4" />
-                                  <span>{t("print")}</span>
-                                </DropdownMenuItem>
-                                {canCancelSR(sr) && (
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatusAction(sr, "cancelled")}
-                                    className="text-destructive focus:text-destructive"
-                                  >
-                                    <XCircle className="h-4 w-4" />
-                                    <span>{t("cancel")}</span>
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
 
             {data.pagination && data.pagination.total > 0 && (
               <div className="mt-4">

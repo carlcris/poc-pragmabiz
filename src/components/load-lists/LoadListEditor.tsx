@@ -315,7 +315,7 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
                           loadingMessage={t("loadingSuppliers")}
                           isLoading={isLoadingSuppliers}
                           triggerRef={field.ref}
-                          buttonClassName="h-10"
+                          buttonClassName="h-10 px-3"
                         />
                       </FormControl>
                       <FormMessage />
@@ -358,7 +358,7 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
                             onOptionChange={setDestinationOption}
                             selectedOption={destinationOption}
                             labelVariant="warehouse"
-                            buttonClassName="h-10"
+                            buttonClassName="h-10 px-3"
                           />
                         </FormControl>
                       )}
@@ -463,30 +463,27 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
                     {lines.length}
                   </span>
                 </div>
-                {/* Seven columns stay readable on phones by scrolling instead of squeezing. */}
-                <div className="mt-2 overflow-x-auto">
-                  <div className="min-w-[44rem]">
-                    <DocumentLinesTable
-                      rows={lines.map((line) => ({
-                        key: line.key,
-                        itemCode: line.itemCode,
-                        itemName: line.itemName,
-                        unitLabel: line.unitLabel,
-                        uomCode: line.uomCode,
-                        qtyPerUnit: line.qtyPerUnit,
-                        quantity: line.quantity,
-                        unitPrice: line.unitPrice,
-                        lineTotal: line.quantity * line.qtyPerUnit * line.unitPrice,
-                        isUnsaved: isEditMode && !line.savedLineId,
-                      }))}
-                      columns={columns}
-                      currency={documentCurrency}
-                      totalAmount={totalAmount}
-                      emptyTitle={t("noItemsTitle")}
-                      emptyDescription={t("noItemsDescription")}
-                      onRemove={handleRemoveLine}
-                    />
-                  </div>
+                <div className="mt-2">
+                  <DocumentLinesTable
+                    rows={lines.map((line) => ({
+                      key: line.key,
+                      itemCode: line.itemCode,
+                      itemName: line.itemName,
+                      unitLabel: line.unitLabel,
+                      uomCode: line.uomCode,
+                      qtyPerUnit: line.qtyPerUnit,
+                      quantity: line.quantity,
+                      unitPrice: line.unitPrice,
+                      lineTotal: line.quantity * line.qtyPerUnit * line.unitPrice,
+                      isUnsaved: isEditMode && !line.savedLineId,
+                    }))}
+                    columns={columns}
+                    currency={documentCurrency}
+                    totalAmount={totalAmount}
+                    emptyTitle={t("noItemsTitle")}
+                    emptyDescription={t("noItemsDescription")}
+                    onRemove={handleRemoveLine}
+                  />
                 </div>
               </div>
             </section>

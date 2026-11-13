@@ -101,9 +101,12 @@ const normalizeCurrencyCode = (value?: string | null) => {
 const getDefaultCostCurrency = (item: DocumentItemOption | null | undefined, fallback: string) =>
   item?.importCost != null ? (normalizeCurrencyCode(item.importCurrency) ?? fallback) : fallback;
 
-const cellClassName = "min-w-0 lg:px-2 lg:first:pl-0 lg:last:pr-0";
+const cellClassName = "min-w-0 xl:px-2 xl:first:pl-0 xl:last:pr-0";
 const labelClassName = "mb-1.5 block text-sm font-medium";
-const derivedValueClassName = "flex h-10 items-center justify-end text-sm tabular-nums";
+// Phones and tablets use 44px controls in a stacked grid; xl (1280px) switches to the
+// 40px one-line row aligned with the lines table, which is too narrow below that.
+const controlHeightClassName = "h-11 xl:h-10";
+const derivedValueClassName = "flex h-11 items-center justify-end text-sm tabular-nums xl:h-10";
 
 export function DocumentLineEntry<TBatch = never>({
   columns,
@@ -276,6 +279,15 @@ export function DocumentLineEntry<TBatch = never>({
   };
 
   const visibleMessage = entryError?.message ?? linesError;
+  const hasUnitCost = columns.includes("unitCost");
+  // Below xl, Unit, Qty and Unit Cost share one row; derived values follow on the next row.
+  // Unit gets the widest share because unit names are longer than quantities and costs.
+  const unitSpanClassName = hasUnitCost ? "col-span-5" : "col-span-7";
+  const quantitySpanClassName = hasUnitCost ? "col-span-3" : "col-span-5";
+  const derivedFieldClassName = cn(
+    "order-1 xl:order-none",
+    columns.includes("lineTotal") ? "col-span-6" : "col-span-12"
+  );
 
   return (
     <div
@@ -283,7 +295,7 @@ export function DocumentLineEntry<TBatch = never>({
       role="group"
       aria-labelledby={`${fieldId}-title`}
       onKeyDown={handleKeyDown}
-      className="border-b bg-primary/5 px-5 py-5 sm:px-7"
+      className="border-b bg-primary/5 px-4 py-5 sm:px-7"
     >
       <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
         <h3 id={`${fieldId}-title`} className="text-sm font-semibold">
@@ -302,9 +314,9 @@ export function DocumentLineEntry<TBatch = never>({
 
       <div
         style={getDocumentLineGridStyle(columns)}
-        className="mt-4 grid grid-cols-2 items-start gap-x-3 gap-y-4 lg:grid-cols-[var(--document-line-columns)] lg:gap-x-0"
+        className="mt-4 grid grid-cols-12 items-start gap-x-3 gap-y-5 xl:grid-cols-[var(--document-line-columns)] xl:gap-x-0 xl:gap-y-4"
       >
-        <div className={cn(cellClassName, "col-span-2 lg:col-span-1")}>
+        <div className={cn(cellClassName, "col-span-12 xl:col-span-1")}>
           <label htmlFor={`${fieldId}-item`} className={labelClassName}>
             {t("item")}
           </label>
@@ -358,12 +370,12 @@ export function DocumentLineEntry<TBatch = never>({
             triggerId={`${fieldId}-item`}
             invalid={itemInvalid}
             describedBy={itemInvalid ? errorId : undefined}
-            buttonClassName="h-10 bg-background"
-            popoverClassName="lg:w-96"
+            buttonClassName="h-11 bg-background px-3 xl:h-10"
+            popoverClassName="xl:w-96"
           />
         </div>
 
-        <div className={cn(cellClassName, "col-span-2 lg:col-span-1")}>
+        <div className={cn(cellClassName, unitSpanClassName, "xl:col-span-1")}>
           <label htmlFor={`${fieldId}-unit`} className={labelClassName}>
             {t("unit")}
           </label>
@@ -380,7 +392,7 @@ export function DocumentLineEntry<TBatch = never>({
               id={`${fieldId}-unit`}
               aria-invalid={errorFor("unit") != null}
               aria-describedby={errorFor("unit") ? errorId : undefined}
-              className="h-10 bg-background"
+              className={cn(controlHeightClassName, "bg-background")}
             >
               <SelectValue placeholder={t("selectUnit")} />
             </SelectTrigger>
@@ -402,8 +414,8 @@ export function DocumentLineEntry<TBatch = never>({
           ) : null}
         </div>
 
-        <div className={cellClassName}>
-          <label htmlFor={`${fieldId}-quantity`} className={cn(labelClassName, "lg:text-right")}>
+        <div className={cn(cellClassName, quantitySpanClassName, "xl:col-span-1")}>
+          <label htmlFor={`${fieldId}-quantity`} className={cn(labelClassName, "xl:text-right")}>
             {t("qty")}
           </label>
           <Input
@@ -418,12 +430,12 @@ export function DocumentLineEntry<TBatch = never>({
             }}
             aria-invalid={errorFor("quantity") != null}
             aria-describedby={errorFor("quantity") ? errorId : undefined}
-            className="h-10 bg-background text-right tabular-nums"
+            className={cn(controlHeightClassName, "bg-background text-right tabular-nums")}
           />
         </div>
 
-        <div className={cellClassName}>
-          <span className={cn(labelClassName, "lg:text-right")}>{t("totalQty")}</span>
+        <div className={cn(cellClassName, derivedFieldClassName)}>
+          <span className={cn(labelClassName, "text-right")}>{t("totalQty")}</span>
           <div className={cn(derivedValueClassName, !parsedQuantity && "text-muted-foreground")}>
             {selectedUnitOption && parsedQuantity
               ? formatDocumentQuantity(totalQty, locale)
@@ -432,7 +444,7 @@ export function DocumentLineEntry<TBatch = never>({
         </div>
 
         {batchField && columns.includes("batch") ? (
-          <div className={cellClassName}>
+          <div className={cn(cellClassName, "order-1 col-span-12 xl:order-none xl:col-span-1")}>
             <label htmlFor={`${fieldId}-batch`} className={labelClassName}>
               {t("batch")}
             </label>
@@ -452,9 +464,9 @@ export function DocumentLineEntry<TBatch = never>({
           </div>
         ) : null}
 
-        {columns.includes("unitCost") ? (
-          <div className={cellClassName}>
-            <label htmlFor={`${fieldId}-unitCost`} className={cn(labelClassName, "lg:text-right")}>
+        {hasUnitCost ? (
+          <div className={cn(cellClassName, "col-span-4 xl:col-span-1")}>
+            <label htmlFor={`${fieldId}-unitCost`} className={cn(labelClassName, "xl:text-right")}>
               {t("unitCost")}
             </label>
             <div className="relative">
@@ -476,15 +488,15 @@ export function DocumentLineEntry<TBatch = never>({
                 }}
                 aria-invalid={errorFor("unitCost") != null}
                 aria-describedby={errorFor("unitCost") ? errorId : undefined}
-                className="h-10 bg-background pl-8 text-right tabular-nums"
+                className={cn(controlHeightClassName, "bg-background pl-8 text-right tabular-nums")}
               />
             </div>
           </div>
         ) : null}
 
         {columns.includes("lineTotal") ? (
-          <div className={cellClassName}>
-            <span className={cn(labelClassName, "lg:text-right")}>{t("lineTotal")}</span>
+          <div className={cn(cellClassName, derivedFieldClassName)}>
+            <span className={cn(labelClassName, "text-right")}>{t("lineTotal")}</span>
             <div
               className={cn(
                 derivedValueClassName,
@@ -497,11 +509,15 @@ export function DocumentLineEntry<TBatch = never>({
           </div>
         ) : null}
 
-        <div className={cn(cellClassName, "col-span-2 lg:col-span-1")}>
-          <span aria-hidden="true" className={cn(labelClassName, "hidden lg:block")}>
+        <div className={cn(cellClassName, "order-1 col-span-12 xl:order-none xl:col-span-1")}>
+          <span aria-hidden="true" className={cn(labelClassName, "hidden xl:block")}>
             &nbsp;
           </span>
-          <Button type="button" onClick={handleAdd} className="h-10 w-full">
+          <Button
+            type="button"
+            onClick={handleAdd}
+            className={cn(controlHeightClassName, "w-full")}
+          >
             {t("addLine")}
           </Button>
         </div>

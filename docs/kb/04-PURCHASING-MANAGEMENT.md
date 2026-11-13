@@ -864,6 +864,15 @@ class PurchaseReceiptService {
 - The view page shows Fulfilled and Outstanding quantities once the requisition has been sent, and offers Send and Edit (draft only, with edit permission), Print, and Download PDF
 - Reorder alerts open the new requisition page with prefilled line items; the hand-off lasts for that navigation only and is not kept after a reload
 - Shared building blocks live in `src/components/document-page/` and are also used by the load list pages
+- On phones (below 768px) the Items section shows one stacked row per line, with the item on top, the other columns as labelled values below, and the total underneath; from 768px it is the table, which scrolls sideways when the columns do not fit. The same shared lines table drives the load list and stock request pages, so they switch the same way
+
+#### Stock requisitions list
+
+**Location**: `src/app/(dashboard)/purchasing/stock-requisitions/page.tsx` with `src/components/stock-requisitions/StockRequisitionMobileList.tsx`
+
+- From 768px: search, Status, and Supplier filters in one row, and the table, whose height follows the viewport but never drops below about four rows
+- On phones: search with a Filters button that opens a Status and Supplier panel (with an active-filter count and Clear All Filters), and one stacked row per requisition showing the SR number with its status, supplier, requisition date, required-by date, and total amount when the user may see amounts
+- Phone rows put every action in the row's More Actions menu: Send and Edit (drafts), Print, Cancel, and Delete. Phone controls are at least 44px tall
 
 #### LoadListForm
 

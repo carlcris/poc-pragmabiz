@@ -11,7 +11,7 @@ export function DocumentSection({ id, title, description, children }: DocumentSe
   return (
     <section
       aria-labelledby={id}
-      className="flex flex-col gap-4 border-t px-5 py-6 first:border-t-0 sm:px-7 lg:flex-row lg:gap-10"
+      className="flex flex-col gap-4 border-t px-4 py-6 first:border-t-0 sm:px-7 lg:flex-row lg:gap-10"
     >
       <div className="lg:w-56 lg:shrink-0">
         <h2 id={id} className="text-sm font-semibold">

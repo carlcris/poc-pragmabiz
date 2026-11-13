@@ -358,7 +358,7 @@ export function StockRequestEditor({ stockRequest }: StockRequestEditorProps) {
                             selectedOption={fulfillingOption}
                             excludeId={currentBusinessUnit?.id}
                             labelVariant="warehouse"
-                            buttonClassName="h-10"
+                            buttonClassName="h-10 px-3"
                           />
                         </FormControl>
                       )}
@@ -443,32 +443,29 @@ export function StockRequestEditor({ stockRequest }: StockRequestEditorProps) {
                     {lines.length}
                   </span>
                 </div>
-                {/* Six columns stay readable on phones by scrolling instead of squeezing. */}
-                <div className="mt-2 overflow-x-auto">
-                  <div className="min-w-[44rem]">
-                    <DocumentLinesTable
-                      rows={lines.map((line) => ({
-                        key: line.key,
-                        itemCode: line.itemCode,
-                        itemName: line.itemName,
-                        unitLabel: line.unitLabel,
-                        uomCode: line.uomCode,
-                        qtyPerUnit: line.qtyPerUnit,
-                        quantity: line.quantity,
-                        unitPrice: null,
-                        lineTotal: null,
-                        batch: line.batch,
-                        note: line.notes,
-                        isUnsaved: isEditMode && !line.savedLineId,
-                      }))}
-                      columns={columns}
-                      currency=""
-                      totalAmount={null}
-                      emptyTitle={t("noItemsTitle")}
-                      emptyDescription={t("noItemsDescription")}
-                      onRemove={handleRemoveLine}
-                    />
-                  </div>
+                <div className="mt-2">
+                  <DocumentLinesTable
+                    rows={lines.map((line) => ({
+                      key: line.key,
+                      itemCode: line.itemCode,
+                      itemName: line.itemName,
+                      unitLabel: line.unitLabel,
+                      uomCode: line.uomCode,
+                      qtyPerUnit: line.qtyPerUnit,
+                      quantity: line.quantity,
+                      unitPrice: null,
+                      lineTotal: null,
+                      batch: line.batch,
+                      note: line.notes,
+                      isUnsaved: isEditMode && !line.savedLineId,
+                    }))}
+                    columns={columns}
+                    currency=""
+                    totalAmount={null}
+                    emptyTitle={t("noItemsTitle")}
+                    emptyDescription={t("noItemsDescription")}
+                    onRemove={handleRemoveLine}
+                  />
                 </div>
               </div>
             </section>
