@@ -267,7 +267,12 @@ export function StockRequisitionEditor({ stockRequisition }: StockRequisitionEdi
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           {/* Phones: full-bleed form (negative margin cancels the shell's p-4 gutter) instead of a card. */}
           <div className="-mx-4 min-w-0 flex-1 overflow-hidden border-y bg-card sm:mx-0 sm:rounded-xl sm:border">
-            <section aria-label={t("requestTitle")} className="px-4 py-5 sm:px-7 sm:py-6">
+            <DocumentSection
+              id="stock-requisition-request"
+              title={t("requestTitle")}
+              description={t("requestDescription")}
+              headerBelowXl="hidden"
+            >
               <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5">
                 <FormField
                   control={form.control}
@@ -339,7 +344,7 @@ export function StockRequisitionEditor({ stockRequisition }: StockRequisitionEdi
                   )}
                 />
               </div>
-            </section>
+            </DocumentSection>
 
             <section aria-labelledby="stock-requisition-items" className="border-t">
               <DocumentLineEntry
@@ -391,6 +396,7 @@ export function StockRequisitionEditor({ stockRequisition }: StockRequisitionEdi
               id="stock-requisition-notes"
               title={t("notesTitle")}
               description={t("notesDescription")}
+              headerBelowXl="titleOnly"
             >
               <FormField
                 control={form.control}

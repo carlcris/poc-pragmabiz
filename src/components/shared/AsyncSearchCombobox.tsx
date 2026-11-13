@@ -149,6 +149,12 @@ export function AsyncSearchCombobox<T>({
           popoverClassName
         )}
         align="start"
+        onOpenAutoFocus={(event) => {
+          // On touch screens, focusing the search box opens the on-screen keyboard, which
+          // shrinks the visual viewport and flips the list above the trigger over the form.
+          // Keep the list below; people tap the search box when they want to type.
+          if (window.matchMedia("(pointer: coarse)").matches) event.preventDefault();
+        }}
       >
         <Command shouldFilter={false} className="max-h-full">
           <CommandInput

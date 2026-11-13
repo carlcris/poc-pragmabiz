@@ -44,6 +44,7 @@ import {
   LOAD_LIST_STATUS_LABEL_KEYS,
   LOAD_LIST_STATUS_TONES,
 } from "@/lib/load-lists/load-list-display";
+import { cn } from "@/lib/utils";
 import { createLoadListFormSchema, type LoadListFormValues } from "@/lib/validations/load-list";
 import type { DocumentFormLine } from "@/types/document-line";
 import type { CreateLoadListRequest, LoadList, UpdateLoadListRequest } from "@/types/load-list";
@@ -274,18 +275,20 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
         />
 
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-          <div className="min-w-0 flex-1 overflow-hidden rounded-xl border bg-card">
+          {/* Phones: full-bleed form (negative margin cancels the shell's p-4 gutter) instead of a card. */}
+          <div className="-mx-4 min-w-0 flex-1 overflow-hidden border-y bg-card sm:mx-0 sm:rounded-xl sm:border">
             <DocumentSection
               id="load-list-shipment"
               title={t("shipmentTitle")}
               description={t("shipmentDescription")}
+              headerBelowXl="hidden"
             >
-              <div className="grid gap-5 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5">
                 <FormField
                   control={form.control}
                   name="supplierId"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-2 space-y-1.5 sm:col-span-1">
                       <FormLabel>{t("supplier")}</FormLabel>
                       <FormControl>
                         <AsyncSearchCombobox
@@ -327,7 +330,7 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
                   control={form.control}
                   name="destinationBusinessUnitId"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-2 space-y-1.5 sm:col-span-1">
                       <FormLabel>{t("destinationBusinessUnit")}</FormLabel>
                       {isEditMode ? (
                         <>
@@ -371,7 +374,7 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
                   control={form.control}
                   name="supplierLlNumber"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="space-y-1.5">
                       <FormLabel>{t("supplierLlNumber")}</FormLabel>
                       <FormControl>
                         <Input
@@ -389,7 +392,7 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
                   control={form.control}
                   name="loadDate"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="space-y-1.5">
                       <FormLabel>{t("loadDate")}</FormLabel>
                       <FormControl>
                         <Input
@@ -416,8 +419,9 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
               id="load-list-container"
               title={t("containerTitle")}
               description={t("containerDescription")}
+              headerBelowXl="hidden"
             >
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5 xl:grid-cols-3">
                 {(
                   [
                     ["containerNumber", t("containerNumber"), undefined],
@@ -430,7 +434,12 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
                     control={form.control}
                     name={name}
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem
+                        className={cn(
+                          "space-y-1.5",
+                          name === "batchNumber" && "col-span-2 sm:col-span-1"
+                        )}
+                      >
                         <FormLabel>{label}</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder={placeholder} className="h-10" />
@@ -454,7 +463,7 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
                 onAdd={handleAddLine}
                 onEntryChange={setHasPendingEntry}
               />
-              <div className="px-5 pb-2 pt-5 sm:px-7">
+              <div className="px-4 pb-2 pt-5 sm:px-7">
                 <div className="flex items-center gap-2">
                   <h2 id="load-list-items" className="text-sm font-semibold">
                     {t("itemsTitle")}
@@ -492,6 +501,7 @@ export function LoadListEditor({ loadList }: LoadListEditorProps) {
               id="load-list-notes"
               title={t("notesTitle")}
               description={t("notesDescription")}
+              headerBelowXl="titleOnly"
             >
               <FormField
                 control={form.control}

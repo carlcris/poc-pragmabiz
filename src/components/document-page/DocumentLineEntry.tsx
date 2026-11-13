@@ -285,7 +285,7 @@ export function DocumentLineEntry<TBatch = never>({
   const unitSpanClassName = hasUnitCost ? "col-span-5" : "col-span-7";
   const quantitySpanClassName = hasUnitCost ? "col-span-3" : "col-span-5";
   const derivedFieldClassName = cn(
-    "order-1 xl:order-none",
+    "order-1 xl:order-none xl:col-span-1",
     columns.includes("lineTotal") ? "col-span-6" : "col-span-12"
   );
 

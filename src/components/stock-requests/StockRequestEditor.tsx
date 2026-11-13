@@ -302,14 +302,16 @@ export function StockRequestEditor({ stockRequest }: StockRequestEditorProps) {
         />
 
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-          <div className="min-w-0 flex-1 overflow-hidden rounded-xl border bg-card">
+          {/* Phones: full-bleed form (negative margin cancels the shell's p-4 gutter) instead of a card. */}
+          <div className="-mx-4 min-w-0 flex-1 overflow-hidden border-y bg-card sm:mx-0 sm:rounded-xl sm:border">
             <DocumentSection
               id="stock-request-transfer"
               title={t("transferTitle")}
               description={t("transferDescription")}
+              headerBelowXl="hidden"
             >
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5">
+                <div className="col-span-2 space-y-1.5 sm:col-span-1">
                   <label htmlFor="stock-request-requested-by" className="text-sm font-medium">
                     {t("requestedBy")}
                   </label>
@@ -326,7 +328,7 @@ export function StockRequestEditor({ stockRequest }: StockRequestEditorProps) {
                   control={form.control}
                   name="fulfillingBusinessUnitId"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-2 space-y-1.5 sm:col-span-1">
                       <FormLabel>{t("requestedTo")}</FormLabel>
                       {isEditMode || hasPinnedBatch ? (
                         <>
@@ -371,7 +373,7 @@ export function StockRequestEditor({ stockRequest }: StockRequestEditorProps) {
                   control={form.control}
                   name="requestDate"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="space-y-1.5">
                       <FormLabel>{t("requestDate")}</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} className="h-10" />
@@ -385,7 +387,7 @@ export function StockRequestEditor({ stockRequest }: StockRequestEditorProps) {
                   control={form.control}
                   name="requiredDate"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="space-y-1.5">
                       <FormLabel>{t("requiredDate")}</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} className="h-10" />
@@ -399,7 +401,7 @@ export function StockRequestEditor({ stockRequest }: StockRequestEditorProps) {
                   control={form.control}
                   name="priority"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="col-span-2 space-y-1.5 sm:col-span-1">
                       <FormLabel>{t("priority")}</FormLabel>
                       <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
@@ -434,7 +436,7 @@ export function StockRequestEditor({ stockRequest }: StockRequestEditorProps) {
                 onAdd={handleAddLine}
                 onEntryChange={setHasPendingEntry}
               />
-              <div className="px-5 pb-2 pt-5 sm:px-7">
+              <div className="px-4 pb-2 pt-5 sm:px-7">
                 <div className="flex items-center gap-2">
                   <h2 id="stock-request-items" className="text-sm font-semibold">
                     {t("itemsTitle")}
@@ -474,13 +476,14 @@ export function StockRequestEditor({ stockRequest }: StockRequestEditorProps) {
               id="stock-request-notes"
               title={t("notesTitle")}
               description={t("notesDescription")}
+              headerBelowXl="hidden"
             >
               <div className="space-y-5">
                 <FormField
                   control={form.control}
                   name="purpose"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="space-y-1.5">
                       <FormLabel>{t("purpose")}</FormLabel>
                       <FormControl>
                         <Input {...field} placeholder={t("purposePlaceholder")} className="h-10" />
@@ -493,7 +496,7 @@ export function StockRequestEditor({ stockRequest }: StockRequestEditorProps) {
                   control={form.control}
                   name="notes"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="space-y-1.5">
                       <FormLabel>{t("notes")}</FormLabel>
                       <FormControl>
                         <Textarea {...field} rows={4} placeholder={t("notesPlaceholder")} />
