@@ -9330,6 +9330,7 @@ export type Database = {
           picking_started_at: string | null;
           picking_started_by: string | null;
           priority: string | null;
+          priority_rank: number | null;
           purpose: string | null;
           received_at: string | null;
           received_by: string | null;
@@ -9362,6 +9363,7 @@ export type Database = {
           picking_started_at?: string | null;
           picking_started_by?: string | null;
           priority?: string | null;
+          priority_rank?: number | null;
           purpose?: string | null;
           received_at?: string | null;
           received_by?: string | null;
@@ -9394,6 +9396,7 @@ export type Database = {
           picking_started_at?: string | null;
           picking_started_by?: string | null;
           priority?: string | null;
+          priority_rank?: number | null;
           purpose?: string | null;
           received_at?: string | null;
           received_by?: string | null;
@@ -13135,6 +13138,21 @@ export type Database = {
           p_limit?: number;
           p_page?: number;
           p_warehouse_id: string;
+        };
+        Returns: Json;
+      };
+      get_warehouse_operations_overview: {
+        Args: {
+          p_business_unit_ids: string[];
+          p_company_id: string;
+          p_days: number;
+          p_include_inbound: boolean;
+          p_include_incoming: boolean;
+          p_include_pick_lists: boolean;
+          p_include_reorder: boolean;
+          p_include_stock: boolean;
+          p_include_stock_requests: boolean;
+          p_time_zone: string;
         };
         Returns: Json;
       };

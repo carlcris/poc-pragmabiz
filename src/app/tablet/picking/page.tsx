@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { format } from "date-fns";
 import { Loader2, Package, Search } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
 import { TabletHeader } from "@/components/tablet/TabletHeader";
 import { useWarehouseDashboard } from "@/hooks/useWarehouseDashboard";
 
 export default function PickingPage() {
+  const t = useTranslations("tabletPicking");
+  const locale = useLocale();
   const [searchQuery, setSearchQuery] = useState("");
   const { data, isLoading, error } = useWarehouseDashboard();
 
@@ -17,9 +19,9 @@ export default function PickingPage() {
     const q = searchQuery.toLowerCase();
     return rows.filter(
       (row) =>
-        row.request_code.toLowerCase().includes(q) ||
+        row.pick_list_no.toLowerCase().includes(q) ||
         row.status.toLowerCase().includes(q) ||
-        row.requested_by.toLowerCase().includes(q)
+        (row.created_by ?? "").toLowerCase().includes(q)
     );
   }, [data, searchQuery]);
 
@@ -72,17 +74,24 @@ export default function PickingPage() {
                 <div className="mb-2 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Package className="h-5 w-5 text-gray-600" />
-                    <h3 className="font-bold text-gray-900">{row.request_code}</h3>
+                    <h3 className="font-bold text-gray-900">{row.pick_list_no}</h3>
                   </div>
                   <span className="text-xs font-semibold uppercase text-blue-700">
                     {row.status}
                   </span>
                 </div>
-                <p className="text-sm text-gray-700">Lines: {row.lines}</p>
-                <p className="text-sm text-gray-600">Assigned: {row.requested_by || "Unknown"}</p>
+                <p className="text-sm text-gray-700">{t("linesCount", { count: row.lines })}</p>
+                <p className="text-sm text-gray-600">
+                  {t("createdBy", { name: row.created_by ?? t("unknownUser") })}
+                </p>
                 <p className="text-xs text-gray-500">
-                  Required:{" "}
-                  {row.required_date ? format(new Date(row.required_date), "MMM d, yyyy") : "--"}
+                  {t("createdOn", {
+                    date: new Date(row.created_at).toLocaleDateString(locale, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    }),
+                  })}
                 </p>
               </Link>
             ))}

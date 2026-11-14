@@ -9,6 +9,7 @@ import type {
   DamagedItem,
   StartGRNReceivingRequest,
 } from "@/types/grn";
+import type { GrnReceivingPatch } from "@/lib/grns/receiving-validation";
 
 const API_BASE = "/api/grns";
 
@@ -101,9 +102,12 @@ export const grnsApi = {
     return response.json();
   },
 
-  submitGRN: async (id: string): Promise<void> => {
+  // Pending receiving edits travel with the submit so one transaction saves and submits.
+  submitGRN: async (id: string, receivingPatch?: GrnReceivingPatch): Promise<void> => {
     const response = await fetch(`${API_BASE}/${id}/submit`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(receivingPatch ? { receivingPatch } : {}),
     });
     if (!response.ok) {
       const error = await response.json();

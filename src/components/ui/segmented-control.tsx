@@ -17,6 +17,8 @@ type SegmentedControlProps<T extends string> = {
   /** Names the group for screen readers — the options alone are ambiguous. */
   "aria-label": string;
   className?: string;
+  /** Extra classes for each option, e.g. a taller touch target. */
+  optionClassName?: string;
 };
 
 /**
@@ -34,6 +36,7 @@ export function SegmentedControl<T extends string>({
   options,
   onChange,
   className,
+  optionClassName,
   "aria-label": ariaLabel,
 }: SegmentedControlProps<T>) {
   const select = (index: number) => onChange(options[index].value);
@@ -86,7 +89,8 @@ export function SegmentedControl<T extends string>({
               "disabled:cursor-not-allowed disabled:opacity-60",
               selected
                 ? "bg-background text-primary shadow-sm"
-                : "text-primary-foreground hover:bg-primary-foreground/10 disabled:hover:bg-transparent"
+                : "text-primary-foreground hover:bg-primary-foreground/10 disabled:hover:bg-transparent",
+              optionClassName
             )}
           >
             {option.label}

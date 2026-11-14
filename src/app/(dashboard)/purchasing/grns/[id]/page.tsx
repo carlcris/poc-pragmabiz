@@ -124,7 +124,8 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
       }
     >
   >({});
-  const [notes, setNotes] = useState("");
+  const [editedHeaderNotes, setEditedHeaderNotes] = useState<string | null>(null);
+  const [confirmationNotes, setConfirmationNotes] = useState("");
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   const formatDate = (dateString?: string | null, fallback = t("noValue")) => {
@@ -200,13 +201,14 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
         id: grn.id,
         data: {
           receivingDate: grn.receivingDate || new Date().toISOString().split("T")[0],
-          notes: notes || grn.notes,
+          notes: editedHeaderNotes ?? grn.notes,
           items: itemsToUpdate,
         },
       });
 
       toast.success(t("updateSuccess"));
       setEditedItems({});
+      setEditedHeaderNotes(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("updateError"));
     }
@@ -226,9 +228,28 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
   const handleSubmit = async () => {
     if (!grn) return;
 
+    const items = Object.entries(editedItems).map(([itemId, data]) => ({
+      id: itemId,
+      receivedQty: data.receivedQty,
+      damagedQty: data.damagedQty,
+      numBoxes: data.numBoxes,
+      notes: data.notes,
+    }));
+    const hasNotesEdit = editedHeaderNotes !== null && editedHeaderNotes !== (grn.notes ?? "");
+    const receivingPatch =
+      items.length > 0 || hasNotesEdit
+        ? {
+            ...(items.length > 0 ? { items } : {}),
+            ...(hasNotesEdit ? { notes: editedHeaderNotes } : {}),
+          }
+        : undefined;
+
     try {
-      await submitMutation.mutateAsync(grn.id);
+      // Unsaved line and header-note edits are saved in the same transaction as the submit.
+      await submitMutation.mutateAsync({ id: grn.id, receivingPatch });
       toast.success(t("submitSuccess"));
+      setEditedItems({});
+      setEditedHeaderNotes(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("submitError"));
     }
@@ -238,7 +259,7 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
     if (!grn) return;
 
     try {
-      await confirmMutation.mutateAsync({ id: grn.id, notes });
+      await confirmMutation.mutateAsync({ id: grn.id, notes: confirmationNotes });
       toast.success(t("confirmSuccess"));
       setConfirmDialogOpen(false);
     } catch (err) {
@@ -740,7 +761,16 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-5">
-              {grn.notes ? (
+              {isEditable ? (
+                <Textarea
+                  aria-label={t("additionalNotes")}
+                  value={editedHeaderNotes ?? grn.notes ?? ""}
+                  onChange={(e) => setEditedHeaderNotes(e.target.value)}
+                  placeholder={t("additionalNotesPlaceholder")}
+                  maxLength={2000}
+                  rows={5}
+                />
+              ) : grn.notes ? (
                 <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
                   {grn.notes}
                 </p>
@@ -764,8 +794,8 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
             <Label htmlFor="confirm-notes">{t("confirmationNotes")}</Label>
             <Textarea
               id="confirm-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              value={confirmationNotes}
+              onChange={(e) => setConfirmationNotes(e.target.value)}
               placeholder={t("confirmationNotesPlaceholder")}
               rows={3}
             />

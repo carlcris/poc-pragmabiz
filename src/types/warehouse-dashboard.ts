@@ -44,39 +44,45 @@ export type OutOfStockItem = {
   qty: number;
   uom: string;
   location_code: string | null;
-  last_moved_at: string | null;
 };
 
 export type DashboardQueues = {
   pick_list: PickListItem[];
   incoming_deliveries: IncomingDeliveryItem[];
   stock_requests: StockRequestItem[];
+  // Full open counts; each queue array is bounded and may hold fewer rows.
+  totals: DashboardQueueTotals;
+};
+
+export type DashboardQueueTotals = {
+  pick_list: number;
+  incoming_deliveries: number;
+  stock_requests: number;
 };
 
 export type PickListItem = {
   id: string;
-  request_code: string;
+  pick_list_no: string;
+  delivery_note_id: string;
   lines: number;
-  priority: Priority;
   status: string;
-  required_date: string;
-  requested_by: string;
+  created_at: string;
+  created_by: string | null;
 };
 
 export type IncomingDeliveryItem = {
   id: string;
   order_code: string;
-  supplier: string;
-  eta: string;
+  supplier: string | null;
+  eta: string | null;
   status: string;
-  priority: Priority;
   lines: number;
 };
 
 export type StockRequestItem = {
   id: string;
   request_code: string;
-  requested_by: string;
+  requested_by: string | null;
   lines: number;
   priority: Priority;
   status: string;
@@ -89,7 +95,7 @@ export type StockMovementItem = {
   qty: number;
   uom: string;
   timestamp: string;
-  performed_by: string;
+  performed_by: string | null;
 };
 
 export type Priority = "low" | "normal" | "high" | "urgent";

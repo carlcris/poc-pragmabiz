@@ -77,26 +77,19 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
     if (!grn) return;
 
     try {
-      if (Object.keys(editedItems).length > 0) {
-        const itemsToUpdate = Object.entries(editedItems).map(([itemId, data]) => ({
-          id: itemId,
-          receivedQty: data.receivedQty,
-          damagedQty: data.damagedQty,
-          numBoxes: data.numBoxes,
-          notes: data.notes,
-        }));
+      const items = Object.entries(editedItems).map(([itemId, data]) => ({
+        id: itemId,
+        receivedQty: data.receivedQty,
+        damagedQty: data.damagedQty,
+        numBoxes: data.numBoxes,
+        notes: data.notes,
+      }));
 
-        await updateMutation.mutateAsync({
-          id: grn.id,
-          data: {
-            receivingDate: grn.receivingDate || new Date().toISOString().split("T")[0],
-            notes: grn.notes,
-            items: itemsToUpdate,
-          },
-        });
-      }
-
-      await submitMutation.mutateAsync(grn.id);
+      // Unsaved line edits are saved in the same transaction as the submit.
+      await submitMutation.mutateAsync({
+        id: grn.id,
+        receivingPatch: items.length > 0 ? { items } : undefined,
+      });
       toast.success("GRN submitted for confirmation");
       router.push("/tablet/receiving");
     } catch (err) {

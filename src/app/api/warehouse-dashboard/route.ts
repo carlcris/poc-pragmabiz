@@ -5,12 +5,19 @@ import type { DashboardData, Priority } from "@/types/warehouse-dashboard";
 import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
 
+type UserNameRecord = {
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+};
+
 type PickListQueueRow = {
   id: string;
   pick_list_no: string;
+  dn_id: string;
   created_at: string;
   status: string;
-  users?: { email?: string | null } | null;
+  users?: UserNameRecord | null;
   pick_list_items?: Array<{ id: string }> | null;
 };
 
@@ -29,7 +36,7 @@ type StockRequestsQueueRow = {
   required_date: string;
   priority: Priority;
   status: string;
-  users?: { email?: string | null } | null;
+  users?: UserNameRecord | null;
   stock_request_items?: Array<{ id: string }> | null;
 };
 
@@ -39,12 +46,12 @@ type StockMovementsRow = {
     | {
         transaction_type: string;
         created_at: string;
-        users?: { email?: string | null } | { email?: string | null }[] | null;
+        users?: UserNameRecord | UserNameRecord[] | null;
       }
     | {
         transaction_type: string;
         created_at: string;
-        users?: { email?: string | null } | { email?: string | null }[] | null;
+        users?: UserNameRecord | UserNameRecord[] | null;
       }[]
     | null;
   items: { item_name: string } | { item_name: string }[] | null;
@@ -58,6 +65,19 @@ type DashboardLowStockRow = {
   uom: string | null;
   location_code: string | null;
   reorder_level: number | string | null;
+};
+
+const DASHBOARD_QUEUE_LIMIT = 12;
+const DASHBOARD_STOCK_HEALTH_LIMIT = 5;
+
+// Prefer a person's name over their sign-in email; null lets the client render its
+// translated unknown-user label.
+const toDisplayName = (user: UserNameRecord | null | undefined): string | null => {
+  const fullName = [user?.first_name, user?.last_name]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(" ");
+  return fullName || user?.email || null;
 };
 
 async function GETHandler() {
@@ -174,13 +194,15 @@ async function GETHandler() {
         : Promise.resolve({ count: 0, error: null }),
 
       // Summary: Urgent stock requests needing attention
-      supabase
-        .from("stock_requests")
-        .select("id", { count: "exact", head: true })
-        .in("fulfilling_business_unit_id", scopedBUIds)
-        .in("status", ["submitted", "approved"])
-        .eq("priority", "urgent")
-        .is("deleted_at", null),
+      canViewStockRequestsCard
+        ? supabase
+            .from("stock_requests")
+            .select("id", { count: "exact", head: true })
+            .in("fulfilling_business_unit_id", scopedBUIds)
+            .in("status", ["submitted", "approved"])
+            .eq("priority", "urgent")
+            .is("deleted_at", null)
+        : Promise.resolve({ count: 0, error: null }),
 
       // Summary: Active pick lists (pending + in progress + paused)
       canViewPickListCard
@@ -197,7 +219,7 @@ async function GETHandler() {
         ? supabase.rpc("get_warehouse_dashboard_low_stocks", {
             p_company_id: userData.company_id,
             p_business_unit_id: currentBusinessUnitId,
-            p_limit: 8,
+            p_limit: DASHBOARD_STOCK_HEALTH_LIMIT,
           })
         : Promise.resolve({ data: [], error: null }),
 
@@ -228,19 +250,20 @@ async function GETHandler() {
               `
           id,
           pick_list_no,
+          dn_id,
           created_at,
           status,
-          created_by,
-          users!pick_lists_created_by_fkey(email),
+          users!pick_lists_created_by_fkey(first_name, last_name, email),
           pick_list_items(id)
-        `
+        `,
+              { count: "exact" }
             )
             .in("business_unit_id", scopedBUIds)
             .in("status", ["pending", "in_progress", "paused"])
             .is("deleted_at", null)
             .order("created_at", { ascending: true })
-            .limit(12)
-        : Promise.resolve({ data: [], error: null }),
+            .limit(DASHBOARD_QUEUE_LIMIT)
+        : Promise.resolve({ data: [], count: 0, error: null }),
 
       // Incoming deliveries queue (load lists)
       canViewIncomingDeliveriesQueue
@@ -254,14 +277,15 @@ async function GETHandler() {
           status,
           suppliers(supplier_name),
           load_list_items(id)
-        `
+        `,
+              { count: "exact" }
             )
             .in("destination_business_unit_id", scopedBUIds)
             .in("status", ["in_transit", "receiving"])
             .is("deleted_at", null)
-            .order("estimated_arrival_date", { ascending: true })
-            .limit(12)
-        : Promise.resolve({ data: [], error: null }),
+            .order("estimated_arrival_date", { ascending: true, nullsFirst: false })
+            .limit(DASHBOARD_QUEUE_LIMIT)
+        : Promise.resolve({ data: [], count: 0, error: null }),
 
       // Stock requests queue
       canViewStockRequestsQueue
@@ -271,22 +295,21 @@ async function GETHandler() {
               `
           id,
           request_code,
-          request_date,
           priority,
           status,
           required_date,
-          created_by,
-          users!stock_requests_created_by_fkey(email),
+          users!stock_requests_created_by_fkey(first_name, last_name, email),
           stock_request_items(id)
-        `
+        `,
+              { count: "exact" }
             )
             .in("fulfilling_business_unit_id", scopedBUIds)
             .in("status", ["submitted", "approved"])
             .is("deleted_at", null)
-            .order("priority", { ascending: false })
-            .order("request_date", { ascending: true })
-            .limit(12)
-        : Promise.resolve({ data: [], error: null }),
+            .order("priority_rank", { ascending: false })
+            .order("required_date", { ascending: true })
+            .limit(DASHBOARD_QUEUE_LIMIT)
+        : Promise.resolve({ data: [], count: 0, error: null }),
 
       // Last 5 stock movements
       canViewStockValue
@@ -299,7 +322,7 @@ async function GETHandler() {
                 transaction_type,
                 created_at,
                 business_unit_id,
-                users!stock_transactions_created_by_fkey(email)
+                users!stock_transactions_created_by_fkey(first_name, last_name, email)
               ),
               items!inner(item_name),
               units_of_measure!inner(symbol)
@@ -398,7 +421,7 @@ async function GETHandler() {
     const outOfStocks = aggregatedList
       .filter((item) => item.qty <= 0)
       .sort((a, b) => a.qty - b.qty)
-      .slice(0, 8);
+      .slice(0, DASHBOARD_STOCK_HEALTH_LIMIT);
 
     // Build response
     const dashboardData: DashboardData = {
@@ -426,37 +449,40 @@ async function GETHandler() {
             qty: item.qty,
             uom: item.uom,
             location_code: item.location_code,
-            last_moved_at: null, // TODO: derive from latest stock movement
           }))
         : [],
       queues: {
         pick_list: pickListQueue.map((item) => ({
           id: item.id,
-          request_code: item.pick_list_no,
+          pick_list_no: item.pick_list_no,
+          delivery_note_id: item.dn_id,
           lines: item.pick_list_items?.length || 0,
-          priority: "normal",
           status: item.status,
-          required_date: item.created_at,
-          requested_by: item.users?.email || "Unknown",
+          created_at: item.created_at,
+          created_by: toDisplayName(item.users),
         })),
         incoming_deliveries: incomingDeliveriesQueue.map((item) => ({
           id: item.id,
           order_code: item.ll_number,
-          supplier: item.suppliers?.supplier_name || "Unknown",
-          eta: item.estimated_arrival_date || "",
+          supplier: item.suppliers?.supplier_name || null,
+          eta: item.estimated_arrival_date,
           status: item.status,
-          priority: "normal",
           lines: item.load_list_items?.length || 0,
         })),
         stock_requests: stockRequestsQueue.map((item) => ({
           id: item.id,
           request_code: item.request_code,
-          requested_by: item.users?.email || "Unknown",
+          requested_by: toDisplayName(item.users),
           lines: item.stock_request_items?.length || 0,
           priority: item.priority,
           status: item.status,
           required_date: item.required_date,
         })),
+        totals: {
+          pick_list: pickListQueueResult.count ?? 0,
+          incoming_deliveries: incomingDeliveriesQueueResult.count ?? 0,
+          stock_requests: stockRequestsQueueResult.count ?? 0,
+        },
       },
       last_stock_movements: canViewStockValue
         ? stockMovements.map((item) => {
@@ -478,7 +504,7 @@ async function GETHandler() {
               item_name: itemRecord?.item_name || "",
               qty: item.quantity,
               uom: uomRecord?.symbol || "",
-              performed_by: user?.email || "Unknown",
+              performed_by: toDisplayName(user),
               timestamp: transaction?.created_at || "",
             };
           })

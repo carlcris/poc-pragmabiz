@@ -1635,7 +1635,7 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 
 ## 31. Warehouse Dashboard
 
-**What it's for**: the landing page every user sees after logging in — summary cards (incoming shipments, open stock requests, active pick lists), an inventory health panel, and a recent stock-movements list.
+**What it's for**: the landing page every user sees after logging in — a summary strip (pick lists to pick, incoming shipments, open stock requests with their urgent count), the operational queue (pick lists, incoming load lists, stock requests), a Stock Attention panel (out of stock, then below reorder level), and a recent stock-movements list. When every visible count is zero, the strip and queue collapse to a single "Nothing waiting on you" line.
 
 **Nature of this screen**: read-only, and every widget on it is independently permission-gated — a user might see some cards and not others depending on their role.
 
@@ -1643,6 +1643,14 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 
 - Log in as users with different roles and confirm each only sees the summary widgets their permissions actually allow, rather than either seeing everything or seeing a broken/empty dashboard.
 - Confirm the numbers shown (open stock requests, active pick lists, etc.) match what you can independently count from those modules' own list screens.
+- Confirm each queue tab's count is the full open total, and that the footer reads "N of M shown" when a queue holds more rows than the dashboard lists (12 at most).
+- Confirm the stock request queue lists urgent requests first, then high, normal and low, each group by soonest required date. Required dates that have passed read "Late · <date>"; today's read "Today".
+- Open a pick list row and confirm it lands on its delivery note, not a stock request.
+- Confirm workflow statuses render as colored text (not badges) and that priority only appears for High and Urgent.
+- At phone width (375px), confirm the page never scrolls sideways, queue tabs and rows are at least 44px tall, and long item names wrap to two lines instead of truncating.
+- Operations Overview: switch Last 7 / 14 / 30 Days and confirm the Stock In vs Stock Out lines and totals match counts of stock transaction lines for those dates; the previous chart stays visible (dimmed) while the new range loads. Confirm stock moves between warehouses do not change either line, while stock adjustments do. Confirm Stock Health counts items with stock on hand but nothing available as Fully Reserved. Confirm Expected Arrivals and Inbound Pipeline match open load lists by ETA and status, Open Work by Age matches the open queues by local creation day, Expiring Soon lists only batches with stock expiring from today through 90 days (expired batches appear only in the expired count), and Slow-Moving Stock lists items with stock and no movement for 90+ days. Use Show Table on the two charts and check the values match the chart.
+- Log in as a user without the stock-value, reorder or incoming-shipments dashboard capabilities and confirm the matching overview cards are absent rather than empty; with none of them, the whole Operations Overview section is hidden.
+- Block the dashboard request after it has loaded once and press Refresh: the existing data must stay visible with a "Couldn't refresh" notice and a Try Again button. On a first load that fails, the page header stays and the error appears in the content area.
 - On a desktop viewport, confirm the right-side quick-action rail shows only creation shortcuts for
   resources where the user has both view and create permission. Confirm each visible icon has a
   translated hover/focus label and opens its creation page or dialog directly.

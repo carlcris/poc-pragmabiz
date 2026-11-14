@@ -22,6 +22,7 @@ import type {
   UpdateDamagedItemRequest,
   StartGRNReceivingRequest,
 } from "@/types/grn";
+import type { GrnReceivingPatch } from "@/lib/grns/receiving-validation";
 
 const DAMAGED_ITEMS_QUERY_KEY = "damagedItems";
 
@@ -98,7 +99,8 @@ export function useSubmitGRN() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => grnsApi.submitGRN(id),
+    mutationFn: ({ id, receivingPatch }: { id: string; receivingPatch?: GrnReceivingPatch }) =>
+      grnsApi.submitGRN(id, receivingPatch),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [GRNS_QUERY_KEY] });
     },

@@ -958,65 +958,162 @@ export type TranslationKeys = {
   };
   dashboardPage: {
     goodMorning: string;
-    goodNoon: string;
     goodAfternoon: string;
     goodEvening: string;
-    fallbackUser: string;
-    subtitle: string;
+    greetingWithName: string;
+    greetingWithoutName: string;
+    updatedAt: string;
+    refresh: string;
+    refreshing: string;
+    loadErrorTitle: string;
     loadError: string;
+    refreshError: string;
     retry: string;
-    incomingShipments: string;
-    inTransit: string;
-    stockRequests: string;
-    pending: string;
-    pickList: string;
+    summaryLabel: string;
     toPick: string;
+    toPickHint: string;
+    incomingShipments: string;
+    incomingShipmentsHint: string;
+    stockRequests: string;
+    stockRequestsHint: string;
+    urgentCount: string;
+    allClearTitle: string;
+    allClearDescription: string;
   };
   warehouseDashboard: {
-    lowStocks: string;
-    outOfStocks: string;
-    noLowStockItems: string;
-    noOutOfStockItems: string;
-    locationLabel: string;
-    reorderLabel: string;
-    lastLabel: string;
-    viewAllInventory: string;
     operationalQueue: string;
+    queueLabel: string;
     pickListTab: string;
     incomingTab: string;
     requestsTab: string;
+    requestsTabShort: string;
     noItemsToPick: string;
     noIncomingDeliveries: string;
     noPendingRequests: string;
+    documentColumn: string;
+    priorityColumn: string;
+    statusColumn: string;
+    createdByColumn: string;
+    supplierColumn: string;
+    requestedByColumn: string;
+    itemsColumn: string;
+    createdColumn: string;
+    etaColumn: string;
+    requiredColumn: string;
+    actionColumn: string;
+    open: string;
     itemsCount: string;
-    dueLabel: string;
-    byLabel: string;
-    etaLabel: string;
-    requiredLabel: string;
-    status_draft: string;
-    status_submitted: string;
-    status_approved: string;
-    status_picking: string;
-    status_picked: string;
-    status_delivered: string;
-    status_completed: string;
-    status_cancelled: string;
-    status_in_transit: string;
-    status_partially_received: string;
+    shownCount: string;
+    viewAllPickLists: string;
+    viewAllLoadLists: string;
+    viewAllStockRequests: string;
+    today: string;
+    lateDate: string;
+    noEta: string;
+    unknownUser: string;
+    unknownSupplier: string;
     status_pending: string;
     status_in_progress: string;
     status_paused: string;
+    status_in_transit: string;
     status_receiving: string;
-    priority_low: string;
-    priority_normal: string;
+    status_submitted: string;
+    status_approved: string;
+    status_other: string;
     priority_high: string;
     priority_urgent: string;
-    lastStockMovements: string;
+    stockAttention: string;
+    outOfStock: string;
+    belowReorder: string;
+    noOutOfStockItems: string;
+    noLowStockItems: string;
+    reorderAt: string;
+    viewAllInventory: string;
+    recentStockMovements: string;
     noRecentStockMovements: string;
+    movementType_in: string;
+    movementType_out: string;
+    movementType_transfer: string;
+    movementType_adjustment: string;
+    movementType_other: string;
     justNow: string;
     minutesAgo: string;
     hoursAgo: string;
-    byUser: string;
+  };
+  operationsOverview: {
+    title: string;
+    rangeLabel: string;
+    range7: string;
+    range14: string;
+    range30: string;
+    loadErrorTitle: string;
+    loadError: string;
+    retry: string;
+    showTable: string;
+    showChart: string;
+    dateColumn: string;
+    movementsTitle: string;
+    movementsSubtitle: string;
+    stockIn: string;
+    stockOut: string;
+    stockInShort: string;
+    stockOutShort: string;
+    movementsAria: string;
+    healthTitle: string;
+    healthSubtitle: string;
+    itemsLabel: string;
+    inStock: string;
+    belowReorder: string;
+    fullyReserved: string;
+    outOfStock: string;
+    healthAria: string;
+    arrivalsTitle: string;
+    arrivalsSubtitle: string;
+    overdueCount: string;
+    arrivalsColumn: string;
+    arrivalsAria: string;
+    pipelineTitle: string;
+    pipelineSubtitle: string;
+    stage_confirmed: string;
+    stage_in_transit: string;
+    stage_arrived: string;
+    stage_receiving: string;
+    stage_pending_approval: string;
+    workAgeTitle: string;
+    workAgeSubtitle: string;
+    workAgeLegend: string;
+    age_under1: string;
+    age_1to3: string;
+    age_4to7: string;
+    age_over7: string;
+    workPickLists: string;
+    workStockRequests: string;
+    workIncoming: string;
+    workAgeAria: string;
+    expiringTitle: string;
+    expiringSubtitle: string;
+    expiredCount: string;
+    withinSevenDays: string;
+    itemColumn: string;
+    batchColumn: string;
+    warehouseColumn: string;
+    onHandColumn: string;
+    expiresColumn: string;
+    statusColumn: string;
+    expiresToday: string;
+    daysLeft: string;
+    expiresOn: string;
+    noExpiringBatches: string;
+    openReports: string;
+    slowTitle: string;
+    slowSubtitle: string;
+    slowItemsLabel: string;
+    noSlowMoving: string;
+    daysIdle: string;
+    neverMoved: string;
+    noArrivals: string;
+    noInbound: string;
+    noOpenWork: string;
   };
   notificationsPage: {
     title: string;
@@ -3918,6 +4015,7 @@ export type TranslationKeys = {
   loadListValidation: Record<string, string>;
   grnsPage: Record<string, string>;
   grnDetailPage: Record<string, string>;
+  tabletPicking: Record<string, string>;
   grnDamagedItemsSection: Record<string, string>;
   grnBoxManagementSection: Record<string, string>;
   grnPutawayPage: Record<string, string>;
@@ -5094,65 +5192,166 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     dashboardPage: {
       goodMorning: "Good morning",
-      goodNoon: "Good noon",
       goodAfternoon: "Good afternoon",
       goodEvening: "Good evening",
-      fallbackUser: "User",
-      subtitle: "Here's what's happening in your warehouse today",
-      loadError: "Failed to load dashboard data. Please try again.",
-      retry: "Retry",
-      incomingShipments: "Incoming Shipments",
-      inTransit: "In Transit",
-      stockRequests: "Stock Transfers",
-      pending: "Pending",
-      pickList: "Pick List",
+      greetingWithName: "{greeting}, {name}!",
+      greetingWithoutName: "{greeting}!",
+      updatedAt: "Updated {time}",
+      refresh: "Refresh",
+      refreshing: "Refreshing",
+      loadErrorTitle: "The dashboard didn't load",
+      loadError: "Check your connection, then try again.",
+      refreshError: "Couldn't refresh. Showing data from {time}.",
+      retry: "Try Again",
+      summaryLabel: "Today at a glance",
       toPick: "To Pick",
+      toPickHint: "Pick lists open",
+      incomingShipments: "Incoming Shipments",
+      incomingShipmentsHint: "In transit or awaiting receipt",
+      stockRequests: "Stock Requests",
+      stockRequestsHint: "Submitted or approved",
+      urgentCount: "{count} urgent",
+      allClearTitle: "Nothing waiting on you",
+      allClearDescription: "No pick lists, deliveries or stock requests are open.",
     },
     warehouseDashboard: {
-      lowStocks: "Low Stocks",
-      outOfStocks: "Out of Stocks",
-      noLowStockItems: "No low stock items",
-      noOutOfStockItems: "No out of stock items",
-      locationLabel: "Location",
-      reorderLabel: "Reorder",
-      lastLabel: "Last",
-      viewAllInventory: "View all inventory",
       operationalQueue: "Operational Queue",
-      pickListTab: "Pick List ({count})",
-      incomingTab: "Incoming ({count})",
-      requestsTab: "Requests ({count})",
-      noItemsToPick: "No items to pick",
-      noIncomingDeliveries: "No incoming deliveries",
-      noPendingRequests: "No pending requests",
+      queueLabel: "Queue",
+      pickListTab: "Pick Lists",
+      incomingTab: "Incoming",
+      requestsTab: "Stock Requests",
+      requestsTabShort: "Requests",
+      noItemsToPick: "No pick lists are open",
+      noIncomingDeliveries: "No deliveries are on the way",
+      noPendingRequests: "No stock requests are waiting",
+      documentColumn: "Document",
+      priorityColumn: "Priority",
+      statusColumn: "Status",
+      createdByColumn: "Created By",
+      supplierColumn: "Supplier",
+      requestedByColumn: "Requested By",
+      itemsColumn: "Items",
+      createdColumn: "Created",
+      etaColumn: "ETA",
+      requiredColumn: "Required",
+      actionColumn: "Action",
+      open: "Open",
       itemsCount: "{count} items",
-      dueLabel: "Due",
-      byLabel: "By",
-      etaLabel: "ETA",
-      requiredLabel: "Required",
-      status_draft: "Draft",
-      status_submitted: "Submitted",
-      status_approved: "Approved",
-      status_picking: "Picking",
-      status_picked: "Picked",
-      status_delivered: "Dispatched",
-      status_completed: "Completed",
-      status_cancelled: "Cancelled",
-      status_in_transit: "In Transit",
-      status_partially_received: "Partially Received",
+      shownCount: "{shown} of {total} shown",
+      viewAllPickLists: "View All Pick Lists",
+      viewAllLoadLists: "View All Load Lists",
+      viewAllStockRequests: "View All Stock Requests",
+      today: "Today",
+      lateDate: "Late · {date}",
+      noEta: "No ETA",
+      unknownUser: "Unknown",
+      unknownSupplier: "Unknown supplier",
       status_pending: "Pending",
       status_in_progress: "In Progress",
       status_paused: "Paused",
+      status_in_transit: "In Transit",
       status_receiving: "Receiving",
-      priority_low: "Low",
-      priority_normal: "Normal",
+      status_submitted: "Submitted",
+      status_approved: "Approved",
+      status_other: "Other",
       priority_high: "High",
       priority_urgent: "Urgent",
-      lastStockMovements: "Last 5 Stock Movements",
+      stockAttention: "Stock Attention",
+      outOfStock: "Out of Stock",
+      belowReorder: "Below Reorder Level",
+      noOutOfStockItems: "No items are out of stock",
+      noLowStockItems: "No items are below their reorder level",
+      reorderAt: "Reorder at {qty}",
+      viewAllInventory: "View All Inventory",
+      recentStockMovements: "Recent Stock Movements",
       noRecentStockMovements: "No recent stock movements",
+      movementType_in: "Stock In",
+      movementType_out: "Stock Out",
+      movementType_transfer: "Transfer",
+      movementType_adjustment: "Adjustment",
+      movementType_other: "Movement",
       justNow: "Just now",
-      minutesAgo: "{count}m ago",
-      hoursAgo: "{count}h ago",
-      byUser: "by {user}",
+      minutesAgo: "{count} min ago",
+      hoursAgo: "{count} hr ago",
+    },
+    operationsOverview: {
+      title: "Operations Overview",
+      rangeLabel: "Date range",
+      range7: "Last 7 Days",
+      range14: "Last 14 Days",
+      range30: "Last 30 Days",
+      loadErrorTitle: "The overview didn't load",
+      loadError: "Check your connection, then try again.",
+      retry: "Try Again",
+      showTable: "Show Table",
+      showChart: "Show Chart",
+      dateColumn: "Date",
+      movementsTitle: "Stock In vs Stock Out",
+      movementsSubtitle: "Transaction lines per day · last {days} days",
+      stockIn: "Stock In",
+      stockOut: "Stock Out",
+      stockInShort: "In",
+      stockOutShort: "Out",
+      movementsAria:
+        "Stock in and stock out transaction lines per day for the last {days} days: {inTotal} in, {outTotal} out.",
+      healthTitle: "Stock Health",
+      healthSubtitle: "Stocked items in this business unit · now",
+      itemsLabel: "items",
+      inStock: "In Stock",
+      belowReorder: "Below Reorder",
+      outOfStock: "Out of Stock",
+      fullyReserved: "Fully Reserved",
+      healthAria:
+        "Stock health of {total} items: {inStock} in stock, {belowReorder} below reorder level, {fullyReserved} fully reserved, {outOfStock} out of stock.",
+      arrivalsTitle: "Expected Arrivals",
+      arrivalsSubtitle: "Load lists by ETA · next 14 days",
+      overdueCount: "{count} Overdue",
+      arrivalsColumn: "Arrivals",
+      arrivalsAria:
+        "Expected load list arrivals for the next 14 days: {total} in total, {overdue} overdue.",
+      pipelineTitle: "Inbound Pipeline",
+      pipelineSubtitle: "Open load lists by stage · {total} total",
+      stage_confirmed: "Confirmed",
+      stage_in_transit: "In Transit",
+      stage_arrived: "Arrived",
+      stage_receiving: "Receiving",
+      stage_pending_approval: "Pending Approval",
+      workAgeTitle: "Open Work by Age",
+      workAgeSubtitle: "Days since created · now",
+      workAgeLegend: "Age buckets",
+      age_under1: "Under 1 Day",
+      age_1to3: "1–3 Days",
+      age_4to7: "4–7 Days",
+      age_over7: "Over 7 Days",
+      workPickLists: "Pick Lists",
+      workStockRequests: "Stock Requests",
+      workIncoming: "Incoming",
+      workAgeAria:
+        "{label}: {under1} under 1 day, {d1to3} 1 to 3 days, {d4to7} 4 to 7 days, {over7} over 7 days.",
+      expiringTitle: "Expiring Soon",
+      expiringSubtitle: "Stocked batches expiring in the next 90 days, soonest first",
+      expiredCount: "{count} expired",
+      withinSevenDays: "{count} within 7 days",
+      itemColumn: "Item",
+      batchColumn: "Batch",
+      warehouseColumn: "Warehouse",
+      onHandColumn: "On Hand",
+      expiresColumn: "Expires",
+      statusColumn: "Status",
+      expiresToday: "Expires today",
+      daysLeft: "{count, plural, one {# day left} other {# days left}}",
+      expiresOn: "Expires {date}",
+      noExpiringBatches: "No batches expire in the next 90 days",
+      openReports: "Open Reports",
+      slowTitle: "Slow-Moving Stock",
+      slowSubtitle: "No movement in 90+ days, oldest first",
+      slowItemsLabel: "items with stock on hand",
+      noSlowMoving: "Every stocked item moved in the last 90 days",
+      daysIdle: "{count, plural, one {# day} other {# days}}",
+      neverMoved: "No movements",
+      noArrivals: "No load lists are due in the next 14 days",
+      noInbound: "No open load lists",
+      noOpenWork: "No open pick lists, stock requests or incoming shipments",
     },
     notificationsPage: {
       title: "Notifications",
@@ -10780,6 +10979,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       addNotesPlaceholder: "Add notes...",
       additionalNotes: "Additional Notes",
       noNotes: "No notes added.",
+      additionalNotesPlaceholder: "Add notes for this GRN...",
       confirmTitle: "Confirm GRN",
       confirmDescription:
         "Are you sure you want to confirm {grnNumber}? This confirms the received stock staged for putaway. This action cannot be undone.",
@@ -10793,6 +10993,12 @@ export const translations: Record<Locale, TranslationKeys> = {
       confirmSuccess: "GRN confirmed successfully",
       confirmError: "Failed to confirm GRN",
       noValue: "-",
+    },
+    tabletPicking: {
+      linesCount: "{count, plural, one {# Line} other {# Lines}}",
+      createdBy: "Created By: {name}",
+      createdOn: "Created: {date}",
+      unknownUser: "Unknown",
     },
     grnDamagedItemsSection: {
       title: "Damaged Items",
@@ -12168,65 +12374,164 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     dashboardPage: {
       goodMorning: "早上好",
-      goodNoon: "中午好",
       goodAfternoon: "下午好",
       goodEvening: "晚上好",
-      fallbackUser: "用户",
-      subtitle: "以下是今天仓库的最新情况",
-      loadError: "加载仪表板数据失败。请重试。",
+      greetingWithName: "{greeting}，{name}！",
+      greetingWithoutName: "{greeting}！",
+      updatedAt: "更新于 {time}",
+      refresh: "刷新",
+      refreshing: "刷新中",
+      loadErrorTitle: "仪表板未能加载",
+      loadError: "请检查网络连接，然后重试。",
+      refreshError: "刷新失败。当前显示 {time} 的数据。",
       retry: "重试",
-      incomingShipments: "到货运输",
-      inTransit: "运输中",
-      stockRequests: "库存调拨",
-      pending: "待处理",
-      pickList: "拣货单",
+      summaryLabel: "今日概览",
       toPick: "待拣货",
+      toPickHint: "未完成的拣货单",
+      incomingShipments: "到货运输",
+      incomingShipmentsHint: "运输中或待接收",
+      stockRequests: "库存申请",
+      stockRequestsHint: "已提交或已批准",
+      urgentCount: "{count} 项紧急",
+      allClearTitle: "暂无待办事项",
+      allClearDescription: "没有未完成的拣货单、到货或库存申请。",
     },
     warehouseDashboard: {
-      lowStocks: "低库存",
-      outOfStocks: "缺货商品",
-      noLowStockItems: "没有低库存商品",
-      noOutOfStockItems: "没有缺货商品",
-      locationLabel: "库位",
-      reorderLabel: "补货点",
-      lastLabel: "最近",
-      viewAllInventory: "查看全部库存",
       operationalQueue: "作业队列",
-      pickListTab: "拣货单（{count}）",
-      incomingTab: "到货（{count}）",
-      requestsTab: "申请（{count}）",
-      noItemsToPick: "没有待拣货项目",
-      noIncomingDeliveries: "没有待到货记录",
-      noPendingRequests: "没有待处理申请",
+      queueLabel: "队列",
+      pickListTab: "拣货单",
+      incomingTab: "到货",
+      requestsTab: "库存申请",
+      requestsTabShort: "申请",
+      noItemsToPick: "没有未完成的拣货单",
+      noIncomingDeliveries: "没有在途到货",
+      noPendingRequests: "没有待处理的库存申请",
+      documentColumn: "单据",
+      priorityColumn: "优先级",
+      statusColumn: "状态",
+      createdByColumn: "创建人",
+      supplierColumn: "供应商",
+      requestedByColumn: "申请人",
+      itemsColumn: "项目",
+      createdColumn: "创建日期",
+      etaColumn: "预计到达",
+      requiredColumn: "需求日期",
+      actionColumn: "操作",
+      open: "打开",
       itemsCount: "{count} 个项目",
-      dueLabel: "截止",
-      byLabel: "申请人",
-      etaLabel: "预计到达",
-      requiredLabel: "需求日期",
-      status_draft: "草稿",
-      status_submitted: "已提交",
-      status_approved: "已批准",
-      status_picking: "拣货中",
-      status_picked: "已拣货",
-      status_delivered: "已发运",
-      status_completed: "已完成",
-      status_cancelled: "已取消",
-      status_in_transit: "运输中",
-      status_partially_received: "部分接收",
+      shownCount: "显示 {shown} / {total}",
+      viewAllPickLists: "查看全部拣货单",
+      viewAllLoadLists: "查看全部装货单",
+      viewAllStockRequests: "查看全部库存申请",
+      today: "今天",
+      lateDate: "已延误 · {date}",
+      noEta: "无预计到达",
+      unknownUser: "未知",
+      unknownSupplier: "未知供应商",
       status_pending: "待处理",
       status_in_progress: "进行中",
       status_paused: "已暂停",
+      status_in_transit: "运输中",
       status_receiving: "接收中",
-      priority_low: "低",
-      priority_normal: "普通",
+      status_submitted: "已提交",
+      status_approved: "已批准",
+      status_other: "其他",
       priority_high: "高",
       priority_urgent: "紧急",
-      lastStockMovements: "最近 5 条库存移动",
+      stockAttention: "库存预警",
+      outOfStock: "缺货",
+      belowReorder: "低于补货点",
+      noOutOfStockItems: "没有缺货商品",
+      noLowStockItems: "没有低于补货点的商品",
+      reorderAt: "补货点 {qty}",
+      viewAllInventory: "查看全部库存",
+      recentStockMovements: "最近库存移动",
       noRecentStockMovements: "没有最近的库存移动",
+      movementType_in: "入库",
+      movementType_out: "出库",
+      movementType_transfer: "调拨",
+      movementType_adjustment: "调整",
+      movementType_other: "移动",
       justNow: "刚刚",
       minutesAgo: "{count} 分钟前",
       hoursAgo: "{count} 小时前",
-      byUser: "操作人 {user}",
+    },
+    operationsOverview: {
+      title: "运营概览",
+      rangeLabel: "日期范围",
+      range7: "近 7 天",
+      range14: "近 14 天",
+      range30: "近 30 天",
+      loadErrorTitle: "概览未能加载",
+      loadError: "请检查网络连接，然后重试。",
+      retry: "重试",
+      showTable: "显示表格",
+      showChart: "显示图表",
+      dateColumn: "日期",
+      movementsTitle: "入库与出库",
+      movementsSubtitle: "每日交易行数 · 近 {days} 天",
+      stockIn: "入库",
+      stockOut: "出库",
+      stockInShort: "入",
+      stockOutShort: "出",
+      movementsAria: "近 {days} 天每日入库与出库交易行数：入库 {inTotal}，出库 {outTotal}。",
+      healthTitle: "库存健康",
+      healthSubtitle: "本业务单元的在库商品 · 当前",
+      itemsLabel: "个商品",
+      inStock: "库存正常",
+      belowReorder: "低于补货点",
+      outOfStock: "缺货",
+      fullyReserved: "已全部预留",
+      healthAria:
+        "{total} 个商品的库存健康：{inStock} 个正常，{belowReorder} 个低于补货点，{fullyReserved} 个已全部预留，{outOfStock} 个缺货。",
+      arrivalsTitle: "预计到货",
+      arrivalsSubtitle: "按预计到达日期的装货单 · 未来 14 天",
+      overdueCount: "{count} 个已逾期",
+      arrivalsColumn: "到货数",
+      arrivalsAria: "未来 14 天预计到达的装货单：共 {total} 个，{overdue} 个已逾期。",
+      pipelineTitle: "入库流程",
+      pipelineSubtitle: "按阶段统计的未完成装货单 · 共 {total} 个",
+      stage_confirmed: "已确认",
+      stage_in_transit: "运输中",
+      stage_arrived: "已到达",
+      stage_receiving: "接收中",
+      stage_pending_approval: "待审批",
+      workAgeTitle: "未完成工作账龄",
+      workAgeSubtitle: "自创建以来的天数 · 当前",
+      workAgeLegend: "账龄区间",
+      age_under1: "不足 1 天",
+      age_1to3: "1–3 天",
+      age_4to7: "4–7 天",
+      age_over7: "超过 7 天",
+      workPickLists: "拣货单",
+      workStockRequests: "库存申请",
+      workIncoming: "到货",
+      workAgeAria:
+        "{label}：不足 1 天 {under1} 个，1 至 3 天 {d1to3} 个，4 至 7 天 {d4to7} 个，超过 7 天 {over7} 个。",
+      expiringTitle: "即将过期",
+      expiringSubtitle: "未来 90 天内到期的有库存批次，按到期日排序",
+      expiredCount: "{count} 个已过期",
+      withinSevenDays: "{count} 个 7 天内到期",
+      itemColumn: "商品",
+      batchColumn: "批次",
+      warehouseColumn: "仓库",
+      onHandColumn: "现有库存",
+      expiresColumn: "到期日",
+      statusColumn: "状态",
+      expiresToday: "今天到期",
+      daysLeft: "剩余 {count} 天",
+      expiresOn: "{date} 到期",
+      noExpiringBatches: "未来 90 天内没有批次到期",
+      openReports: "打开报表",
+      slowTitle: "呆滞库存",
+      slowSubtitle: "超过 90 天无移动，最久的在前",
+      slowItemsLabel: "个有库存的商品",
+      noSlowMoving: "所有在库商品在近 90 天内都有移动",
+      daysIdle: "{count} 天",
+      neverMoved: "无移动记录",
+      noArrivals: "未来 14 天内没有到期的装货单",
+      noInbound: "没有未完成的装货单",
+      noOpenWork: "没有未完成的拣货单、库存申请或到货",
     },
     notificationsPage: {
       title: "通知",
@@ -17658,6 +17963,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       addNotesPlaceholder: "添加备注...",
       additionalNotes: "附加备注",
       noNotes: "暂无备注。",
+      additionalNotesPlaceholder: "添加此收货单的备注...",
       confirmTitle: "确认收货单",
       confirmDescription:
         "确定要确认 {grnNumber} 吗？这将确认已暂存到上架区的收货库存。此操作无法撤销。",
@@ -17671,6 +17977,12 @@ export const translations: Record<Locale, TranslationKeys> = {
       confirmSuccess: "收货单确认成功",
       confirmError: "确认收货单失败",
       noValue: "-",
+    },
+    tabletPicking: {
+      linesCount: "{count} 行",
+      createdBy: "创建人：{name}",
+      createdOn: "创建于：{date}",
+      unknownUser: "未知",
     },
     grnDamagedItemsSection: {
       title: "损坏项目",
