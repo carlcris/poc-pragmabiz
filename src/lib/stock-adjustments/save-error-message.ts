@@ -1,12 +1,17 @@
 import { getApiErrorCode } from "@/lib/api";
-import { STOCK_ADJUSTMENT_SAVE_ERROR_CODES } from "./save-errors";
+import { STOCK_ADJUSTMENT_POST_ERROR_CODES } from "./save-errors";
 import type { translations } from "@/lib/i18n/translations";
 
 export const getStockAdjustmentSaveErrorMessage = (
   error: unknown,
-  t: (key: keyof typeof translations.en.stockAdjustmentLineItemValidation) => string
+  t: (key: keyof typeof translations.en.stockAdjustmentLineItemValidation) => string,
+  action: "save" | "post" = "save"
 ): string => {
-  switch (getApiErrorCode(error, STOCK_ADJUSTMENT_SAVE_ERROR_CODES)) {
+  switch (getApiErrorCode(error, STOCK_ADJUSTMENT_POST_ERROR_CODES)) {
+    case "STOCK_ADJUSTMENT_NO_NET_CHANGE":
+      return t("postNoNetChange");
+    case "STOCK_ADJUSTMENT_INSUFFICIENT_STOCK":
+      return t("postInsufficientStock");
     case "STOCK_ADJUSTMENT_ENTERED_UNIT_INVALID":
       return t("saveEnteredUnitInvalid");
     case "STOCK_ADJUSTMENT_BATCH_ALREADY_EXISTS":
@@ -46,10 +51,10 @@ export const getStockAdjustmentSaveErrorMessage = (
     case "STOCK_ADJUSTMENT_LOCATION_INVALID":
       return t("saveLocationInvalid");
     case "STOCK_ADJUSTMENT_FORBIDDEN":
-      return t("saveForbidden");
+      return t(action === "post" ? "postForbidden" : "saveForbidden");
     case "STOCK_ADJUSTMENT_WAREHOUSE_IMMUTABLE":
       return t("saveWarehouseImmutable");
     default:
-      return t("saveFailed");
+      return t(action === "post" ? "postFailed" : "saveFailed");
   }
 };

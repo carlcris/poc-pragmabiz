@@ -8955,6 +8955,7 @@ export type Database = {
           entered_unit_label: string | null;
           entered_unit_option_id: string | null;
           id: string;
+          item_batch_id: string | null;
           item_batch_location_id: string | null;
           item_code: string;
           item_id: string;
@@ -8981,6 +8982,7 @@ export type Database = {
           entered_unit_label?: string | null;
           entered_unit_option_id?: string | null;
           id?: string;
+          item_batch_id?: string | null;
           item_batch_location_id?: string | null;
           item_code: string;
           item_id: string;
@@ -9007,6 +9009,7 @@ export type Database = {
           entered_unit_label?: string | null;
           entered_unit_option_id?: string | null;
           id?: string;
+          item_batch_id?: string | null;
           item_batch_location_id?: string | null;
           item_code?: string;
           item_id?: string;
@@ -9047,6 +9050,20 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "item_unit_options";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "stock_adjustment_items_item_batch_id_fkey";
+            columns: ["item_batch_id"];
+            isOneToOne: false;
+            referencedRelation: "item_batches";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "stock_adjustment_items_item_batch_id_fkey";
+            columns: ["item_batch_id"];
+            isOneToOne: false;
+            referencedRelation: "v_inventory_recon_item_batch_vs_batch_location";
+            referencedColumns: ["item_batch_id"];
           },
           {
             foreignKeyName: "stock_adjustment_items_item_batch_location_id_fkey";
@@ -13069,6 +13086,16 @@ export type Database = {
           uom: string;
         }[];
       };
+      get_warehouse_dashboard_out_of_stocks: {
+        Args: { p_business_unit_ids: string[]; p_company_id: string };
+        Returns: {
+          item_id: string;
+          item_name: string;
+          location_code: string;
+          qty: number;
+          uom: string;
+        }[];
+      };
       get_warehouse_location_capacities: {
         Args: {
           p_business_unit_id: string;
@@ -13086,16 +13113,6 @@ export type Database = {
           code: string;
           company_id: string;
           created_at: string;
-      get_warehouse_dashboard_out_of_stocks: {
-        Args: { p_business_unit_ids: string[]; p_company_id: string };
-        Returns: {
-          item_id: string;
-          item_name: string;
-          location_code: string;
-          qty: number;
-          uom: string;
-        }[];
-      };
           id: string;
           is_active: boolean;
           is_pickable: boolean;

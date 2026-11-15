@@ -6,6 +6,8 @@ import type {
   CreateStockAdjustmentRequest,
   UpdateStockAdjustmentRequest,
   PostStockAdjustmentRequest,
+  PostStockAdjustmentResponse,
+  SaveStockAdjustmentResponse,
 } from "@/types/stock-adjustment";
 
 export const stockAdjustmentsApi = {
@@ -38,15 +40,18 @@ export const stockAdjustmentsApi = {
   /**
    * Create new stock adjustment
    */
-  async create(data: CreateStockAdjustmentRequest): Promise<StockAdjustment> {
-    return apiClient.post<StockAdjustment>("/api/stock-adjustments", data);
+  async create(data: CreateStockAdjustmentRequest): Promise<SaveStockAdjustmentResponse> {
+    return apiClient.post<SaveStockAdjustmentResponse>("/api/stock-adjustments", data);
   },
 
   /**
    * Update stock adjustment (draft only)
    */
-  async update(id: string, data: UpdateStockAdjustmentRequest): Promise<StockAdjustment> {
-    return apiClient.patch<StockAdjustment>(`/api/stock-adjustments/${id}`, data);
+  async update(
+    id: string,
+    data: UpdateStockAdjustmentRequest
+  ): Promise<SaveStockAdjustmentResponse> {
+    return apiClient.patch<SaveStockAdjustmentResponse>(`/api/stock-adjustments/${id}`, data);
   },
 
   /**
@@ -59,7 +64,10 @@ export const stockAdjustmentsApi = {
   /**
    * Post/approve stock adjustment (creates stock transaction)
    */
-  async post(id: string, data?: PostStockAdjustmentRequest): Promise<StockAdjustment> {
-    return apiClient.post<StockAdjustment>(`/api/stock-adjustments/${id}/post`, data || {});
+  async post(id: string, data?: PostStockAdjustmentRequest): Promise<PostStockAdjustmentResponse> {
+    return apiClient.post<PostStockAdjustmentResponse>(
+      `/api/stock-adjustments/${id}/post`,
+      data || {}
+    );
   },
 };

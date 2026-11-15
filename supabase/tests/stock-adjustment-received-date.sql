@@ -9,21 +9,24 @@ JOIN public.user_business_unit_access access_row ON access_row.user_id = actor.i
 JOIN public.warehouses wh ON wh.business_unit_id = access_row.business_unit_id
   AND wh.company_id = actor.company_id AND wh.is_active AND wh.deleted_at IS NULL
 JOIN public.warehouse_locations loc ON loc.warehouse_id = wh.id
-  AND loc.is_active AND loc.deleted_at IS NULL
+  AND loc.is_active AND loc.is_storable AND loc.deleted_at IS NULL
 JOIN public.items item ON item.company_id = actor.company_id AND item.deleted_at IS NULL
 WHERE actor.is_active AND actor.deleted_at IS NULL
   AND public.user_has_permission(actor.id, 'stock_adjustments', 'create', wh.business_unit_id)
+  AND public.user_has_permission(actor.id, 'stock_adjustments', 'edit', wh.business_unit_id)
 LIMIT 1;
 GRANT SELECT ON received_date_context TO authenticated;
 SELECT set_config('request.jwt.claim.sub', actor_id::TEXT, TRUE) FROM received_date_context;
 SELECT set_config('request.jwt.claim.role', 'authenticated', TRUE);
+SELECT set_config('request.jwt.claims', jsonb_build_object('current_business_unit_id', business_unit_id)::text, TRUE)
+FROM received_date_context;
 SET LOCAL ROLE authenticated;
 DO $$
 DECLARE
   ctx RECORD;
   line JSONB;
   saved_id UUID;
-  batch_location_id UUID;
+  saved_batch_id UUID;
   adjustment_count BIGINT;
   ordered_codes TEXT[];
 BEGIN
@@ -45,12 +48,14 @@ BEGIN
     AND received_at = TIMESTAMP '1999-01-01 00:00:00') THEN
     RAISE EXCEPTION 'Received date was not persisted';
   END IF;
-  SELECT item_batch_location_id INTO batch_location_id FROM public.stock_adjustment_items
-  WHERE adjustment_id = saved_id ORDER BY created_at, id LIMIT 1;
+  SELECT line_item.item_batch_id INTO STRICT saved_batch_id
+  FROM public.stock_adjustment_items line_item
+  JOIN public.item_batches batch ON batch.id = line_item.item_batch_id
+  WHERE line_item.adjustment_id = saved_id AND batch.batch_code = ctx.batch_prefix || '-old';
   PERFORM adjustment_id FROM public.update_stock_adjustment(
     ctx.company_id, ctx.business_unit_id, ctx.actor_id, saved_id,
     p_items => jsonb_build_array((line - 'batchReceivedDate' - 'batchCode') ||
-      jsonb_build_object('itemBatchLocationId', batch_location_id)));
+      jsonb_build_object('itemBatchId', saved_batch_id)));
   IF NOT EXISTS (SELECT 1 FROM public.item_batches WHERE batch_code = ctx.batch_prefix || '-old'
     AND received_at = TIMESTAMP '1999-01-01 00:00:00') THEN
     RAISE EXCEPTION 'Existing batch date changed on draft update';

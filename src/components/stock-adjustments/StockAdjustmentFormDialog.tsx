@@ -161,7 +161,8 @@ export function StockAdjustmentFormDialog({
       const formLineItems: StockAdjustmentLineItemFormValues[] = selectedAdjustment.items.map(
         (item) => ({
           itemId: item.itemId,
-          batchEntryMode: item.itemBatchLocationId ? "existing" : "new",
+          batchEntryMode: item.itemBatchLocationId || item.itemBatchId ? "existing" : "new",
+          itemBatchId: item.itemBatchId || "",
           itemBatchLocationId: item.itemBatchLocationId || "",
           batchLocationSku: item.batchLocationSku || "",
           batchCode: item.batchCode || "",
@@ -202,6 +203,15 @@ export function StockAdjustmentFormDialog({
   }, [form, open, selectedAdjustment, t]);
 
   const selectedWarehouseId = form.watch("warehouseId");
+  const selectedLocationId = form.watch("locationId");
+  const needsBatchReselection = (item: StockAdjustmentLineItemFormValues) =>
+    Boolean(
+      item.itemBatchLocationId &&
+      selectedLocationId &&
+      item.batchWarehouseLocationId !== selectedLocationId
+    );
+  const hasMismatchedBatches = lineItems.some(needsBatchReselection);
+  const needsLocation = !selectedLocationId && lineItems.some((item) => !item.itemBatchLocationId);
 
   const handleAddItem = () => {
     setEditingItem(null);
@@ -209,7 +219,30 @@ export function StockAdjustmentFormDialog({
   };
 
   const handleEditItem = (index: number) => {
-    setEditingItem({ index, item: lineItems[index] });
+    const item = lineItems[index];
+    const reselect =
+      needsBatchReselection(item) || (!selectedLocationId && !item.itemBatchLocationId);
+    setEditingItem({
+      index,
+      item: reselect
+        ? {
+            ...item,
+            batchEntryMode: "existing",
+            itemBatchId: "",
+            itemBatchLocationId: "",
+            batchLocationSku: "",
+            batchCode: "",
+            batchReceivedAt: "",
+            batchExpirationDate: "",
+            batchWarehouseLocationId: "",
+            batchLocationCode: "",
+            batchLocationName: "",
+            currentQty: 0,
+            adjustedQty: 0,
+            enteredQty: 0,
+          }
+        : item,
+    });
     setItemDialogOpen(true);
   };
 
@@ -268,7 +301,7 @@ export function StockAdjustmentFormDialog({
   };
 
   const handleSubmit = async (values: StockAdjustmentFormValues) => {
-    if (lineItems.length === 0) {
+    if (lineItems.length === 0 || hasMismatchedBatches || needsLocation) {
       return;
     }
 
@@ -480,6 +513,12 @@ export function StockAdjustmentFormDialog({
                     ) : null}
                   </div>
 
+                  {hasMismatchedBatches || needsLocation ? (
+                    <p role="alert" className="text-sm text-destructive">
+                      {needsLocation ? t("draftLocationRequired") : t("reselectBatchesForLocation")}
+                    </p>
+                  ) : null}
+
                   {lineItems.length === 0 ? (
                     <div className="flex min-h-48 flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed p-6 text-center">
                       <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-primary">
@@ -546,7 +585,13 @@ export function StockAdjustmentFormDialog({
                                       {item.batchLocationSku}
                                     </div>
                                   ) : null}
-                                  {item.batchLocationCode || item.batchLocationName ? (
+                                  {needsBatchReselection(item) ? (
+                                    <div className="text-xs text-destructive">
+                                      {t("batchLocationNeedsReview")}
+                                    </div>
+                                  ) : (item.batchLocationCode || item.batchLocationName) &&
+                                    (item.itemBatchLocationId ||
+                                      item.batchWarehouseLocationId === selectedLocationId) ? (
                                     <div className="text-xs text-muted-foreground">
                                       {item.batchLocationCode || item.batchLocationName}
                                     </div>
@@ -612,6 +657,7 @@ export function StockAdjustmentFormDialog({
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end">
                                         <DropdownMenuItem
+                                          disabled={needsBatchReselection(item)}
                                           onClick={() => handlePrintBatchLabel(item)}
                                         >
                                           <Printer className="mr-2 h-4 w-4" />
@@ -678,7 +724,12 @@ export function StockAdjustmentFormDialog({
                   <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                     {t("cancel")}
                   </Button>
-                  <Button type="submit" disabled={isSaving || lineItems.length === 0}>
+                  <Button
+                    type="submit"
+                    disabled={
+                      isSaving || lineItems.length === 0 || hasMismatchedBatches || needsLocation
+                    }
+                  >
                     {isSaving
                       ? t("saving")
                       : selectedAdjustment
@@ -709,7 +760,7 @@ export function StockAdjustmentFormDialog({
           item={editingItem?.item || null}
           mode={editingItem ? "edit" : "add"}
           warehouseId={selectedWarehouseId}
-          locationId={form.watch("locationId")}
+          locationId={selectedLocationId}
         />
       )}
     </>

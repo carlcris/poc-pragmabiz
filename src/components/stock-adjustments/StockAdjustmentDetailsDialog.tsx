@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Pencil, Printer } from "lucide-react";
+import { useStockAdjustment } from "@/hooks/useStockAdjustments";
 import type { StockAdjustment, StockAdjustmentItem } from "@/types/stock-adjustment";
 import { StockAdjustmentStatusText } from "@/components/stock-adjustments/StockAdjustmentStatusText";
 import { StockAdjustmentTypeLabel } from "@/components/stock-adjustments/StockAdjustmentTypeLabel";
@@ -27,7 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 
 type StockAdjustmentDetailsDialogProps = {
-  adjustment: StockAdjustment | null;
+  selection: Pick<StockAdjustment, "id" | "adjustmentCode" | "locationId" | "locationPath"> | null;
   onOpenChange: (open: boolean) => void;
   onEdit: (adjustment: StockAdjustment) => void;
   onPrintBatchLabel: (adjustment: StockAdjustment, item: StockAdjustmentItem) => void;
@@ -35,7 +36,7 @@ type StockAdjustmentDetailsDialogProps = {
 };
 
 export function StockAdjustmentDetailsDialog({
-  adjustment,
+  selection,
   onOpenChange,
   onEdit,
   onPrintBatchLabel,
@@ -45,6 +46,11 @@ export function StockAdjustmentDetailsDialog({
   const tForm = useTranslations("stockAdjustmentForm");
   const tCommon = useTranslations("common");
   const locale = useLocale();
+  const { data, isError, isFetching, refetch } = useStockAdjustment(selection?.id ?? "");
+  const adjustment = isError ? undefined : data;
+  const locationPath =
+    adjustment?.locationPath ??
+    (adjustment?.locationId === selection?.locationId ? selection?.locationPath : undefined);
 
   const changeCounts = useMemo(
     () =>
@@ -78,7 +84,7 @@ export function StockAdjustmentDetailsDialog({
     `${formatQty(item.difference)} ${item.uomName || ""}`.trim();
 
   return (
-    <Dialog open={adjustment !== null} onOpenChange={onOpenChange}>
+    <Dialog open={selection !== null} onOpenChange={onOpenChange}>
       {/* Same frame as StockAdjustmentFormDialog so switching between view and edit keeps the
           dialog in place; the viewport clamp has no preset in the Tailwind scale. */}
       <DialogContent className="flex max-h-[90vh] max-w-6xl flex-col gap-0 overflow-hidden p-0 md:h-[min(90vh,52rem)]">
@@ -88,7 +94,11 @@ export function StockAdjustmentDetailsDialog({
             {adjustment ? <StockAdjustmentStatusText status={adjustment.status} /> : null}
           </div>
           <DialogDescription>
-            {adjustment ? t("detailsDescription", { code: adjustment.adjustmentCode }) : ""}
+            {selection
+              ? t("detailsDescription", {
+                  code: adjustment?.adjustmentCode ?? selection.adjustmentCode,
+                })
+              : ""}
           </DialogDescription>
         </DialogHeader>
 
@@ -110,10 +120,8 @@ export function StockAdjustmentDetailsDialog({
                     <dt className="text-sm font-medium text-muted-foreground">
                       {tForm("locationLabel")}
                     </dt>
-                    {adjustment.locationPath || adjustment.locationName ? (
-                      <dd className="font-medium">
-                        {adjustment.locationPath || adjustment.locationName}
-                      </dd>
+                    {locationPath || adjustment.locationName ? (
+                      <dd className="font-medium">{locationPath || adjustment.locationName}</dd>
                     ) : (
                       <dd className="text-muted-foreground">{t("detailsNoLocation")}</dd>
                     )}
@@ -390,7 +398,29 @@ export function StockAdjustmentDetailsDialog({
               </div>
             </DialogFooter>
           </>
-        ) : null}
+        ) : (
+          <div className="flex flex-1 items-start border-t p-4 sm:p-6" aria-busy={isFetching}>
+            {isError ? (
+              <div className="space-y-3">
+                <p role="alert" className="text-sm text-destructive">
+                  {t("detailsLoadError")}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isFetching}
+                  onClick={() => void refetch()}
+                >
+                  {t("retryLoadingDetails")}
+                </Button>
+              </div>
+            ) : (
+              <p role="status" className="text-sm text-muted-foreground">
+                {tCommon("loading")}
+              </p>
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

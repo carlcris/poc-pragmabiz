@@ -31,6 +31,7 @@ export interface StockAdjustmentItem {
   itemId: string;
   itemCode: string;
   itemName: string;
+  itemBatchId?: string | null;
   itemBatchLocationId?: string | null;
   batchLocationSku?: string | null;
   batchCode?: string | null;
@@ -142,6 +143,16 @@ export interface UpdateStockAdjustmentRequest {
 export interface PostStockAdjustmentRequest {
   approvedBy?: string;
 }
+
+export type SaveStockAdjustmentResponse = Pick<StockAdjustment, "id" | "adjustmentCode" | "status">;
+
+export type PostStockAdjustmentResponse = {
+  success: true;
+  id: string;
+  status: "posted";
+  stockTransactionId: string;
+  stockTransactionCode: string | null;
+};
 
 export interface StockAdjustmentListParams {
   search?: string;

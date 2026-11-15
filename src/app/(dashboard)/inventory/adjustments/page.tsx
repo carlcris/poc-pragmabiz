@@ -106,6 +106,7 @@ export default function StockAdjustmentsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [adjustmentToDelete, setAdjustmentToDelete] = useState<StockAdjustment | null>(null);
   const [postDialogOpen, setPostDialogOpen] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
   const [adjustmentToPost, setAdjustmentToPost] = useState<StockAdjustment | null>(null);
   const [adjustmentToView, setAdjustmentToView] = useState<StockAdjustment | null>(null);
   const [batchLabelToPrint, setBatchLabelToPrint] = useState<BarcodeData | null>(null);
@@ -218,6 +219,7 @@ export default function StockAdjustmentsPage() {
   };
 
   const handlePostAdjustment = (adjustment: StockAdjustment) => {
+    setPostError(null);
     setAdjustmentToPost(adjustment);
     setPostDialogOpen(true);
   };
@@ -225,9 +227,15 @@ export default function StockAdjustmentsPage() {
   const handleConfirmPost = async () => {
     if (!adjustmentToPost) return;
 
-    await postMutation.mutateAsync({ id: adjustmentToPost.id });
-    setPostDialogOpen(false);
-    setAdjustmentToPost(null);
+    setPostError(null);
+    try {
+      await postMutation.mutateAsync({ id: adjustmentToPost.id });
+      toast.success(t("postSuccess"));
+      setPostDialogOpen(false);
+      setAdjustmentToPost(null);
+    } catch (error) {
+      setPostError(getStockAdjustmentSaveErrorMessage(error, tValidation, "post"));
+    }
   };
 
   const handleSaveAdjustment = async (payload: StockAdjustmentFormSubmitPayload) => {
@@ -589,7 +597,7 @@ export default function StockAdjustmentsPage() {
         )}
 
         <StockAdjustmentDetailsDialog
-          adjustment={adjustmentToView}
+          selection={adjustmentToView}
           onOpenChange={(open) => {
             if (!open) setAdjustmentToView(null);
           }}
@@ -635,7 +643,12 @@ export default function StockAdjustmentsPage() {
         </AlertDialog>
 
         {/* Post Dialog */}
-        <AlertDialog open={postDialogOpen} onOpenChange={setPostDialogOpen}>
+        <AlertDialog
+          open={postDialogOpen}
+          onOpenChange={(open) => {
+            if (!postMutation.isPending) setPostDialogOpen(open);
+          }}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>{t("postTitle")}</AlertDialogTitle>
@@ -656,15 +669,23 @@ export default function StockAdjustmentsPage() {
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
+            {postError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {postError}
+              </p>
+            ) : null}
             <AlertDialogFooter>
-              <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
-              <AlertDialogAction
+              <AlertDialogCancel disabled={postMutation.isPending}>
+                {tCommon("cancel")}
+              </AlertDialogCancel>
+              <Button
+                type="button"
                 onClick={handleConfirmPost}
                 className="bg-green-600 hover:bg-green-700"
                 disabled={postMutation.isPending}
               >
                 {postMutation.isPending ? t("posting") : t("postAction")}
-              </AlertDialogAction>
+              </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

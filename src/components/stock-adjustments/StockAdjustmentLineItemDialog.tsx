@@ -125,7 +125,6 @@ export function StockAdjustmentLineItemDialog({
       form.reset({
         ...item,
         batchExpirationDateOverridden: item.batchExpirationDateOverridden ?? true,
-        batchEntryMode: item.itemBatchLocationId || item.itemBatchId ? "existing" : "new",
         adjustmentAmount: Math.abs(adjustmentDifference),
         adjustmentType: adjustmentDifference < 0 ? "remove" : "add",
       });

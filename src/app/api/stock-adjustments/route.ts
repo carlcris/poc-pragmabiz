@@ -1,4 +1,9 @@
 import {
+  mapStockAdjustmentItem,
+  STOCK_ADJUSTMENT_ITEM_COLUMNS,
+  type StockAdjustmentItemRow,
+} from "@/lib/stock-adjustments/stock-adjustment-item-response";
+import {
   batchExpirationDateSchema,
   getBatchExpirationDateError,
 } from "@/lib/stock-adjustments/batch-expiration-date";
@@ -13,7 +18,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext, type RequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
-import type { Json } from "@/types/database.types";
+import type { Database, Json } from "@/types/database.types";
+import type { SaveStockAdjustmentResponse, StockAdjustmentStatus } from "@/types/stock-adjustment";
 type DbStockAdjustmentRow = {
   id: string;
   company_id: string;
@@ -37,29 +43,6 @@ type DbStockAdjustmentRow = {
   updated_at: string | null;
   deleted_at: string | null;
 };
-type DbStockAdjustmentItem = {
-  id: string;
-  adjustment_id: string;
-  item_id: string;
-  item_batch_location_id: string | null;
-  item_code: string | null;
-  item_name: string | null;
-  entered_qty: number;
-  entered_unit_option_id: string | null;
-  entered_unit_label: string | null;
-  entered_qty_per_unit: number;
-  current_qty: number | string | null;
-  adjusted_qty: number | string | null;
-  difference: number | string | null;
-  unit_cost: number | string | null;
-  total_cost: number | string | null;
-  uom_id: string | null;
-  uom_name: string | null;
-  reason: string | null;
-  created_at: string;
-  updated_at: string | null;
-};
-
 type StockAdjustmentItemInput = {
   itemId: string;
   itemBatchLocationId?: string | null;
@@ -86,11 +69,8 @@ type StockAdjustmentBody = {
   items: StockAdjustmentItemInput[];
 };
 
-type StockAdjustmentSaveResult = {
-  adjustment_id: string;
-  adjustment_code: string;
-  status: string;
-};
+type StockAdjustmentSaveResult =
+  Database["public"]["Functions"]["create_stock_adjustment"]["Returns"][number];
 
 type WarehouseRow = {
   id: string;
@@ -116,57 +96,6 @@ type StockTransactionRow = {
   transaction_code: string | null;
 };
 
-type BatchLocationRow = {
-  id: string;
-  batch_location_sku: string | null;
-  location_id: string;
-  item_batch:
-    | {
-        batch_code: string | null;
-        received_at: string | null;
-        expiration_date: string | null;
-      }
-    | {
-        batch_code: string | null;
-        received_at: string | null;
-        expiration_date: string | null;
-      }[]
-    | null;
-  warehouse_location:
-    | {
-        code: string | null;
-        name: string | null;
-      }
-    | {
-        code: string | null;
-        name: string | null;
-      }[]
-    | null;
-};
-
-const STOCK_ADJUSTMENT_ITEM_COLUMNS = `
-  id,
-  adjustment_id,
-  item_id,
-  item_batch_location_id,
-  item_code,
-  item_name,
-  entered_qty,
-  entered_unit_option_id,
-  entered_unit_label,
-  entered_qty_per_unit,
-  current_qty,
-  adjusted_qty,
-  difference,
-  unit_cost,
-  total_cost,
-  uom_id,
-  uom_name,
-  reason,
-  created_at,
-  updated_at
-`;
-
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
@@ -190,9 +119,6 @@ const normalizeSearch = (value: string | null) => {
   const normalized = value.trim().replace(/[,%]/g, " ");
   return normalized.length > 0 ? normalized : null;
 };
-
-const toOne = <T>(value: T | T[] | null | undefined): T | null =>
-  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 const validateStockAdjustmentWarehouseId = async (
   supabase: RequestContext["supabase"],
@@ -404,50 +330,18 @@ async function GETHandler(request: NextRequest) {
 
     // Fetch items for each adjustment
     const adjustmentIds = slicedAdjustments.map((adj) => adj.id);
-    const { data: itemsData } =
+    const { data: itemsData, error: itemsError } =
       adjustmentIds.length > 0
         ? await supabase
             .from("stock_adjustment_items")
             .select(STOCK_ADJUSTMENT_ITEM_COLUMNS)
             .in("adjustment_id", adjustmentIds)
-        : { data: [] };
-
-    const batchLocationIds = Array.from(
-      new Set(
-        ((itemsData as DbStockAdjustmentItem[] | null) || [])
-          .map((item) => item.item_batch_location_id)
-          .filter((value): value is string => Boolean(value))
-      )
-    );
-    const { data: batchLocationsData } =
-      batchLocationIds.length > 0
-        ? await supabase
-            .from("item_batch_locations")
-            .select(
-              `
-              id,
-              batch_location_sku,
-              location_id,
-              item_batch:item_batches!item_batch_locations_item_batch_id_fkey(
-                batch_code,
-                received_at,
-                expiration_date
-              ),
-              warehouse_location:warehouse_locations!item_batch_locations_location_id_fkey(
-                code,
-                name
-              )
-            `
-            )
-            .in("id", batchLocationIds)
-        : { data: [] };
-    const batchLocationsMap = new Map(
-      (batchLocationsData as BatchLocationRow[] | null)?.map((row) => [row.id, row]) || []
-    );
+        : { data: [], error: null };
+    if (itemsError) throw itemsError;
 
     // Group items by adjustment
-    const itemsByAdjustment = new Map<string, DbStockAdjustmentItem[]>();
-    (itemsData as DbStockAdjustmentItem[] | null)?.forEach((item) => {
+    const itemsByAdjustment = new Map<string, StockAdjustmentItemRow[]>();
+    itemsData?.forEach((item) => {
       const adjustmentId = item.adjustment_id;
       if (!itemsByAdjustment.has(adjustmentId)) {
         itemsByAdjustment.set(adjustmentId, []);
@@ -512,45 +406,13 @@ async function GETHandler(request: NextRequest) {
           : null,
         createdAt: adj.created_at,
         updatedAt: adj.updated_at,
-        items: items.map((item) => ({
-          ...(() => {
-            const batchLocation = item.item_batch_location_id
-              ? batchLocationsMap.get(item.item_batch_location_id)
-              : null;
-            const itemBatch = toOne(batchLocation?.item_batch);
-            const batchWarehouseLocation = toOne(batchLocation?.warehouse_location);
-
-            return {
-              id: item.id,
-              adjustmentId: item.adjustment_id,
-              itemId: item.item_id,
-              itemBatchLocationId: item.item_batch_location_id,
-              batchLocationSku: batchLocation?.batch_location_sku || null,
-              batchCode: itemBatch?.batch_code || null,
-              batchReceivedAt: itemBatch?.received_at || null,
-              batchExpirationDate: itemBatch?.expiration_date || null,
-              batchWarehouseLocationId: batchLocation?.location_id || null,
-              batchLocationCode: batchWarehouseLocation?.code || null,
-              batchLocationName: batchWarehouseLocation?.name || null,
-              itemCode: item.item_code,
-              itemName: item.item_name,
-              enteredQty: Number(item.entered_qty),
-              enteredUnitOptionId: item.entered_unit_option_id,
-              enteredUnitLabel: item.entered_unit_label,
-              enteredQtyPerUnit: Number(item.entered_qty_per_unit),
-              currentQty: parseFloat(String(item.current_qty ?? 0)),
-              adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
-              difference: parseFloat(String(item.difference ?? 0)),
-              unitCost: parseFloat(String(item.unit_cost ?? 0)),
-              totalCost: parseFloat(String(item.total_cost ?? 0)),
-              uomId: item.uom_id,
-              uomName: item.uom_name,
-              reason: item.reason,
-              createdAt: item.created_at,
-              updatedAt: item.updated_at,
-            };
-          })(),
-        })),
+        items: items.map((item) =>
+          mapStockAdjustmentItem(item, {
+            id: locationId,
+            code: location?.code,
+            name: location?.name,
+          })
+        ),
       };
     });
 
@@ -713,66 +575,10 @@ async function POSTHandler(request: NextRequest) {
       return NextResponse.json({ error: "Failed to create stock adjustment" }, { status: 500 });
     }
 
-    // Fetch the complete adjustment with items
-    const { data: completeAdjustment, error: completeAdjustmentError } = await supabase
-      .from("stock_adjustments")
-      .select(
-        "id, company_id, adjustment_code, adjustment_type, adjustment_date, warehouse_id, status, reason, notes, total_value, created_by, updated_by, created_at, updated_at"
-      )
-      .eq("id", savedAdjustment.adjustment_id)
-      .single();
-
-    const { data: completeItems } = await supabase
-      .from("stock_adjustment_items")
-      .select(STOCK_ADJUSTMENT_ITEM_COLUMNS)
-      .eq("adjustment_id", savedAdjustment.adjustment_id);
-
-    if (completeAdjustmentError || !completeAdjustment) {
-      console.error("Error fetching created stock adjustment:", completeAdjustmentError);
-      return NextResponse.json(
-        { error: "Failed to load created stock adjustment" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      id: completeAdjustment.id,
-      companyId: completeAdjustment.company_id,
-      adjustmentCode: completeAdjustment.adjustment_code,
-      adjustmentType: completeAdjustment.adjustment_type,
-      adjustmentDate: completeAdjustment.adjustment_date,
-      warehouseId: completeAdjustment.warehouse_id,
-      status: completeAdjustment.status,
-      reason: completeAdjustment.reason,
-      notes: completeAdjustment.notes,
-      totalValue: parseFloat(String(completeAdjustment.total_value ?? 0)),
-      createdBy: completeAdjustment.created_by,
-      updatedBy: completeAdjustment.updated_by,
-      createdAt: completeAdjustment.created_at,
-      updatedAt: completeAdjustment.updated_at,
-      items:
-        (completeItems as DbStockAdjustmentItem[] | null)?.map((item) => ({
-          id: item.id,
-          adjustmentId: item.adjustment_id,
-          itemId: item.item_id,
-          itemBatchLocationId: item.item_batch_location_id,
-          itemCode: item.item_code,
-          itemName: item.item_name,
-          enteredQty: Number(item.entered_qty),
-          enteredUnitOptionId: item.entered_unit_option_id,
-          enteredUnitLabel: item.entered_unit_label,
-          enteredQtyPerUnit: Number(item.entered_qty_per_unit),
-          currentQty: parseFloat(String(item.current_qty ?? 0)),
-          adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
-          difference: parseFloat(String(item.difference ?? 0)),
-          unitCost: parseFloat(String(item.unit_cost ?? 0)),
-          totalCost: parseFloat(String(item.total_cost ?? 0)),
-          uomId: item.uom_id,
-          uomName: item.uom_name,
-          reason: item.reason,
-          createdAt: item.created_at,
-          updatedAt: item.updated_at,
-        })) || [],
+    return NextResponse.json<SaveStockAdjustmentResponse>({
+      id: savedAdjustment.adjustment_id,
+      adjustmentCode: savedAdjustment.adjustment_code,
+      status: savedAdjustment.status as StockAdjustmentStatus,
     });
   } catch (error) {
     console.error("Internal server error creating stock adjustment:", error);

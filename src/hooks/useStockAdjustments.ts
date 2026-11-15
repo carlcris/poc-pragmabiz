@@ -6,6 +6,14 @@ import {
   ITEMS_STATS_QUERY_KEY,
   ITEMS_STOCK_QUERY_KEY,
   ITEM_LOCATIONS_QUERY_KEY,
+  INVENTORY_REPORT_QUERY_KEY,
+  ITEM_LOCATION_BATCH_REPORT_QUERY_KEY,
+  STOCK_AGING_REPORT_QUERY_KEY,
+  STOCK_MOVEMENT_REPORT_QUERY_KEY,
+  PRODUCT_MOVEMENT_REPORT_QUERY_KEY,
+  STOCK_LEDGER_QUERY_KEY,
+  DELIVERY_NOTES_QUERY_KEY,
+  DELIVERY_NOTE_ALLOCATION_AVAILABILITY_QUERY_KEY,
   STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY,
   WAREHOUSE_DASHBOARD_QUERY_KEY,
   REORDER_ALERTS_QUERY_KEY,
@@ -58,7 +66,6 @@ export function useCreateStockAdjustment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [ITEM_LOCATIONS_QUERY_KEY] });
       toast.success("Stock adjustment created successfully");
     },
   });
@@ -76,7 +83,6 @@ export function useUpdateStockAdjustment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [ITEM_LOCATIONS_QUERY_KEY] });
       toast.success("Stock adjustment updated successfully");
     },
   });
@@ -125,10 +131,17 @@ export function usePostStockAdjustment() {
       queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [REORDER_SUGGESTIONS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [REORDER_STOCK_LEVELS_QUERY_KEY] });
-      toast.success("Stock adjustment posted successfully");
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to post stock adjustment"));
+      queryClient.invalidateQueries({ queryKey: [INVENTORY_REPORT_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ITEM_LOCATION_BATCH_REPORT_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_AGING_REPORT_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_MOVEMENT_REPORT_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [PRODUCT_MOVEMENT_REPORT_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_LEDGER_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["stock-valuation-report"] });
+      queryClient.invalidateQueries({ queryKey: ["lookups", "stock-request-batches"] });
+      queryClient.invalidateQueries({
+        queryKey: [DELIVERY_NOTES_QUERY_KEY, DELIVERY_NOTE_ALLOCATION_AVAILABILITY_QUERY_KEY],
+      });
     },
   });
 }

@@ -29,6 +29,12 @@ export const STOCK_ADJUSTMENT_SAVE_ERROR_CODES = [
 ] as const;
 export type StockAdjustmentSaveErrorCode = (typeof STOCK_ADJUSTMENT_SAVE_ERROR_CODES)[number];
 
+export const STOCK_ADJUSTMENT_POST_ERROR_CODES = [
+  ...STOCK_ADJUSTMENT_SAVE_ERROR_CODES,
+  "STOCK_ADJUSTMENT_NO_NET_CHANGE",
+  "STOCK_ADJUSTMENT_INSUFFICIENT_STOCK",
+] as const;
+
 const knownFailures = new Map<
   string,
   { code: StockAdjustmentSaveErrorCode; error: string; status: number }
@@ -232,4 +238,39 @@ export const getStockAdjustmentSaveError = (
   if (dateError) return dateError;
   if (failure?.code === "42501") return knownFailures.get("User context mismatch")!;
   return knownFailures.get(failure?.message ?? "") ?? null;
+};
+
+export const getStockAdjustmentPostError = (failure: { code?: string; message?: string }) => {
+  if (failure.code === "42501") {
+    return {
+      code: "STOCK_ADJUSTMENT_FORBIDDEN" as const,
+      error:
+        "You cannot post this adjustment. Check your business unit or ask an administrator for access.",
+      status: 403,
+    };
+  }
+  if (failure.message === "Only draft adjustments can be posted") {
+    return knownFailures.get("Only draft adjustments can be updated");
+  }
+  if (failure.message === "No net adjustment") {
+    return {
+      code: "STOCK_ADJUSTMENT_NO_NET_CHANGE" as const,
+      error: "The adjustment has no net stock change. Review the quantities before posting.",
+      status: 400,
+    };
+  }
+  if (failure.code === "SA006") {
+    return {
+      code: "STOCK_ADJUSTMENT_INSUFFICIENT_STOCK" as const,
+      error: "There is insufficient unreserved stock. Review the batch quantities in the draft.",
+      status: 409,
+    };
+  }
+  if (
+    failure.message === "LOCATION_STORAGE_UNAVAILABLE" ||
+    failure.message === "LOCATION_PARENT_INVALID"
+  ) {
+    return knownFailures.get("Selected location is not valid for the warehouse");
+  }
+  return getStockAdjustmentSaveError(failure);
 };

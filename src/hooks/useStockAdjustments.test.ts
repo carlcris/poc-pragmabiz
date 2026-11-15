@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 import {
   ITEM_LOCATIONS_QUERY_KEY,
+  ITEM_LOCATION_BATCH_REPORT_QUERY_KEY,
   ITEMS_STOCK_QUERY_KEY,
   STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY,
 } from "@/hooks/queryKeys";
@@ -34,7 +35,7 @@ beforeEach(() => {
 
 describe("stock adjustment cache refresh", () => {
   it.each([useCreateStockAdjustment, useUpdateStockAdjustment])(
-    "%s marks previously visited Locations stale without changing stock quantities",
+    "%s preserves cached Locations and stock quantities during a draft save",
     (useMutationHook) => {
       const client = state.client!;
       const locationsKey = [ITEM_LOCATIONS_QUERY_KEY, "item-1", "bu-1"];
@@ -43,7 +44,7 @@ describe("stock adjustment cache refresh", () => {
       client.setQueryData(stockKey, { quantity: 0 });
       useMutationHook();
       state.onSuccess!();
-      expect(client.getQueryState(locationsKey)?.isInvalidated).toBe(true);
+      expect(client.getQueryState(locationsKey)?.isInvalidated).toBe(false);
       expect(client.getQueryState(stockKey)?.isInvalidated).toBe(false);
       client.clear();
     }
@@ -63,18 +64,38 @@ describe("stock adjustment cache refresh", () => {
     const client = state.client!;
     const locationsKey = [ITEM_LOCATIONS_QUERY_KEY, "item-1", "bu-1"];
     const stockKey = [ITEMS_STOCK_QUERY_KEY, { warehouseId: "warehouse-1" }];
+    const warehouseTreeKey = ["warehouse-locations", "warehouse-1", "hierarchy", "bu-1"];
+    const warehouseBinKey = ["warehouse-locations", "warehouse-1", "detail", "bin-1"];
+    const reportKey = [ITEM_LOCATION_BATCH_REPORT_QUERY_KEY, { warehouseId: "warehouse-1" }];
+    const unrelatedKey = ["unrelated-settings"];
     client.setQueryData(locationsKey, { quantity: 0 });
     client.setQueryData(stockKey, { quantity: 0 });
+    client.setQueryData(warehouseTreeKey, { quantity: 0 });
+    client.setQueryData(warehouseBinKey, { quantity: 0 });
+    client.setQueryData(reportKey, { data: [] });
+    client.setQueryData(unrelatedKey, {});
     const fetchLocations = vi.fn(async () => ({ quantity: 1 }));
     const observer = new QueryObserver(client, { queryKey: locationsKey, queryFn: fetchLocations });
     const unsubscribe = observer.subscribe(() => {});
+    const fetchTree = vi.fn(async () => ({ quantity: 1 }));
+    const treeObserver = new QueryObserver(client, {
+      queryKey: warehouseTreeKey,
+      queryFn: fetchTree,
+    });
+    const unsubscribeTree = treeObserver.subscribe(() => {});
     expect(fetchLocations).not.toHaveBeenCalled();
     usePostStockAdjustment();
     state.onSuccess!();
     await vi.waitFor(() => expect(client.getQueryData(locationsKey)).toEqual({ quantity: 1 }));
+    await vi.waitFor(() => expect(client.getQueryData(warehouseTreeKey)).toEqual({ quantity: 1 }));
     expect(fetchLocations).toHaveBeenCalledTimes(1);
+    expect(fetchTree).toHaveBeenCalledTimes(1);
     expect(client.getQueryState(stockKey)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(warehouseBinKey)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(reportKey)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(unrelatedKey)?.isInvalidated).toBe(false);
     unsubscribe();
+    unsubscribeTree();
     client.clear();
   });
 });

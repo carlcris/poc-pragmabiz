@@ -3784,10 +3784,13 @@ export type TranslationKeys = {
     postStepUpdateLedger: string;
     summaryLabel: string;
     postActionWarning: string;
+    postSuccess: string;
     posting: string;
     postAction: string;
     detailsTitle: string;
     detailsDescription: string;
+    detailsLoadError: string;
+    retryLoadingDetails: string;
     stockTransaction: string;
     noLocation: string;
     detailsNoLocation: string;
@@ -3831,6 +3834,9 @@ export type TranslationKeys = {
     totalAdjustmentValue: string;
     warehouseLockedHint: string;
     locationHint: string;
+    draftLocationRequired: string;
+    reselectBatchesForLocation: string;
+    batchLocationNeedsReview: string;
     newBatchTag: string;
     removeLine: string;
     linesCount: string;
@@ -3927,6 +3933,10 @@ export type TranslationKeys = {
     newBatchPositiveQuantity: string;
     batchAlreadyExistsInWarehouse: string;
     saveFailed: string;
+    postNoNetChange: string;
+    postInsufficientStock: string;
+    postForbidden: string;
+    postFailed: string;
     receivedDateInvalid: string;
     expirationDateInvalid: string;
     receivedDateConflict: string;
@@ -8184,10 +8194,13 @@ export const translations: Record<Locale, TranslationKeys> = {
       postStepUpdateLedger: "Update the stock ledger",
       summaryLabel: "This will",
       postActionWarning: "This action cannot be undone.",
+      postSuccess: "Stock adjustment posted successfully.",
       posting: "Posting...",
       postAction: "Post Adjustment",
       detailsTitle: "Stock Adjustment Details",
       detailsDescription: "View adjustment {code}",
+      detailsLoadError: "Could not load this stock adjustment’s details.",
+      retryLoadingDetails: "Retry loading details",
       stockTransaction: "Stock Transaction",
       noLocation: "--",
       detailsNoLocation: "No location",
@@ -8232,7 +8245,12 @@ export const translations: Record<Locale, TranslationKeys> = {
       actions: "Actions",
       totalAdjustmentValue: "Total Value Impact",
       warehouseLockedHint: "Locked while lines exist",
-      locationHint: "Stock is adjusted at this location; existing batches can be added here",
+      locationHint: "Posting creates missing batch locations in the selected bin.",
+      draftLocationRequired:
+        "Select a location for lines that need a batch location created at posting.",
+      reselectBatchesForLocation:
+        "Edit the marked lines and reselect their batches for this location.",
+      batchLocationNeedsReview: "Reselect batch for this location",
       newBatchTag: "New",
       removeLine: "Remove Line",
       linesCount: "Lines",
@@ -8245,7 +8263,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       duplicateBatchLine:
         "This item and batch are already included. Edit the existing line instead.",
       stockAdjustmentLabel: "Stock Adjustment",
-      printBatchMissing: "Save the adjustment before printing labels for a new batch.",
+      printBatchMissing: "Post the adjustment to print labels for a new batch location.",
       printBatchSuccess: "{count} batch QR labels opened for printing.",
       printBatchError: "Failed to print batch QR labels.",
       batchPrintDialogTitle: "Print Batch QR Labels",
@@ -8317,7 +8335,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       change: "Change",
       exceedsOnHand:
         "Only {available} {unit} on hand. Reduce the quantity by {excess} {unit} or switch to Increase Stock.",
-      draftSaveHint: "Saved to the draft. Stock changes only when the adjustment is posted.",
+      draftSaveHint: "Posting applies the stock change and creates any missing batch location.",
       cancel: "Cancel",
       updateAction: "Update Adjustment",
       createAction: "Add Adjustment",
@@ -8360,6 +8378,13 @@ export const translations: Record<Locale, TranslationKeys> = {
       saveWarehouseImmutable:
         "The warehouse cannot be changed. Create a new adjustment for the other warehouse.",
       saveFailed: "Could not save the stock adjustment. Review the details and try again.",
+      postNoNetChange:
+        "The adjustment has no net stock change. Review the quantities before posting.",
+      postInsufficientStock:
+        "There is insufficient unreserved stock. Review the batch quantities in the draft.",
+      postForbidden:
+        "You cannot post this adjustment. Check your business unit or ask an administrator for access.",
+      postFailed: "Could not post the stock adjustment. Review the details and try again.",
       receivedDateInvalid: "Enter a valid received date for each new batch.",
       expirationDateInvalid: "Enter a valid expiration date or leave it blank for each new batch.",
       receivedDateConflict:
@@ -15278,10 +15303,13 @@ export const translations: Record<Locale, TranslationKeys> = {
       postStepUpdateLedger: "更新库存台账",
       summaryLabel: "这将会",
       postActionWarning: "此操作无法撤销。",
+      postSuccess: "库存调整已过账。",
       posting: "过账中...",
       postAction: "过账调整",
       detailsTitle: "库存调整详情",
       detailsDescription: "查看调整单 {code}",
+      detailsLoadError: "无法加载此库存调整单的详情。",
+      retryLoadingDetails: "重新加载详情",
       stockTransaction: "库存交易",
       noLocation: "--",
       detailsNoLocation: "未指定库位",
@@ -15324,7 +15352,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       actions: "操作",
       totalAdjustmentValue: "总价值影响",
       warehouseLockedHint: "已有明细时不可更改",
-      locationHint: "在此库位调整库存；也可将现有批次添加到此库位",
+      locationHint: "过账时会在所选库位创建缺少的批次库位。",
+      draftLocationRequired: "请选择库位，以便过账时为相关明细创建批次库位。",
+      reselectBatchesForLocation: "请编辑标记的明细，并为此库位重新选择批次。",
+      batchLocationNeedsReview: "请为此库位重新选择批次",
       newBatchTag: "新",
       removeLine: "移除明细",
       linesCount: "明细",
@@ -15336,7 +15367,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       createAction: "创建调整",
       duplicateBatchLine: "该商品和批次已包含在调整中，请改为编辑现有明细。",
       stockAdjustmentLabel: "库存调整",
-      printBatchMissing: "请先保存库存调整，再打印新批次标签。",
+      printBatchMissing: "请先过账，再打印新批次库位的标签。",
       printBatchSuccess: "已打开 {count} 个批次二维码标签，可进行打印。",
       printBatchError: "打印批次二维码标签失败。",
       batchPrintDialogTitle: "打印批次二维码标签",
@@ -15405,7 +15436,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       change: "变动",
       exceedsOnHand:
         "现有库存仅 {available} {unit}。请将数量减少 {excess} {unit}，或改为增加库存。",
-      draftSaveHint: "将保存到草稿。只有过账后库存才会变动。",
+      draftSaveHint: "过账时会调整库存，并创建缺少的批次库位。",
       cancel: "取消",
       updateAction: "更新调整",
       createAction: "添加调整",
@@ -15438,6 +15469,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       saveForbidden: "您无法保存此调整。请检查业务单元或联系管理员获取权限。",
       saveWarehouseImmutable: "无法更改仓库。请为其他仓库创建新的调整。",
       saveFailed: "无法保存库存调整。请检查详细信息后重试。",
+      postNoNetChange: "此调整的库存净变动为零。请检查数量后再过账。",
+      postInsufficientStock: "未预留的库存不足。请检查草稿中的批次数量。",
+      postForbidden: "您无法过账此调整。请检查业务单元或联系管理员获取权限。",
+      postFailed: "无法过账库存调整。请检查详细信息后重试。",
       receivedDateInvalid: "请为每个新批次输入有效的收货日期。",
       expirationDateInvalid: "请为每个新批次输入有效的到期日期，或留空。",
       receivedDateConflict: "此批次已有不同的收货日期。请使用原收货日期或其他批次编码。",

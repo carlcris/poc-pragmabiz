@@ -1048,13 +1048,18 @@ Phase 1 existing-batch checks (same warehouse only):
 1. Select Location B for a batch currently stored only at Location A in the same warehouse.
    Search its batch code or source QR. It must appear with its original received date and zero
    destination stock. A batch owned by another warehouse must not appear.
-2. Add a positive quantity, save, reopen, edit, and post. Location A must stay unchanged;
-   Location B increases, using the same batch ID/date and one destination record.
+2. Add a positive quantity, save, and reopen. Check the batch ID and received date and confirm
+   that the draft created no batch location. Change Location B to Location C and save again.
+   Post and verify that only Location C gains stock and a batch location with a printable QR code.
+   Repeat with a second draft prepared before the first is posted to verify destination reuse.
 3. Reject a decrease at a missing destination. At an existing destination, decreases must use its
    local stock, not stock at Location A.
-4. Keep selectors and item/warehouse Locations open; verify saves and posting refresh affected
-   views without a browser reload.
-5. Run `supabase/tests/stock-adjustment-batch-destination.sql` and
+4. For a line tied to an existing batch location, change the header Location. Check that the editor
+   marks the line and requires batch reselection before updating. Recheck quantities at the new bin.
+   Keep item and warehouse Locations open and verify posting refreshes those views.
+5. Force a later posting line to fail after an earlier line would create stock. Check that the
+   draft stays editable and that the transaction, batch location, and quantity changes roll back.
+6. Run `supabase/tests/stock-adjustment-batch-destination.sql` and
    `supabase/tests/stock-adjustment-received-date.sql` for authenticated date preservation,
    warehouse rejection, reuse, editing, posting, and rollback checks.
 
@@ -1064,17 +1069,17 @@ and post: only the new item changes. Repeat the save to verify reuse, and verify
 stock and reservations remain unchanged. Conflicting received dates must fail without overwrites.
 The SQL regression also verifies exact timestamps, cross-item rollback, and lookup deduplication.
 
-Phase 1 requires only the function-definition migration
-`20261108130000_stock_adjustment_existing_batch_destination.sql`; do not run a seed/reset or backfill.
-Cross-warehouse batches are deferred to `docs/plans/cross-warehouse-batches-phase-2-handover.md`.
+Apply `20261114100000_create_adjustment_batch_locations_on_post.sql` before running these checks.
+It preserves batch references for existing records. Cross-warehouse batches are covered in
+`docs/plans/cross-warehouse-batches-phase-2-handover.md`.
 
-Verify **Inventory Items → Locations → batch table** shows the saved Expiration Date beside Received Date, and a dash for unset dates, including on later batch pages.
+After posting, verify **Inventory Items → Locations → batch table** shows the saved Expiration Date beside Received Date, and a dash for unset dates, including on later batch pages.
 
 Existing JIS glass backfill: run `supabase/scripts/backfill-jis-glass-batch-expiration.sql` in the PostgreSQL/Supabase SQL Editor after setting its company ID. It defaults to a rollback-only dry run; change the final statement to `COMMIT` to persist. It fills only null expiration dates with receipt date plus three calendar months, excludes acrylic and ambiguous-origin glass, and preserves existing dates. A manually cleared date is also null and will be filled by this one-time script.
 
 Manual expiration checks: In **New Batch**, enter an optional **Expiration Date**, edit or clear it before saving, and verify `item_batches.expiration_date` matches the submitted date or remains null. Test both a new adjustment and a new batch added to an existing draft. Past dates are allowed; impossible dates must show translated validation feedback. Verify JIS glass defaults to three calendar months after receipt, including month-end and leap-year cases. Changing receipt updates the default until expiration is manually edited or cleared. Verify the override survives later receipt changes and reopening the unsaved line. Local, acrylic, ambiguous-origin, and non-glass items remain unset. Run `supabase/tests/stock-adjustment-expiration-date.sql` to verify persistence and rollback without leaving test data.
 
-For each line, choose either **Existing Batch** or **New Batch**. Verify the Stock Preview panel updates as the direction, quantity, and unit change, and that a decrease larger than the batch's on-hand quantity shows a warning and disables saving the line. Creating a new batch requires a selected adjustment location, a unique batch code at that location, a Received Date, and a positive stock increase. Received Date defaults to today and can be backdated for initial inventory; it determines batch age. Verify a historical date survives saving and reopening the draft, and that a later draft edit preserves it. Reusing a batch code from another location with a different received date must show a conflict and leave existing dates unchanged. Saving the draft creates the zero-quantity batch/location identity transactionally; posting applies the entered increase to inventory.
+For each line, choose either **Existing Batch** or **New Batch**. Verify the Stock Preview panel updates as the direction, quantity, and unit change, and that a decrease larger than the batch's on-hand quantity shows a warning and disables saving the line. Creating a new batch requires a selected adjustment location, a batch code unique in the selected warehouse, a Received Date, and a positive stock increase. Received Date defaults to today and can be backdated for initial inventory; it determines batch age. Verify a historical date survives saving and reopening the draft, and that a later draft edit preserves it. Reusing a batch code from another location with a different received date must show a conflict and leave existing dates unchanged. Saving the draft preserves the batch details. Posting creates any missing batch location and applies the increase in one transaction.
 
 **Who can do it**: edit access to Stock Adjustments (posting uses the same permission as editing).
 
@@ -1083,6 +1088,8 @@ For each line, choose either **Existing Batch** or **New Batch**. Verify the Sto
 - Confirm Post only ever appears as an option while status is Draft.
 - **Do not test for an approval step.** Pending, Approved, and Rejected exist as filter options and as designed stages, but there is no button anywhere in the app that sets them. If you find a status filter for "Pending Approval" and can't get a record into that state, this is why — flag it to the product team as a design-vs-implementation gap, not a bug you need to chase.
 - Confirm posting correctly updates the item's on-hand quantity by exactly the adjusted amount, and that a corresponding stock transaction appears in the stock ledger.
+- Create, edit, and post an adjustment while forcing its detail GET to fail. Each successful write should close its dialog, and the list should refresh. Opening **View** should show **Retry loading details**. Restore the GET and retry it, then verify it displays the adjustment without repeating the write. Separately force a write failure and confirm the save or post error is still shown.
+- Open and close **View** to cache a draft, then edit its reason. Force the detail GET to fail and reopen **View**. Confirm the error and **Retry loading details** appear and the old reason is hidden. Restore the GET and click retry. Confirm the new reason appears and the browser sends only a GET for the retry.
 - With other batches already present, create a different batch code and confirm the draft creates its batch/location identity and Post applies the increase.
 - Try creating a batch without a location, with zero quantity, with Decrease Stock, and with a code already present at the selected location; each case should remain in the form with actionable guidance.
 - From both an editable adjustment (line **⋮** menu → **Print Labels**) and its read-only details view, print multiple QR labels for a persisted batch. Confirm the dialog defaults to the item's default unit (then base, then first active option), accepts another active unit selection, accepts only whole-number copy counts from 1–100, and produces exactly that many labels with the selected unit's `qtyPerUnit` and the same batch-location SKU.
