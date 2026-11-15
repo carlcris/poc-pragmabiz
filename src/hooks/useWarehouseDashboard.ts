@@ -7,9 +7,11 @@ import { useAuthStore } from "@/stores/authStore";
 
 export const useWarehouseDashboard = () => {
   const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
+  const isBusinessUnitLoading = useBusinessUnitStore((state) => state.isLoading);
+  const isSwitching = useBusinessUnitStore((state) => state.isSwitching);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
-  const isActive = isAuthenticated && !isLoggingOut;
+  const isActive = isAuthenticated && !isLoggingOut && !isBusinessUnitLoading && !isSwitching;
 
   useRealtimeDomainInvalidation("inventory", {
     queryKeys: [WAREHOUSE_DASHBOARD_QUERY_KEY],

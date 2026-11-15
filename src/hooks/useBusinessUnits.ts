@@ -4,14 +4,11 @@
  * React hook for fetching and managing business units
  *
  * JWT-BASED APPROACH:
- * When switching business units:
- * 1. Call API to validate access (calls update_current_business_unit DB function)
- * 2. Update Zustand store with new BU
- * 3. Sync the refreshed session returned by the API
- * 4. Invalidate all queries to refetch data with new BU context from JWT
+ * The API validates access and refreshes the session before the client applies the new scope.
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { WAREHOUSE_DASHBOARD_QUERY_KEY } from "@/hooks/queryKeys";
 import { apiClient } from "@/lib/api";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { useAuthStore } from "@/stores/authStore";
@@ -59,66 +56,65 @@ export function useBusinessUnits() {
   });
 }
 
-/**
- * Set the active business unit context
- *
- * JWT-BASED APPROACH:
- * 1. Validates access via API (calls update_current_business_unit DB function)
- * 2. Updates Zustand store
- * 3. Syncs the refreshed Supabase session returned by the API
- * 4. Invalidates queries to refetch with new BU context (optional - can be silenced for initial load)
- */
+/** Set the active business unit once the browser and server sessions agree. */
 export function useSetBusinessUnitContext(options?: { silent?: boolean }) {
   const queryClient = useQueryClient();
-  const { setCurrentBusinessUnit, availableBusinessUnits } = useBusinessUnitStore();
   const silent = options?.silent ?? false;
 
   return useMutation({
     mutationFn: async (businessUnitId: string) => {
-      // Step 1: Call API to validate access
-      const response = await apiClient.post<SetContextResponse>("/api/business-units/set-context", {
-        business_unit_id: businessUnitId,
-      });
+      const { isSwitching, setSwitching } = useBusinessUnitStore.getState();
+      if (isSwitching) throw new Error("A business unit switch is already in progress");
 
-      // Step 2: The route already refreshed the server cookie session.
-      // Sync the browser Supabase client/auth store to the same token without rotating it again.
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: response.token,
-        refresh_token: response.refreshToken,
-      });
+      setSwitching(true);
+      let reloadingToReconcile = false;
+      try {
+        // Dashboard requests use the session cookie, which changes during the switch.
+        const dashboardKey = [WAREHOUSE_DASHBOARD_QUERY_KEY];
+        await queryClient.cancelQueries({ queryKey: dashboardKey });
+        const response = await apiClient.post<SetContextResponse>(
+          "/api/business-units/set-context",
+          {
+            business_unit_id: businessUnitId,
+          }
+        );
 
-      if (sessionError) {
-        throw new Error("Failed to sync authentication session");
-      }
+        let accessToken: string;
+        try {
+          const { data, error: sessionError } = await supabase.auth.setSession({
+            access_token: response.token,
+            refresh_token: response.refreshToken,
+          });
+          if (sessionError) throw sessionError;
+          if (!data.session) throw new Error("Session sync returned no session");
+          accessToken = data.session.access_token;
+        } catch (error) {
+          // The POST already changed the server cookie. Keep old data hidden until the
+          // new document hydrates from verified server context, with an empty query cache.
+          reloadingToReconcile = true;
+          queryClient.removeQueries({ queryKey: dashboardKey });
+          window.location.reload();
+          throw new Error("Failed to sync authentication session", { cause: error });
+        }
 
-      useAuthStore.getState().setToken(response.token);
-
-      return response;
-    },
-    onSuccess: (response) => {
-      // Update current business unit in store first
-      if (response.business_unit) {
+        useAuthStore.getState().setToken(accessToken);
+        const { availableBusinessUnits, setCurrentBusinessUnit } = useBusinessUnitStore.getState();
         const selectedBusinessUnit =
-          availableBusinessUnits.find(
-            (businessUnit) => businessUnit.id === response.business_unit.id
-          ) ?? (response.business_unit as BusinessUnitWithAccess);
+          availableBusinessUnits.find((unit) => unit.id === response.business_unit.id) ??
+          response.business_unit;
+
+        // Silent switches retain other queries, but dashboard data must come from the new scope.
+        if (silent) queryClient.removeQueries({ queryKey: dashboardKey });
         setCurrentBusinessUnit(selectedBusinessUnit);
-      }
-
-      // Only clear and refetch queries if not in silent mode
-      // Silent mode is used during initial load to prevent flickering
-      if (silent) {
-        // The server context may have changed during initial hydration. Refresh the BU-scoped
-        // capability snapshot without clearing otherwise valid initial page data.
-        queryClient.invalidateQueries({ queryKey: ["granular-capabilities"] });
-      } else {
-        // SECURITY: Clear ALL cached data FIRST to prevent data leakage from previous BU
-        // This must happen before updating the store to avoid race conditions
-        queryClient.clear();
-
-        // Force immediate refetch of all queries with new BU context from JWT
-        // resetQueries forces all queries back to fetching state
-        queryClient.resetQueries();
+        if (silent) {
+          void queryClient.invalidateQueries({ queryKey: ["granular-capabilities"] });
+        } else {
+          queryClient.clear();
+          void queryClient.resetQueries();
+        }
+        return response;
+      } finally {
+        if (!reloadingToReconcile) setSwitching(false);
       }
     },
   });

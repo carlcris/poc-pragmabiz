@@ -13086,6 +13086,16 @@ export type Database = {
           code: string;
           company_id: string;
           created_at: string;
+      get_warehouse_dashboard_out_of_stocks: {
+        Args: { p_business_unit_ids: string[]; p_company_id: string };
+        Returns: {
+          item_id: string;
+          item_name: string;
+          location_code: string;
+          qty: number;
+          uom: string;
+        }[];
+      };
           id: string;
           is_active: boolean;
           is_pickable: boolean;

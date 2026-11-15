@@ -40,32 +40,31 @@ type StockRequestsQueueRow = {
   stock_request_items?: Array<{ id: string }> | null;
 };
 
+type MovementTransaction = {
+  transaction_type: string;
+  reference_type: string | null;
+  created_at: string;
+  users?: UserNameRecord | UserNameRecord[] | null;
+};
+
 type StockMovementsRow = {
   quantity: number;
-  stock_transactions:
-    | {
-        transaction_type: string;
-        created_at: string;
-        users?: UserNameRecord | UserNameRecord[] | null;
-      }
-    | {
-        transaction_type: string;
-        created_at: string;
-        users?: UserNameRecord | UserNameRecord[] | null;
-      }[]
-    | null;
+  qty_before: number;
+  qty_after: number;
+  stock_transactions: MovementTransaction | MovementTransaction[] | null;
   items: { item_name: string } | { item_name: string }[] | null;
   units_of_measure: { symbol: string } | { symbol: string }[] | null;
 };
 
-type DashboardLowStockRow = {
+type DashboardStockRow = {
   item_id: string;
   item_name: string;
   qty: number | string | null;
   uom: string | null;
   location_code: string | null;
-  reorder_level: number | string | null;
 };
+
+type DashboardLowStockRow = DashboardStockRow & { reorder_level: number | string | null };
 
 const DASHBOARD_QUEUE_LIMIT = 12;
 const DASHBOARD_STOCK_HEALTH_LIMIT = 5;
@@ -157,7 +156,7 @@ async function GETHandler() {
       urgentStockRequestsResult,
       pickListToPickResult,
       reorderInventoryHealthResult,
-      inventoryHealthResult,
+      outOfStockResult,
       pickListQueueResult,
       incomingDeliveriesQueueResult,
       stockRequestsQueueResult,
@@ -223,23 +222,12 @@ async function GETHandler() {
           })
         : Promise.resolve({ data: [], error: null }),
 
-      // Stock health remains scoped to the selected business unit.
+      // Out-of-stock rows use the same stored balance as Operations Overview.
       canViewStockValue
-        ? supabase
-            .from("item_warehouse")
-            .select(
-              `
-              item_id,
-              warehouse_id,
-              current_stock,
-              warehouses!inner(business_unit_id),
-              warehouse_locations!item_warehouse_default_location_id_fkey(code),
-              items!inner(item_name, units_of_measure!inner(symbol))
-            `
-            )
-            .in("warehouses.business_unit_id", scopedBUIds)
-            .is("deleted_at", null)
-            .order("current_stock", { ascending: true })
+        ? supabase.rpc("get_warehouse_dashboard_out_of_stocks", {
+            p_company_id: userData.company_id,
+            p_business_unit_ids: scopedBUIds,
+          })
         : Promise.resolve({ data: [], error: null }),
 
       // Pick list queue
@@ -318,8 +306,11 @@ async function GETHandler() {
             .select(
               `
               quantity,
+              qty_before,
+              qty_after,
               stock_transactions!inner(
                 transaction_type,
+                reference_type,
                 created_at,
                 business_unit_id,
                 users!stock_transactions_created_by_fkey(first_name, last_name, email)
@@ -341,7 +332,7 @@ async function GETHandler() {
     if (urgentStockRequestsResult.error) throw urgentStockRequestsResult.error;
     if (pickListToPickResult.error) throw pickListToPickResult.error;
     if (reorderInventoryHealthResult.error) throw reorderInventoryHealthResult.error;
-    if (inventoryHealthResult.error) throw inventoryHealthResult.error;
+    if (outOfStockResult.error) throw outOfStockResult.error;
     if (pickListQueueResult.error) throw pickListQueueResult.error;
     if (incomingDeliveriesQueueResult.error) throw incomingDeliveriesQueueResult.error;
     if (stockRequestsQueueResult.error) throw stockRequestsQueueResult.error;
@@ -350,60 +341,7 @@ async function GETHandler() {
     const reorderInventoryRows = (reorderInventoryHealthResult.data ||
       []) as DashboardLowStockRow[];
 
-    const inventoryRows = (inventoryHealthResult.data || []) as Array<{
-      item_id: string;
-      warehouse_id: string;
-      current_stock: number | string | null;
-      warehouse_locations?: { code?: string | null } | { code?: string | null }[] | null;
-      items:
-        | { item_name: string; units_of_measure: { symbol: string } | { symbol: string }[] }
-        | { item_name: string; units_of_measure: { symbol: string } | { symbol: string }[] }[]
-        | null;
-    }>;
-
-    const aggregatedInventory = new Map<
-      string,
-      {
-        item_id: string;
-        item_name: string;
-        qty: number;
-        uom: string;
-        location_code: string | null;
-        hasMultipleLocations: boolean;
-      }
-    >();
-
-    for (const row of inventoryRows) {
-      const itemRecord = Array.isArray(row.items) ? (row.items[0] ?? null) : (row.items ?? null);
-      const uomRecord = Array.isArray(itemRecord?.units_of_measure)
-        ? (itemRecord?.units_of_measure[0] ?? null)
-        : (itemRecord?.units_of_measure ?? null);
-      const locationRecord = Array.isArray(row.warehouse_locations)
-        ? (row.warehouse_locations[0] ?? null)
-        : (row.warehouse_locations ?? null);
-      const qty = Number(row.current_stock || 0);
-      const locationCode = locationRecord?.code || null;
-
-      const existing = aggregatedInventory.get(row.item_id);
-      if (existing) {
-        existing.qty += qty;
-        if (existing.location_code !== locationCode) {
-          existing.hasMultipleLocations = true;
-          existing.location_code = null;
-        }
-      } else {
-        aggregatedInventory.set(row.item_id, {
-          item_id: row.item_id,
-          item_name: itemRecord?.item_name || "",
-          qty,
-          uom: uomRecord?.symbol || "",
-          location_code: locationCode,
-          hasMultipleLocations: false,
-        });
-      }
-    }
-
-    const aggregatedList = Array.from(aggregatedInventory.values());
+    const outOfStockRows = (outOfStockResult.data || []) as DashboardStockRow[];
     const pickListQueue = (pickListQueueResult.data || []) as PickListQueueRow[];
     const incomingDeliveriesQueue = (incomingDeliveriesQueueResult.data ||
       []) as IncomingDeliveriesQueueRow[];
@@ -417,11 +355,6 @@ async function GETHandler() {
       location_code: item.location_code,
       reorder_level: Number(item.reorder_level || 0),
     }));
-
-    const outOfStocks = aggregatedList
-      .filter((item) => item.qty <= 0)
-      .sort((a, b) => a.qty - b.qty)
-      .slice(0, DASHBOARD_STOCK_HEALTH_LIMIT);
 
     // Build response
     const dashboardData: DashboardData = {
@@ -443,11 +376,11 @@ async function GETHandler() {
           }))
         : [],
       out_of_stocks: canViewStockValue
-        ? outOfStocks.map((item) => ({
+        ? outOfStockRows.map((item) => ({
             item_id: item.item_id,
             item_name: item.item_name,
-            qty: item.qty,
-            uom: item.uom,
+            qty: Number(item.qty ?? 0),
+            uom: item.uom ?? "",
             location_code: item.location_code,
           }))
         : [],
@@ -499,8 +432,14 @@ async function GETHandler() {
               ? (item.units_of_measure[0] ?? null)
               : (item.units_of_measure ?? null);
 
+            let type = transaction?.transaction_type ?? "";
+            if (transaction?.reference_type === "stock_adjustment") {
+              const change = item.qty_after - item.qty_before;
+              type = change > 0 ? "in" : change < 0 ? "out" : "adjustment";
+            }
+
             return {
-              type: transaction?.transaction_type || "",
+              type,
               item_name: itemRecord?.item_name || "",
               qty: item.quantity,
               uom: uomRecord?.symbol || "",

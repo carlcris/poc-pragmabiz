@@ -14,12 +14,14 @@ type BusinessUnitStore = {
   currentBusinessUnit: BusinessUnitWithAccess | null;
   availableBusinessUnits: BusinessUnitWithAccess[];
   isLoading: boolean;
+  isSwitching: boolean;
   hasHydrated: boolean;
 
   // Actions
   setCurrentBusinessUnit: (businessUnit: BusinessUnitWithAccess | null) => void;
   setAvailableBusinessUnits: (businessUnits: BusinessUnitWithAccess[]) => void;
   setLoading: (isLoading: boolean) => void;
+  setSwitching: (isSwitching: boolean) => void;
   setHasHydrated: (hasHydrated: boolean) => void;
   clearBusinessUnit: () => void;
 
@@ -35,6 +37,7 @@ export const useBusinessUnitStore = create<BusinessUnitStore>()(
       currentBusinessUnit: null,
       availableBusinessUnits: [],
       isLoading: true, // Persisted selection is not ready until the provider verifies context.
+      isSwitching: false,
       hasHydrated: false,
 
       // Actions
@@ -50,6 +53,10 @@ export const useBusinessUnitStore = create<BusinessUnitStore>()(
         set({ isLoading });
       },
 
+      setSwitching: (isSwitching) => {
+        set({ isSwitching });
+      },
+
       setHasHydrated: (hasHydrated) => {
         set({ hasHydrated });
       },
@@ -59,6 +66,7 @@ export const useBusinessUnitStore = create<BusinessUnitStore>()(
           currentBusinessUnit: null,
           availableBusinessUnits: [],
           isLoading: false,
+          isSwitching: false,
           hasHydrated: true,
         });
       },

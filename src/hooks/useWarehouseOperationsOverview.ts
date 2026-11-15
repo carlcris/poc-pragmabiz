@@ -15,26 +15,41 @@ export const OPERATIONS_OVERVIEW_QUERY_SEGMENT = "operations-overview";
 export const getWarehouseOperationsOverviewQueryKey = (
   businessUnitId: string | null,
   days: OperationsOverviewRange,
-  timeZone: string
-) => [
-  WAREHOUSE_DASHBOARD_QUERY_KEY,
-  OPERATIONS_OVERVIEW_QUERY_SEGMENT,
-  businessUnitId,
-  days,
-  timeZone,
-];
+  timeZone: string,
+  userId: string | null
+) =>
+  [
+    WAREHOUSE_DASHBOARD_QUERY_KEY,
+    OPERATIONS_OVERVIEW_QUERY_SEGMENT,
+    businessUnitId,
+    days,
+    timeZone,
+    userId,
+  ] as const;
 
 export const useWarehouseOperationsOverview = (days: OperationsOverviewRange) => {
   const businessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id ?? null);
+  const isBusinessUnitLoading = useBusinessUnitStore((state) => state.isLoading);
+  const isSwitching = useBusinessUnitStore((state) => state.isSwitching);
+  const userId = useAuthStore((state) => state.user?.id ?? null);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
-  const isActive = isAuthenticated && !isLoggingOut;
+  const isActive = isAuthenticated && !isLoggingOut && !isBusinessUnitLoading && !isSwitching;
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return useQuery<WarehouseOperationsOverview>({
-    queryKey: getWarehouseOperationsOverviewQueryKey(businessUnitId, days, timeZone),
+    queryKey: getWarehouseOperationsOverviewQueryKey(businessUnitId, days, timeZone, userId),
     enabled: isActive,
-    placeholderData: (previous) => previous,
+    placeholderData: (previous, previousQuery) => {
+      const key = previousQuery?.queryKey;
+      return isActive &&
+        key?.[2] === businessUnitId &&
+        key[3] !== days &&
+        key[4] === timeZone &&
+        key[5] === userId
+        ? previous
+        : undefined;
+    },
     queryFn: async ({ signal }) => {
       const params = new URLSearchParams({ timeZone, days: String(days) });
       const response = await fetch(`/api/warehouse-dashboard/operations-overview?${params}`, {

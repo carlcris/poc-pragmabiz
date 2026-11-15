@@ -8,7 +8,7 @@ export type StockMovementDay = {
   out: number;
 };
 
-// Fully reserved items have stock on hand but none available.
+// Fully reserved items have stock in storage and all of it is reserved.
 export type StockHealthCounts = {
   inStock: number;
   belowReorder: number;

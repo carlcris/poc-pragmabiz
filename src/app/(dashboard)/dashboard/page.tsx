@@ -4,6 +4,7 @@ import { AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useWarehouseDashboard } from "@/hooks/useWarehouseDashboard";
 import { useAuthStore } from "@/stores/authStore";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import {
   DashboardSummaryStrip,
   type DashboardSummaryMetric,
@@ -35,13 +36,23 @@ const EMPTY_QUEUES = {
 export default function WarehouseDashboardPage() {
   const t = useTranslations("dashboardPage");
   const locale = useLocale();
-  const { data, error, isPending, isFetching, isRefetchError, dataUpdatedAt, refetch } =
-    useWarehouseDashboard();
+  const isSwitching = useBusinessUnitStore((state) => state.isSwitching);
+  const {
+    data: dashboard,
+    error,
+    isPending,
+    isFetching,
+    isRefetchError,
+    dataUpdatedAt,
+    refetch,
+  } = useWarehouseDashboard();
+  const data = isSwitching ? undefined : dashboard;
+  const isRefreshing = isSwitching || isFetching;
   const user = useAuthStore((state) => state.user);
 
   // A disabled query (session still hydrating) is pending, not loading, so gate the
   // skeletons on missing data rather than on isLoading.
-  const isLoading = isPending && !error;
+  const isLoading = isSwitching || (isPending && !error);
   const capabilities = data?.capabilities;
   const canViewStockValue = capabilities?.canViewStockValue ?? false;
   const canViewReorderValue = capabilities?.canViewReorderValue ?? false;
@@ -92,9 +103,10 @@ export default function WarehouseDashboardPage() {
     metrics.every((metric) => metric.count === 0) &&
     visibleQueueTotal === 0;
 
-  const updatedTime = dataUpdatedAt
-    ? new Date(dataUpdatedAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
-    : null;
+  const updatedTime =
+    data && dataUpdatedAt
+      ? new Date(dataUpdatedAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })
+      : null;
   const todayLabel = new Date().toLocaleDateString(locale, {
     weekday: "short",
     day: "numeric",
@@ -130,16 +142,16 @@ export default function WarehouseDashboardPage() {
           type="button"
           variant="outline"
           onClick={() => refetch()}
-          disabled={isFetching}
-          aria-label={isFetching ? t("refreshing") : t("refresh")}
+          disabled={isRefreshing}
+          aria-label={isRefreshing ? t("refreshing") : t("refresh")}
           className="h-11 w-11 shrink-0 px-0 sm:w-auto sm:px-3 lg:h-9"
         >
-          <RefreshCw aria-hidden="true" className={cn("h-4 w-4", isFetching && "animate-spin")} />
-          <span className="hidden sm:inline">{isFetching ? t("refreshing") : t("refresh")}</span>
+          <RefreshCw aria-hidden="true" className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+          <span className="hidden sm:inline">{isRefreshing ? t("refreshing") : t("refresh")}</span>
         </Button>
       </header>
 
-      {error && !data ? (
+      {!isSwitching && error && !data ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>{t("loadErrorTitle")}</AlertTitle>

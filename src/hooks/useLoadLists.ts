@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { LOAD_LISTS_QUERY_KEY, STOCK_REQUISITIONS_QUERY_KEY } from "@/hooks/queryKeys";
+import {
+  LOAD_LISTS_QUERY_KEY,
+  STOCK_REQUISITIONS_QUERY_KEY,
+  WAREHOUSE_DASHBOARD_QUERY_KEY,
+} from "@/hooks/queryKeys";
 import { useRealtimeDomainInvalidation } from "@/hooks/useRealtimeDomainInvalidation";
 import { loadListsApi } from "@/lib/api/load-lists";
 import type {
@@ -65,6 +69,7 @@ export function useDeleteLoadList() {
     mutationFn: (id: string) => loadListsApi.deleteLoadList(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY] });
     },
   });
 }
@@ -78,6 +83,7 @@ export function useUpdateLoadListStatus() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, variables.id] });
+      queryClient.invalidateQueries({ queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY] });
     },
   });
 }
