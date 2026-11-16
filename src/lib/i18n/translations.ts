@@ -70,6 +70,7 @@ export type TranslationKeys = {
     location: string;
     map: string;
     pickQuantity: string;
+    pickHereInstead: string;
   };
   mobileDashboard: {
     updatedTime: string;
@@ -4262,6 +4263,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       location: "Location",
       map: "Map",
       pickQuantity: "Pick",
+      pickHereInstead: "Pick Here Instead",
     },
     mobileDashboard: {
       updatedTime: "Updated {time}",
@@ -11563,6 +11565,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       location: "库位",
       map: "地图",
       pickQuantity: "拣货",
+      pickHereInstead: "从此库位拣货",
     },
     mobileDashboard: {
       updatedTime: "更新于 {time}",

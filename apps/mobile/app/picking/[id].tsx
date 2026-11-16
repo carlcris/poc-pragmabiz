@@ -769,7 +769,7 @@ export default function PickingDetailScreen() {
             : pendingConfirmation
               ? "Retry confirm"
               : verifiedSource.isMismatch
-                ? `Pick from ${verifiedSource.batchCode ?? "this batch"} instead`
+                ? tPickDetail("pickHereInstead")
                 : `Confirm ${pickedQtyText || "0"} ${verifiedItem.uom}`
         }
         variant={verifiedSource.isMismatch ? "warning" : "success"}
