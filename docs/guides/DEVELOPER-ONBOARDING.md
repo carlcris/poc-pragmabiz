@@ -388,6 +388,20 @@ git push origin main
 
 ## Development Workflow
 
+### Codex and Claude Code Orchestration
+
+Open a local Codex chat in the trusted repository to load the [project configuration](../../.codex/config.toml),
+[agent roles](../../.codex/agents/), and [routing rules](../../AGENTS.md#agent-orchestration).
+Codex coordinates design, implementation, review, and testing. The project sets a cap of three
+concurrent Codex subagent threads.
+
+Frontend implementation uses Claude Opus at high effort for routine changes and larger UI work. Install Claude
+Code on the same host as Codex, make `claude` available on `PATH`, and sign in. Verify the setup
+with `claude --version` and `claude auth status`. The handoff runs from the project's current checkout
+and passes `--model opus --effort high` to Claude Code. The `tester` role handles
+automated checks, and `browser_tester` uses GPT-6.1 Terra for live browser verification when the
+app and browser tooling are available.
+
 ### Trunk-Based Development
 
 This project uses **trunk-based development**:
