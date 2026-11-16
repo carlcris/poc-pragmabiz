@@ -20,7 +20,7 @@ export type PurchaseOnOrderItem = {
 export type PurchaseOnOrderFilters = {
   search?: string;
   supplierId?: string;
-  status?: PurchaseOnOrderStatus | "all";
+  status?: PurchaseOnOrderStatus;
   expectedFrom?: string;
   expectedTo?: string;
   page?: number;
@@ -29,6 +29,7 @@ export type PurchaseOnOrderFilters = {
 
 export type PurchaseOnOrderResponse = {
   data: PurchaseOnOrderItem[];
+  statusCounts: Record<PurchaseOnOrderStatus, number>;
   pagination: {
     total: number;
     page: number;

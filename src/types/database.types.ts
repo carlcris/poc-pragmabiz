@@ -12957,7 +12957,7 @@ export type Database = {
           uom: string;
         }[];
       };
-      get_purchase_on_order_items: {
+      get_purchase_on_order_status_page: {
         Args: {
           p_business_unit_id: string;
           p_company_id: string;
@@ -12970,21 +12970,11 @@ export type Database = {
           p_supplier_id?: string;
         };
         Returns: {
-          expected_delivery: string;
-          item_code: string;
-          item_id: string;
-          item_name: string;
-          ordered_qty: number;
-          outstanding_qty: number;
-          received_qty: number;
-          sr_id: string;
-          sr_item_id: string;
-          sr_number: string;
-          status: string;
-          supplier_code: string;
-          supplier_id: string;
-          supplier_name: string;
-          total_count: number;
+          awaiting_delivery_count: number;
+          items: Json;
+          page: number;
+          page_limit: number;
+          partially_received_count: number;
         }[];
       };
       get_reorder_statistics: {
