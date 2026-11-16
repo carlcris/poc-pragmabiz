@@ -109,6 +109,10 @@ export type LoadList = {
   deletedAt?: string;
 };
 
+export type LoadListDetail = Omit<LoadList, "items"> & {
+  items: (LoadListItem & { isLinkedToStockRequisition: boolean })[];
+};
+
 export type CreateLoadListRequest = {
   supplierId: string;
   destinationBusinessUnitId: string;

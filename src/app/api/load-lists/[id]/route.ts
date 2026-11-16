@@ -38,7 +38,6 @@ type LoadListItemRow = {
   qty_per_unit: number | string;
   load_list_qty: number | string;
   unit_price: number | string;
-  total_price: number | string;
   notes: string | null;
   item?:
     | {
@@ -52,6 +51,7 @@ type LoadListItemRow = {
         item_name: string;
       }[]
     | null;
+  stock_requisition_links?: { id: string }[];
 };
 
 // GET /api/load-lists/[id]
@@ -68,8 +68,10 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     const { supabase, userId, companyId, currentBusinessUnitId } = context;
     const capabilities = await resolveLoadListCapabilities(userId, currentBusinessUnitId);
 
-    // Fetch load list with related data
-    const { data: ll, error } = await supabase
+    const stockRequisitionLinkProjection = receivingOnly
+      ? ""
+      : ", stock_requisition_links:load_list_sr_items(id)";
+    const loadListQuery = supabase
       .from("load_lists")
       .select(
         `
@@ -113,16 +115,20 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
           qty_per_unit,
           load_list_qty,
           unit_price,
-          total_price,
           notes,
-          item:items(id, item_code, item_name)
+          item:items(id, item_code, item_name)${stockRequisitionLinkProjection}
         )
       `
       )
       .eq("id", id)
       .eq("company_id", companyId)
-      .is("deleted_at", null)
-      .single();
+      .is("deleted_at", null);
+
+    if (!receivingOnly) {
+      loadListQuery.limit(1, { referencedTable: "items.stock_requisition_links" });
+    }
+
+    const { data: ll, error } = await loadListQuery.single();
 
     if (error) {
       console.error("Error fetching load list:", error);
@@ -155,6 +161,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     const approvedByUser = Array.isArray(ll.approved_by_user)
       ? ll.approved_by_user[0]
       : (ll.approved_by_user ?? null);
+    const items = ll.items as LoadListItemRow[] | null;
     const formattedLL = {
       id: ll.id,
       llNumber: ll.ll_number,
@@ -228,7 +235,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       receivedDate: ll.received_date,
       approvedDate: ll.approved_date,
       notes: ll.notes,
-      totalAmount: (ll.items as LoadListItemRow[] | null)?.reduce((sum, item) => {
+      totalAmount: items?.reduce((sum, item) => {
         return (
           sum +
           parseFloat(String(item.load_list_qty)) *
@@ -237,7 +244,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
         );
       }, 0),
       capabilities,
-      items: (ll.items as LoadListItemRow[] | null)?.map((item) => {
+      items: items?.map((item) => {
         const itemDetails = Array.isArray(item.item) ? (item.item[0] ?? null) : (item.item ?? null);
         const qtyPerUnit = parseFloat(String(item.qty_per_unit));
         const loadListQty = parseFloat(String(item.load_list_qty));
@@ -260,6 +267,9 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
           unitPrice,
           totalPrice: loadListQty * qtyPerUnit * unitPrice,
           notes: item.notes,
+          ...(!receivingOnly && {
+            isLinkedToStockRequisition: Boolean(item.stock_requisition_links?.length),
+          }),
         };
       }),
       createdAt: ll.created_at,

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,8 @@ export type DocumentLinesTableRow = {
   key: string;
   itemCode: string;
   itemName: string;
+  /** Line-level status shown beside the item code in both responsive layouts. */
+  itemStatus?: ReactNode;
   unitLabel: string;
   uomCode: string;
   qtyPerUnit: number;
@@ -117,6 +120,7 @@ export function DocumentLinesTable({
                   {t("notSaved")}
                 </span>
               ) : null}
+              {row.itemStatus ? <span className="ml-2">{row.itemStatus}</span> : null}
             </div>
             <div className="mt-0.5 text-sm text-muted-foreground">{row.itemName}</div>
             {row.note ? (

@@ -47,10 +47,10 @@ import {
   LOAD_LIST_STATUS_LABEL_KEYS,
   LOAD_LIST_STATUS_TONES,
 } from "@/lib/load-lists/load-list-display";
-import type { LoadList, LoadListStatus } from "@/types/load-list";
+import type { LoadListDetail, LoadListStatus } from "@/types/load-list";
 
 type LoadListDetailsProps = {
-  loadList: LoadList;
+  loadList: LoadListDetail;
 };
 
 const STOCK_REQUISITION_LINK_STATUSES: readonly LoadListStatus[] = [
@@ -301,6 +301,11 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
                   key: item.id,
                   itemCode: item.item?.code ?? "",
                   itemName: item.item?.name ?? "",
+                  itemStatus: item.isLinkedToStockRequisition ? (
+                    <StatusText tone="green" className="text-xs font-semibold">
+                      {t("itemLinked")}
+                    </StatusText>
+                  ) : undefined,
                   unitLabel: item.unitName,
                   uomCode: item.itemUnitOption?.uomCode || item.uomCode || "",
                   qtyPerUnit: item.qtyPerUnit,

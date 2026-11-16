@@ -10857,6 +10857,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       noItemsTitle: "No Items Yet",
       noItemsDescription: "Add at least one item using the New Item row above.",
       noItemsViewDescription: "This load list has no items.",
+      itemLinked: "Linked",
       mixedCurrencyNotAllowed:
         "Load lists cannot mix currencies. Create separate load lists per currency.",
       lineItemsRequired: "Add at least one item before saving.",
@@ -17901,6 +17902,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       noItemsTitle: "尚无商品",
       noItemsDescription: "请通过上方的新增商品行至少添加一个商品。",
       noItemsViewDescription: "此装载单没有商品。",
+      itemLinked: "已关联",
       mixedCurrencyNotAllowed: "装载单不能混用币种。请按币种分别创建装载单。",
       lineItemsRequired: "保存前请至少添加一个商品。",
       summaryTitle: "摘要",

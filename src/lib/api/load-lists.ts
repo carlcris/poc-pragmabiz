@@ -1,5 +1,6 @@
 import type {
   LoadList,
+  LoadListDetail,
   CreateLoadListRequest,
   UpdateLoadListRequest,
   LoadListFilters,
@@ -31,8 +32,8 @@ export const loadListsApi = {
     return apiClient.get<LoadListsResponse>(`${API_BASE}?${params.toString()}`);
   },
 
-  getLoadList: async (id: string): Promise<LoadList> => {
-    return apiClient.get<LoadList>(`${API_BASE}/${id}`);
+  getLoadList: async (id: string): Promise<LoadListDetail> => {
+    return apiClient.get<LoadListDetail>(`${API_BASE}/${id}`);
   },
 
   createLoadList: async (data: CreateLoadListRequest): Promise<LoadList> => {

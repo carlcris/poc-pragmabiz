@@ -577,7 +577,7 @@ export function LinkStockRequisitionsDialog({
               </div>
               <div className="bg-gradient-to-br from-purple-50/30 to-violet-50/30 p-5">
                 <div className="grid grid-cols-12 gap-3">
-                  <div className="col-span-4">
+                  <div className="col-span-12 min-w-0 md:col-span-4">
                     <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-700">
                       {t("loadListItem")}
                     </label>
@@ -589,21 +589,36 @@ export function LinkStockRequisitionsDialog({
                         setAddLinkError("");
                       }}
                     >
-                      <SelectTrigger className="h-10 border-gray-300 bg-white focus:border-purple-500 focus:ring-purple-500">
+                      <SelectTrigger className="h-14 border-gray-300 bg-white text-left text-gray-900 focus:border-purple-500 focus:ring-purple-500 [&>span>span]:truncate [&>span]:line-clamp-none [&>span]:block [&>span]:min-w-0 [&>svg]:shrink-0 [&_[data-option-details]]:hidden">
                         <SelectValue placeholder={t("selectLoadListItem")} />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]">
                         {availableLLItems.map((item) => (
-                          <SelectItem key={item.id} value={item.id}>
-                            {item.item?.code} - {item.item?.name} (
-                            {t("remainingQtyPrefix", { qty: item.remainingQty })})
+                          <SelectItem
+                            key={item.id}
+                            value={item.id}
+                            textValue={
+                              item.item ? `${item.item.code} ${item.item.name}` : t("unknownItem")
+                            }
+                            className="whitespace-normal break-words [&>span:last-child]:min-w-0"
+                          >
+                            <span className="block font-medium">
+                              {item.item?.name ?? t("unknownItem")}
+                            </span>
+                            <span className="block text-xs">
+                              {item.item?.code}
+                              <span data-option-details>
+                                {item.item?.code ? " · " : ""}
+                                {t("remainingQtyPrefix", { qty: item.remainingQty })}
+                              </span>
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className="col-span-4">
+                  <div className="col-span-12 min-w-0 md:col-span-4">
                     <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-700">
                       {t("srItem")}
                     </label>
@@ -615,10 +630,10 @@ export function LinkStockRequisitionsDialog({
                       }}
                       disabled={!selectedLLItem || matchingSRItems.length === 0}
                     >
-                      <SelectTrigger className="h-10 border-gray-300 bg-white focus:border-purple-500 focus:ring-purple-500">
+                      <SelectTrigger className="h-14 border-gray-300 bg-white text-left text-gray-900 focus:border-purple-500 focus:ring-purple-500 [&>span>span]:truncate [&>span]:line-clamp-none [&>span]:block [&>span]:min-w-0 [&>svg]:shrink-0 [&_[data-option-details]]:hidden">
                         <SelectValue placeholder={t("selectSrItem")} />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]">
                         {matchingSRItems.map((item) => {
                           const pairKey = `${selectedLLItemId}:${item.id}`;
                           const isAlreadyLinked = selectedLLItemId
@@ -633,11 +648,19 @@ export function LinkStockRequisitionsDialog({
                               key={item.id}
                               value={item.id}
                               disabled={isAlreadyLinked || isPending}
+                              textValue={`${item.srNumber} ${item.item?.name ?? ""}`}
+                              className="whitespace-normal break-words [&>span:last-child]:min-w-0"
                             >
-                              {item.srNumber} - {item.item?.name} (
-                              {t("outstandingPrefix", { qty: item.outstandingQty })})
-                              {isAlreadyLinked ? ` - ${t("alreadyLinkedLabel")}` : ""}
-                              {isPending ? ` - ${t("pendingLabel")}` : ""}
+                              <span className="block font-medium">{item.item?.name}</span>
+                              <span className="block text-xs">
+                                {item.item?.code} · {item.srNumber}
+                                <span data-option-details>
+                                  {" · "}
+                                  {t("outstandingPrefix", { qty: item.outstandingQty })}
+                                  {isAlreadyLinked ? ` · ${t("alreadyLinkedLabel")}` : ""}
+                                  {isPending ? ` · ${t("pendingLabel")}` : ""}
+                                </span>
+                              </span>
                             </SelectItem>
                           );
                         })}
@@ -645,7 +668,7 @@ export function LinkStockRequisitionsDialog({
                     </Select>
                   </div>
 
-                  <div className="col-span-2">
+                  <div className="col-span-6 min-w-0 md:col-span-2">
                     <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-700">
                       {t("quantityLabel")}
                     </label>
@@ -663,16 +686,16 @@ export function LinkStockRequisitionsDialog({
                           ? Math.min(selectedSRItem.outstandingQty, selectedLLItemAvailableQty)
                           : undefined
                       }
-                      className="h-10 border-gray-300 bg-white focus:border-purple-500 focus:ring-purple-500"
+                      className="h-10 border-gray-300 bg-white focus:border-purple-500 focus:ring-purple-500 md:h-14"
                     />
                   </div>
 
-                  <div className="col-span-2 flex items-end">
+                  <div className="col-span-6 flex min-w-0 items-end md:col-span-2">
                     <Button
                       type="button"
                       onClick={handleAddLink}
                       disabled={!canAddLinks}
-                      className="h-10 w-full bg-gradient-to-r from-purple-600 to-violet-600 text-sm font-semibold shadow-lg hover:from-purple-700 hover:to-violet-700"
+                      className="h-10 w-full bg-gradient-to-r from-purple-600 to-violet-600 text-sm font-semibold shadow-lg hover:from-purple-700 hover:to-violet-700 md:h-14"
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       {t("addLink")}
