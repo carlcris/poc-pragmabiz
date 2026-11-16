@@ -65,6 +65,9 @@ type PickLocationRow = {
   path_ids: string[];
 };
 
+const unpackPickLocation = (location: unknown) =>
+  ((Array.isArray(location) ? location[0] : location) ?? null) as PickLocationRow | null;
+
 export const fetchPickList = async (supabase: SupabaseClient, companyId: string, id: string) => {
   const { data, error } = await supabase
     .from("pick_lists")
@@ -120,7 +123,13 @@ export const fetchPickList = async (supabase: SupabaseClient, companyId: string,
         created_at,
         updated_by,
         updated_at,
-        deleted_at
+        deleted_at,
+        picked_location:warehouse_locations!delivery_note_item_picks_picked_location_id_fkey(
+          id, code, name, path_ids
+        ),
+        source_warehouse:warehouses!delivery_note_item_picks_source_warehouse_id_fkey(
+          warehouse_name, warehouse_code
+        )
       ),
       pick_list_items(
         id,
@@ -198,6 +207,9 @@ export const fetchPickList = async (supabase: SupabaseClient, companyId: string,
     .eq("id", id)
     .eq("company_id", companyId)
     .is("deleted_at", null)
+    .is("delivery_note_item_picks.deleted_at", null)
+    .order("created_at", { referencedTable: "delivery_note_item_picks" })
+    .order("id", { referencedTable: "delivery_note_item_picks" })
     .single();
 
   if (error || !data) return null;
@@ -205,16 +217,20 @@ export const fetchPickList = async (supabase: SupabaseClient, companyId: string,
   // Pickers show names-only addresses; codes stay in location_path for sorting and scanning.
   const items = (data.pick_list_items ?? []).map(({ suggested_pick_location, ...item }) => ({
     item,
-    // The untyped client reports this to-one embed as an array.
-    location: (Array.isArray(suggested_pick_location)
-      ? (suggested_pick_location[0] ?? null)
-      : (suggested_pick_location ?? null)) as unknown as PickLocationRow | null,
+    location: unpackPickLocation(suggested_pick_location),
   }));
-  const locations = items.flatMap(({ location }) => (location ? [location] : []));
+  const picks = (data.delivery_note_item_picks ?? []).map(({ picked_location, ...pick }) => ({
+    pick,
+    location: unpackPickLocation(picked_location),
+  }));
+  const locations = new Map<string, PickLocationRow>();
+  for (const { location } of [...items, ...picks]) {
+    if (location) locations.set(location.id, location);
+  }
   const { data: namePaths, error: namePathError } = await fetchWarehouseLocationNamePaths(
     supabase,
     companyId,
-    locations
+    [...locations.values()]
   );
   if (namePathError) {
     console.error("Failed to fetch pick list location names:", namePathError);
@@ -223,6 +239,10 @@ export const fetchPickList = async (supabase: SupabaseClient, companyId: string,
 
   return mapPickListRecord({
     ...data,
+    delivery_note_item_picks: picks.map(({ pick, location }) => ({
+      ...pick,
+      picked_location_name_path: location ? namePaths.get(location.id) || location.code : null,
+    })),
     pick_list_items: items.map(({ item, location }) => ({
       ...item,
       suggested_pick_location: location

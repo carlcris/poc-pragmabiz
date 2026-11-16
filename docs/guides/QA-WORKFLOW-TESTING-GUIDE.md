@@ -753,6 +753,10 @@ multiple warehouse-specific delivery notes from one action.
 - Switch between two warehouses in the same business unit with an empty cart and confirm item
   availability reflects only the selected location.
 - Try to dispatch more than what was actually picked — should be blocked.
+- Open **Item → Locations** before voiding a delivery note with reserved picks. After the void,
+  reopen the tab without reloading and verify the warehouse totals, parent and bin quantities, and
+  batch details reflect the released reservations. Include a pick from an alternative bin or
+  warehouse and verify both the planned and actual locations.
 - Allocate 10 units, dispatch 6, and scan all 6 in mobile receiving. Confirm both the inbox and detail show `6 / 6`, not `6 / 10`. Run `supabase/tests/receiving-inbox-progress.sql` against seeded local Supabase to verify partial, full, fractional, and zero-dispatch totals with authenticated reads; its fixture changes are rolled back.
 - Confirm a user cannot Start Receiving on a delivery that isn't Dispatched yet.
 - Confirm the delivery-note detail shows the fulfilling business unit as the source business unit
@@ -831,11 +835,15 @@ multiple warehouse-specific delivery notes from one action.
    Confirm each item card shows its warehouse code > rack code > batch code path without a location
    SKU or redundant "To Pick" label, while the separate Picked value still shows progress.
 4. A picker taps/clicks a line item to **claim** it — this locks the line so a second picker can't work the same item at the same time. Claims expire automatically after a short window if left idle.
-5. On mobile, the picker scans or manually enters the 10-digit batch-location SKU, enters the
-   quantity, and confirms. The resolved item, batch code, original received timestamp, and
-   fulfilling-business-unit boundary always have to match. The active business unit's Inventory
-   picking policy may additionally require the allocated warehouse or the allocated warehouse and
-   rack. A different SKU shows a confirmable warning only after every mandatory validation passes.
+5. On mobile or web tablet, scan the item-batch QR (`itemId` + `batchNumber` only).
+   One eligible stock location resolves directly. Multiple locations must show a source-choice
+   prompt, including the suggested location, with three choices per page. On mobile the suggested
+   location is preselected; select another row if needed and confirm with **Pick From {bin}**. With
+   more than three locations, **Load More Locations** appends the next page without losing the
+   current selection or scroll position, and disappears once every location is loaded. Select the actual source,
+   enter a positive quantity, and confirm. Item, batch, original received timestamp, business-unit
+   scope, and configured warehouse/rack policy must all pass. An alternative source requires
+   explicit confirmation. Verify saved picks and reservations reference the selected source.
 6. **Pause** → status Paused, for stepping away mid-pick. **Resume Picking** brings it back to In Progress.
 7. **Complete Picking** → status Done. This is blocked if any line still has an active, unexpired claim, including a claim held by the picker attempting completion — the app will show an error rather than silently completing.
 8. **Cancel Pick List** → status Cancelled. A cancellation reason is optional; leaving it blank stores no reason. Cancelling rolls back any picked-quantity progress on the linked Delivery Note, and if the delivery hadn't been dispatched yet, reverts its status too.
@@ -843,6 +851,39 @@ multiple warehouse-specific delivery notes from one action.
 **Who can do it**: edit access to Pick Lists; on top of that, some users are restricted to only see/act on pick lists specifically assigned to them (check whether the test user has this restriction before assuming they should see every open pick list).
 
 **Things to test**:
+
+- Open the dashboard to cache **Open Work by Age**, queue picking from a delivery note, and
+  return to the dashboard. Confirm the new pick list increases the newest age bucket without a reload.
+- Under a policy that permits either bin, pick two **BOX (50)** from Bin 3 and one from Bin 1 for a
+  single three-box line. Verify the mobile **Picked Items** section opens expanded and shows
+  **3 / 3 BOX (50)** above **Zone 1 / Rack A / Bin 3 · 2 BOX (50)** and
+  **Zone 1 / Rack A / Bin 1 · 1 BOX (50)**. Check that the section can be collapsed and reopened
+  and defaults to expanded when opening the pick list again. If both boxes from Bin 3 were
+  recorded separately, verify they share one row.
+- On mobile, scan a batch with five boxes of 144 left to pick and 100 base units in one bin.
+  Confirm the 100-unit bin is excluded. A bin with 144 base units stays eligible and shows
+  **1 BOX (144)** available to pick and **4 BOX (144)** short. Fully reserve an alternative bin
+  for another pick and confirm it is excluded before pagination. The suggested bin should remain
+  eligible when its stock is reserved for this line. Select a bin with one free box and verify that
+  confirmation defaults to one and rejects a larger quantity. Reserve that last box elsewhere
+  after displaying the sources and verify that selecting the bin again fails. Repeat on tablet.
+- For a line with five **BOX (144)** remaining and a bin with 238 available pieces, verify the
+  mobile and tablet confirmation fields default to **1 BOX (144)**. Try entering a fraction or
+  increasing to two boxes and verify neither can be submitted. Verify a fractional base-unit
+  line can still use its exact available quantity.
+- Print Item A / Batch A, move its unreserved stock to another location, then create a pick list.
+  Scan the original label and confirm the new location resolves without reprinting. If multiple
+  locations have stock, require a choice even if one matches the pick list. Test more than three
+  locations, subsequent pages with one remaining choice, cancel, and a location depleted between
+  display and selection. No cancelled choice may acquire a lasting claim or save a pick.
+- On both mobile and tablet receiving, scan the new item-batch-only label twice. Each scan
+  must add one unit without asking for a box ID; the stored scan reference is the full QR text.
+- Reject old 10-digit/location-specific labels and wrong item/batch QRs. Under rack-restricted
+  policy, do not offer other racks. Inactive sources and other-business-unit sources must be absent.
+- Run `supabase/tests/item-batch-picking-sources.sql` against seeded local Supabase. It uses the
+  authenticated role and rolls back fixtures; it covers source pagination, selection, stale stock,
+  rack policy, an alternative-source confirmation, and a forced late failure proving rollback.
+
 
 - Pull to refresh on the dashboard, picking list, and pick-list detail screens. Confirm only the
   visible screen's dashboard/list/detail requests run, with no unrelated business-unit, receiving,
@@ -1092,7 +1133,7 @@ For each line, choose either **Existing Batch** or **New Batch**. Verify the Sto
 - Open and close **View** to cache a draft, then edit its reason. Force the detail GET to fail and reopen **View**. Confirm the error and **Retry loading details** appear and the old reason is hidden. Restore the GET and click retry. Confirm the new reason appears and the browser sends only a GET for the retry.
 - With other batches already present, create a different batch code and confirm the draft creates its batch/location identity and Post applies the increase.
 - Try creating a batch without a location, with zero quantity, with Decrease Stock, and with a code already present at the selected location; each case should remain in the form with actionable guidance.
-- From both an editable adjustment (line **⋮** menu → **Print Labels**) and its read-only details view, print multiple QR labels for a persisted batch. Confirm the dialog defaults to the item's default unit (then base, then first active option), accepts another active unit selection, accepts only whole-number copy counts from 1–100, and produces exactly that many labels with the selected unit's `qtyPerUnit` and the same batch-location SKU.
+- From both an editable adjustment (line **⋮** menu → **Print Labels**) and its read-only details view, print multiple QR labels for a persisted batch. Confirm the dialog defaults to the item's default unit (then base, then first active option), accepts another active unit selection, accepts only whole-number copy counts from 1–100, and produces exactly that many labels with the selected unit's `qtyPerUnit` and the same item-batch QR payload.
 
 ---
 
@@ -1226,7 +1267,7 @@ form at `/purchasing/stock-requisitions/new`. Opening a requisition shows its vi
 - Try to post more than the pending quantity — should be refused.
 - For a receiving-sourced task, check whether a batch code is pre-filled/suggested from the receiving batch, and confirm the destination _location_ can still be freely chosen regardless.
 - Confirm the posting field uses the task's source unit rather than its base unit (for example, entering 5 BOX for a task with 144 STICK per box posts 720 STICK). Change the source-unit posting quantity for a partial putaway and verify the label default follows it, then enter a different whole-number copy count and verify each applicable posted batch/location label prints exactly that many copies while every label's quantity remains the task's quantity per unit.
-- Print and reprint multiple putaway labels on 4 × 2-inch die-cut stock with a 3 mm gap. Set the printer media to 4 inches wide across the print head by 2 inches long in the feed direction (not 2 × 4-inch portrait), with gap sensing enabled; in Chrome, select the matching landscape paper size and actual size (100% scaling). Confirm each PDF page is landscape, has no visible border, and fits within the cut area. The enlarged QR should begin near the top edge, and the larger right-hand text should remain readable; Qty must sit directly beneath the item name without overlapping wrapped names. Warehouse/location text must not appear on the label; scanning must still resolve the original batch-location identity. The printer must advance to the next gap without rotating or scaling the label. If Chrome previews a horizontal label but paper prints vertically, check the driver's separate rotation setting. If the physical print has a large blank band above the QR while the PDF preview does not, check the selected printer's scaling and vertical position adjustment. If a single FEED press without a print job skips past the next gap, verify the roll path, gap media mode, and sensor before retrying. Repeat from GRN box, item batch-location, and stock-adjustment label actions, which use the same PDF generator.
+- Print and reprint multiple putaway labels on 4 × 2-inch die-cut stock with a 3 mm gap. Set the printer media to 4 inches wide across the print head by 2 inches long in the feed direction (not 2 × 4-inch portrait), with gap sensing enabled; in Chrome, select the matching landscape paper size and actual size (100% scaling). Confirm each PDF page is landscape, has no visible border, and fits within the cut area. The enlarged QR should begin near the top edge, and the larger right-hand text should remain readable; Qty must sit directly beneath the item name without overlapping wrapped names. Warehouse/location text must not appear on the label; the QR must contain only itemId and batchNumber, and resolve the current eligible picking source. The printer must advance to the next gap without rotating or scaling the label. If Chrome previews a horizontal label but paper prints vertically, check the driver's separate rotation setting. If the physical print has a large blank band above the QR while the PDF preview does not, check the selected printer's scaling and vertical position adjustment. If a single FEED press without a print job skips past the next gap, verify the roll path, gap media mode, and sensor before retrying. Repeat from GRN box, item batch-location, and stock-adjustment label actions, which use the same PDF generator.
 - For a transformation with only wasted/scrap output, see whether a putaway task still gets created for it (cross-reference the note under Stock Transformations, section 15 — this is a known area of concern).
 
 ---

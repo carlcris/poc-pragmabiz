@@ -1,5 +1,6 @@
 import QRCode from "qrcode";
 import { jsPDF } from "jspdf";
+import { serializeItemBatchQr } from "./item-batch-qr";
 
 const LABEL_WIDTH_MM = 101.6;
 const LABEL_HEIGHT_MM = 50.8;
@@ -24,22 +25,14 @@ const wrapText = (pdf: jsPDF, value: string, maxWidth: number, maxLines: number)
 };
 
 /**
- * Barcode data structure for GRN boxes
+ * Printable item-batch label data shared by inventory and receiving
  */
 export type BarcodeData = {
-  boxId: string;
-  itemId?: string;
-  batchLocationSku?: string | null;
+  itemId: string;
   batchNumber: string;
-  grnNumber: string;
   itemCode: string;
   itemName: string;
-  boxNumber: number;
   qtyPerBox: number;
-  deliveryDate: string;
-  containerNumber?: string;
-  sealNumber?: string;
-  locationId?: string | null;
 };
 
 /**
@@ -47,19 +40,7 @@ export type BarcodeData = {
  */
 export async function generateQRCode(data: BarcodeData): Promise<string> {
   try {
-    const qrData = JSON.stringify({
-      id: data.boxId,
-      batchNumber: data.batchNumber,
-      itemId: data.itemId || null,
-      item: data.itemCode,
-      box: data.boxNumber,
-      qty: data.qtyPerBox,
-      date: data.deliveryDate,
-      container: data.containerNumber,
-      seal: data.sealNumber,
-      location: data.locationId || null,
-      batchLocationSku: data.batchLocationSku || null,
-    });
+    const qrData = serializeItemBatchQr({ itemId: data.itemId, batchNumber: data.batchNumber });
     const qrCodeDataURL = await QRCode.toDataURL(qrData, {
       errorCorrectionLevel: "H",
       type: "image/png",
@@ -94,7 +75,7 @@ export async function generateBarcodeLabelsPDF(boxes: BarcodeData[]): Promise<Bl
     // Generate QR code for this box
     const qrCodeDataURL = await generateQRCode(box);
 
-    // Fill the label height while leaving room for the SKU below the QR code.
+    // Keep the QR at the established print size.
     const qrSize = 40;
     const qrX = 2;
     pdf.addImage(qrCodeDataURL, "PNG", qrX, 1.2, qrSize, qrSize);
@@ -122,16 +103,6 @@ export async function generateBarcodeLabelsPDF(boxes: BarcodeData[]): Promise<Bl
     pdf.setFont("helvetica", "bold");
     const quantityY = itemNameY + Math.max(0, itemNameLines.length - 1) * 4.1 + 6.5;
     pdf.text(fitText(pdf, `Qty: ${box.qtyPerBox}`, textMaxWidth), textX, quantityY);
-
-    if (box.batchLocationSku) {
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-      const skuLines = wrapText(pdf, box.batchLocationSku, qrSize, 2);
-      skuLines.forEach((skuLine, index) => {
-        const skuX = qrX + (qrSize - pdf.getTextWidth(skuLine)) / 2;
-        pdf.text(skuLine, skuX, 48 - (skuLines.length - 1 - index) * 3.5);
-      });
-    }
   }
 
   return pdf.output("blob");

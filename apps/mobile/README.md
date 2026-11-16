@@ -99,6 +99,7 @@ SUNMI devices without a compatible scan head and on other supported platforms.
 
 ## Boundaries
 
-- This app does not import from the root `src/` web app.
+- Shared login helpers, translations, and item/batch QR parsing come from root `src/lib`;
+  Metro watches that directory so Android bundles can resolve those imports.
 - All API contracts copied for mobile live under `apps/mobile/src/contracts`.
 - The Next.js API server is the backend boundary.

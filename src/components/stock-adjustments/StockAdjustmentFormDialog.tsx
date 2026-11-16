@@ -280,23 +280,17 @@ export function StockAdjustmentFormDialog({
   };
 
   const handlePrintBatchLabel = (item: StockAdjustmentLineItemFormValues) => {
-    if (!item.itemBatchLocationId || !item.batchLocationSku) {
+    if (!item.itemBatchLocationId || !item.batchCode) {
       toast.error(t("printBatchMissing"));
       return;
     }
 
     setBatchLabelToPrint({
-      boxId: item.itemBatchLocationId,
       itemId: item.itemId,
-      batchLocationSku: item.batchLocationSku,
-      batchNumber: item.batchCode || item.batchLocationSku,
-      grnNumber: selectedAdjustment?.adjustmentCode || t("stockAdjustmentLabel"),
+      batchNumber: item.batchCode,
       itemCode: item.itemCode || "",
       itemName: item.itemName || "",
-      boxNumber: 1,
       qtyPerBox: item.adjustedQty,
-      deliveryDate: item.batchReceivedAt || form.getValues("adjustmentDate"),
-      locationId: item.batchWarehouseLocationId || null,
     });
   };
 

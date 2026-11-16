@@ -1,3 +1,4 @@
+import { parseItemBatchQr, serializeItemBatchQr } from "../../../../src/lib/item-batch-qr";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -113,6 +114,21 @@ const parseScanUuid = (value: unknown) => {
 };
 
 const parseReceivingScan = (rawScan: string): ParsedReceivingScan => {
+  const itemBatch = parseItemBatchQr(rawScan);
+  if (itemBatch) {
+    // Receiving stores the scanned label as its audit reference; repeated labels are allowed.
+    const reference = serializeItemBatchQr(itemBatch);
+    return {
+      qrCode: reference,
+      boxId: reference,
+      itemId: itemBatch.itemId,
+      itemUnitOptionId: null,
+      qty: 1,
+      batchNumber: itemBatch.batchNumber,
+      locationId: null,
+    };
+  }
+
   const candidates = [rawScan.trim()];
   try {
     candidates.push(decodeURIComponent(rawScan.trim()));

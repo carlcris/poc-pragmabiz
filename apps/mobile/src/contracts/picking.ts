@@ -17,6 +17,14 @@ export type PickListSummary = {
   deliveryNoteCode?: string | null;
 };
 
+export type PickedLocation = {
+  locationId: string;
+  locationNamePath: string | null;
+  warehouseId: string;
+  warehouseName: string | null;
+  pickedQty: number;
+};
+
 export type PickListItem = {
   id: string;
   pickListItemId: string;
@@ -33,6 +41,7 @@ export type PickListItem = {
   uom: string;
   requiredQty: number;
   pickedQty: number;
+  pickedLocations: PickedLocation[];
   locationName: string | null;
   locationPath: string | null;
   locationNamePath: string | null;

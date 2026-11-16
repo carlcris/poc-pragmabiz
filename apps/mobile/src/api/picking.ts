@@ -1,42 +1,21 @@
+import type { PickSourceResult } from "../../../../src/types/pick-source";
+import { getPickingUnitLabel } from "../../../../src/lib/picking-quantities";
 import { apiRequest } from "@/api/client";
 import type {
   PickListDetail,
   PickListItem,
   PickListItemClaim,
   PickListSummary,
+  PickedLocation,
 } from "@/contracts/picking";
 import { asArray, asRecord, firstRecord, maybeStr, num, str } from "@/utils/record";
+import { summarizePickProgress } from "./pick-progress";
 
 type ListResponse = {
   data?: unknown;
 };
 
-export type PickSourceResolution = {
-  batchLocationSku: string;
-  source: {
-    itemId: string;
-    warehouseId: string;
-    locationId: string;
-    locationCode: string | null;
-    locationName: string | null;
-    batchCode: string;
-    batchReceivedAt: string;
-  };
-  line: {
-    pickListItemId: string;
-    deliveryNoteItemId: string;
-    remainingQty: number;
-    allocatedQty: number;
-    pickedQty: number;
-    item?: {
-      barcode?: string | null;
-      itemName?: string | null;
-      itemCode?: string | null;
-    } | null;
-  } | null;
-  isMismatch: boolean;
-  warningCode: string | null;
-};
+export type { PickSourceResolution, PickSourceResult } from "../../../../src/types/pick-source";
 
 export type PickLocationMap = {
   warehouse: {
@@ -107,7 +86,11 @@ const pickRowTotals = (value: unknown) => {
   return byPickListItem;
 };
 
-const normalizePickItem = (value: unknown, pickedQtyOverride?: number): PickListItem => {
+const normalizePickItem = (
+  value: unknown,
+  pickedQtyOverride: number | undefined,
+  pickedLocations: PickedLocation[]
+): PickListItem => {
   const record = asRecord(value);
   const item = firstRecord(record.item || record.items);
   const unitOption = firstRecord(
@@ -134,6 +117,7 @@ const normalizePickItem = (value: unknown, pickedQtyOverride?: number): PickList
       record.line_id ||
       record.id
   );
+  const unitLabel = str(record.uom || record.uomSymbol || unit.symbol || unit.name, "unit");
 
   return {
     id: pickListItemId,
@@ -187,7 +171,11 @@ const normalizePickItem = (value: unknown, pickedQtyOverride?: number): PickList
         dnLine.suggested_pick_batch_received_at ||
         source.batch_received_at
     ),
-    uom: str(record.uom || record.uomSymbol || unit.symbol || unit.name, "unit"),
+    uom: getPickingUnitLabel(
+      unitLabel,
+      num(unitOption.qty_per_unit, 1),
+      maybeStr(unitOption.option_label)
+    ),
     requiredQty: num(
       record.requiredQty ||
         record.required_qty ||
@@ -197,6 +185,7 @@ const normalizePickItem = (value: unknown, pickedQtyOverride?: number): PickList
         record.pick_qty
     ),
     pickedQty: pickedQtyOverride ?? num(record.pickedQty || record.picked_qty),
+    pickedLocations,
     locationName: maybeStr(record.locationName || location.name || location.code),
     locationPath: maybeStr(location.location_path),
     locationNamePath: maybeStr(location.location_name_path),
@@ -261,16 +250,18 @@ const normalizePickDetail = (value: unknown): PickListDetail => {
   const deliveryNote = firstRecord(
     record.deliveryNote || record.delivery_note || record.delivery_notes
   );
-  const totalsByPickListItem = pickRowTotals(
-    record.deliveryNoteItemPicks || record.delivery_note_item_picks
-  );
+  const pickRows = asArray(record.deliveryNoteItemPicks || record.delivery_note_item_picks);
+  const progressByLine = summarizePickProgress(pickRows);
   const items = asArray(record.items || record.pickListItems || record.pick_list_items).map(
     (itemValue) => {
       const itemRecord = asRecord(itemValue);
       const pickListItemId = str(
         itemRecord.id || itemRecord.pickListItemId || itemRecord.pick_list_item_id
       );
-      return normalizePickItem(itemValue, totalsByPickListItem.get(pickListItemId));
+      const progress = progressByLine.get(pickListItemId);
+      return normalizePickItem(itemValue, progress?.pickedQty, [
+        ...(progress?.locations.values() ?? []),
+      ]);
     }
   );
   const claims = asArray(record.pickListItemClaims || record.pick_list_item_claims)
@@ -455,52 +446,15 @@ export const getPickLocationMap = async (
 
 export const resolvePickSource = async (
   id: string,
-  query: {
-    batchLocationSku: string;
-    itemId?: string | null;
-    locationId?: string | null;
-    batchCode?: string | null;
-  }
-): Promise<PickSourceResolution> => {
-  const response = await apiRequest<ListResponse | unknown>(`/api/pick-lists/${id}/scan-source`, {
-    query,
-  });
-  const payload = asRecord(response);
-  const data = asRecord(payload.data);
-  const source = asRecord(data.source);
-  const line = asRecord(data.line);
-  const item = asRecord(line.item);
-
-  return {
-    batchLocationSku: str(data.batchLocationSku || data.batch_location_sku),
-    source: {
-      itemId: str(source.itemId || source.item_id),
-      warehouseId: str(source.warehouseId || source.warehouse_id),
-      locationId: str(source.locationId || source.location_id),
-      locationCode: maybeStr(source.locationCode || source.location_code),
-      locationName: maybeStr(source.locationName || source.location_name),
-      batchCode: str(source.batchCode || source.batch_code),
-      batchReceivedAt: str(source.batchReceivedAt || source.batch_received_at),
-    },
-    line: Object.keys(line).length
-      ? {
-          pickListItemId: str(line.pickListItemId || line.pick_list_item_id),
-          deliveryNoteItemId: str(line.deliveryNoteItemId || line.delivery_note_item_id),
-          remainingQty: num(line.remainingQty || line.remaining_qty),
-          allocatedQty: num(line.allocatedQty || line.allocated_qty),
-          pickedQty: num(line.pickedQty || line.picked_qty),
-          item: Object.keys(item).length
-            ? {
-                barcode: maybeStr(item.barcode),
-                itemName: maybeStr(item.itemName || item.item_name),
-                itemCode: maybeStr(item.itemCode || item.item_code),
-              }
-            : null,
-        }
-      : null,
-    isMismatch: Boolean(data.isMismatch || data.is_mismatch),
-    warningCode: maybeStr(data.warningCode || data.warning_code),
-  };
+  query: { itemId: string; batchCode: string; locationId?: string; page?: number }
+): Promise<PickSourceResult> => {
+  const response = await apiRequest<{ data: PickSourceResult }>(
+    `/api/pick-lists/${id}/scan-source`,
+    {
+      query,
+    }
+  );
+  return response.data;
 };
 
 export const setPickListStatus = async (id: string, status: "in_progress" | "paused" | "done") => {

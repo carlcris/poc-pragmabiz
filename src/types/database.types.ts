@@ -12890,6 +12890,35 @@ export type Database = {
           warehouse_location_id: string;
         }[];
       };
+      get_pick_item_batch_sources: {
+        Args: {
+          p_batch_code: string;
+          p_company_id: string;
+          p_item_id: string;
+          p_location_id?: string;
+          p_page?: number;
+          p_pick_list_id: string;
+        };
+        Returns: {
+          allocated_qty: number;
+          available_base_qty: number;
+          batch_location_sku: string;
+          batch_received_at: string;
+          delivery_note_item_id: string;
+          is_suggested: boolean;
+          location_code: string;
+          location_id: string;
+          location_name: string;
+          location_path_ids: string[];
+          max_pick_qty: number;
+          pick_list_item_id: string;
+          picked_qty: number;
+          qty_on_hand: number;
+          remaining_base_qty: number;
+          warehouse_id: string;
+          warehouse_name: string;
+        }[];
+      };
       get_product_movement_report: {
         Args: {
           p_business_unit_id?: string;

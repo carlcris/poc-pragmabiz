@@ -22,6 +22,49 @@ export type TranslationKeys = {
     switchBusinessUnit: string;
   };
   mobilePickDetail: {
+    positivePickQuantity: string;
+    wholePackagePickQuantity: string;
+    partialPickReason: string;
+    pickSaved: string;
+    pickSaveFailed: string;
+    pickClaimLost: string;
+    pickStockChanged: string;
+    chooseLocation: string;
+    chooseLocationHint: string;
+    availableToPickQuantity: string;
+    suggestedLocation: string;
+    loadingLocations: string;
+    previousLocations: string;
+    nextLocations: string;
+    cancelLocation: string;
+    batchCode: string;
+    quantityToPick: string;
+    pickedLocationQuantity: string;
+    unknownPickedLocation: string;
+    pickUnit: string;
+    availableToPick: string;
+    remainingQuantityAvailable: string;
+    otherLocations: string;
+    shortByQuantity: string;
+    loadMoreLocations: string;
+    pickFromLocation: string;
+    itemBatchQrRequired: string;
+    noEligibleSource: string;
+    sourceLookupFailed: string;
+    sourceForbidden: string;
+    startBeforeScan: string;
+    qrNotOnList: string;
+    alreadyPicked: string;
+    otherPicker: string;
+    differentQr: string;
+    confirmAlternative: string;
+    checkQuantity: string;
+    qrContents: string;
+    pasteQr: string;
+    hideQrEntry: string;
+    checkingQr: string;
+    alternativeLocation: string;
+    qrMatches: string;
     nextPick: string;
     linesLeft: string;
     location: string;
@@ -4167,6 +4210,52 @@ export const translations: Record<Locale, TranslationKeys> = {
       switchBusinessUnit: "Switch business unit. Current: {name}",
     },
     mobilePickDetail: {
+      positivePickQuantity: "Enter a quantity greater than zero and no more than {quantity}.",
+      wholePackagePickQuantity: "Enter whole {unit} only.",
+      partialPickReason: "Choose a reason for the partial pick.",
+      pickSaved: "Pick saved.",
+      pickSaveFailed: "Unable to save this pick. Retry with the same quantity.",
+      pickClaimLost: "Your claim expired. Cancel and scan again to claim this item.",
+      pickStockChanged:
+        "Stock or reservations changed. Refresh the pick list and choose the source again.",
+      chooseLocation: "Where Are You Picking From?",
+      chooseLocationHint:
+        "This item and batch has stock in multiple locations. Select the actual source.",
+      availableToPickQuantity: "Available to pick: {quantity} {unit}",
+      suggestedLocation: "Suggested by Pick List",
+      loadingLocations: "Loading picking locations...",
+      previousLocations: "Previous",
+      nextLocations: "Next",
+      cancelLocation: "Cancel",
+      batchCode: "Batch {batchCode}",
+      quantityToPick: "{quantity} {unit} to pick",
+      pickedLocationQuantity: "{location} · {quantity} {unit}",
+      unknownPickedLocation: "Unknown location",
+      pickUnit: "unit",
+      availableToPick: "Available to Pick",
+      remainingQuantityAvailable: "Remaining Quantity Available",
+      otherLocations: "Other Locations",
+      shortByQuantity: "Short by {quantity} {unit} · Partial Pick",
+      loadMoreLocations: "Load More Locations",
+      pickFromLocation: "Pick From {location}",
+      itemBatchQrRequired: "Scan the item and batch QR, or paste its full contents.",
+      noEligibleSource:
+        "No eligible stock for this item and batch. Refresh the pick list or check its assigned batch and location rules.",
+      sourceLookupFailed: "Unable to load picking locations. Try again.",
+      sourceForbidden: "You no longer have access to this pick list.",
+      startBeforeScan: "Start picking before scanning items.",
+      qrNotOnList: "This item and batch is not on the remaining pick list.",
+      alreadyPicked: "This item is already fully picked. Refresh the list.",
+      otherPicker: "{name} is picking this item.",
+      differentQr: "This QR is for a different item or batch. Cancel to switch items.",
+      confirmAlternative: "Use the button below to confirm the selected location.",
+      checkQuantity: "Check the quantity before confirming.",
+      qrContents: "Item-batch QR contents",
+      pasteQr: "Paste the full QR contents",
+      hideQrEntry: "Hide QR entry",
+      checkingQr: "Checking item and batch...",
+      alternativeLocation: "Alternative picking location",
+      qrMatches: "Item and batch match",
       nextPick: "Next Pick",
       linesLeft: "Lines Left: {count}",
       location: "Location",
@@ -11423,6 +11512,49 @@ export const translations: Record<Locale, TranslationKeys> = {
       switchBusinessUnit: "切换业务单元。当前：{name}",
     },
     mobilePickDetail: {
+      positivePickQuantity: "请输入大于零且不超过 {quantity} 的数量。",
+      wholePackagePickQuantity: "请仅输入整数 {unit}。",
+      partialPickReason: "请选择未全部拣货的原因。",
+      pickSaved: "拣货已保存。",
+      pickSaveFailed: "无法保存此次拣货，请使用相同数量重试。",
+      pickClaimLost: "您的拣货占用已过期。请取消并重新扫描以占用此商品。",
+      pickStockChanged: "库存或预留已更改。请刷新拣货单并重新选择库位。",
+      chooseLocation: "您从哪个库位拣货？",
+      chooseLocationHint: "此商品批次在多个库位有库存。请选择实际拣货库位。",
+      availableToPickQuantity: "可拣数量：{quantity} {unit}",
+      suggestedLocation: "拣货单建议库位",
+      loadingLocations: "正在加载拣货库位…",
+      previousLocations: "上一页",
+      nextLocations: "下一页",
+      cancelLocation: "取消",
+      batchCode: "批次 {batchCode}",
+      quantityToPick: "待拣 {quantity} {unit}",
+      pickedLocationQuantity: "{location} · {quantity} {unit}",
+      unknownPickedLocation: "未知库位",
+      pickUnit: "件",
+      availableToPick: "可拣数量",
+      remainingQuantityAvailable: "剩余数量可拣",
+      otherLocations: "其他库位",
+      shortByQuantity: "短缺 {quantity} {unit} · 部分拣货",
+      loadMoreLocations: "加载更多库位",
+      pickFromLocation: "从 {location} 拣货",
+      itemBatchQrRequired: "请扫描商品批次二维码，或粘贴其完整内容。",
+      noEligibleSource: "此商品批次没有符合条件的库存。请刷新拣货单，或检查指定批次和库位规则。",
+      sourceLookupFailed: "无法加载拣货库位，请重试。",
+      sourceForbidden: "您已无权访问此拣货单。",
+      startBeforeScan: "请先开始拣货再扫描商品。",
+      qrNotOnList: "此商品批次不在待拣货清单中。",
+      alreadyPicked: "此商品已全部拣完，请刷新清单。",
+      otherPicker: "{name} 正在拣选此商品。",
+      differentQr: "此二维码属于其他商品或批次。请取消后切换商品。",
+      confirmAlternative: "请使用下方按钮确认所选库位。",
+      checkQuantity: "请先检查数量再确认。",
+      qrContents: "商品批次二维码内容",
+      pasteQr: "粘贴完整二维码内容",
+      hideQrEntry: "隐藏二维码输入",
+      checkingQr: "正在检查商品和批次…",
+      alternativeLocation: "其他拣货库位",
+      qrMatches: "商品和批次匹配",
       nextPick: "下一拣货",
       linesLeft: "剩余行数：{count}",
       location: "库位",

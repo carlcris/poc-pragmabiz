@@ -111,18 +111,13 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
 
       const barcodeData: BarcodeData[] = boxesToPrint.map((box) => {
         const item = grn.items.find((grnItem) => grnItem.id === box.grnItemId);
+        if (!item) throw new Error(t("printError"));
         return {
-          boxId: box.id,
-          itemId: box.itemId,
+          itemId: item.itemId,
           batchNumber: grn.batchNumber || "",
-          grnNumber: grn.grnNumber,
           itemCode: item?.item?.code || "",
           itemName: item?.item?.name || "",
-          boxNumber: box.boxNumber,
           qtyPerBox: box.qtyPerBox,
-          deliveryDate: box.deliveryDate || "",
-          containerNumber: box.containerNumber,
-          sealNumber: box.sealNumber,
         };
       });
 
@@ -225,7 +220,7 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
                         {itemBoxes.map((box) => (
                           <TableRow key={box.id}>
                             <TableCell className="font-medium">#{box.boxNumber}</TableCell>
-                            <TableCell className="tabular-nums text-xs">{box.barcode}</TableCell>
+                            <TableCell className="text-xs tabular-nums">{box.barcode}</TableCell>
                             <TableCell className="text-right">{box.qtyPerBox}</TableCell>
                           </TableRow>
                         ))}

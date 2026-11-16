@@ -184,24 +184,18 @@ export default function StockAdjustmentsPage() {
     setAdjustmentToView(adjustment);
   };
 
-  const handlePrintBatchLabel = (adjustment: StockAdjustment, item: StockAdjustmentItem) => {
-    if (!item.itemBatchLocationId || !item.batchLocationSku) {
+  const handlePrintBatchLabel = (_adjustment: StockAdjustment, item: StockAdjustmentItem) => {
+    if (!item.itemBatchLocationId || !item.batchCode) {
       toast.error(tForm("printBatchMissing"));
       return;
     }
 
     setBatchLabelToPrint({
-      boxId: item.itemBatchLocationId,
       itemId: item.itemId,
-      batchLocationSku: item.batchLocationSku,
-      batchNumber: item.batchCode || item.batchLocationSku,
-      grnNumber: adjustment.adjustmentCode || tForm("stockAdjustmentLabel"),
+      batchNumber: item.batchCode,
       itemCode: item.itemCode || "",
       itemName: item.itemName || "",
-      boxNumber: 1,
       qtyPerBox: item.adjustedQty,
-      deliveryDate: item.batchReceivedAt || adjustment.adjustmentDate,
-      locationId: item.batchWarehouseLocationId || null,
     });
   };
 

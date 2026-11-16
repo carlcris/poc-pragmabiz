@@ -86,6 +86,8 @@ export type DeliveryNoteItemPick = {
   item_id: string;
   source_warehouse_id: string;
   picked_location_id: string;
+  picked_location_name_path?: string | null;
+  source_warehouse?: { warehouse_name: string; warehouse_code: string } | null;
   picked_batch_code: string;
   picked_batch_received_at: string;
   batch_location_sku?: string | null;

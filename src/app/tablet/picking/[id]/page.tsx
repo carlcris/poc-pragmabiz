@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { TabletHeader } from "@/components/tablet/TabletHeader";
@@ -28,8 +28,29 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { usePickList, useUpdatePickListItems, useUpdatePickListStatus } from "@/hooks/usePickLists";
-import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
+import { usePickList, useUpdatePickListStatus } from "@/hooks/usePickLists";
+import type { DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
+import {
+  getPickableQtyCap,
+  getPickingUnitLabel,
+  getWholePickSourceQuantities,
+  isPackagedPickLine,
+  toPickQuantityScale,
+} from "@/lib/picking-quantities";
+
+import { useFormatter, useTranslations } from "next-intl";
+import { pickListsApi } from "@/lib/api/pick-lists";
+import { apiClient, getApiErrorCode } from "@/lib/api";
+import { parseItemBatchQr, type ItemBatchQr } from "@/lib/item-batch-qr";
+import type { PickSourceResult } from "@/types/pick-source";
+import { useRecordPickListProgress } from "@/hooks/useRecordPickListProgress";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 const SHORT_REASON_OPTIONS = [
   { value: "missing", label: "Missing" },
@@ -37,78 +58,6 @@ const SHORT_REASON_OPTIONS = [
   { value: "expired", label: "Expired" },
   { value: "blocked", label: "Blocked" },
 ];
-
-const normalizeScanValue = (value: string) => value.trim().toLowerCase();
-
-const extractScanCandidates = (rawScan: string) => {
-  const cleaned = rawScan.trim();
-  const values = new Set<string>();
-  if (!cleaned) return values;
-
-  values.add(cleaned);
-
-  try {
-    values.add(decodeURIComponent(cleaned));
-  } catch {}
-
-  try {
-    const parsed = JSON.parse(cleaned) as Record<string, unknown>;
-    const keys = ["id", "itemId", "item", "itemCode", "code", "barcode"];
-    for (const key of keys) {
-      const candidate = parsed[key];
-      if (typeof candidate === "string" && candidate.trim()) {
-        values.add(candidate.trim());
-      }
-    }
-  } catch {}
-
-  for (const token of cleaned.split(/[\s|,;]+/g)) {
-    if (token.trim()) values.add(token.trim());
-  }
-
-  return values;
-};
-
-type ParsedBatchLocationQr = {
-  batchLocationSku: string | null;
-  itemId: string | null;
-  locationId: string | null;
-  batchCode: string | null;
-};
-
-const parseBatchLocationQrPayload = (rawScan: string): ParsedBatchLocationQr | null => {
-  const candidates = [rawScan.trim()];
-  try {
-    candidates.push(decodeURIComponent(rawScan.trim()));
-  } catch {}
-
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    try {
-      const parsed = JSON.parse(candidate) as Record<string, unknown>;
-      const batchLocationSku =
-        typeof parsed.batchLocationSku === "string" && parsed.batchLocationSku.trim()
-          ? parsed.batchLocationSku.trim()
-          : null;
-      const itemId =
-        typeof parsed.itemId === "string" && parsed.itemId.trim() ? parsed.itemId.trim() : null;
-      const locationId =
-        typeof parsed.location === "string" && parsed.location.trim()
-          ? parsed.location.trim()
-          : null;
-      const batchCode =
-        typeof parsed.batchNumber === "string" && parsed.batchNumber.trim()
-          ? parsed.batchNumber.trim()
-          : null;
-
-      if (batchLocationSku || itemId || locationId || batchCode) {
-        return { batchLocationSku, itemId, locationId, batchCode };
-      }
-    } catch {}
-  }
-
-  return null;
-};
 
 const toNumber = (value: number | string | null | undefined) => {
   if (value == null) return 0;
@@ -121,76 +70,94 @@ const one = <T,>(value: T | T[] | null | undefined): T | null =>
 
 type LineView = {
   id: string;
-  dnItemId: string;
-  itemId: string;
   barcode: string;
   displayName: string;
   uomLabel: string;
   requiredQty: number;
   pickedQty: number;
   status: string;
-  suggestedPickLocationId: string | null;
-  suggestedPickLocationCode: string | null;
-  suggestedPickBatchCode: string | null;
-  suggestedPickBatchReceivedAt: string | null;
 };
 
 type ScannedItem = {
   lineId: string;
-  dnItemId: string;
-  locationCode: string;
-  scannedLocationCode: string;
-  scannedLocationName?: string;
-  scannedLocationId?: string | null;
-  scannedBatchCode: string;
-  scannedBatchLocationSku: string;
+  locationName: string;
+  batchCode: string;
+  batchLocationSku: string;
   isMismatch: boolean;
   barcode: string;
+  displayName: string;
   uomLabel: string;
-  matchedScanCode: string;
   requiredQty: number;
-  pickedQty: number;
-  shortReasonCode?: string;
-  status: string;
-  suggestedPickLocationId: string | null;
-  suggestedPickBatchCode: string | null;
-  suggestedPickBatchReceivedAt: string | null;
+  maxPickQty: number;
+  // Packaged lines (qty_per_unit > 1) can only be picked in whole packages.
+  isPackaged: boolean;
 };
 
 const isLinePicked = (status: string) =>
   status === "picked_partial" || status === "picked_full" || status === "done";
 
 // Partial picks must remain pickable for additional scans until the line is fully picked.
-const isLineClosedForPicking = (status: string) => status === "picked_full" || status === "done";
 const isLineCompleteForUi = (status: string) => status === "picked_full" || status === "done";
 
 export default function TabletPickingDetailPage() {
+  const t = useTranslations("mobilePickDetail");
+  const format = useFormatter();
   const params = useParams();
   const router = useRouter();
   const pickListId = params.id as string;
 
   const { data: pickList, isLoading, error } = usePickList(pickListId);
-  const updateItemsMutation = useUpdatePickListItems();
+  const updateItemsMutation = useRecordPickListProgress(pickListId);
   const updateStatusMutation = useUpdatePickListStatus();
 
   const [scannedCode, setScannedCode] = useState("");
   const [showCamera, setShowCamera] = useState(false);
   const [currentItem, setCurrentItem] = useState<ScannedItem | null>(null);
   const [pickedQty, setPickedQty] = useState<number>(0);
+  const [scanBusy, setScanBusy] = useState(false);
+  const [operationId, setOperationId] = useState("");
+  const [locationChoice, setLocationChoice] = useState<{
+    qr: ItemBatchQr;
+    result: Extract<PickSourceResult, { kind: "choose_location" }>;
+  } | null>(null);
+  const scanRequestRef = useRef(0);
+  const confirmationPendingRef = useRef(false);
+  confirmationPendingRef.current = updateItemsMutation.isPending;
+  const closeLocationChoice = () => {
+    scanRequestRef.current += 1;
+    setLocationChoice(null);
+    setScanBusy(false);
+  };
+  useEffect(
+    () => () => {
+      scanRequestRef.current += 1;
+    },
+    [pickListId]
+  );
+  useEffect(() => {
+    if (!currentItem) return;
+    const lineId = currentItem.lineId;
+    const claim = () => pickListsApi.claimItem(pickListId, lineId);
+    const timer = setInterval(() => {
+      if (confirmationPendingRef.current) return;
+      void claim().catch(() => {
+        setCurrentItem(null);
+        toast.error(t("sourceLookupFailed"));
+      });
+    }, 45000);
+    return () => {
+      clearInterval(timer);
+      if (!confirmationPendingRef.current) {
+        void pickListsApi.releaseItem(pickListId, lineId).catch(() => undefined);
+      }
+    };
+  }, [currentItem, pickListId, t]);
   const [shortReason, setShortReason] = useState("");
 
   const lines = useMemo<LineView[]>(() => {
     return (pickList?.pick_list_items || []).map((item) => {
       const allocatedQty = toNumber(item.allocated_qty);
       const pickedValue = toNumber(item.picked_qty);
-      const suggestedPickLocation = one(
-        (item as { suggested_pick_location?: unknown } | null | undefined)
-          ?.suggested_pick_location as
-          | { id: string; code: string | null; name: string | null; location_path: string }
-          | { id: string; code: string | null; name: string | null; location_path: string }[]
-          | null
-          | undefined
-      );
       const unitOption = one(
         (item as { item_unit_options?: unknown } | null | undefined)?.item_unit_options as
           | DbItemUnitOptionRow
@@ -205,197 +172,101 @@ export default function TabletPickingDetailPage() {
           | null
           | undefined
       );
-      const uomLabel = unitOption
-        ? transformItemUnitOptionRow(unitOption, uomRef?.code || "").displayLabel
-        : uomRef?.symbol || uomRef?.name || "Unit";
+      const uomLabel = getPickingUnitLabel(
+        uomRef?.symbol || uomRef?.name || uomRef?.code || t("pickUnit"),
+        Number(unitOption?.qty_per_unit ?? 1),
+        unitOption?.option_label
+      );
       let status = "open";
       if (pickedValue > 0 && pickedValue >= allocatedQty) status = "picked_full";
       else if (pickedValue > 0) status = "picked_partial";
 
       return {
         id: item.id,
-        dnItemId: item.dn_item_id,
-        itemId: item.item_id,
         barcode: unitOption?.barcode || "",
         displayName: item.items?.item_name || item.items?.item_code || item.item_id,
         uomLabel,
         requiredQty: allocatedQty,
         pickedQty: pickedValue,
         status,
-        suggestedPickLocationId: item.suggested_pick_location_id || null,
-        suggestedPickLocationCode: suggestedPickLocation?.location_path || null,
-        suggestedPickBatchCode: item.suggested_pick_batch_code || null,
-        suggestedPickBatchReceivedAt: item.suggested_pick_batch_received_at || null,
       };
     });
-  }, [pickList?.pick_list_items]);
+  }, [pickList?.pick_list_items, t]);
 
-  const processScan = async (code: string) => {
+  const processScan = async (code: string, page = 1, locationId?: string) => {
     if (pickList?.status !== "in_progress") {
-      toast.error("Picking has not started. Start picking first.");
+      toast.error(t("startBeforeScan"));
       return;
     }
-
-    if (!code.trim()) {
-      toast.error("Please enter or scan a barcode");
+    const qr = parseItemBatchQr(code);
+    if (!qr) {
+      toast.error(t("itemBatchQrRequired"));
       return;
     }
-
-    const rawScanned = code.trim();
-    const scanCandidates = extractScanCandidates(code);
-    const normalizedCandidates = new Set(Array.from(scanCandidates).map(normalizeScanValue));
-
-    let foundItem: ScannedItem | null = null;
-    let alreadyPicked = false;
-
-    const parsedQr = parseBatchLocationQrPayload(rawScanned);
-    const scannedBatchLocationSku =
-      parsedQr?.batchLocationSku && /^\d{10}$/.test(parsedQr.batchLocationSku)
-        ? parsedQr.batchLocationSku
-        : /^\d{10}$/.test(rawScanned)
-          ? rawScanned
-          : null;
-
-    if (scannedBatchLocationSku) {
-      try {
-        const query = new URLSearchParams({ batchLocationSku: scannedBatchLocationSku });
-        if (parsedQr?.itemId) query.set("itemId", parsedQr.itemId);
-        if (parsedQr?.locationId) query.set("locationId", parsedQr.locationId);
-        if (parsedQr?.batchCode) query.set("batchCode", parsedQr.batchCode);
-        const response = await fetch(
-          `/api/pick-lists/${pickList.id}/scan-source?${query.toString()}`
-        );
-        const payload = (await response.json().catch(() => ({}))) as {
-          error?: string;
-          data?: {
-            batchLocationSku: string;
-            source: {
-              itemId: string;
-              locationId: string;
-              locationCode?: string | null;
-              locationName?: string | null;
-              batchCode: string;
-              batchReceivedAt: string;
-            };
-            line?: {
-              pickListItemId: string;
-              deliveryNoteItemId: string;
-              remainingQty: number;
-              allocatedQty: number;
-              pickedQty: number;
-              item?: {
-                barcode?: string | null;
-                itemName?: string | null;
-                itemCode?: string | null;
-              } | null;
-            } | null;
-            isMismatch?: boolean;
-          };
-        };
-
-        if (!response.ok || !payload.data?.line) {
-          if (response.status !== 404 && payload.error !== "Batch location SKU not found") {
-            toast.error(payload.error || "Failed to resolve scanned batch/location SKU");
-            setScannedCode("");
-            return;
-          }
-        } else {
-          const lineMeta = payload.data.line;
-          const matchedLine = lines.find((line) => line.id === lineMeta.pickListItemId) || null;
-          foundItem = {
-            lineId: lineMeta.pickListItemId,
-            dnItemId: lineMeta.deliveryNoteItemId,
-            locationCode: payload.data.source.locationCode || "Scanned Location",
-            scannedLocationCode: payload.data.source.locationCode || "Scanned Location",
-            scannedLocationName: payload.data.source.locationName || undefined,
-            scannedLocationId: payload.data.source.locationId,
-            scannedBatchCode: payload.data.source.batchCode,
-            scannedBatchLocationSku: payload.data.batchLocationSku,
-            isMismatch: !!payload.data.isMismatch,
-            barcode: lineMeta.item?.barcode || matchedLine?.barcode || "",
-            uomLabel: matchedLine?.uomLabel || "Unit",
-            matchedScanCode: scannedBatchLocationSku,
-            requiredQty: Number(lineMeta.remainingQty || 0),
-            pickedQty: 0,
-            shortReasonCode: undefined,
-            status: "open",
-            suggestedPickLocationId: payload.data.source.locationId,
-            suggestedPickBatchCode: payload.data.source.batchCode,
-            suggestedPickBatchReceivedAt: payload.data.source.batchReceivedAt,
-          };
-        }
-      } catch {
-        toast.error("Failed to resolve scanned batch/location SKU");
-        setScannedCode("");
+    const requestId = ++scanRequestRef.current;
+    setScanBusy(true);
+    try {
+      const { data } = await apiClient.get<{ data: PickSourceResult }>(
+        `/api/pick-lists/${pickList.id}/scan-source`,
+        { params: { itemId: qr.itemId, batchCode: qr.batchNumber, page, locationId } }
+      );
+      if (requestId !== scanRequestRef.current) return;
+      if (data.kind === "choose_location") {
+        setLocationChoice({ qr, result: data });
         return;
       }
-    }
-
-    if (!foundItem) {
-      const line = lines.find((l) => {
-        if (!l.barcode) return false;
-        const barcodeMatch = normalizedCandidates.has(normalizeScanValue(l.barcode));
-        return barcodeMatch && !isLineClosedForPicking(l.status);
+      const resolved = data.resolution;
+      const matchedLine = lines.find((line) => line.id === resolved.line.pickListItemId);
+      if (!matchedLine) {
+        toast.error(t("qrNotOnList"));
+        return;
+      }
+      await pickListsApi.claimItem(pickList.id, matchedLine.id);
+      if (requestId !== scanRequestRef.current) {
+        await pickListsApi.releaseItem(pickList.id, matchedLine.id);
+        return;
+      }
+      // Packaged lines pick in whole packages only, so the cap drops to the last full package.
+      const pickableQtyCap = getPickableQtyCap(resolved.line);
+      setCurrentItem({
+        lineId: matchedLine.id,
+        locationName: resolved.source.locationName,
+        batchCode: resolved.source.batchCode,
+        batchLocationSku: resolved.batchLocationSku,
+        isMismatch: resolved.isMismatch,
+        barcode: matchedLine.barcode,
+        displayName: matchedLine.displayName,
+        uomLabel: matchedLine.uomLabel,
+        // The API subtracts picked from allocated in floating point, so round back to the stored
+        // quantity scale before comparing it against the exact server cap for a short pick.
+        requiredQty: toPickQuantityScale(resolved.line.remainingQty),
+        maxPickQty: pickableQtyCap,
+        isPackaged: isPackagedPickLine(resolved.line),
       });
-
-      if (line) {
-        const matchedScanCode =
-          Array.from(scanCandidates).find((candidate) => {
-            const normalized = normalizeScanValue(candidate);
-            return normalized === normalizeScanValue(line.barcode);
-          }) || line.barcode;
-
-        const fallbackLocationCode = line.suggestedPickLocationCode || "Suggested Location";
-        foundItem = {
-          lineId: line.id,
-          dnItemId: line.dnItemId,
-          locationCode: fallbackLocationCode,
-          scannedLocationCode: fallbackLocationCode,
-          scannedLocationName: undefined,
-          scannedLocationId: line.suggestedPickLocationId,
-          scannedBatchCode: "",
-          scannedBatchLocationSku: rawScanned,
-          isMismatch: false,
-          barcode: line.barcode,
-          uomLabel: line.uomLabel,
-          matchedScanCode,
-          requiredQty: line.requiredQty,
-          pickedQty: line.pickedQty,
-          shortReasonCode: undefined,
-          status: line.status,
-          suggestedPickLocationId: line.suggestedPickLocationId,
-          suggestedPickBatchCode: line.suggestedPickBatchCode,
-          suggestedPickBatchReceivedAt: line.suggestedPickBatchReceivedAt,
-        };
-      }
-    }
-
-    if (!foundItem) {
-      const alreadyPickedLine = lines.find((l) => {
-        if (!l.barcode) return false;
-        const barcodeMatch = normalizedCandidates.has(normalizeScanValue(l.barcode));
-        return barcodeMatch && isLineClosedForPicking(l.status);
-      });
-      if (alreadyPickedLine) {
-        alreadyPicked = true;
-      }
-    }
-
-    if (!foundItem) {
-      if (alreadyPicked) {
-        toast.error("Item is already picked in this pick list.");
-      } else {
-        toast.error("Item not found in current pick list.");
-      }
+      setOperationId(crypto.randomUUID());
+      setPickedQty(pickableQtyCap);
+      setShortReason("");
       setScannedCode("");
-      return;
+      setLocationChoice(null);
+    } catch (error) {
+      if (requestId !== scanRequestRef.current) return;
+      const errorCode = getApiErrorCode(error, [
+        "PICK_SOURCE_UNAVAILABLE",
+        "PICK_SOURCE_FORBIDDEN",
+        "PICK_SOURCE_NOT_ACTIVE",
+      ] as const);
+      toast.error(
+        errorCode === "PICK_SOURCE_UNAVAILABLE"
+          ? t("noEligibleSource")
+          : errorCode === "PICK_SOURCE_FORBIDDEN"
+            ? t("sourceForbidden")
+            : errorCode === "PICK_SOURCE_NOT_ACTIVE"
+              ? t("startBeforeScan")
+              : t("sourceLookupFailed")
+      );
+    } finally {
+      if (requestId === scanRequestRef.current) setScanBusy(false);
     }
-
-    setCurrentItem(foundItem);
-    setPickedQty(foundItem.requiredQty);
-    setShortReason("");
-    setScannedCode("");
-    toast.success("Item verified successfully");
   };
 
   const handleScan = async () => {
@@ -408,51 +279,64 @@ export default function TabletPickingDetailPage() {
   };
 
   const handleConfirmPick = async () => {
-    if (!currentItem || !pickList) return;
+    if (!currentItem || !pickList || updateItemsMutation.isPending) return;
     if (pickList.status !== "in_progress") {
-      toast.error("Picking has not started. Start picking first.");
+      toast.error(t("startBeforeScan"));
       return;
     }
 
     const requiredQty = currentItem.requiredQty;
-    if (pickedQty < 0 || pickedQty > requiredQty) {
-      toast.error(`Picked quantity must be between 0 and ${requiredQty}`);
+    const maxPickQty = currentItem.maxPickQty;
+    // The cap is exact, so anything above it would be rejected by the writer.
+    if (!Number.isFinite(pickedQty) || pickedQty <= 0 || pickedQty > maxPickQty) {
+      toast.error(t("positivePickQuantity", { quantity: maxPickQty }));
+      return;
+    }
+    // Partial packages cannot leave the warehouse, so a packaged line takes whole packages only.
+    if (currentItem.isPackaged && !Number.isInteger(pickedQty)) {
+      toast.error(t("wholePackagePickQuantity", { unit: currentItem.uomLabel }));
       return;
     }
 
     if (pickedQty < requiredQty && !shortReason) {
-      toast.error("Partial pick requires a reason");
+      toast.error(t("partialPickReason"));
       return;
     }
 
     try {
       await updateItemsMutation.mutateAsync({
-        id: pickList.id,
-        data: {
-          pickRows: [
-            {
-              pickListItemId: currentItem.lineId,
-              deliveryNoteItemId: currentItem.dnItemId,
-              batchLocationSku: /^\d{10}$/.test(currentItem.matchedScanCode)
-                ? currentItem.matchedScanCode
-                : undefined,
-              pickedLocationId: currentItem.suggestedPickLocationId || "",
-              pickedBatchCode: currentItem.suggestedPickBatchCode || "",
-              pickedBatchReceivedAt: currentItem.suggestedPickBatchReceivedAt || "",
-              pickedQty,
-              isMismatchWarningAcknowledged: currentItem.isMismatch,
-              mismatchReason: pickedQty < requiredQty ? shortReason || null : null,
-            },
-          ],
-        },
+        pickListItemId: currentItem.lineId,
+        operationId,
+        batchLocationSku: currentItem.batchLocationSku,
+        pickedQty,
+        isMismatchWarningAcknowledged: currentItem.isMismatch,
+        mismatchReason: currentItem.isMismatch
+          ? "ALTERNATIVE_BATCH_LOCATION_SKU"
+          : shortReason || null,
       });
 
-      toast.success("Item picked successfully");
+      toast.success(t("pickSaved"));
       setCurrentItem(null);
       setPickedQty(0);
       setShortReason("");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to record pick");
+      const code = getApiErrorCode(error, [
+        "PICK_PROGRESS_CLAIM_REQUIRED",
+        "PICK_PROGRESS_INSUFFICIENT_QUANTITY",
+        "PICK_PROGRESS_RESERVATION_CONFLICT",
+        "PICK_PROGRESS_SOURCE_UNAVAILABLE",
+        "PICK_PROGRESS_ALTERNATIVE_SOURCE_UNAVAILABLE",
+        "PICK_PROGRESS_INVALID_QUANTITY",
+      ] as const);
+      toast.error(
+        code === "PICK_PROGRESS_CLAIM_REQUIRED"
+          ? t("pickClaimLost")
+          : code === "PICK_PROGRESS_INVALID_QUANTITY"
+            ? t("positivePickQuantity", { quantity: maxPickQty })
+            : code
+              ? t("pickStockChanged")
+              : t("pickSaveFailed")
+      );
     }
   };
 
@@ -518,9 +402,78 @@ export default function TabletPickingDetailPage() {
       <CameraScannerDialog
         open={showCamera}
         onOpenChange={setShowCamera}
-        title="Scan SKU Barcode"
+        title={t("qrContents")}
         onDetected={handleCameraScan}
       />
+
+      <Dialog
+        open={locationChoice !== null}
+        onOpenChange={(open) => {
+          if (!open) closeLocationChoice();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("chooseLocation")}</DialogTitle>
+            <DialogDescription>{t("chooseLocationHint")}</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-96 space-y-2 overflow-y-auto">
+            {locationChoice?.result.sources.map((source) => {
+              const quantities = getWholePickSourceQuantities(source);
+              const unit = lines.find((line) => line.id === source.line.pickListItemId)?.uomLabel;
+              return (
+                <Button
+                  key={source.source.locationId}
+                  variant="outline"
+                  disabled={scanBusy}
+                  className="h-auto w-full flex-col items-start whitespace-normal py-3 text-left"
+                  onClick={() =>
+                    void processScan(JSON.stringify(locationChoice.qr), 1, source.source.locationId)
+                  }
+                >
+                  <span>
+                    {source.source.warehouseName} / {source.source.locationName}
+                  </span>
+                  <span>
+                    {quantities.kind === "whole_units"
+                      ? t("availableToPickQuantity", {
+                          quantity: format.number(quantities.availableQty),
+                          unit: unit ?? t("pickUnit"),
+                        })
+                      : t("remainingQuantityAvailable")}
+                  </span>
+                  {!source.isMismatch ? <span>{t("suggestedLocation")}</span> : null}
+                </Button>
+              );
+            })}
+          </div>
+          <div className="flex justify-between gap-2">
+            <Button
+              variant="outline"
+              disabled={scanBusy || !locationChoice || locationChoice.result.page <= 1}
+              onClick={() =>
+                locationChoice &&
+                void processScan(JSON.stringify(locationChoice.qr), locationChoice.result.page - 1)
+              }
+            >
+              {t("previousLocations")}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={scanBusy || !locationChoice?.result.hasMore}
+              onClick={() =>
+                locationChoice &&
+                void processScan(JSON.stringify(locationChoice.qr), locationChoice.result.page + 1)
+              }
+            >
+              {t("nextLocations")}
+            </Button>
+            <Button variant="outline" onClick={closeLocationChoice}>
+              {t("cancelLocation")}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <TabletHeader
         title="Picking"
@@ -663,7 +616,7 @@ export default function TabletPickingDetailPage() {
                     <div className="flex gap-2">
                       <Input
                         id="barcode-scan"
-                        placeholder="Scan or enter SKU..."
+                        placeholder={t("pasteQr")}
                         value={scannedCode}
                         onChange={(e) => setScannedCode(e.target.value)}
                         onKeyDown={(e) => {
@@ -680,6 +633,7 @@ export default function TabletPickingDetailPage() {
                         onClick={handleScan}
                         disabled={
                           updateItemsMutation.isPending ||
+                          scanBusy ||
                           !scannedCode.trim() ||
                           pickList.status !== "in_progress"
                         }
@@ -720,6 +674,7 @@ export default function TabletPickingDetailPage() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      disabled={updateItemsMutation.isPending}
                       onClick={() => {
                         setCurrentItem(null);
                         setPickedQty(0);
@@ -731,40 +686,33 @@ export default function TabletPickingDetailPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <p className="font-medium">{currentItem.displayName}</p>
                   <div className="rounded-lg bg-blue-50 p-3">
                     <div className="mb-2 flex items-center gap-2">
                       <span className="text-xs font-medium text-blue-900">Pick Location</span>
                     </div>
                     <div className="space-y-1 text-xs text-blue-800">
-                      {currentItem.scannedLocationName ? (
+                      {currentItem.locationName ? (
                         <div>
                           Location:{" "}
                           <span className="font-semibold text-blue-900">
-                            {currentItem.scannedLocationName}
+                            {currentItem.locationName}
                           </span>
                         </div>
                       ) : null}
-                      {currentItem.suggestedPickBatchCode ? (
+                      {currentItem.batchCode ? (
                         <div>
-                          Batch:{" "}
-                          <span className="tabular-nums">{currentItem.suggestedPickBatchCode}</span>
+                          Batch: <span className="tabular-nums">{currentItem.batchCode}</span>
                         </div>
                       ) : null}
                     </div>
-                    {currentItem.scannedBatchLocationSku ? (
-                      <div className="mt-1 text-xs text-blue-800">
-                        Location SKU:{" "}
-                        <span className="tabular-nums">{currentItem.scannedBatchLocationSku}</span>
-                      </div>
-                    ) : null}
                   </div>
 
                   {currentItem.isMismatch && (
                     <Alert>
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription className="text-sm">
-                        Scanned batch/location does not match suggested source. Confirm pick to
-                        override.
+                        {t("confirmAlternative")}
                       </AlertDescription>
                     </Alert>
                   )}
@@ -772,9 +720,7 @@ export default function TabletPickingDetailPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Barcode</span>
-                      <span className="font-medium tabular-nums">
-                        {currentItem.barcode || currentItem.matchedScanCode}
-                      </span>
+                      <span className="font-medium tabular-nums">{currentItem.barcode || "—"}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Required</span>
@@ -788,14 +734,21 @@ export default function TabletPickingDetailPage() {
                     <Label htmlFor="picked-qty">Picked Quantity</Label>
                     <Input
                       id="picked-qty"
+                      disabled={updateItemsMutation.isPending}
                       type="number"
-                      min={0}
-                      max={currentItem.requiredQty}
-                      step="0.01"
+                      inputMode={currentItem.isPackaged ? "numeric" : "decimal"}
+                      min={currentItem.isPackaged ? 1 : 0.01}
+                      max={currentItem.maxPickQty}
+                      step={currentItem.isPackaged ? 1 : 0.01}
                       value={pickedQty}
                       onChange={(e) => setPickedQty(Number(e.target.value))}
                       className="h-12 text-center text-lg font-semibold"
                     />
+                    {currentItem.isPackaged ? (
+                      <p className="text-xs text-gray-500">
+                        {t("wholePackagePickQuantity", { unit: currentItem.uomLabel })}
+                      </p>
+                    ) : null}
                   </div>
 
                   {pickedQty < currentItem.requiredQty && (

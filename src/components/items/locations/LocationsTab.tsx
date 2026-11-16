@@ -86,15 +86,6 @@ const MAX_BATCH_LABEL_COUNT = 100;
 const formatQty = (value: number, locale: string) =>
   value.toLocaleString(locale, { maximumFractionDigits: 4 });
 
-const createBatchLabelId = (batchLocationId: string, labelNumber: number) => {
-  const uniquePart =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${labelNumber}`;
-
-  return `batch-${batchLocationId}-${uniquePart}`;
-};
-
 export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   const t = useTranslations("itemLocationsTab");
   const tLocations = useTranslations("warehouseLocationsPage");
@@ -291,22 +282,13 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
         `/api/item-batch-locations/${batchToPrint.id}/print-label`
       );
       const label = response.data;
-      const barcodeData: BarcodeData[] = Array.from(
-        { length: parsedBatchLabelCount },
-        (_, index) => ({
-          boxId: createBatchLabelId(label.batchLocationId, index + 1),
-          itemId: label.itemId,
-          batchLocationSku: label.batchLocationSku,
-          batchNumber: label.batchCode,
-          grnNumber: t("batchLabelReference"),
-          itemCode: label.itemCode,
-          itemName: label.itemName,
-          boxNumber: index + 1,
-          qtyPerBox: selectedBatchPrintUnit.qtyPerUnit,
-          deliveryDate: label.receivedAt,
-          locationId: label.locationId,
-        })
-      );
+      const barcodeData: BarcodeData[] = Array.from({ length: parsedBatchLabelCount }, () => ({
+        itemId: label.itemId,
+        batchNumber: label.batchCode,
+        itemCode: label.itemCode,
+        itemName: label.itemName,
+        qtyPerBox: selectedBatchPrintUnit.qtyPerUnit,
+      }));
       const { printBarcodeLabels } = await import("@/lib/barcode");
       await printBarcodeLabels(barcodeData);
       toast.success(t("printBatchQrSuccess", { count: parsedBatchLabelCount }));

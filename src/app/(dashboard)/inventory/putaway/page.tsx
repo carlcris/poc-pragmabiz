@@ -61,44 +61,20 @@ const putawayStatusClassName: Record<PutawayTaskStatus, string> = {
   cancelled: "text-muted-foreground",
 };
 
-const createPutawayLabelId = (taskId: string, labelNumber: number) => {
-  const randomId =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${labelNumber}`;
-
-  return `putaway-${taskId}-${randomId}`;
-};
-
 const buildPutawayBarcodeLabels = (
-  taskId: string,
   sources: PutawayTaskLabel[],
   qtyPerUnit: number,
   copiesPerLabel: number
-): BarcodeData[] => {
-  let nextBoxNumber = 1;
-
-  return sources.flatMap((source) => {
-    return Array.from({ length: copiesPerLabel }, () => {
-      const boxNumber = nextBoxNumber;
-      nextBoxNumber += 1;
-
-      return {
-        boxId: createPutawayLabelId(taskId, boxNumber),
-        itemId: source.itemId,
-        batchLocationSku: source.batchLocationSku,
-        batchNumber: source.batchNumber,
-        grnNumber: source.referenceNumber,
-        itemCode: source.itemCode,
-        itemName: source.itemName,
-        boxNumber,
-        qtyPerBox: qtyPerUnit,
-        deliveryDate: source.postedDate,
-        locationId: source.locationId,
-      };
-    });
-  });
-};
+): BarcodeData[] =>
+  sources.flatMap((source) =>
+    Array.from({ length: copiesPerLabel }, () => ({
+      itemId: source.itemId,
+      batchNumber: source.batchNumber,
+      itemCode: source.itemCode,
+      itemName: source.itemName,
+      qtyPerBox: qtyPerUnit,
+    }))
+  );
 
 export default function PutawayStationPage() {
   const t = useTranslations("putawayStationPage");
@@ -188,7 +164,6 @@ export default function PutawayStationPage() {
       }
       const { printBarcodeLabels } = await import("@/lib/barcode");
       const labels = buildPutawayBarcodeLabels(
-        task.id,
         response.data,
         task.sourceQtyPerUnit,
         parsedLabelCount
@@ -243,18 +218,12 @@ export default function PutawayStationPage() {
       try {
         setIsPrintingLabels(true);
         const { printBarcodeLabels } = await import("@/lib/barcode");
-        const labels: BarcodeData[] = Array.from({ length: parsedLabelCount }, (_, index) => ({
-          boxId: createPutawayLabelId(selectedTask.id, index + 1),
+        const labels: BarcodeData[] = Array.from({ length: parsedLabelCount }, () => ({
           itemId: selectedTask.itemId,
-          batchLocationSku: postResult.batchLocationSku,
           batchNumber: postResult.batchCode,
-          grnNumber: selectedTask.sourceReference || t("putawayLabelReference"),
           itemCode: selectedTask.itemCode || "",
           itemName: selectedTask.itemName || "",
-          boxNumber: index + 1,
           qtyPerBox: selectedTask.sourceQtyPerUnit,
-          deliveryDate: postResult.postedDate,
-          locationId: postResult.locationId,
         }));
 
         await printBarcodeLabels(labels);

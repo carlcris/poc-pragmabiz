@@ -18,6 +18,9 @@ value, not an exact code preserved by the next build. The displayed app version 
 
 ## Key Features
 
+Android bundling watches the shared root `src/lib` directory through
+`apps/mobile/metro.config.js`, including login helpers, translations, and item/batch QR parsing.
+
 - **Cross-platform** (iOS and Android)
 - **Warehouse picking** workflows
 - **GRN receiving** on mobile devices
@@ -91,7 +94,7 @@ apps/mobile/
    ↓
 3. For Each Item:
    ├─ Navigate to Item Location
-   ├─ Scan or enter the 10-digit batch-location SKU
+   ├─ Scan the item-batch QR; choose the source if multiple locations have stock
    ├─ Validate item, batch identity, business unit, and configured location policy
    ├─ Enter Quantity Picked
    ├─ Confirm a permitted alternative source when required
@@ -112,6 +115,10 @@ apps/mobile/
   the visible screen under the new unit without reloading the unchanged business-unit list. Hidden
   screens wait until focused before loading the new scope.
 - Item-by-item picking with progress tracking
+- **Picked Items** opens expanded and can be collapsed. Each completed line shows its total in the
+  pick unit, such as **3 / 3 BOX (50)**.
+  The rows underneath show the actual location first, followed by the saved quantity, such as
+  **Zone 1 / Rack A / Bin 1 · 1 BOX (50)**. Picks that span warehouses include each source warehouse.
 - Each mobile pick-list item shows its assigned physical location directly beneath the item name as
   warehouse code > rack code > batch code. The location SKU is omitted, and the separate progress
   row remains the single place showing picked quantity versus total quantity.
@@ -129,16 +136,47 @@ apps/mobile/
   or the location is cleared. Incomplete click-sized mappings are rejected and must be redrawn by a
   warehouse administrator. When the source warehouse has no configured map, the viewer shows a
   dedicated non-retry map-not-configured state instead of treating it as a transient load failure
-- Picking accepts only a 10-digit batch-location SKU, supplied by scanning its QR payload or manual
-  entry. Plain item IDs, item codes, and unit barcodes cannot prove the physical batch/location and
-  are rejected instead of falling back to the suggested source
-- The SKU must resolve to the pick-list item's item and allocated batch identity, including the
-  original received timestamp, and its warehouse must belong to the fulfilling business unit
-- The business unit's Inventory picking policy determines whether the allocated warehouse and rack
-  are also mandatory: Batch only, Batch and warehouse, or Batch, warehouse, and rack
-- The API's authoritative result controls the warning. An exact suggested SKU needs no warning. A
-  different SKU is confirmable only when its item, batch identity, business-unit boundary,
-  configured warehouse/rack rule, and quantity all pass; all other mismatches are hard failures
+- Picking accepts a strict JSON QR with exactly `itemId` and `batchNumber` (batch code). Manual
+  entry accepts the full QR contents. Old location-specific payloads, bare item codes, and 10-digit
+  location SKUs are not accepted. Replace old labels once when deploying this contract.
+- The server resolves current positive stock for that item and batch against unfinished pick-list
+  lines, including their original batch received timestamp. It enforces the fulfilling business
+  unit and the configured Batch only, Batch and warehouse, or Batch, warehouse, and rack policy.
+- With one eligible location, the source resolves directly. With multiple eligible locations,
+  picking pauses for an explicit source choice, even when the suggested location has stock.
+  A location needs at least one whole pick unit in usable stock. The suggested bin can use the line's
+  reservation. Alternative bins must have free stock and enough capacity to transfer the reservation.
+  Lines using packs require at least one whole pack available and one whole pack left to pick.
+  A base-unit line can still pick a final fractional remainder when its reservation covers it.
+  The eligible suggested source sorts first, and the server paginates three at a time. Choosing
+  a location rechecks these rules.
+- The pick-list source supplies the planned location; the selected source supplies the actual
+  location. An alternative source requires button confirmation. Selection is the picker's
+  declaration, not physical proof from a shelf scan. Stock, reservations, and policy are checked
+  again by the existing transactional confirmation RPC.
+- `GET /api/pick-lists/[id]/scan-source` accepts `itemId`, `batchCode`, optional `locationId`, and
+  `page` (1–10000). It returns `{data: {kind: "resolved", resolution}}` or
+  `{data: {kind: "choose_location", sources, page, hasMore}}`. The invoker-access RPC
+  `get_pick_item_batch_sources` performs filtering, policy checks, sorting, and pagination under RLS.
+  Each source returns `line.remainingBaseQty` for its matched line alongside `line.remainingQty`
+  in the line's selected unit, plus `source.availableBaseQty` for usable stock and `line.maxPickQty`
+  for the confirmation limit. The web tablet picking screen uses the same contract and
+  transactional record-pick endpoint.
+- On mobile, the source choice is a bottom sheet titled **Where Are You Picking From?**. The header
+  shows the item, batch, shared warehouse, and remaining quantity in the selected line's unit,
+  for example **5 BOX (144) to pick**.
+  The suggested location is listed first and preselected, followed by **Other Locations**. Each row
+  shows the bin, its zone/rack path, and how many whole units are available to the matched line.
+  When a source can cover a fractional remainder but the line has less than one whole unit available,
+  the row shows **Remaining Quantity Available**. **Short by N · Partial Pick** rounds shortages up.
+  The tablet chooser uses the same availability. Selecting a bin defaults confirmation to the amount
+  it can supply and caps entry at that amount. For packs the quantity is rounded down to whole packs,
+  so 238 available pieces with **BOX (144)** defaults to **1 BOX (144)**. Mobile and tablet accept
+  whole packs for new confirmations. The save rechecks stock and reservations inside the pick transaction.
+  The sheet fits its content up to 90% of the screen, then scrolls the list between a fixed header
+  and footer. When `hasMore` is true, **Load More Locations** requests the next three-row page and
+  appends it; no total count is fetched.
+  The planned-location map is hidden after choosing an alternative source to avoid showing the wrong bin.
 - Picking requires Pick Lists access. When `pick_lists.operation.view_only_assigned_pick_lists.view` is enabled, list, detail, claim, and progress operations are restricted to pick lists assigned to the current user; when disabled, the user can access all pick lists in the selected business unit
 - Selecting a line creates a two-minute server-enforced claim that is renewed while the picker is entering quantity; other assigned pickers receive claim and progress changes through Supabase Realtime and cannot confirm the claimed line
 - Claims are released on cancel, navigation, or successful confirmation. Successful confirmation releases the line claim inside the same database transaction as saved quantities, so Finish unlocks immediately when no other claims remain; a local nearest-expiry timer and foreground refresh remove expired disconnected-picker claims even when no Realtime event occurs
@@ -146,7 +184,7 @@ apps/mobile/
 - Confirm Pick persists a quantity increment and scanned source transactionally with a client operation ID, so retries are idempotent while separate physical picks remain distinct
 - Pick-list creation reserves the assigned batch and rack in base units. A picker claim owns the
   work temporarily but does not reserve the stock again. Confirming an alternative source moves the
-  source reservation to the scanned batch-location SKU and also moves the aggregate reservation
+  source reservation to the resolved batch-location SKU and also moves the aggregate reservation
   when the warehouse differs. Cancellation or voiding releases the applicable reservations, and
   dispatch consumes both on-hand and reserved quantities from the recorded source
 - The Delivery Note owns the warehouse commitment, while each pick-list line owns a child physical
@@ -160,7 +198,7 @@ apps/mobile/
 - Delivery-note picked totals are reconciled from execution rows across all non-deleted pick lists, preserving prior progress when a later pick list is created for the same delivery-note line
 - Complete Picking finalizes the already-persisted pick rows instead of replaying mobile-only quantity changes
 - When any line is not fully picked, Complete first asks for confirmation and lists the short lines (picked / required, up to five, then a remaining count); a fully picked list completes directly. A failed completion shows the API's safe error message in the picking footer
-- The verified-item pick location shows the recorded location, batch, and batch-location SKU only; a missing value is shown as "Not recorded" in warning color rather than a substituted default
+- The verified-item pick location shows the resolved location and batch; a missing value is shown as "Not recorded" in warning color rather than a substituted default
 - Quantity validation
 - Real-time progress updates
 - Exception handling (short picks, wrong location)
@@ -211,6 +249,10 @@ apps/mobile/
 - Variance highlighting
 
 ## Mobile App Features
+
+Item-batch labels also work in delivery-note receiving. Each scan still counts as one unit;
+receiving stores the canonical QR text as its scan reference because the QR no longer identifies
+an individual box. Repeated scans of the same item-batch label remain allowed.
 
 ### Barcode/QR Scanning
 
@@ -772,10 +814,10 @@ Search items for mobile (autocomplete).
 **Location**: `apps/mobile/app/picking/[id].tsx`
 
 - Scan-first layout: status text and line progress ("7 of 12 lines") replace unit totals, because units differ per line
-- A scanner bar shows whether the Sunmi hardware scanner is ready (blue with a spinner while a scan is being checked), with icon-only camera and keypad buttons as fallbacks (keypad opens 10-digit entry on a number pad); scan errors stay in a banner until the next scan
+- A scanner bar shows whether the Sunmi hardware scanner is ready (blue with a spinner while a scan is being checked), with icon-only camera and keypad buttons as fallbacks (entry opens a field for the full item-batch QR contents); scan errors stay in a banner until the next scan
 - A Next pick card shows the first remaining unreserved line in location-code order (natural sort of zone/aisle/bay codes as a walking-path proxy), with its names-only location address (for example `Zone 1 / Shelf 1 / Bin 2`) as the largest text; Up next lists the rest in the same order, and picked lines collapse behind "N picked"
 - After a valid scan the screen shows a match banner (or an amber different-batch banner with assigned vs scanned values), the scanned location, and a quantity stepper; Cancel and Confirm are pinned in the footer above the keyboard
-- Scan results vibrate: one short pulse for a match, two pulses for a different batch, one long pulse for an error. Re-scanning the verified QR code confirms an exact-match pick at the shown quantity; a different-batch pick must be confirmed with the button
+- Scan results vibrate: one short pulse for a match, two pulses for a different batch, one long pulse for an error. Re-scanning the verified QR code confirms an exact-match pick at the shown quantity; an alternative-location pick must be confirmed with the button
 - Pause and Finish (or Start/Resume picking) sit in the pinned footer, whose note shows open lines, who holds a blocking reservation, or the last status/completion error
 
 #### ScannerScreen

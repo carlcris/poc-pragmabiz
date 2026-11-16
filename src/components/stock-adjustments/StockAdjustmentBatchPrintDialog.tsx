@@ -27,15 +27,6 @@ import {
 
 const MAX_BATCH_LABEL_COUNT = 100;
 
-const createStockAdjustmentLabelId = (batchLocationId: string, labelNumber: number) => {
-  const uniquePart =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${labelNumber}`;
-
-  return `stock-adjustment-${batchLocationId}-${uniquePart}`;
-};
-
 type StockAdjustmentBatchPrintDialogProps = {
   label: BarcodeData | null;
   onOpenChange: (open: boolean) => void;
@@ -118,10 +109,8 @@ export function StockAdjustmentBatchPrintDialog({
 
     try {
       setIsPrinting(true);
-      const labels = Array.from({ length: parsedLabelCount }, (_, index) => ({
+      const labels = Array.from({ length: parsedLabelCount }, () => ({
         ...label,
-        boxId: createStockAdjustmentLabelId(label.boxId, index + 1),
-        boxNumber: index + 1,
         qtyPerBox: selectedUnitOption.qtyPerUnit,
       }));
       const { printBarcodeLabels } = await import("@/lib/barcode");

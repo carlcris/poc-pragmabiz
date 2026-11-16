@@ -8,6 +8,20 @@ import type {
 } from "@/types/pick-list";
 
 export const pickListsApi = {
+  async claimItem(id: string, pickListItemId: string): Promise<void> {
+    await apiClient.post(`/api/pick-lists/${id}/claim`, { pickListItemId });
+  },
+
+  async releaseItem(id: string, pickListItemId: string): Promise<void> {
+    const response = await fetch(`/api/pick-lists/${id}/claim`, {
+      method: "DELETE",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pickListItemId }),
+    });
+    if (!response.ok) throw new Error("Unable to release pick claim");
+  },
+
   async list(params?: { status?: string; dnId?: string }): Promise<PickListListResponse> {
     const search = new URLSearchParams();
     if (params?.status) search.set("status", params.status);

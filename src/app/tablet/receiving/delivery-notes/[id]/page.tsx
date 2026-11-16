@@ -1,5 +1,6 @@
 "use client";
 
+import { parseItemBatchQr, serializeItemBatchQr } from "@/lib/item-batch-qr";
 import { useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -92,6 +93,21 @@ type ParsedReceivingScan = {
 };
 
 const parseReceivingScan = (rawScan: string): ParsedReceivingScan => {
+  const itemBatch = parseItemBatchQr(rawScan);
+  if (itemBatch) {
+    // Receiving stores the scanned label as its audit reference; repeated labels are allowed.
+    const reference = serializeItemBatchQr(itemBatch);
+    return {
+      qrCode: reference,
+      boxId: reference,
+      itemId: itemBatch.itemId,
+      itemUnitOptionId: null,
+      qty: 1,
+      batchNumber: itemBatch.batchNumber,
+      locationId: null,
+    };
+  }
+
   const candidates = [rawScan.trim()];
   try {
     candidates.push(decodeURIComponent(rawScan.trim()));
@@ -256,12 +272,7 @@ export default function TabletDeliveryNoteReceivingPage() {
 
     const candidates = Array.from(extractScanCandidates(rawScan)).map(normalizeScanValue);
     return lines.find((line) => {
-      const values = [
-        line.itemId,
-        line.itemCode,
-        line.barcode,
-        line.itemUnitOptionId,
-      ]
+      const values = [line.itemId, line.itemCode, line.barcode, line.itemUnitOptionId]
         .filter(Boolean)
         .map((value) => normalizeScanValue(String(value)));
       return values.some((value) => candidates.includes(value));
@@ -366,7 +377,8 @@ export default function TabletDeliveryNoteReceivingPage() {
     return {
       itemName: itemRef?.item_name || itemRef?.item_code || exception.item_id,
       itemCode: itemRef?.item_code || exception.item_id,
-      unitLabel: unitOption?.optionLabel || unitRef?.symbol || unitRef?.code || unitRef?.name || "Unit",
+      unitLabel:
+        unitOption?.optionLabel || unitRef?.symbol || unitRef?.code || unitRef?.name || "Unit",
     };
   };
 

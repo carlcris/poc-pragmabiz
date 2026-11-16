@@ -198,6 +198,23 @@ describe("identify before unexpected-item confirmation", () => {
     });
   });
 
+  it("records the item-batch-only label without requiring a physical box identity", async () => {
+    mocks.items = [{ id: itemId }];
+    const qrCode = JSON.stringify({ itemId, batchNumber: "BATCH-A" });
+    const response = await post(recordScan, {
+      boxId: qrCode,
+      qrCode,
+      itemId,
+      batchNumber: "BATCH-A",
+      qty: 1,
+    });
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "record_delivery_note_receiving_scan",
+      expect.objectContaining({ p_item_id: itemId, p_box_id: qrCode, p_qr_qty: 1 })
+    );
+  });
+
   it("identifies a system barcode or item code before asking for confirmation", async () => {
     mocks.units = [{ id: unitId, item_id: itemId }];
     mocks.items = [{ id: itemId }];

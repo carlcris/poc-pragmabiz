@@ -85,7 +85,7 @@ only from 1280px and stacks above it on narrower screens.
 
 **Barcode presentation**:
 The item details and edit screens render the generated base-unit barcode as a linear Code 128
-symbol. Batch-location and warehouse workflow labels continue to use their existing QR payloads.
+symbol. Warehouse workflow labels use item-batch QR payloads containing only `itemId` and `batchNumber`.
 
 **Exports**:
 The Item Master export supports CSV, XLSX, and PDF formats. Each export uses the current search,
@@ -420,7 +420,7 @@ records. The dialog stays open for correction, blocks duplicate submission and c
 pending, and refreshes affected inventory, allocation, selector, dashboard, and report queries
 after success. Unknown errors stay generic and internal details are logged server-side.
 
-Users with Items view access and the `items.operation.print_batch_qr.view` capability can expand a warehouse location on an item's **Locations** tab and print 1–100 landscape 4 × 2-inch (101.6 × 50.8 mm) QR labels for each batch. The user selects an active item unit option, and every label's quantity is that option's `qtyPerUnit`; current batch on-hand is informational and is never divided or changed by printing. Each label and QR payload uses the same item, batch-location SKU, batch, warehouse, and location contract as completed putaway labels. The shared label PDF also serves GRN boxes, putaway, and stock adjustments, with one borderless label per page. The QR starts near the top edge, with the batch, item, and larger Qty text grouped to its right; Qty sits directly below the item name, and the SKU sits beneath the QR. Warehouse and location text are omitted from the printed label; the QR payload retains its location identity for scanning.
+Users with Items view access and the `items.operation.print_batch_qr.view` capability can expand a warehouse location on an item's **Locations** tab and print 1–100 landscape 4 × 2-inch (101.6 × 50.8 mm) QR labels for each batch. The user selects an active item unit option, and every label's quantity is that option's `qtyPerUnit`; current batch on-hand is informational and is never divided or changed by printing. Each QR contains exactly `itemId` and `batchNumber` (the batch code), shared with completed putaway labels. It contains no location, batch-location SKU, box identity, quantity, or date. Moving the same item and batch does not require a replacement label. Existing location-specific QR labels must be replaced once when adopting this contract. The shared label PDF also serves GRN boxes, putaway, and stock adjustments, with one borderless label per page. The QR starts near the top edge, with the batch, item, and larger Qty text grouped to its right; Qty sits directly below the item name. Location text and the location-specific SKU are omitted. During picking, the server resolves the scanned item and batch against open pick-list lines and current stock. One eligible location resolves directly; multiple eligible locations require an explicit choice, with the suggested source first and three choices per page. The confirmed location retains its internal stock SKU for atomic reservation and picking updates.
 
 For 4 × 2-inch die-cut stock, set the printer media width across the print head to 4 inches (101.6 mm) and the length in the feed direction to 2 inches (50.8 mm), with a 3 mm gap. In Chrome, use the matching 4 × 2-inch landscape paper size, one PDF page per label, and actual size (100% scaling). In the printer driver, select the rotation setting that prints the artwork at 0° relative to the physical label; label printer drivers can use portrait/landscape names differently from PDF viewers. A 2 × 4-inch portrait media setting treats the feed direction as 4 inches and can rotate the artwork and advance into the next label. The 3 mm gap is a media/sensor setting outside the PDF page.
 
@@ -838,7 +838,7 @@ The warehouse dashboard Operations Overview reads one read-only, `SECURITY INVOK
 - Stock In vs Stock Out (`dashboard.widget.stock_value.view`): counts of incoming and outgoing transaction lines by `posting_date`. Stock-adjustment lines use their own before and after quantities to determine direction, so a single adjustment can contribute to both counts. Stock moves (`reference_type = 'stock_move'`) are excluded because they stay inside one business unit.
 - Stock Health (stock value and reorder value capabilities): item-level counts from the scope’s warehouse balances and open putaway tasks. Stored stock is on hand minus warehouse-bound pending putaway. Out of Stock means nothing is in storage, including a first receipt still awaiting putaway with no warehouse stock record. Fully Reserved means there is stock in storage and all of it is reserved. For items with available stock, the card shows Below Reorder when availability is at or below a positive reorder level and In Stock otherwise.
 - Expected Arrivals and Inbound Pipeline (`dashboard.card.incoming_shipments.view`): confirmed and in-transit load lists by `estimated_arrival_date` for the next 14 days, overdue ones (ETA before as-of), and open load lists per stage (confirmed, in transit, arrived, receiving, pending approval).
-- Open Work by Age (each queue capability): open pick lists, stock requests and in-transit/receiving load lists bucketed by local days since created: under 1, 1-3, 4-7, over 7.
+- Open Work by Age (each queue capability): open pick lists, stock requests and in-transit/receiving load lists bucketed by local days since created: under 1, 1-3, 4-7, over 7. Creating a pick list refreshes the dashboard queues and age counts.
 - Expiring Soon (stock value capability): the soonest six stocked batches expiring from today through the next 90 days, plus counts of stocked batches already expired and expiring within 7 days. Expired batches are counted, not listed, so old expired stock cannot crowd out upcoming expiries. Uses `idx_item_batches_expiration_report`.
 - Slow-Moving Stock (stock value capability): items with stock on hand and no movement in the scope's warehouses for 90+ days, with the five oldest by last posting date. The last-movement lookup runs once per idle item on `idx_stock_trans_items_item_warehouse_date`, so its cost grows with idle stocked items. The client therefore does not subscribe to per-row stock or purchasing realtime events: the user's own mutations invalidate it through the dashboard query key, and other users' changes arrive through 5-minute polling and window-focus refetches.
 Active reorder alerts create realtime company-level notifications across all warehouses. Acknowledged and resolved reorder alerts do not create notifications, and stale reorder notification rows are removed by the alert sync.
@@ -1212,7 +1212,7 @@ Post stock adjustment (apply to inventory).
 5. Marks adjustment as posted
 6. Records posting user and timestamp
 
-Stock adjustment lines can reprint 1–100 batch QR labels using the same QR payload and PDF label generator as GRN box labels. The user selects an active item unit option, and each printed copy uses that option's `qtyPerUnit` together with the selected batch code, batch-location SKU, item details, warehouse, and location metadata. The adjusted quantity is informational and is not divided across the labels.
+Stock adjustment lines can reprint 1–100 batch QR labels using the same QR payload and PDF label generator as GRN box labels. The user selects an active item unit option, and each printed copy uses that option's `qtyPerUnit` together with the selected batch code and item details. Only the item ID and batch code are encoded; quantity is printed as text. The adjusted quantity is informational and is not divided across the labels.
 
 ### Stock Requests
 
@@ -1292,7 +1292,8 @@ atomically moves the batch/rack reservation to the scanned location and, for ano
 moves the corresponding aggregate reservation as well. Pick-list cancellation releases its exact
 source reservations and restores any moved aggregate reservation to the planned warehouse. Delivery
 Note voiding releases both levels, while dispatch consumes on-hand and reserved quantity from the
-recorded warehouse, batch, rack, and batch-location SKU.
+recorded warehouse, batch, rack, and batch-location SKU. After a void, **Item → Locations** refreshes
+reserved and available quantities for the note's items, including stock at any alternative pick location.
 
 Reservation ownership is source-neutral. Delivery Note lines, confirmed Sales Order lines,
 Transformation Order inputs, and approved Production Material Request lines own warehouse-level

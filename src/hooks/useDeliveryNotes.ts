@@ -1,12 +1,23 @@
-import { EXPIRED_BATCHES_REPORT_QUERY_KEY } from "@/hooks/queryKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
 import {
   DELIVERY_NOTE_ALLOCATION_AVAILABILITY_QUERY_KEY,
   DELIVERY_NOTES_QUERY_KEY,
+  EXPIRED_BATCHES_REPORT_QUERY_KEY,
+  INVENTORY_REPORT_QUERY_KEY,
   INVENTORY_RESERVATIONS_QUERY_KEY,
+  ITEM_LOCATIONS_QUERY_KEY,
+  ITEM_LOCATION_BATCH_REPORT_QUERY_KEY,
+  ITEMS_QUERY_KEY,
+  ITEMS_STATS_QUERY_KEY,
+  ITEMS_STOCK_QUERY_KEY,
   PICK_LISTS_QUERY_KEY,
+  REORDER_ALERTS_QUERY_KEY,
+  STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY,
+  STOCK_AGING_REPORT_QUERY_KEY,
+  STOCK_BALANCES_QUERY_KEY,
   STOCK_REQUESTS_QUERY_KEY,
+  WAREHOUSE_DASHBOARD_QUERY_KEY,
 } from "@/hooks/queryKeys";
 import { useInventoryRealtimeInvalidation } from "@/hooks/useInventoryRealtimeInvalidation";
 import { DELIVERY_NOTE_ALLOCATION_AVAILABILITY_MAX_LINES } from "@/constants/delivery-notes";
@@ -24,6 +35,22 @@ import type {
 } from "@/types/delivery-note";
 
 export { DELIVERY_NOTES_QUERY_KEY };
+
+const DELIVERY_NOTE_VOID_QUERY_FAMILIES = new Set([
+  DELIVERY_NOTES_QUERY_KEY,
+  PICK_LISTS_QUERY_KEY,
+  STOCK_REQUESTS_QUERY_KEY,
+  INVENTORY_RESERVATIONS_QUERY_KEY,
+  WAREHOUSE_DASHBOARD_QUERY_KEY,
+  ITEMS_STATS_QUERY_KEY,
+  ITEMS_STOCK_QUERY_KEY,
+  STOCK_BALANCES_QUERY_KEY,
+  REORDER_ALERTS_QUERY_KEY,
+  INVENTORY_REPORT_QUERY_KEY,
+  ITEM_LOCATION_BATCH_REPORT_QUERY_KEY,
+  STOCK_AGING_REPORT_QUERY_KEY,
+  EXPIRED_BATCHES_REPORT_QUERY_KEY,
+]);
 
 export function useDeliveryNotes(params?: string | DeliveryNoteListParams) {
   useInventoryRealtimeInvalidation([DELIVERY_NOTES_QUERY_KEY, PICK_LISTS_QUERY_KEY]);
@@ -329,10 +356,39 @@ export function useVoidDeliveryNote() {
   return useMutation({
     mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
       deliveryNotesApi.void(id, reason),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [INVENTORY_RESERVATIONS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
+    onSuccess: (note) => {
+      const itemIds =
+        note?.delivery_note_items && new Set(note.delivery_note_items.map((item) => item.item_id));
+      const affectsItem = (scope: unknown) =>
+        typeof scope === "string" && (!itemIds || itemIds.has(scope));
+
+      return queryClient.invalidateQueries({
+        predicate: ({ queryKey }) => {
+          const [family, scope, subresource] = queryKey;
+          switch (family) {
+            case ITEM_LOCATIONS_QUERY_KEY:
+              return (
+                scope !== "warehouse_locations" && subresource !== "floor" && affectsItem(scope)
+              );
+            case ITEMS_QUERY_KEY:
+              if (scope === "inventory")
+                return !note || subresource === note.fulfilling_business_unit_id;
+              if (scope && typeof scope === "object" && "includeStock" in scope) {
+                return scope.includeStock === true;
+              }
+              return (subresource === undefined || subresource === "batches") && affectsItem(scope);
+            case "warehouse-locations":
+              // Reserved quantities appear on location details, including ancestors of alternate bins.
+              return subresource === "detail";
+            case STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY:
+              return queryKey[5] === "existing" && affectsItem(scope);
+            case "lookups":
+              return scope === "stock-request-batches" && affectsItem(queryKey[3]);
+            default:
+              return typeof family === "string" && DELIVERY_NOTE_VOID_QUERY_FAMILIES.has(family);
+          }
+        },
+      });
     },
   });
 }

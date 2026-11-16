@@ -8,6 +8,7 @@ import { usePostStockAdjustment } from "./useStockAdjustments";
 import { useMoveStock } from "./useMoveStock";
 import { useStartGRNReceiving, useSubmitGRN } from "./useGRNs";
 import { useDeleteLoadList, useUpdateLoadListStatus } from "./useLoadLists";
+import { useCreatePickList } from "./usePickLists";
 import {
   ITEMS_QUERY_KEY,
   PUTAWAY_TASKS_QUERY_KEY,
@@ -56,6 +57,7 @@ it.each([
   useDeleteLoadList,
   useStartGRNReceiving,
   useSubmitGRN,
+  useCreatePickList,
 ])("%s refreshes the open operations overview and stales other cached ranges", async (useHook) => {
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },

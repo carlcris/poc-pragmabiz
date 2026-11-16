@@ -15,6 +15,9 @@ import {
 import { Card, ErrorState, LoadingState, ScannerModal, Screen } from "@/components/ui";
 import { ActionFooter, type ActionFooterNoteTone } from "@/components/ActionFooter";
 import { ActionFooterButton } from "@/components/ActionFooterButton";
+import { PickSourceLocationModal } from "@/components/picking/PickSourceLocationModal";
+import { parseItemBatchQr, type ItemBatchQr } from "../../../../src/lib/item-batch-qr";
+import { getPickableQtyCap, isPackagedPickLine } from "../../../../src/lib/picking-quantities";
 import { PickLocationMapModal } from "@/components/picking/PickLocationMapModal";
 import { ApiError } from "@/api/client";
 import {
@@ -22,6 +25,7 @@ import {
   releasePickListItem,
   resolvePickSource,
   type RecordPickProgressInput,
+  type PickSourceResult,
 } from "@/api/picking";
 import type { PickListItem, PickListItemClaim } from "@/contracts/picking";
 import {
@@ -51,6 +55,7 @@ import { translations } from "../../../../src/lib/i18n/translations";
 
 // The native app currently uses English; reuse the web source of truth for new pick detail copy.
 const tPickDetail = createTranslator({ locale: "en", messages: translations.en.mobilePickDetail });
+const pickedQuantityFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 4 });
 const getStatusMeta = (status: string) => {
   switch (status) {
     case "in_progress":
@@ -65,13 +70,6 @@ const getStatusMeta = (status: string) => {
     default:
       return { label: "Not started", color: colors.statusWarning };
   }
-};
-
-type ParsedBatchLocationQr = {
-  batchLocationSku: string | null;
-  itemId: string | null;
-  locationId: string | null;
-  batchCode: string | null;
 };
 
 type PickSource = {
@@ -96,57 +94,7 @@ const signalScanFeedback = (feedback: ScanFeedback) => {
   Vibration.vibrate(SCAN_FEEDBACK_VIBRATION[feedback]);
 };
 
-const BATCH_LOCATION_SKU_PATTERN = /^\d{10}$/;
 const HAS_HARDWARE_SCANNER = sunmiScannerModule !== null;
-
-const parseBatchLocationQrPayload = (rawScan: string): ParsedBatchLocationQr | null => {
-  const candidates = [rawScan.trim()];
-  try {
-    candidates.push(decodeURIComponent(rawScan.trim()));
-  } catch {}
-
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    try {
-      const parsed = JSON.parse(candidate) as Record<string, unknown>;
-      const batchLocationSku =
-        typeof parsed.batchLocationSku === "string" && parsed.batchLocationSku.trim()
-          ? parsed.batchLocationSku.trim()
-          : null;
-      const itemId =
-        typeof parsed.itemId === "string" && parsed.itemId.trim() ? parsed.itemId.trim() : null;
-      const locationId =
-        typeof parsed.location === "string" && parsed.location.trim()
-          ? parsed.location.trim()
-          : null;
-      const batchCode =
-        typeof parsed.batchNumber === "string" && parsed.batchNumber.trim()
-          ? parsed.batchNumber.trim()
-          : null;
-
-      if (batchLocationSku || itemId || locationId || batchCode) {
-        return { batchLocationSku, itemId, locationId, batchCode };
-      }
-    } catch {}
-  }
-
-  return null;
-};
-
-const extractScannedSource = (rawScan: string) => {
-  const raw = rawScan.trim();
-  const parsedQr = parseBatchLocationQrPayload(raw);
-  const batchLocationSku =
-    parsedQr?.batchLocationSku && BATCH_LOCATION_SKU_PATTERN.test(parsedQr.batchLocationSku)
-      ? parsedQr.batchLocationSku
-      : BATCH_LOCATION_SKU_PATTERN.test(raw)
-        ? raw
-        : null;
-  const hasSourceMetadata = Boolean(
-    parsedQr?.batchLocationSku || parsedQr?.locationId || parsedQr?.batchCode
-  );
-  return { parsedQr, batchLocationSku, hasSourceMetadata };
-};
 
 const defaultPickSource = (item: PickListItem): PickSource => ({
   batchLocationSku: item.sourceSku,
@@ -226,12 +174,32 @@ export default function PickingDetailScreen() {
   const [barcode, setBarcode] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
-  const [pickedItemsExpanded, setPickedItemsExpanded] = useState(false);
+  const [pickedItemsExpanded, setPickedItemsExpanded] = useState(true);
   const [verifiedItemId, setVerifiedItemId] = useState<string | null>(null);
   const [currentPickSource, setCurrentPickSource] = useState<PickSource | null>(null);
+  // Null while a recovered pending confirmation has no live cap from a scan.
+  const [pickCapQty, setPickCapQty] = useState<number | null>(null);
+  // Mirrors pickCapQty so the confirmation callback reads the live cap without taking it as a
+  // dependency, which would re-create the recovery callbacks on every scan.
+  const pickCapQtyRef = useRef<number | null>(null);
+  pickCapQtyRef.current = pickCapQty;
+  // Packaged lines (qty_per_unit > 1) only accept whole packages. Set from the same scan as the
+  // cap, so a recovered pending confirmation without a cap also carries no packaging rule.
+  const [isPackagedPick, setIsPackagedPick] = useState(false);
   const [pickedQtyText, setPickedQtyText] = useState("");
   const [verifyError, setVerifyError] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
+  const [locationChoice, setLocationChoice] = useState<{
+    qr: ItemBatchQr;
+    result: Extract<PickSourceResult, { kind: "choose_location" }>;
+  } | null>(null);
+  const scanRequestRef = useRef(0);
+  const closeLocationChoice = () => {
+    scanRequestRef.current += 1;
+    setLocationChoice(null);
+    setIsVerifying(false);
+    setVerifyError("");
+  };
   const [operationId, setOperationId] = useState<string | null>(null);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingPickConfirmation | null>(
     null
@@ -242,6 +210,15 @@ export default function PickingDetailScreen() {
   const recoveryAttemptedKeyRef = useRef<string | null>(null);
   const userId = session?.user.id || "";
   const businessUnitId = session?.currentBusinessUnit?.id || "";
+  useEffect(() => {
+    if (!isFocused) {
+      setLocationChoice(null);
+      setIsVerifying(false);
+    }
+    return () => {
+      scanRequestRef.current += 1;
+    };
+  }, [id, businessUnitId, isFocused]);
   const effectiveStatus =
     setStatus.isPending && typeof setStatus.variables === "string"
       ? setStatus.variables
@@ -275,17 +252,32 @@ export default function PickingDetailScreen() {
   const upNext = remaining.filter((item) => item !== nextPick);
   const otherPickerClaim = activeClaims.find((claim) => claim.claimedBy !== userId) || null;
   const verifiedRemainingQty = verifiedItem ? getRemainingQty(verifiedItem) : 0;
+  // Display and stepper-clamp bound only. A recovered pending confirmation carries no cap, and its
+  // stepper is disabled while it replays, so the remainder fallback never authorizes a submission;
+  // canConfirmPick and confirmPick gate on pickCapQty itself.
+  const confirmableQty = pickCapQty ?? verifiedRemainingQty;
   const pickedQtyValue = Number(pickedQtyText);
+  // A stored pending confirmation replays its own exact quantity, so it needs no cap. Any fresh
+  // submission requires the live server cap from a scan; the line remainder is not a cap.
+  const isStoredPendingReplay =
+    !!pendingConfirmation && pendingConfirmation.payload.operationId === operationId;
   const canConfirmPick =
     !!verifiedItem &&
     Number.isFinite(pickedQtyValue) &&
     pickedQtyValue > 0 &&
-    pickedQtyValue <= verifiedRemainingQty &&
+    (isStoredPendingReplay ||
+      (pickCapQty !== null &&
+        pickedQtyValue <= pickCapQty &&
+        // A partial package cannot be picked, so fresh packaged input must be a whole package.
+        (!isPackagedPick || Number.isInteger(pickedQtyValue)))) &&
     !recordPickProgress.isPending;
 
   const clearVerifiedSelection = useCallback(() => {
     setVerifiedItemId(null);
     setCurrentPickSource(null);
+    pickCapQtyRef.current = null;
+    setPickCapQty(null);
+    setIsPackagedPick(false);
     setPickedQtyText("");
     setOperationId(null);
     setBarcode("");
@@ -341,6 +333,14 @@ export default function PickingDetailScreen() {
           } catch {}
           pendingConfirmationRef.current = null;
           setPendingConfirmation(null);
+          // A recovered confirmation carries no live cap, so the selection it hydrated cannot
+          // back another submission. Drop it and make the picker scan the source again.
+          if (pickCapQtyRef.current === null) {
+            clearVerifiedSelection();
+            setVerifyError(tPickDetail("pickStockChanged"));
+            void pickList.refetch();
+            return;
+          }
           void pickList.refetch();
         }
         setVerifyError(error instanceof Error ? error.message : "Failed to save pick progress.");
@@ -426,6 +426,8 @@ export default function PickingDetailScreen() {
         setVerifyError(error instanceof Error ? error.message : "Unable to reserve this item");
         setVerifiedItemId(null);
         setCurrentPickSource(null);
+        setPickCapQty(null);
+        setIsPackagedPick(false);
         setPickedQtyText("");
         setOperationId(null);
       });
@@ -444,79 +446,125 @@ export default function PickingDetailScreen() {
     signalScanFeedback("error");
   };
 
-  const verifyBarcode = async (value = barcode) => {
+  const verifyBarcode = async (value = barcode, page = 1, locationId?: string) => {
     if (!pickingActive) {
-      rejectScan("Start picking before scanning items.");
+      rejectScan(tPickDetail("startBeforeScan"));
       return;
     }
 
     if (!value.trim() || !pickList.data) {
-      rejectScan("Scan the QR code or enter its 10-digit code.");
+      rejectScan(tPickDetail("itemBatchQrRequired"));
       return;
     }
 
+    const requestId = ++scanRequestRef.current;
     setIsVerifying(true);
     setVerifyError("");
 
     try {
-      const selectClaimedItem = async (match: PickListItem, source: PickSource) => {
+      const selectClaimedItem = async (
+        match: PickListItem,
+        source: PickSource,
+        maxPickQty: number,
+        isPackaged: boolean
+      ) => {
         await claimPickListItem(pickList.data.id, match.pickListItemId);
+        if (requestId !== scanRequestRef.current) {
+          await releasePickListItem(pickList.data.id, match.pickListItemId);
+          return;
+        }
+        setLocationChoice(null);
         setVerifiedItemId(match.id);
         setCurrentPickSource(source);
-        setPickedQtyText(String(getRemainingQty(match)));
+        setPickCapQty(maxPickQty);
+        setIsPackagedPick(isPackaged);
+        setPickedQtyText(String(maxPickQty));
         setOperationId(createOperationId());
         setBarcode("");
         setManualEntryOpen(false);
         signalScanFeedback(source.isMismatch ? "mismatch" : "match");
       };
-      const { parsedQr, batchLocationSku, hasSourceMetadata } = extractScannedSource(value);
-
-      if (hasSourceMetadata && !batchLocationSku) {
-        rejectScan("Scanned QR code is incomplete or invalid.");
+      const qr = parseItemBatchQr(value);
+      if (!qr) {
+        rejectScan(tPickDetail("itemBatchQrRequired"));
+        return;
+      }
+      const result = await resolvePickSource(pickList.data.id, {
+        itemId: qr.itemId,
+        batchCode: qr.batchNumber,
+        page,
+        locationId,
+      });
+      if (requestId !== scanRequestRef.current) return;
+      if (result.kind === "choose_location") {
+        // Later pages append so the picker keeps their place in the list.
+        setLocationChoice((current) => {
+          if (page === 1 || !current) return { qr, result };
+          const loadedSkus = new Set(
+            current.result.sources.map((source) => source.batchLocationSku)
+          );
+          return {
+            qr,
+            result: {
+              ...result,
+              sources: [
+                ...current.result.sources,
+                ...result.sources.filter((source) => !loadedSkus.has(source.batchLocationSku)),
+              ],
+            },
+          };
+        });
+        setScannerOpen(false);
+        return;
+      }
+      const resolved = result.resolution;
+      if (!resolved.line) {
+        rejectScan(tPickDetail("qrNotOnList"));
         return;
       }
 
-      if (batchLocationSku) {
-        const resolved = await resolvePickSource(pickList.data.id, {
-          batchLocationSku,
-          itemId: parsedQr?.itemId,
-          locationId: parsedQr?.locationId,
-          batchCode: parsedQr?.batchCode,
-        });
+      const match =
+        pickList.data.items.find((item) => item.id === resolved.line?.pickListItemId) || null;
+      if (!match || match.pickedQty >= match.requiredQty) {
+        rejectScan(tPickDetail("alreadyPicked"));
+        return;
+      }
+      const otherClaim = claimedByOther(match.pickListItemId);
+      if (otherClaim) {
+        rejectScan(tPickDetail("otherPicker", { name: otherClaim.claimedByName }));
+        return;
+      }
 
-        if (!resolved.line) {
-          rejectScan("Scanned QR code is not on this pick list.");
-          return;
-        }
-
-        const match =
-          pickList.data.items.find((item) => item.id === resolved.line?.pickListItemId) || null;
-        if (!match || match.pickedQty >= match.requiredQty) {
-          rejectScan("This item is already fully picked.");
-          return;
-        }
-        const otherClaim = claimedByOther(match.pickListItemId);
-        if (otherClaim) {
-          rejectScan(`${otherClaim.claimedByName} is picking this item.`);
-          return;
-        }
-
-        await selectClaimedItem(match, {
+      await selectClaimedItem(
+        match,
+        {
           batchLocationSku: resolved.batchLocationSku,
           locationId: resolved.source.locationId,
           locationName: resolved.source.locationName || resolved.source.locationCode,
           batchCode: resolved.source.batchCode,
           batchReceivedAt: resolved.source.batchReceivedAt,
           isMismatch: resolved.isMismatch,
-        });
-        return;
-      }
-
-      rejectScan("Scan the QR code or enter its 10-digit code.");
+        },
+        // Packaged lines pick in whole packages only, so the cap drops to the last full package.
+        getPickableQtyCap(resolved.line),
+        isPackagedPickLine(resolved.line)
+      );
     } catch (error) {
-      rejectScan(error instanceof Error ? error.message : "Failed to verify scanned item.");
+      if (requestId !== scanRequestRef.current) return;
+      const code = error instanceof ApiError ? error.code : undefined;
+      rejectScan(
+        code === "PICK_SOURCE_UNAVAILABLE"
+          ? tPickDetail("noEligibleSource")
+          : code === "ITEM_BATCH_QR_REQUIRED"
+            ? tPickDetail("itemBatchQrRequired")
+            : code === "PICK_SOURCE_NOT_ACTIVE"
+              ? tPickDetail("startBeforeScan")
+              : code === "PICK_SOURCE_FORBIDDEN"
+                ? tPickDetail("sourceForbidden")
+                : tPickDetail("sourceLookupFailed")
+      );
     } finally {
-      setIsVerifying(false);
+      if (requestId === scanRequestRef.current) setIsVerifying(false);
     }
   };
 
@@ -528,9 +576,32 @@ export default function PickingDetailScreen() {
     const source = currentPickSource || defaultPickSource(verifiedItem);
     if (!operationId) return;
 
+    // Replay the exact stored quantity so an idempotent operation is never resubmitted at a
+    // different value, including when recovery restored it without a live cap.
     const existingPending = pendingConfirmationRef.current;
     if (existingPending?.payload.operationId === operationId) {
       await executePendingConfirmation(existingPending, false);
+      return;
+    }
+
+    // Every fresh submission needs the live server cap from a scan. A recovered confirmation that
+    // failed definitively leaves no cap behind, and the line remainder must never stand in for one.
+    if (pickCapQty === null) {
+      rejectScan(tPickDetail("pickStockChanged"));
+      clearVerifiedSelection();
+      return;
+    }
+
+    // The server cap is exact, and the stepper clamps to it, so anything above it would be
+    // rejected by the transactional writer.
+    if (quantityToAdd > pickCapQty) {
+      rejectScan(tPickDetail("positivePickQuantity", { quantity: pickCapQty }));
+      return;
+    }
+
+    // Partial packages cannot leave the warehouse, so a packaged line takes whole packages only.
+    if (isPackagedPick && !Number.isInteger(quantityToAdd)) {
+      rejectScan(tPickDetail("wholePackagePickQuantity", { unit: verifiedItem.uom }));
       return;
     }
 
@@ -572,18 +643,18 @@ export default function PickingDetailScreen() {
   const confirmFromRescan = (value: string) => {
     if (!verifiedItem || pendingConfirmationRef.current) return;
     const source = currentPickSource || defaultPickSource(verifiedItem);
-    const { batchLocationSku } = extractScannedSource(value);
+    const qr = parseItemBatchQr(value);
 
-    if (!batchLocationSku || batchLocationSku !== source.batchLocationSku) {
-      rejectScan("This QR code is for a different pick. Cancel to switch items.");
+    if (!qr || qr.itemId !== verifiedItem.itemId || qr.batchNumber !== source.batchCode) {
+      rejectScan(tPickDetail("differentQr"));
       return;
     }
     if (source.isMismatch) {
-      rejectScan("Use the button below to confirm picking from a different batch.");
+      rejectScan(tPickDetail("confirmAlternative"));
       return;
     }
     if (!canConfirmPick) {
-      rejectScan("Check the quantity before confirming.");
+      rejectScan(tPickDetail("checkQuantity"));
       return;
     }
     void confirmPick();
@@ -595,6 +666,7 @@ export default function PickingDetailScreen() {
       isFocused &&
       pickingActive &&
       !scannerOpen &&
+      !locationChoice &&
       !isVerifying &&
       !pendingConfirmation &&
       mapPickListItemId === null,
@@ -626,6 +698,8 @@ export default function PickingDetailScreen() {
     if (pendingConfirmationRef.current) return;
     setVerifiedItemId(null);
     setCurrentPickSource(null);
+    setPickCapQty(null);
+    setIsPackagedPick(false);
     setPickedQtyText("");
     setVerifyError("");
     setOperationId(null);
@@ -633,8 +707,13 @@ export default function PickingDetailScreen() {
 
   const adjustPickedQty = (delta: number) => {
     const current = Number(pickedQtyText);
-    const next = roundQuantity((Number.isFinite(current) ? current : 0) + delta);
-    setPickedQtyText(String(Math.min(verifiedRemainingQty, Math.max(0, next))));
+    const base = Number.isFinite(current) ? current : 0;
+    // A packaged step lands on a whole package. Rounding down on an increase and up on a decrease
+    // keeps a typed fraction from being rounded up into a package the picker did not take.
+    const next = isPackagedPick
+      ? (delta > 0 ? Math.floor(base) : Math.ceil(base)) + delta
+      : roundQuantity(base + delta);
+    setPickedQtyText(String(Math.min(confirmableQty, Math.max(0, next))));
   };
 
   if (!canViewPicking) {
@@ -776,6 +855,8 @@ export default function PickingDetailScreen() {
               source={verifiedSource}
               pickedQtyText={pickedQtyText}
               remainingQty={verifiedRemainingQty}
+              maxPickQty={confirmableQty}
+              isPackaged={isPackagedPick}
               confirmationPending={!!pendingConfirmation}
               onPickedQtyChange={setPickedQtyText}
               onAdjustPickedQty={adjustPickedQty}
@@ -844,6 +925,23 @@ export default function PickingDetailScreen() {
           void verifyBarcode(value);
         }}
       />
+      <PickSourceLocationModal
+        visible={locationChoice !== null}
+        items={pickList.data?.items ?? []}
+        sources={locationChoice?.result.sources ?? []}
+        hasMore={locationChoice?.result.hasMore ?? false}
+        busy={isVerifying}
+        error={verifyError}
+        onClose={closeLocationChoice}
+        onSelect={(locationId) => {
+          if (locationChoice) void verifyBarcode(JSON.stringify(locationChoice.qr), 1, locationId);
+        }}
+        onLoadMore={() => {
+          if (locationChoice) {
+            void verifyBarcode(JSON.stringify(locationChoice.qr), locationChoice.result.page + 1);
+          }
+        }}
+      />
       <PickLocationMapModal
         visible={mapPickListItemId !== null}
         pickListId={id}
@@ -887,7 +985,7 @@ const ScannerStatusBar = ({
       accessibilityLiveRegion="polite"
     >
       {isVerifying
-        ? "Checking QR code..."
+        ? tPickDetail("checkingQr")
         : HAS_HARDWARE_SCANNER
           ? "Scanner ready"
           : "Scan with the camera"}
@@ -908,7 +1006,7 @@ const ScannerStatusBar = ({
     </Pressable>
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={manualEntryOpen ? "Hide code entry" : "Type QR code number"}
+      accessibilityLabel={manualEntryOpen ? tPickDetail("hideQrEntry") : tPickDetail("qrContents")}
       accessibilityState={{ expanded: manualEntryOpen, disabled }}
       hitSlop={4}
       style={({ pressed }) => [
@@ -951,16 +1049,16 @@ const ManualLabelEntry = ({
   const submitDisabled = disabled || isVerifying || !value.trim();
   return (
     <Card style={styles.manualEntryCard}>
-      <Text style={styles.fieldLabel}>QR code number</Text>
+      <Text style={styles.fieldLabel}>{tPickDetail("qrContents")}</Text>
       <View style={styles.manualEntryRow}>
         <TextInput
           value={value}
           onChangeText={onChange}
           editable={!disabled}
           autoFocus
-          keyboardType="number-pad"
-          maxLength={10}
-          placeholder="10-digit code"
+          keyboardType="default"
+          maxLength={1000}
+          placeholder={tPickDetail("pasteQr")}
           placeholderTextColor={colors.textSecondary}
           style={styles.manualEntryInput}
           onSubmitEditing={() => {
@@ -1170,18 +1268,34 @@ const PickedItemsSection = ({
     </Pressable>
     {expanded ? (
       <View style={styles.listSurface}>
-        {items.map((item, index) => (
-          <View key={item.id} style={[styles.listRow, index > 0 ? styles.listRowDivider : null]}>
-            <Ionicons name="checkmark-circle" size={18} color={colors.statusSuccess} />
-            <View style={styles.flexFill}>
-              <Text style={styles.pickedItemName}>{item.name}</Text>
-              <Text style={styles.secondaryText}>
-                {getAssignedLocationAddress(item) ?? "—"} · {item.pickedQty} / {item.requiredQty}{" "}
-                {item.uom}
-              </Text>
+        {items.map((item, index) => {
+          const showWarehouse =
+            new Set(item.pickedLocations.map((pick) => pick.warehouseId)).size > 1;
+          return (
+            <View key={item.id} style={[styles.listRow, index > 0 ? styles.listRowDivider : null]}>
+              <Ionicons name="checkmark-circle" size={18} color={colors.statusSuccess} />
+              <View style={styles.flexFill}>
+                <Text style={styles.pickedItemName}>{item.name}</Text>
+                <Text style={styles.secondaryText}>
+                  {pickedQuantityFormat.format(item.pickedQty)} /{" "}
+                  {pickedQuantityFormat.format(item.requiredQty)} {item.uom}
+                </Text>
+                {item.pickedLocations.map((pick) => (
+                  <Text key={pick.locationId} style={styles.secondaryText}>
+                    {tPickDetail("pickedLocationQuantity", {
+                      quantity: pickedQuantityFormat.format(pick.pickedQty),
+                      unit: item.uom,
+                      location:
+                        [showWarehouse ? pick.warehouseName : null, pick.locationNamePath]
+                          .filter(Boolean)
+                          .join(" / ") || tPickDetail("unknownPickedLocation"),
+                    })}
+                  </Text>
+                ))}
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
       </View>
     ) : null}
   </View>
@@ -1192,6 +1306,8 @@ const PickConfirmationPanel = ({
   source,
   pickedQtyText,
   remainingQty,
+  maxPickQty,
+  isPackaged,
   confirmationPending,
   onPickedQtyChange,
   onAdjustPickedQty,
@@ -1201,6 +1317,8 @@ const PickConfirmationPanel = ({
   source: PickSource;
   pickedQtyText: string;
   remainingQty: number;
+  maxPickQty: number;
+  isPackaged: boolean;
   confirmationPending: boolean;
   onPickedQtyChange: (value: string) => void;
   onAdjustPickedQty: (delta: number) => void;
@@ -1210,7 +1328,7 @@ const PickConfirmationPanel = ({
   const pickedQty = Number(pickedQtyText);
   const canDecrease = !confirmationPending && Number.isFinite(pickedQty) && pickedQty > 0;
   const canIncrease =
-    !confirmationPending && (!Number.isFinite(pickedQty) || pickedQty < remainingQty);
+    !confirmationPending && (!Number.isFinite(pickedQty) || pickedQty < maxPickQty);
   return (
     <>
       <View
@@ -1231,7 +1349,7 @@ const PickConfirmationPanel = ({
             source.isMismatch ? styles.resultBannerTextWarning : null,
           ]}
         >
-          {source.isMismatch ? "Different batch or location" : "QR code matches"}
+          {source.isMismatch ? tPickDetail("alternativeLocation") : tPickDetail("qrMatches")}
         </Text>
       </View>
 
@@ -1248,14 +1366,13 @@ const PickConfirmationPanel = ({
           />
           {receivedDate ? ` · received ${receivedDate}` : ""}
         </Text>
-        <Text style={styles.secondaryText}>
-          QR code <RecordedValue value={source.batchLocationSku} missingLabel="not recorded" />
-        </Text>
         <Text style={[styles.itemNameLarge, styles.confirmItemName]}>{item.name}</Text>
-        <Pressable accessibilityRole="button" style={styles.mapButton} onPress={onViewLocation}>
-          <Ionicons name="map-outline" size={18} color={colors.primaryDark} />
-          <Text style={styles.mapButtonText}>Show on map</Text>
-        </Pressable>
+        {!source.isMismatch ? (
+          <Pressable accessibilityRole="button" style={styles.mapButton} onPress={onViewLocation}>
+            <Ionicons name="map-outline" size={18} color={colors.primaryDark} />
+            <Text style={styles.mapButtonText}>Show on map</Text>
+          </Pressable>
+        ) : null}
       </Card>
 
       {source.isMismatch ? (
@@ -1309,7 +1426,7 @@ const PickConfirmationPanel = ({
             value={pickedQtyText}
             onChangeText={onPickedQtyChange}
             editable={!confirmationPending}
-            keyboardType="decimal-pad"
+            keyboardType={isPackaged ? "number-pad" : "decimal-pad"}
             selectTextOnFocus
             accessibilityLabel="Quantity picked"
             style={styles.quantityInput}
@@ -1332,6 +1449,11 @@ const PickConfirmationPanel = ({
         <Text style={styles.secondaryText}>
           {item.uom} · {remainingQty} left on this line · tap the number to type
         </Text>
+        {isPackaged ? (
+          <Text style={styles.secondaryText}>
+            {tPickDetail("wholePackagePickQuantity", { unit: item.uom })}
+          </Text>
+        ) : null}
       </Card>
     </>
   );
