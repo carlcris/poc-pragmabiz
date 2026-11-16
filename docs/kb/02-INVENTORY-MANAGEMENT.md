@@ -4,7 +4,7 @@
 
 The Inventory Management module is a comprehensive multi-warehouse inventory tracking system with location-level stock management, real-time transaction tracking, multiple units of measure, and automatic reorder management. It serves as the foundation for all stock-related operations across sales, purchasing, and manufacturing.
 
-The Stock Transactions warehouse column shows the warehouse code with the full location name path beneath it (for example, `Zone 3 / Rack 1 / Bin 17`), without location codes. Transfers show both source and destination paths. The list and detail APIs supply `fromLocationPath` and `toLocationPath` using a shared batched ancestor lookup. The details dialog uses the same names-only paths, including the destination path for incoming stock.
+The Stock Transactions warehouse column shows the warehouse code with the full location name path beneath it (for example, `Zone 3 / Rack 1 / Bin 17`), without location codes. Transfer rows show the source and destination paths once, joined by an arrow. The warehouse line shows one code for moves within a warehouse and both codes in source-to-destination order when they differ. The list and detail APIs supply `fromLocationPath` and `toLocationPath` using a shared batched ancestor lookup. The details dialog shows the location path with only the warehouse code beneath it. Stock In shows the destination location, Stock Out shows the source location, and transfers show both. If location data is unavailable, the dialog shows a message and displays the warehouse code when available.
 
 ## Key Features
 

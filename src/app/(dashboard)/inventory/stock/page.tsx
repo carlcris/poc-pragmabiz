@@ -131,23 +131,18 @@ export default function StockTransactionsPage() {
     return transaction.fromLocationPath || "-";
   };
 
-  const formatWarehouseCell = (transaction: (typeof transactions)[number]) => {
+  const formatWarehouseLabel = (transaction: (typeof transactions)[number]) => {
     const warehouseLabel = transaction.warehouseCode || "-";
-    const locationLabel = formatLocationLabel(transaction);
 
-    if (transaction.transactionType === "transfer" && transaction.toWarehouseCode) {
-      return {
-        warehouse: warehouseLabel,
-        location: locationLabel,
-        transfer: `${transaction.toWarehouseCode} / ${transaction.toLocationPath || "-"}`,
-      };
+    if (
+      transaction.transactionType === "transfer" &&
+      transaction.toWarehouseCode &&
+      transaction.toWarehouseCode !== transaction.warehouseCode
+    ) {
+      return `${warehouseLabel} → ${transaction.toWarehouseCode}`;
     }
 
-    return {
-      warehouse: warehouseLabel,
-      location: locationLabel,
-      transfer: null,
-    };
+    return warehouseLabel;
   };
 
   const handleTypeFilterChange = (value: string) => {
@@ -265,7 +260,6 @@ export default function StockTransactionsPage() {
                 </TableHeader>
                 <TableBody>
                   {transactions.map((transaction) => {
-                    const warehouseCell = formatWarehouseCell(transaction);
                     const transactionDateTime = formatLocalDateTimeParts(
                       transaction.createdAt,
                       locale
@@ -299,14 +293,10 @@ export default function StockTransactionsPage() {
                         </TableCell>
                         <TableCell className="w-64">
                           <div className="text-sm">
-                            <div className="font-medium">{warehouseCell.warehouse}</div>
-                            <div className="text-muted-foreground">{warehouseCell.location}</div>
-                            {warehouseCell.transfer ? (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <ArrowRightLeft className="h-3 w-3" />
-                                {warehouseCell.transfer}
-                              </div>
-                            ) : null}
+                            <div className="font-medium">{formatWarehouseLabel(transaction)}</div>
+                            <div className="text-muted-foreground">
+                              {formatLocationLabel(transaction)}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-right">

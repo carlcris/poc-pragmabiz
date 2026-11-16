@@ -10,7 +10,7 @@ import {
   Calendar,
   User,
   FileText,
-  Package,
+  MapPin,
 } from "lucide-react";
 import { toProperCase } from "@/lib/string";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,15 +64,13 @@ interface TransactionDetail {
   transactionType: TransactionType;
   transactionDate: string;
   warehouseId: string;
-  warehouseCode: string;
-  warehouseName: string;
+  warehouseCode?: string | null;
   fromLocationId?: string | null;
   fromLocationCode?: string | null;
   fromLocationName?: string | null;
   fromLocationPath?: string | null;
   toWarehouseId: string | null;
-  toWarehouseCode: string | null;
-  toWarehouseName: string | null;
+  toWarehouseCode?: string | null;
   toLocationId?: string | null;
   toLocationCode?: string | null;
   toLocationName?: string | null;
@@ -109,11 +107,6 @@ export function StockTransactionDetailDialog({
     },
     enabled: !!transactionId && open,
   });
-
-  const sourceLocationPath =
-    transaction?.transactionType === "in"
-      ? transaction.toLocationPath
-      : transaction?.fromLocationPath;
 
   const getTransactionTypeIcon = (type: TransactionType) => {
     switch (type) {
@@ -266,6 +259,34 @@ export function StockTransactionDetailDialog({
     );
   }
 
+  const isStockIn = transaction.transactionType === "in";
+  const isTransfer = transaction.transactionType === "transfer";
+  const isPutawayTransfer = isTransfer && transaction.referenceType === "putaway_task";
+  const location = isStockIn
+    ? transaction.toLocationPath || transaction.toLocationName
+    : transaction.fromLocationPath || transaction.fromLocationName;
+  const locationLabel = isStockIn
+    ? t("destinationLocation")
+    : transaction.transactionType === "adjustment"
+      ? t("location")
+      : t("sourceLocation");
+
+  const renderLocation = (
+    label: string,
+    location: string | null | undefined,
+    warehouseCode: string | null | undefined
+  ) => {
+    return (
+      <div>
+        <p className="mb-1 text-xs text-muted-foreground">{label}:</p>
+        <p className="break-words text-sm font-semibold">{location || t("locationUnavailable")}</p>
+        {warehouseCode && (
+          <p className="mt-1 break-words text-xs text-muted-foreground">{warehouseCode}</p>
+        )}
+      </div>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-6xl p-0">
@@ -331,38 +352,24 @@ export function StockTransactionDetailDialog({
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
-                    <Package className="h-4 w-4" />
-                    {t("warehouseInformation")}
+                    <MapPin className="h-4 w-4" />
+                    {t("locationInformation")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                  <div>
-                    <p className="mb-1 text-xs text-muted-foreground">{t("sourceLocation")}:</p>
-                    <p className="text-sm font-semibold">
-                      {transaction.warehouseCode} - {transaction.warehouseName}
-                    </p>
-                    {sourceLocationPath && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {t("location")}: {sourceLocationPath}
-                      </p>
-                    )}
-                  </div>
-                  {transaction.transactionType === "transfer" && transaction.toWarehouseCode && (
+                  {renderLocation(
+                    locationLabel,
+                    location,
+                    isPutawayTransfer ? null : transaction.warehouseCode
+                  )}
+                  {isTransfer && (
                     <>
                       <Separator />
-                      <div>
-                        <p className="mb-1 text-xs text-muted-foreground">
-                          {t("destinationLocation")}:
-                        </p>
-                        <p className="text-sm font-semibold">
-                          {transaction.toWarehouseCode} - {transaction.toWarehouseName}
-                        </p>
-                        {transaction.toLocationPath && (
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {t("location")}: {transaction.toLocationPath}
-                          </p>
-                        )}
-                      </div>
+                      {renderLocation(
+                        t("destinationLocation"),
+                        transaction.toLocationPath || transaction.toLocationName,
+                        isPutawayTransfer ? transaction.warehouseCode : transaction.toWarehouseCode
+                      )}
                     </>
                   )}
                   <Separator />

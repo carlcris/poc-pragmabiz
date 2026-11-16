@@ -3752,10 +3752,11 @@ export type TranslationKeys = {
     transactionDate: string;
     reference: string;
     notes: string;
-    warehouseInformation: string;
+    locationInformation: string;
     sourceLocation: string;
     destinationLocation: string;
     location: string;
+    locationUnavailable: string;
     createdBy: string;
     createdAt: string;
     transactionItems: string;
@@ -8207,10 +8208,11 @@ export const translations: Record<Locale, TranslationKeys> = {
       transactionDate: "Transaction Date",
       reference: "Reference",
       notes: "Notes",
-      warehouseInformation: "Warehouse Information",
+      locationInformation: "Location Information",
       sourceLocation: "Source Location",
       destinationLocation: "Destination Location",
       location: "Location",
+      locationUnavailable: "Location unavailable",
       createdBy: "Created By",
       createdAt: "Created At",
       transactionItems: "Transaction Items",
@@ -15361,10 +15363,11 @@ export const translations: Record<Locale, TranslationKeys> = {
       transactionDate: "交易日期",
       reference: "参考单号",
       notes: "备注",
-      warehouseInformation: "仓库信息",
+      locationInformation: "库位信息",
       sourceLocation: "来源位置",
       destinationLocation: "目标位置",
       location: "库位",
+      locationUnavailable: "无库位信息",
       createdBy: "创建人",
       createdAt: "创建时间",
       transactionItems: "交易项目",
