@@ -12,6 +12,7 @@ import {
   warehouseLocationTypeLabelKeys,
 } from "@/lib/warehouse-location-form";
 import { cn } from "@/lib/utils";
+import type { ItemInventoryPreviewLabel } from "@/lib/items/inventory-preview-quantity";
 import { observeLocationTreeLayout } from "@/lib/warehouse-location-tree-layout";
 import {
   flattenLocationTree,
@@ -39,9 +40,44 @@ type ExpandedLocationTreeProps = {
   label: string;
   selectedId: string | null;
   disabledId?: string;
+  /**
+   * Item mode only: adds the item's nominated whole-unit equivalent under each stock figure.
+   * Built once by the item's Locations tab; returns `null` when the item nominates no unit.
+   */
+  previewLabel?: ItemInventoryPreviewLabel;
   expansion: WarehouseLocationTreeExpansion;
   onSelect: (id: string) => void;
 };
+
+/**
+ * One stock figure plus its nominated equivalent. The row height is fixed for virtual scrolling,
+ * so the equivalent stays a single truncated line with the full label as its tooltip.
+ */
+function QuantityCell({
+  value,
+  previewLabel,
+  className,
+}: {
+  value: number;
+  previewLabel: ItemInventoryPreviewLabel | undefined;
+  className?: string;
+}) {
+  const format = useFormatter();
+  const equivalent = previewLabel?.(value) ?? null;
+  return (
+    <span className={cn("w-16 shrink-0 text-right tabular-nums sm:w-24", className)}>
+      <span className="block truncate">{format.number(value, { maximumFractionDigits: 4 })}</span>
+      {equivalent !== null && (
+        <span
+          className="block truncate text-xs font-normal text-muted-foreground"
+          title={equivalent}
+        >
+          {equivalent}
+        </span>
+      )}
+    </span>
+  );
+}
 
 /** A flat ARIA tree with virtual rows; keyboard navigation operates on data, not mounted DOM. */
 export function ExpandedLocationTree({
@@ -50,12 +86,12 @@ export function ExpandedLocationTree({
   label,
   selectedId,
   disabledId,
+  previewLabel,
   expansion,
   onSelect,
 }: ExpandedLocationTreeProps) {
   const t = useTranslations("warehouseLocationsPage");
   const tItem = useTranslations("itemLocationsTab");
-  const format = useFormatter();
   const query = useWarehouseLocationHierarchy(warehouseId, itemId);
   const rows = useMemo(
     () => flattenLocationTree(query.data ?? [], expansion.isExpanded, disabledId),
@@ -266,12 +302,15 @@ export function ExpandedLocationTree({
               </span>
               {itemId && (
                 <>
-                  <span className="w-16 shrink-0 text-right tabular-nums sm:w-24">
-                    {format.number((direct ? node.directOnHand : node.onHand) ?? 0)}
-                  </span>
-                  <span className="w-16 shrink-0 text-right tabular-nums text-muted-foreground sm:w-24">
-                    {format.number((direct ? node.directAvailable : node.available) ?? 0)}
-                  </span>
+                  <QuantityCell
+                    value={(direct ? node.directOnHand : node.onHand) ?? 0}
+                    previewLabel={previewLabel}
+                  />
+                  <QuantityCell
+                    value={(direct ? node.directAvailable : node.available) ?? 0}
+                    previewLabel={previewLabel}
+                    className="text-muted-foreground"
+                  />
                 </>
               )}
             </div>

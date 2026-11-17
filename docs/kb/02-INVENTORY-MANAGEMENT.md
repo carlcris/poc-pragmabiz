@@ -72,6 +72,11 @@ Each item can have multiple unit options (e.g., box, piece, dozen) with conversi
 On the item's **Unit Options** tab, **Edit** stays on the row; **Set Default**, **Activate** or
 **Deactivate**, and **Delete** are in the row's **More** menu.
 
+From the **More** menu of an active non-base option, choose **Show in Inventory** to set the item's
+inventory preview unit. Each item can have one preview unit, independently of its transaction
+default. Choose **Remove from Inventory Preview** to clear it. Deactivating or deleting the selected
+option also clears it.
+
 **Item details on phones**:
 Below 768px the stock cards sit in one row, the tab pills stay in one row that scrolls sideways on its own, and
 the Prices and Unit Options tabs show stacked rows instead of tables; price Edit and Delete are in
@@ -457,6 +462,16 @@ Company Level
 - **Putaway**: The sum of `pending_quantity` on open putaway tasks in the selected BU or warehouse
 - **In Transit**: Supplier load-list quantities moving to a business unit, shown on the separate Stock In Transit page
 - **Reorder Alert Basis**: Total available stock across all company warehouses compared to the effective item reorder point
+
+When an item has an inventory preview unit, the desktop and mobile layouts of the **Inventory** tab
+show its whole-unit equivalent next to **On Hand**, **Allocated** (reserved), and **Available**.
+Inventory divides each base quantity by the selected option's conversion and drops the fractional
+part. For `BOX (50)`, balances of 1,000 on hand, 200 reserved, and 800 available show
+`20 BOX (50)`, `4 BOX (50)`, and `16 BOX (50)`.
+
+The item detail summary uses the same preview. In **Locations**, each displayed stock amount uses
+its own warehouse, location, or batch quantity for the conversion. This includes location search
+results, tree rows, the selected location's totals, and batch rows.
 
 Stock-aware item lists subscribe to `item_warehouse` realtime changes and invalidate when putaway tasks change. Stock movement screens also subscribe to `stock_transactions` and `stock_transaction_items` realtime changes. Stock adjustment draft saves invalidate item Locations so newly created batches appear when returning to the tab. Posting also invalidates the separate item-stock and Locations caches, so quantities refresh without a full page reload. Posted stock adjustments, putaway postings, and other stock movements invalidate the loaded items, item statistics, stock transaction, stock balance, dashboard, and reorder queries so on-hand, reserved, putaway, available, and movement history refresh without leaving the page. GRN submission refreshes Putaway Station, Stock Transactions, the Stock Movement report, stock-aware items, and the dashboard as soon as stock is staged. Putaway posting also invalidates item-location and batch selectors, delivery-note allocation availability, stock requests, reorder notifications, and inventory, batch-location, aging, stock-movement, product-movement, and ledger reports because final placement makes staged stock available at a specific batch and location.
 
@@ -884,8 +899,9 @@ previous unit's rows and shows the table loading state until the selected unit's
 - `category`: category UUID for stock-aware lists; `warehouseId`: optional warehouse UUID.
 - `status`: `normal`, `low_stock`, `out_of_stock`, `overstock`, or `discontinued`.
 - `itemType`: optional item type. `isActive` applies to the non-stock item list.
-- `view=inventory`: lightweight stock-aware table response. Omits pricing, custom fields,
-  unit options, and barcode enrichment; cannot be combined with exports, statistics,
+- `view=inventory`: lightweight stock-aware table response. Includes the nominated unit's display
+  label and conversion when configured. Omits pricing, custom fields, full unit option lists, and
+  barcode enrichment. Cannot be combined with exports, statistics,
   or `includeStock=false`.
 - Without `view`, existing full item-list consumers retain their pricing and barcode enrichment.
 - `includeStock=false`: non-stock item list.
@@ -914,6 +930,7 @@ invalidation refresh it.
       "onHand": 12,
       "allocated": 2,
       "available": 10,
+      "inventoryPreviewUnit": { "displayLabel": "BOX (5)", "qtyPerUnit": 5 },
       "putawayQty": 0,
       "reorderPoint": 5,
       "status": "normal"
@@ -922,6 +939,25 @@ invalidation refresh it.
   "pagination": { "page": 1, "limit": 10, "total": 150, "totalPages": 15 }
 }
 ```
+
+`inventoryPreviewUnit` is `null` when the item has no eligible nominated option. The server looks up
+nominations for the returned page only.
+
+#### PUT /api/items/[id]/unit-options/[unitOptionId]/inventory-preview
+
+Send `{ "enabled": true }` to nominate an active non-base option or `{ "enabled": false }` to
+clear that option's nomination. The request requires Items edit permission and returns
+`{ "success": true }`. Selecting a new option replaces the previous nomination atomically.
+The item's Unit Options list includes `isInventoryPreview` on each option.
+
+`GET /api/items/[id]` and the item update response return the same nullable `inventoryPreviewUnit`
+field in `data`. Item details and Locations use it alongside their existing stock balances.
+
+#### PUT /api/items/[id]/unit-options/[unitOptionId]
+
+Updating a unit option requires Items edit permission in the current business unit. If the update
+makes the option the transaction default, the database saves the edit and replaces the previous
+default in one transaction. A failed edit leaves the previous default in place.
 
 #### GET /api/item-categories
 

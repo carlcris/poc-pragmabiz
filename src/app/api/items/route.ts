@@ -13,6 +13,7 @@ import { DEFAULT_PRICE_TIER_CODE } from "@/lib/pricing/itemPriceTiers";
 import { getCurrentPricingDate } from "@/lib/pricing/pricing-date";
 import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
 import {
+  buildItemUnitOptionDisplayLabel,
   getPrimaryItemUnitOption,
   sortItemUnitOptions,
   transformItemUnitOptionRow,
@@ -406,6 +407,21 @@ const rankItemsBySearch = <
   });
 };
 
+const fetchInventoryPreviewOptions = (
+  supabase: SupabaseClient<Database>,
+  companyId: string,
+  itemIds: string[]
+) =>
+  supabase
+    .from("item_unit_options")
+    .select("item_id, option_label, qty_per_unit, units_of_measure!inner(code)")
+    .eq("company_id", companyId)
+    .in("item_id", itemIds)
+    .eq("is_inventory_preview", true)
+    .eq("is_active", true)
+    .eq("is_base", false)
+    .is("deleted_at", null);
+
 const fetchItemUnitOptionsByItemId = async (
   supabase: SupabaseClient<Database>,
   companyId: string,
@@ -770,13 +786,14 @@ id,
     }
 
     if (inventoryView) {
-      const items: ItemInventoryRow[] = rows.map((row) => ({
+      const items = rows.map((row) => ({
         id: row.id,
         code: row.item_code,
         supplierCode: row.supplier_code,
         name: row.item_name,
         chineseName: row.item_name_cn || undefined,
         category: row.category_name || "",
+        baseUomCode: row.uom_code || "",
         onHand: row.on_hand,
         allocated: row.allocated,
         available: row.available,
@@ -785,9 +802,45 @@ id,
         status: row.status,
         imageUrl: row.image_url || undefined,
       }));
+
+      const pageItems =
+        search && page === 1 ? rankItemsBySearch(items, search).slice(0, limit) : items;
+      const pagination = { page, limit, total, totalPages: Math.ceil(total / limit) };
+      if (pageItems.length === 0) return NextResponse.json({ data: [], pagination });
+
+      const { data: previewOptions, error: previewError } = await fetchInventoryPreviewOptions(
+        supabase,
+        companyId,
+        pageItems.map((item) => item.id)
+      );
+
+      if (previewError) {
+        console.error("Failed to fetch inventory preview units:", previewError);
+        return NextResponse.json({ error: "Failed to fetch items" }, { status: 500 });
+      }
+
+      const previewOptionsByItemId = new Map(
+        previewOptions.map((option) => [option.item_id, option])
+      );
       return NextResponse.json({
-        data: search && page === 1 ? rankItemsBySearch(items, search).slice(0, limit) : items,
-        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        data: pageItems.map(({ baseUomCode, ...item }): ItemInventoryRow => {
+          const option = previewOptionsByItemId.get(item.id);
+          return {
+            ...item,
+            inventoryPreviewUnit: option
+              ? {
+                  displayLabel: buildItemUnitOptionDisplayLabel(
+                    option.units_of_measure.code,
+                    option.qty_per_unit,
+                    baseUomCode,
+                    option.option_label
+                  ),
+                  qtyPerUnit: option.qty_per_unit,
+                }
+              : null,
+          };
+        }),
+        pagination,
       });
     }
 

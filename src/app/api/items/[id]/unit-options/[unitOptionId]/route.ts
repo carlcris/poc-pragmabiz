@@ -1,26 +1,21 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
-import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
+import { z } from "zod";
+import { RESOURCES } from "@/constants/resources";
+import { checkPermissionForUser } from "@/lib/auth/checkPermission";
+import { requireRequestContext } from "@/lib/auth/requestContext";
+import { transformItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
+import type { Database } from "@/types/database.types";
 
-const ITEM_UNIT_OPTION_SELECT = `
-  id,
-  item_id,
-  uom_id,
-  option_label,
-  qty_per_unit,
-  barcode,
-  is_base,
-  is_default,
-  is_active,
-  sort_order,
-  units_of_measure (
-    id,
-    code,
-    name,
-    symbol
-  )
-`;
+const unitOptionParams = z.object({ id: z.guid(), unitOptionId: z.guid() });
+const unitOptionUpdate = z.strictObject({
+  uomId: z.guid().optional(),
+  qtyPerUnit: z.number().optional(),
+  optionLabel: z.string().trim().optional(),
+  isDefault: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+});
 
 type ItemUnitOptionWriteError = {
   code?: string;
@@ -30,21 +25,64 @@ type ItemUnitOptionWriteError = {
 
 const ITEM_UNIT_OPTION_DUPLICATE_CONSTRAINT = "ux_item_unit_options_item_uom_qty";
 const DUPLICATE_UNIT_OPTION_ERROR = "A unit option with this unit and quantity already exists";
+const UPDATE_ITEM_UNIT_OPTION_ERROR = "Failed to update item unit option";
 
 const isDuplicateUnitOptionError = (error: ItemUnitOptionWriteError | null): boolean =>
   error?.code === "23505" &&
   `${error.message ?? ""} ${error.details ?? ""}`.includes(ITEM_UNIT_OPTION_DUPLICATE_CONSTRAINT);
 
-const getUserCompanyId = async (
-  supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"],
-  userId: string
-) => {
-  const { data: userData } = await supabase
-    .from("users")
-    .select("company_id")
-    .eq("id", userId)
-    .single();
-  return userData?.company_id || null;
+const forbidden = () => NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+const updateFailure = (status: number, error: string, details?: string) =>
+  NextResponse.json({ error, details }, { status });
+
+const mapUpdateError = (error: ItemUnitOptionWriteError) => {
+  if (error.code === "42501") return forbidden();
+  if (isDuplicateUnitOptionError(error)) {
+    return updateFailure(409, DUPLICATE_UNIT_OPTION_ERROR);
+  }
+  if (error.code === "P0002") {
+    if (error.message === "ITEM_UNIT_OPTION_ITEM_NOT_FOUND") {
+      return updateFailure(404, "Item not found");
+    }
+    if (error.message === "ITEM_UNIT_OPTION_NOT_FOUND") {
+      return updateFailure(404, "Item unit option not found");
+    }
+  }
+  if (error.code === "22023") {
+    switch (error.message) {
+      case "ITEM_UNIT_OPTION_BASE_QTY_FIXED":
+        return updateFailure(
+          400,
+          "Base unit option qty is fixed",
+          "Base unit option must stay at qty 1"
+        );
+      case "ITEM_UNIT_OPTION_BASE_INACTIVE":
+        return updateFailure(400, "Base unit option cannot be deactivated");
+      case "ITEM_UNIT_OPTION_DEFAULT_INACTIVE":
+        return updateFailure(400, "Default unit option must stay active");
+      case "ITEM_UNIT_OPTION_INVALID_UOM":
+      case "ITEM_UNIT_OPTION_INVALID_QTY":
+      case "ITEM_UNIT_OPTION_LABEL_TOO_LONG":
+        return updateFailure(400, UPDATE_ITEM_UNIT_OPTION_ERROR);
+    }
+  }
+  return null;
+};
+
+const requireItemUnitOptionEditContext = async () => {
+  const context = await requireRequestContext();
+  if ("status" in context) return context;
+  const canEdit = await checkPermissionForUser(
+    {
+      id: context.userId,
+      companyId: context.companyId,
+      businessUnitId: context.currentBusinessUnitId,
+    },
+    RESOURCES.ITEMS,
+    "edit"
+  );
+  return canEdit ? context : forbidden();
 };
 
 async function PUTHandler(
@@ -52,137 +90,55 @@ async function PUTHandler(
   { params }: { params: Promise<{ id: string; unitOptionId: string }> }
 ) {
   try {
-    const { id: itemId, unitOptionId } = await params;
-    const body = (await request.json()) as {
-      uomId?: string;
-      qtyPerUnit?: number;
-      optionLabel?: string;
-      isDefault?: boolean;
-      isActive?: boolean;
-    };
-    const { supabase } = await createServerClientWithBU();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const context = await requireItemUnitOptionEditContext();
+    if ("status" in context) return context;
+    const { companyId, currentBusinessUnitId } = context;
+    const supabase: SupabaseClient<Database> = context.supabase;
+    if (!currentBusinessUnitId) return forbidden();
 
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const target = unitOptionParams.safeParse(await params);
+    const patch = unitOptionUpdate.safeParse(await request.json().catch(() => null));
+    if (!target.success || !patch.success) {
+      return updateFailure(400, "Invalid payload");
     }
-
-    const companyId = await getUserCompanyId(supabase, user.id);
-    if (!companyId) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
-
-    const { data: item } = await supabase
-      .from("items")
-      .select("id, uom_id")
-      .eq("id", itemId)
-      .eq("company_id", companyId)
-      .is("deleted_at", null)
-      .maybeSingle();
-
-    if (!item) {
-      return NextResponse.json({ error: "Item not found" }, { status: 404 });
-    }
-
-    const { data: existing, error: existingError } = await supabase
-      .from("item_unit_options")
-      .select("id, uom_id, qty_per_unit, is_base, is_default")
-      .eq("id", unitOptionId)
-      .eq("item_id", itemId)
-      .eq("company_id", companyId)
-      .is("deleted_at", null)
-      .maybeSingle();
-
-    if (existingError || !existing) {
-      return NextResponse.json({ error: "Item unit option not found" }, { status: 404 });
-    }
-
-    if (existing.is_base) {
-      if (body.qtyPerUnit !== undefined && body.qtyPerUnit !== 1) {
-        return NextResponse.json(
-          {
-            error: "Base unit option qty is fixed",
-            details: "Base unit option must stay at qty 1",
-          },
-          { status: 400 }
-        );
-      }
-      if (body.isActive === false) {
-        return NextResponse.json(
-          { error: "Base unit option cannot be deactivated" },
-          { status: 400 }
-        );
-      }
-    }
-
-    if (body.isDefault && body.isActive === false) {
-      return NextResponse.json({ error: "Default unit option must stay active" }, { status: 400 });
-    }
-
-    if (body.isDefault) {
-      const { error: unsetDefaultError } = await supabase
-        .from("item_unit_options")
-        .update({ is_default: false, updated_by: user.id })
-        .eq("company_id", companyId)
-        .eq("item_id", itemId)
-        .eq("is_default", true)
-        .neq("id", unitOptionId)
-        .is("deleted_at", null);
-
-      if (unsetDefaultError) {
-        console.error("Error unsetting default item unit option:", unsetDefaultError);
-        return NextResponse.json(
-          { error: "Failed to update default unit option" },
-          { status: 500 }
-        );
-      }
-    }
-
-    const updateData: Record<string, unknown> = {
-      updated_by: user.id,
-    };
-
-    if (body.uomId !== undefined) updateData.uom_id = body.uomId;
-    if (body.qtyPerUnit !== undefined) updateData.qty_per_unit = body.qtyPerUnit;
-    if (body.optionLabel !== undefined) updateData.option_label = body.optionLabel.trim() || null;
-    if (body.isDefault !== undefined) updateData.is_default = body.isDefault;
-    if (body.isActive !== undefined) updateData.is_active = body.isActive;
 
     const { data: updated, error: updateError } = await supabase
-      .from("item_unit_options")
-      .update(updateData)
-      .eq("id", unitOptionId)
-      .eq("item_id", itemId)
-      .eq("company_id", companyId)
-      .select(ITEM_UNIT_OPTION_SELECT)
+      .rpc("update_item_unit_option", {
+        p_company_id: companyId,
+        p_item_id: target.data.id,
+        p_unit_option_id: target.data.unitOptionId,
+        p_business_unit_id: currentBusinessUnitId,
+        p_uom_id: patch.data.uomId,
+        p_qty_per_unit: patch.data.qtyPerUnit,
+        p_option_label: patch.data.optionLabel,
+        p_is_default: patch.data.isDefault,
+        p_is_active: patch.data.isActive,
+      })
       .single();
 
     if (updateError) {
-      if (isDuplicateUnitOptionError(updateError)) {
-        return NextResponse.json({ error: DUPLICATE_UNIT_OPTION_ERROR }, { status: 409 });
-      }
-
-      console.error("Error updating item unit option:", updateError);
-      return NextResponse.json({ error: "Failed to update item unit option" }, { status: 500 });
+      const response = mapUpdateError(updateError);
+      if (response) return response;
+      throw updateError;
     }
 
-    const { data: baseUom } = await supabase
-      .from("units_of_measure")
-      .select("code")
-      .eq("id", item.uom_id)
-      .eq("company_id", companyId)
-      .is("deleted_at", null)
-      .maybeSingle();
-
     return NextResponse.json({
-      data: transformItemUnitOptionRow(updated as DbItemUnitOptionRow, baseUom?.code || ""),
+      data: transformItemUnitOptionRow(
+        {
+          ...updated,
+          units_of_measure: {
+            id: updated.uom_id,
+            code: updated.uom_code,
+            name: updated.uom_name,
+            symbol: updated.uom_symbol,
+          },
+        },
+        updated.base_uom_code ?? ""
+      ),
     });
   } catch (error) {
     console.error("Error updating item unit option:", error);
-    return NextResponse.json({ error: "Failed to update item unit option" }, { status: 500 });
+    return updateFailure(500, UPDATE_ITEM_UNIT_OPTION_ERROR);
   }
 }
 
@@ -191,21 +147,10 @@ async function DELETEHandler(
   { params }: { params: Promise<{ id: string; unitOptionId: string }> }
 ) {
   try {
+    const context = await requireItemUnitOptionEditContext();
+    if ("status" in context) return context;
+    const { supabase, companyId, userId } = context;
     const { id: itemId, unitOptionId } = await params;
-    const { supabase } = await createServerClientWithBU();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const companyId = await getUserCompanyId(supabase, user.id);
-    if (!companyId) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
 
     const { data: existing, error: existingError } = await supabase
       .from("item_unit_options")
@@ -235,13 +180,14 @@ async function DELETEHandler(
       .from("item_unit_options")
       .update({
         deleted_at: new Date().toISOString(),
-        updated_by: user.id,
+        updated_by: userId,
       })
       .eq("id", unitOptionId)
       .eq("item_id", itemId)
       .eq("company_id", companyId);
 
     if (deleteError) {
+      if (deleteError.code === "42501") return forbidden();
       console.error("Error deleting item unit option:", deleteError);
       return NextResponse.json({ error: "Failed to delete item unit option" }, { status: 500 });
     }

@@ -76,6 +76,7 @@ it("retains rows for pagination but clears them while another business unit load
         onHand: 2042,
         allocated: 344,
         available: 1698,
+        inventoryPreviewUnit: null,
         putawayQty: 0,
         reorderPoint: 0,
         status: "normal",

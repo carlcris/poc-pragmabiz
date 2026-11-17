@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   allowed: true,
   isTableLayout: false as boolean | undefined,
   effects: [] as Array<() => void | (() => void)>,
+  inventoryPreviewUnit: null as { displayLabel: string; qtyPerUnit: number } | null,
+  quantities: { onHand: 8, allocated: 2, available: 6 },
 }));
 vi.mock("react", async (original) => ({
   ...(await original<typeof import("react")>()),
@@ -16,7 +18,10 @@ vi.mock("react", async (original) => ({
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/hooks/useMediaQuery", () => ({ useMediaQuery: () => mocks.isTableLayout }));
-vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
+  useLocale: () => "en-US",
+}));
 vi.mock("@/hooks/useCurrency", () => ({
   useCurrency: () => ({ formatCurrency: (value: number) => `PHP ${value}` }),
 }));
@@ -33,9 +38,10 @@ vi.mock("@/hooks/useInventoryItems", () => ({
           code: "ITEM123",
           name: "Existing inventory row",
           category: "Category",
-          onHand: 8,
-          allocated: 2,
-          available: 6,
+          onHand: mocks.quantities.onHand,
+          allocated: mocks.quantities.allocated,
+          available: mocks.quantities.available,
+          inventoryPreviewUnit: mocks.inventoryPreviewUnit,
           putawayQty: 1,
           reorderPoint: 3,
           status: "normal",
@@ -78,6 +84,8 @@ beforeEach(() => {
   mocks.fetching = false;
   mocks.allowed = true;
   mocks.isTableLayout = false;
+  mocks.inventoryPreviewUnit = null;
+  mocks.quantities = { onHand: 8, allocated: 2, available: 6 };
 });
 it("keeps existing rows visible during background refresh", () => {
   mocks.fetching = true;
@@ -121,6 +129,79 @@ it("keeps the table and inline filters from md up", () => {
   expect(html).not.toContain('id="inventory-item-filters"');
   expect(html).toContain("md:min-h-96");
 });
+
+it.each([true, false])(
+  "shows the nominated unit equivalent beside base quantities without parentheses (table layout: %s)",
+  (isTableLayout) => {
+    mocks.isTableLayout = isTableLayout;
+    mocks.inventoryPreviewUnit = { displayLabel: "BOX (50)", qtyPerUnit: 50 };
+    mocks.quantities = { onHand: 1000, allocated: 200, available: 800 };
+    const html = renderToStaticMarkup(<ItemsPage />);
+    expect(html).toContain("20 BOX (50)");
+    expect(html).toContain("4 BOX (50)");
+    expect(html).toContain("16 BOX (50)");
+    // The wrapping parentheses are gone; the saved label keeps its own pack size.
+    expect(html).not.toContain("(20 BOX (50))");
+    // Base figures stay whole and Putaway gets no equivalent.
+    expect(html).toContain("1000");
+    expect(html).not.toContain("1,000");
+    expect(html.match(/BOX \(50\)/g)).toHaveLength(3);
+  }
+);
+
+it.each([true, false])(
+  "shows only whole preview units and drops the fraction (table layout: %s)",
+  (isTableLayout) => {
+    mocks.isTableLayout = isTableLayout;
+    mocks.inventoryPreviewUnit = { displayLabel: "BOX (50)", qtyPerUnit: 50 };
+    // 3478 / 50 = 69.56 must read as 69 BOX (50), never 70 and never a fraction.
+    mocks.quantities = { onHand: 3478, allocated: 3478, available: 3478 };
+    const html = renderToStaticMarkup(<ItemsPage />);
+    expect(html).toContain("69 BOX (50)");
+    expect(html).not.toContain("69.56");
+    expect(html).not.toContain("70 BOX (50)");
+  }
+);
+
+it.each([true, false])(
+  "shows zero whole units when stock is under one nominated unit (table layout: %s)",
+  (isTableLayout) => {
+    mocks.isTableLayout = isTableLayout;
+    mocks.inventoryPreviewUnit = { displayLabel: "BOX (50)", qtyPerUnit: 50 };
+    mocks.quantities = { onHand: 49, allocated: 0.5, available: 49 };
+    const html = renderToStaticMarkup(<ItemsPage />);
+    expect(html).toContain("0 BOX (50)");
+    expect(html).not.toContain("0.98");
+    expect(html).not.toContain("0.01");
+    expect(html).not.toMatch(/>0\.5</);
+  }
+);
+
+it.each([true, false])(
+  "renders a label saved without a space before its pack size verbatim (table layout: %s)",
+  (isTableLayout) => {
+    mocks.isTableLayout = isTableLayout;
+    mocks.inventoryPreviewUnit = { displayLabel: "BOX(144)", qtyPerUnit: 144 };
+    mocks.quantities = { onHand: 800, allocated: 800, available: 800 };
+    const html = renderToStaticMarkup(<ItemsPage />);
+    expect(html).toContain("5 BOX(144)");
+    expect(html).not.toContain("(5 BOX(144))");
+    expect(html).not.toContain("5.55");
+  }
+);
+
+it.each([true, false])(
+  "keeps whole-number base quantities when no unit is nominated (table layout: %s)",
+  (isTableLayout) => {
+    mocks.isTableLayout = isTableLayout;
+    mocks.quantities = { onHand: 1000.75, allocated: 200, available: 800 };
+    const html = renderToStaticMarkup(<ItemsPage />);
+    expect(html).toContain("1000");
+    expect(html).not.toContain("1000.75");
+    expect(html).not.toContain("1,000");
+    expect(html).not.toContain("BOX");
+  }
+);
 
 it("renders breakpoint-switched skeletons before the viewport is known", () => {
   mocks.isTableLayout = undefined;

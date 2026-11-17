@@ -3462,6 +3462,16 @@ export type TranslationKeys = {
     inactiveLabel: string;
     baseLabel: string;
     setDefaultAction: string;
+    showInInventoryAction: string;
+    removeFromInventoryPreviewAction: string;
+    inventoryPreviewLabel: string;
+    inventoryPreviewEnabled: string;
+    inventoryPreviewDisabled: string;
+    inventoryPreviewSaveError: string;
+    inventoryPreviewInvalidRequestError: string;
+    inventoryPreviewForbiddenError: string;
+    inventoryPreviewNotFoundError: string;
+    inventoryPreviewIneligibleError: string;
     deactivateAction: string;
     activateAction: string;
     deleteAction: string;
@@ -7891,6 +7901,20 @@ export const translations: Record<Locale, TranslationKeys> = {
       inactiveLabel: "Inactive",
       baseLabel: "Base",
       setDefaultAction: "Set Default",
+      showInInventoryAction: "Show in Inventory",
+      removeFromInventoryPreviewAction: "Remove from Inventory Preview",
+      inventoryPreviewLabel: "Inventory Preview",
+      inventoryPreviewEnabled: "Inventory preview unit updated.",
+      inventoryPreviewDisabled: "Inventory preview unit removed.",
+      inventoryPreviewSaveError: "Could not save the inventory preview unit. Try again.",
+      inventoryPreviewInvalidRequestError:
+        "Refresh Unit Options and select the unit again, then retry.",
+      inventoryPreviewForbiddenError:
+        "You do not have permission to change the inventory preview unit. Ask an administrator for item edit access.",
+      inventoryPreviewNotFoundError:
+        "This unit option is no longer available. Refresh Unit Options and choose another unit.",
+      inventoryPreviewIneligibleError:
+        "Choose an active unit option other than the base unit, then retry.",
       deactivateAction: "Deactivate",
       activateAction: "Activate",
       deleteAction: "Delete",
@@ -15070,6 +15094,16 @@ export const translations: Record<Locale, TranslationKeys> = {
       inactiveLabel: "停用",
       baseLabel: "基础",
       setDefaultAction: "设为默认",
+      showInInventoryAction: "在库存中显示",
+      removeFromInventoryPreviewAction: "移除库存预览",
+      inventoryPreviewLabel: "库存预览",
+      inventoryPreviewEnabled: "库存预览单位已更新。",
+      inventoryPreviewDisabled: "库存预览单位已移除。",
+      inventoryPreviewSaveError: "无法保存库存预览单位，请重试。",
+      inventoryPreviewInvalidRequestError: "请刷新单位选项并重新选择该单位，然后重试。",
+      inventoryPreviewForbiddenError: "您无权更改库存预览单位。请联系管理员获取商品编辑权限。",
+      inventoryPreviewNotFoundError: "该单位选项已不可用。请刷新单位选项并选择其他单位。",
+      inventoryPreviewIneligibleError: "请选择基础单位以外的启用单位选项，然后重试。",
       deactivateAction: "停用",
       activateAction: "启用",
       deleteAction: "删除",

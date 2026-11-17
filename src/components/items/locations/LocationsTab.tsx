@@ -45,12 +45,14 @@ import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useWarehouseLocationTreeExpansion } from "@/hooks/useWarehouseLocationTreeExpansion";
 import { ItemLocationMapDialog } from "@/components/items/locations/ItemLocationMapDialog";
+import { ItemLocationPreviewQuantity } from "@/components/items/locations/ItemLocationPreviewQuantity";
 import { ItemLocationStockPanel } from "@/components/items/locations/ItemLocationStockPanel";
 import { ItemLocationStockTree } from "@/components/items/locations/ItemLocationStockTree";
 import { MoveStockDialog } from "@/components/items/locations/MoveStockDialog";
 import { WarehouseLocationSelect } from "@/components/warehouses/WarehouseLocationSelect";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import type { BarcodeData } from "@/lib/barcode";
+import { createItemInventoryPreviewLabel } from "@/lib/items/inventory-preview-quantity";
 import { getWarehouseLocationDisplayName } from "@/lib/warehouse-location-form";
 import type {
   ItemLocation,
@@ -159,6 +161,12 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
         (option) => option.isActive && Number.isFinite(option.qtyPerUnit) && option.qtyPerUnit > 0
       ),
     [item?.unitOptions]
+  );
+  // One label for the whole tab, shared with the tree, selected panel, and batch rows, so no
+  // quantity builds its own number formatter.
+  const previewLabel = useMemo(
+    () => createItemInventoryPreviewLabel(locale, item?.inventoryPreviewUnit ?? null),
+    [item?.inventoryPreviewUnit, locale]
   );
   const defaultBatchPrintUnit = useMemo(
     () =>
@@ -317,6 +325,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
           itemId={itemId}
           warehouseName={warehouse.warehouseName}
           node={selectedNode}
+          previewLabel={previewLabel}
           canMoveStock={canMoveStock && Boolean(item)}
           canPrint={canPrintBatchQr}
           printDisabled={printDisabled}
@@ -463,8 +472,12 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                           {location.warehouseName} / {location.locationNamePath}
                         </span>
                       </span>
-                      <span className="text-sm tabular-nums">
+                      <span className="text-right text-sm tabular-nums">
                         {formatQty(location.qtyOnHand, locale)}
+                        <ItemLocationPreviewQuantity
+                          baseQuantity={location.qtyOnHand}
+                          previewLabel={previewLabel}
+                        />
                       </span>
                     </button>
                   </li>
@@ -553,12 +566,20 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                         <div className="text-xs text-muted-foreground">{t("onHand")}</div>
                         <div className="text-sm font-semibold tabular-nums">
                           {formatQty(warehouse.qtyOnHand, locale)}
+                          <ItemLocationPreviewQuantity
+                            baseQuantity={warehouse.qtyOnHand}
+                            previewLabel={previewLabel}
+                          />
                         </div>
                       </div>
                       <div className="sm:text-right">
                         <div className="text-xs text-muted-foreground">{t("reserved")}</div>
                         <div className="text-sm font-semibold tabular-nums">
                           {formatQty(warehouse.qtyReserved, locale)}
+                          <ItemLocationPreviewQuantity
+                            baseQuantity={warehouse.qtyReserved}
+                            previewLabel={previewLabel}
+                          />
                         </div>
                       </div>
                       <div className="sm:text-right">
@@ -593,6 +614,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                               ? selected.locationId
                               : null
                           }
+                          previewLabel={previewLabel}
                           expansion={treeExpansion}
                           onSelect={(node) =>
                             setSelected({

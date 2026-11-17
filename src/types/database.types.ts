@@ -3384,6 +3384,7 @@ export type Database = {
           is_active: boolean;
           is_base: boolean;
           is_default: boolean;
+          is_inventory_preview: boolean;
           item_id: string;
           option_label: string | null;
           qty_per_unit: number;
@@ -3403,6 +3404,7 @@ export type Database = {
           is_active?: boolean;
           is_base?: boolean;
           is_default?: boolean;
+          is_inventory_preview?: boolean;
           item_id: string;
           option_label?: string | null;
           qty_per_unit: number;
@@ -3422,6 +3424,7 @@ export type Database = {
           is_active?: boolean;
           is_base?: boolean;
           is_default?: boolean;
+          is_inventory_preview?: boolean;
           item_id?: string;
           option_label?: string | null;
           qty_per_unit?: number;
@@ -13893,6 +13896,16 @@ export type Database = {
           warehouse_name: string;
         }[];
       };
+      set_item_inventory_preview_unit: {
+        Args: {
+          p_business_unit_id: string;
+          p_company_id: string;
+          p_enabled: boolean;
+          p_item_id: string;
+          p_unit_option_id: string;
+        };
+        Returns: undefined;
+      };
       setup_company_rbac: { Args: { p_company_id: string }; Returns: undefined };
       show_limit: { Args: never; Returns: number };
       show_trgm: { Args: { "": string }; Returns: string[] };
@@ -13976,6 +13989,35 @@ export type Database = {
       update_current_business_unit: {
         Args: { p_business_unit_id: string };
         Returns: Json;
+      };
+      update_item_unit_option: {
+        Args: {
+          p_business_unit_id: string;
+          p_company_id: string;
+          p_is_active?: boolean;
+          p_is_default?: boolean;
+          p_item_id: string;
+          p_option_label?: string;
+          p_qty_per_unit?: number;
+          p_unit_option_id: string;
+          p_uom_id?: string;
+        };
+        Returns: {
+          barcode: string;
+          base_uom_code: string;
+          id: string;
+          is_active: boolean;
+          is_base: boolean;
+          is_default: boolean;
+          item_id: string;
+          option_label: string;
+          qty_per_unit: number;
+          sort_order: number;
+          uom_code: string;
+          uom_id: string;
+          uom_name: string;
+          uom_symbol: string;
+        }[];
       };
       update_load_list: {
         Args: {

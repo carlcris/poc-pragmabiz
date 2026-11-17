@@ -29,6 +29,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ItemLocationPreviewQuantity } from "./ItemLocationPreviewQuantity";
+import type { ItemInventoryPreviewLabel } from "@/lib/items/inventory-preview-quantity";
 import type { ItemLocation, ItemLocationBatch } from "@/types/inventory-location";
 
 const BATCH_PAGE_SIZE = 20;
@@ -36,6 +38,8 @@ const BATCH_PAGE_SIZE = 20;
 type ItemLocationBatchesProps = {
   itemId: string;
   locationId: string;
+  /** Built once per item by the Locations tab; adds the nominated whole-unit equivalent. */
+  previewLabel: ItemInventoryPreviewLabel;
   canPrint: boolean;
   printDisabled: boolean;
   onPrint: (batch: ItemLocationBatch) => void;
@@ -45,6 +49,7 @@ type ItemLocationBatchesProps = {
 export function ItemLocationBatches({
   itemId,
   locationId,
+  previewLabel,
   canPrint,
   printDisabled,
   onPrint,
@@ -56,6 +61,9 @@ export function ItemLocationBatches({
   const t = useTranslations("itemLocationsTab");
   const common = useTranslations("common");
   const format = useFormatter();
+  // Base quantities are stored with four decimal places; the default precision would round
+  // a figure such as 143.9999 to the whole unit beside it.
+  const quantity = (value: number) => format.number(value, { maximumFractionDigits: 4 });
   const today = formatDate(new Date(), "yyyy-MM-dd");
   const businessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
   const query = useQuery<{ data: ItemLocation[] }>({
@@ -139,15 +147,33 @@ export function ItemLocationBatches({
                   <dl className="grid grid-cols-3 gap-2 tabular-nums">
                     <div>
                       <dt className="text-xs text-muted-foreground">{t("onHand")}</dt>
-                      <dd className="text-sm font-medium">{format.number(batch.qtyOnHand)}</dd>
+                      <dd className="text-sm font-medium">
+                        {quantity(batch.qtyOnHand)}
+                        <ItemLocationPreviewQuantity
+                          baseQuantity={batch.qtyOnHand}
+                          previewLabel={previewLabel}
+                        />
+                      </dd>
                     </div>
                     <div>
                       <dt className="text-xs text-muted-foreground">{t("reserved")}</dt>
-                      <dd className="text-sm font-medium">{format.number(batch.qtyReserved)}</dd>
+                      <dd className="text-sm font-medium">
+                        {quantity(batch.qtyReserved)}
+                        <ItemLocationPreviewQuantity
+                          baseQuantity={batch.qtyReserved}
+                          previewLabel={previewLabel}
+                        />
+                      </dd>
                     </div>
                     <div>
                       <dt className="text-xs text-muted-foreground">{t("available")}</dt>
-                      <dd className="text-sm font-semibold">{format.number(batch.qtyAvailable)}</dd>
+                      <dd className="text-sm font-semibold">
+                        {quantity(batch.qtyAvailable)}
+                        <ItemLocationPreviewQuantity
+                          baseQuantity={batch.qtyAvailable}
+                          previewLabel={previewLabel}
+                        />
+                      </dd>
                     </div>
                   </dl>
                 </div>
@@ -185,14 +211,26 @@ export function ItemLocationBatches({
                       <span className="block font-medium">{batch.batchCode}</span>
                       {renderDates(batch)}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap px-3 text-right tabular-nums">
-                      {format.number(batch.qtyOnHand)}
+                    <TableCell className="px-3 text-right tabular-nums">
+                      <span className="whitespace-nowrap">{quantity(batch.qtyOnHand)}</span>
+                      <ItemLocationPreviewQuantity
+                        baseQuantity={batch.qtyOnHand}
+                        previewLabel={previewLabel}
+                      />
                     </TableCell>
-                    <TableCell className="whitespace-nowrap px-3 text-right tabular-nums">
-                      {format.number(batch.qtyReserved)}
+                    <TableCell className="px-3 text-right tabular-nums">
+                      <span className="whitespace-nowrap">{quantity(batch.qtyReserved)}</span>
+                      <ItemLocationPreviewQuantity
+                        baseQuantity={batch.qtyReserved}
+                        previewLabel={previewLabel}
+                      />
                     </TableCell>
-                    <TableCell className="whitespace-nowrap px-3 text-right tabular-nums">
-                      {format.number(batch.qtyAvailable)}
+                    <TableCell className="px-3 text-right tabular-nums">
+                      <span className="whitespace-nowrap">{quantity(batch.qtyAvailable)}</span>
+                      <ItemLocationPreviewQuantity
+                        baseQuantity={batch.qtyAvailable}
+                        previewLabel={previewLabel}
+                      />
                     </TableCell>
                     {hasActions ? (
                       <TableCell className="px-2 text-right">{renderRowActions(batch)}</TableCell>

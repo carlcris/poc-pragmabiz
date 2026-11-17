@@ -15,6 +15,8 @@ import {
 import { WarehouseLocationTypeIcon } from "@/components/warehouses/WarehouseLocationTypeIcon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { ItemLocationPreviewQuantity } from "@/components/items/locations/ItemLocationPreviewQuantity";
+import type { ItemInventoryPreviewLabel } from "@/lib/items/inventory-preview-quantity";
 import type { ItemLocationStockNode } from "@/types/inventory-location";
 
 const INDENT_REM = 1.125;
@@ -25,6 +27,8 @@ type ItemLocationStockTreeProps = {
   warehouseId: string;
   warehouseLabel: string;
   selectedLocationId: string | null;
+  /** Built once per item by the Locations tab; adds the nominated whole-unit equivalent. */
+  previewLabel: ItemInventoryPreviewLabel;
   expansion: WarehouseLocationTreeExpansion;
   onSelect: (node: Pick<ItemLocationStockNode, "locationId">) => void;
 };
@@ -53,7 +57,16 @@ function TreeLevelPage({
   onLoadMore,
   ...props
 }: TreeLevelProps & { page: number; isLastLoaded: boolean; onLoadMore: () => void }) {
-  const { itemId, warehouseId, parent, level, selectedLocationId, expansion, focusId } = props;
+  const {
+    itemId,
+    warehouseId,
+    parent,
+    level,
+    selectedLocationId,
+    expansion,
+    focusId,
+    previewLabel,
+  } = props;
   const t = useTranslations("itemLocationsTab");
   const tLocations = useTranslations("warehouseLocationsPage");
   const format = useFormatter();
@@ -151,9 +164,19 @@ function TreeLevelPage({
                   </span>
                 </span>
               </span>
-              <span className="text-right tabular-nums">{quantity(node.subtreeOnHand)}</span>
+              <span className="text-right tabular-nums">
+                {quantity(node.subtreeOnHand)}
+                <ItemLocationPreviewQuantity
+                  baseQuantity={node.subtreeOnHand}
+                  previewLabel={previewLabel}
+                />
+              </span>
               <span className="text-right tabular-nums text-muted-foreground">
                 {quantity(node.subtreeAvailable)}
+                <ItemLocationPreviewQuantity
+                  baseQuantity={node.subtreeAvailable}
+                  previewLabel={previewLabel}
+                />
               </span>
             </div>
             {isExpanded ? (
@@ -179,9 +202,19 @@ function TreeLevelPage({
                       <span aria-hidden className="text-muted-foreground">
                         -
                       </span>
-                      <span className="text-right tabular-nums">{quantity(node.directOnHand)}</span>
+                      <span className="text-right tabular-nums">
+                        {quantity(node.directOnHand)}
+                        <ItemLocationPreviewQuantity
+                          baseQuantity={node.directOnHand}
+                          previewLabel={previewLabel}
+                        />
+                      </span>
                       <span className="text-right tabular-nums text-muted-foreground">
                         {quantity(node.directAvailable)}
+                        <ItemLocationPreviewQuantity
+                          baseQuantity={node.directAvailable}
+                          previewLabel={previewLabel}
+                        />
                       </span>
                     </div>
                   </li>
@@ -260,6 +293,7 @@ export function ItemLocationStockTree({
           itemId={props.itemId}
           label={t("stockTreeLabel", { warehouse: warehouseLabel })}
           selectedId={selectedLocationId}
+          previewLabel={props.previewLabel}
           expansion={props.expansion}
           onSelect={(locationId) => props.onSelect({ locationId })}
         />

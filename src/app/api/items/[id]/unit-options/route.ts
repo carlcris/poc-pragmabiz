@@ -1,5 +1,6 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import {
   sortItemUnitOptions,
@@ -7,6 +8,8 @@ import {
   type DbItemUnitOptionRow,
 } from "@/lib/items/itemUnitOptions";
 import { insertItemUnitOptionWithRetry } from "@/lib/items/insertItemUnitOption";
+import type { Database } from "@/types/database.types";
+import type { ItemUnitOptionWithInventoryPreview } from "@/types/item";
 
 const ITEM_UNIT_OPTION_SELECT = `
   id,
@@ -67,16 +70,16 @@ const getItem = async (
     .maybeSingle();
 
 const listUnitOptions = async (
-  supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"],
+  supabase: SupabaseClient<Database>,
   itemId: string,
   companyId: string,
   baseUomCode: string,
   activeOnly: boolean,
   limit: number
-) => {
+): Promise<{ data: ItemUnitOptionWithInventoryPreview[]; total: number }> => {
   let query = supabase
     .from("item_unit_options")
-    .select(ITEM_UNIT_OPTION_SELECT, { count: "exact" })
+    .select(`${ITEM_UNIT_OPTION_SELECT}, is_inventory_preview`, { count: "exact" })
     .eq("company_id", companyId)
     .eq("item_id", itemId)
     .is("deleted_at", null);
@@ -95,9 +98,10 @@ const listUnitOptions = async (
 
   return {
     data: sortItemUnitOptions(
-      ((data || []) as DbItemUnitOptionRow[]).map((row) =>
-        transformItemUnitOptionRow(row, baseUomCode)
-      )
+      (data || []).map((row) => ({
+        ...transformItemUnitOptionRow(row, baseUomCode),
+        isInventoryPreview: row.is_inventory_preview,
+      }))
     ),
     total: count || 0,
   };

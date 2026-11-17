@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Plus,
   Search,
@@ -59,6 +59,8 @@ import {
   InventoryItemMobileList,
   InventoryItemMobileListSkeleton,
 } from "@/components/items/InventoryItemMobileList";
+import { InventoryPreviewQuantity } from "@/components/items/InventoryPreviewQuantity";
+import { createInventoryPreviewQuantityFormatter } from "@/lib/items/inventory-preview-quantity";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { RESOURCES } from "@/constants/resources";
 import type { ItemWithStock } from "@/app/api/items/route";
@@ -74,6 +76,7 @@ type ItemExportFormat = "csv" | "xlsx" | "pdf";
 function ItemsPageContent() {
   const t = useTranslations("itemsPage");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
@@ -238,6 +241,13 @@ function ItemsPageContent() {
     const parsed = typeof value === "number" ? value : Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
   };
+
+  // Base figures stay whole numbers on every row; a nominated row adds its whole unit
+  // equivalent, so one locale-aware formatter is shared by every quantity cell.
+  const formatPreviewQuantity = useMemo(
+    () => createInventoryPreviewQuantityFormatter(locale),
+    [locale]
+  );
 
   const activeFilterCount =
     Number(categoryFilter !== "all") +
@@ -818,6 +828,7 @@ function ItemsPageContent() {
               items={items}
               renderStatus={getStatusBadge}
               formatQuantity={(value) => Math.trunc(toNumber(value))}
+              formatPreviewQuantity={formatPreviewQuantity}
               onEditItem={handleEditItem}
               onDeleteItem={handleDeleteItem}
               isDeletePending={deleteItem.isPending}
@@ -875,10 +886,22 @@ function ItemsPageContent() {
                       </TableCell>
                       <TableCell>{item.category}</TableCell>
                       <TableCell className="text-right">
-                        {Math.trunc(toNumber(item.onHand))}
+                        <InventoryPreviewQuantity
+                          baseQuantity={item.onHand}
+                          previewUnit={item.inventoryPreviewUnit}
+                          formatPreviewQuantity={formatPreviewQuantity}
+                        >
+                          {(onHand) => <span>{onHand}</span>}
+                        </InventoryPreviewQuantity>
                       </TableCell>
                       <TableCell className="text-right text-orange-600">
-                        {Math.trunc(toNumber(item.allocated))}
+                        <InventoryPreviewQuantity
+                          baseQuantity={item.allocated}
+                          previewUnit={item.inventoryPreviewUnit}
+                          formatPreviewQuantity={formatPreviewQuantity}
+                        >
+                          {(allocated) => <span>{allocated}</span>}
+                        </InventoryPreviewQuantity>
                       </TableCell>
                       <TableCell className="text-right text-purple-600">
                         {Math.trunc(toNumber(item.putawayQty))}
@@ -888,17 +911,25 @@ function ItemsPageContent() {
                           const availableValue = toNumber(item.available);
                           const reorderPointValue = toNumber(item.reorderPoint);
                           return (
-                            <span
-                              className={
-                                availableValue <= 0
-                                  ? "text-red-600"
-                                  : availableValue <= reorderPointValue
-                                    ? "text-yellow-600"
-                                    : "text-green-600"
-                              }
+                            <InventoryPreviewQuantity
+                              baseQuantity={item.available}
+                              previewUnit={item.inventoryPreviewUnit}
+                              formatPreviewQuantity={formatPreviewQuantity}
                             >
-                              {Math.trunc(availableValue)}
-                            </span>
+                              {(available) => (
+                                <span
+                                  className={
+                                    availableValue <= 0
+                                      ? "text-red-600"
+                                      : availableValue <= reorderPointValue
+                                        ? "text-yellow-600"
+                                        : "text-green-600"
+                                  }
+                                >
+                                  {available}
+                                </span>
+                              )}
+                            </InventoryPreviewQuantity>
                           );
                         })()}
                       </TableCell>

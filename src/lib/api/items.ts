@@ -3,6 +3,7 @@ import type {
   ItemsListResponse,
   ItemResponse,
   CreateItemRequest,
+  CreateItemResponse,
   UpdateItemRequest,
   ItemFilters,
   UpsertItemCustomFieldRequest,
@@ -61,8 +62,8 @@ export const itemsApi = {
     );
   },
 
-  createItem: async (data: CreateItemRequest): Promise<ItemResponse> => {
-    return apiClient.post<ItemResponse>("/api/items", data);
+  createItem: async (data: CreateItemRequest): Promise<CreateItemResponse> => {
+    return apiClient.post<CreateItemResponse>("/api/items", data);
   },
 
   updateItem: async (id: string, data: UpdateItemRequest): Promise<ItemResponse> => {

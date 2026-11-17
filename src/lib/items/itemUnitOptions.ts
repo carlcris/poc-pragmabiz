@@ -76,7 +76,7 @@ export const transformItemUnitOptionRow = (
   };
 };
 
-export const sortItemUnitOptions = (options: ItemUnitOption[]): ItemUnitOption[] =>
+export const sortItemUnitOptions = <T extends ItemUnitOption>(options: T[]): T[] =>
   [...options].sort((a, b) => {
     if (a.isBase !== b.isBase) return a.isBase ? -1 : 1;
     if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;

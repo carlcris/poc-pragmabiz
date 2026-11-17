@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
   CircleOff,
+  Eye,
+  EyeOff,
   Loader2,
   MoreVertical,
   Pencil,
@@ -17,10 +19,13 @@ import {
   useCreateItemUnitOption,
   useDeleteItemUnitOption,
   useItemUnitOptions,
+  useSetItemInventoryPreview,
   useUpdateItemUnitOption,
 } from "@/hooks/useItemUnitOptions";
 import { useUnitsOfMeasure } from "@/hooks/useUnitsOfMeasure";
-import type { ItemUnitOption } from "@/types/item";
+import { getApiErrorCode } from "@/lib/api";
+import { itemInventoryPreviewErrorCodes } from "@/lib/api/item-unit-options";
+import type { ItemUnitOption, ItemUnitOptionWithInventoryPreview } from "@/types/item";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -92,6 +97,7 @@ export const ItemUnitOptionsCard = ({
   const createUnitOption = useCreateItemUnitOption(itemId);
   const updateUnitOption = useUpdateItemUnitOption(itemId);
   const deleteUnitOption = useDeleteItemUnitOption(itemId);
+  const setInventoryPreview = useSetItemInventoryPreview(itemId);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUnitOption, setEditingUnitOption] = useState<ItemUnitOption | null>(null);
@@ -236,15 +242,45 @@ export const ItemUnitOptionsCard = ({
     }
   };
 
+  // The row menu action has no dialog, so a failed attempt can simply be retried.
+  const changeInventoryPreview = async (
+    unitOption: ItemUnitOptionWithInventoryPreview,
+    enabled: boolean
+  ) => {
+    try {
+      await setInventoryPreview.mutateAsync({
+        unitOptionId: unitOption.id,
+        data: { enabled },
+      });
+      toast.success(enabled ? t("inventoryPreviewEnabled") : t("inventoryPreviewDisabled"));
+    } catch (error) {
+      const code = getApiErrorCode(error, itemInventoryPreviewErrorCodes);
+      const messages = {
+        INVENTORY_PREVIEW_INVALID_REQUEST: t("inventoryPreviewInvalidRequestError"),
+        INVENTORY_PREVIEW_FORBIDDEN: t("inventoryPreviewForbiddenError"),
+        INVENTORY_PREVIEW_NOT_FOUND: t("inventoryPreviewNotFoundError"),
+        INVENTORY_PREVIEW_INELIGIBLE: t("inventoryPreviewIneligibleError"),
+      };
+      toast.error(code ? messages[code] : t("inventoryPreviewSaveError"));
+    }
+  };
+
   const isMutating =
-    createUnitOption.isPending || updateUnitOption.isPending || deleteUnitOption.isPending;
+    createUnitOption.isPending ||
+    updateUnitOption.isPending ||
+    deleteUnitOption.isPending ||
+    setInventoryPreview.isPending;
 
   // Edit stays visible; secondary and destructive actions live in the row menu.
-  const renderRowActions = (unitOption: ItemUnitOption) => {
+  const renderRowActions = (unitOption: ItemUnitOptionWithInventoryPreview) => {
     const canEdit = !unitOption.isBase;
     const canSetDefault = !unitOption.isDefault;
     const canToggleActive = !unitOption.isBase;
     const canDelete = !unitOption.isBase && !unitOption.isDefault;
+    // Inventory preview is independent of Default: only one active non-base unit at a time.
+    const canShowInInventory =
+      !unitOption.isBase && unitOption.isActive && !unitOption.isInventoryPreview;
+    const canHideFromInventory = unitOption.isInventoryPreview;
 
     return (
       <div className="flex justify-end gap-2">
@@ -261,7 +297,11 @@ export const ItemUnitOptionsCard = ({
             {t("edit")}
           </Button>
         ) : null}
-        {canSetDefault || canToggleActive || canDelete ? (
+        {canSetDefault ||
+        canToggleActive ||
+        canDelete ||
+        canShowInInventory ||
+        canHideFromInventory ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -283,6 +323,24 @@ export const ItemUnitOptionsCard = ({
                 >
                   <Star className="h-4 w-4" />
                   {t("setDefaultAction")}
+                </DropdownMenuItem>
+              ) : null}
+              {canShowInInventory ? (
+                <DropdownMenuItem
+                  className="max-md:min-h-11"
+                  onClick={() => changeInventoryPreview(unitOption, true)}
+                >
+                  <Eye className="h-4 w-4" />
+                  {t("showInInventoryAction")}
+                </DropdownMenuItem>
+              ) : null}
+              {canHideFromInventory ? (
+                <DropdownMenuItem
+                  className="max-md:min-h-11"
+                  onClick={() => changeInventoryPreview(unitOption, false)}
+                >
+                  <EyeOff className="h-4 w-4" />
+                  {t("removeFromInventoryPreviewAction")}
                 </DropdownMenuItem>
               ) : null}
               {canToggleActive ? (
@@ -314,10 +372,13 @@ export const ItemUnitOptionsCard = ({
     );
   };
 
-  const renderUnitBadges = (unitOption: ItemUnitOption) => (
+  const renderUnitBadges = (unitOption: ItemUnitOptionWithInventoryPreview) => (
     <>
       {unitOption.isBase ? <Badge variant="secondary">{t("baseLabel")}</Badge> : null}
       {unitOption.isDefault ? <Badge variant="outline">{t("defaultLabel")}</Badge> : null}
+      {unitOption.isInventoryPreview ? (
+        <Badge variant="outline">{t("inventoryPreviewLabel")}</Badge>
+      ) : null}
     </>
   );
 

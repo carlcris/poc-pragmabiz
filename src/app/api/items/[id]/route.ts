@@ -251,6 +251,9 @@ const ITEM_DETAIL_SELECT = `
   )
 `;
 
+type ItemDetailUnitOptionRow = DbItemUnitOptionRow & { is_inventory_preview: boolean };
+type ItemWithInventoryPreview = Item & Pick<ItemDetail, "inventoryPreviewUnit">;
+
 const fetchItemUnitOptions = async (
   supabase: SupabaseClient<Database>,
   companyId: string,
@@ -269,6 +272,7 @@ const fetchItemUnitOptions = async (
       is_base,
       is_default,
       is_active,
+      is_inventory_preview,
       sort_order,
       units_of_measure (
         id,
@@ -283,24 +287,27 @@ const fetchItemUnitOptions = async (
     .is("deleted_at", null);
 
   if (error) {
-    throw new Error(error.message);
+    console.error("Failed to load item unit options", { companyId, itemId, error });
+    throw error;
   }
 
-  return (data || []) as DbItemUnitOptionRow[];
+  return data;
 };
 
 // Transform database item to frontend Item type
 function transformDbItem(
   dbItem: ItemRow,
-  unitOptionRows: DbItemUnitOptionRow[] = [],
+  unitOptionRows: ItemDetailUnitOptionRow[],
   priceTiers: ItemPriceTier[] = [],
   defaultPricingTier: string = DEFAULT_PRICE_TIER_CODE,
   canViewSop = false
-): Item {
+): ItemWithInventoryPreview {
   const unitOptions = sortItemUnitOptions(
     unitOptionRows.map((row) => transformItemUnitOptionRow(row, dbItem.unit_of_measure?.code || ""))
   );
   const primaryUnitOption = getPrimaryItemUnitOption(unitOptions);
+  const previewRow = unitOptionRows.find((row) => row.is_inventory_preview);
+  const previewOption = previewRow && unitOptions.find((option) => option.id === previewRow.id);
 
   return {
     id: dbItem.id,
@@ -311,6 +318,9 @@ function transformDbItem(
     primaryBarcode: primaryUnitOption?.barcode,
     primaryBarcodeUnitOptionId: primaryUnitOption?.id,
     unitOptions,
+    inventoryPreviewUnit: previewOption
+      ? { displayLabel: previewOption.displayLabel, qtyPerUnit: previewOption.qtyPerUnit }
+      : null,
     name: dbItem.item_name,
     chineseName: dbItem.item_name_cn || undefined,
     description: dbItem.description || "",
@@ -341,7 +351,10 @@ function transformDbItem(
   };
 }
 
-const maskItemPricingDetails = (item: Item, canViewPricingDetails: boolean): ItemDetail => {
+const maskItemPricingDetails = (
+  item: ItemWithInventoryPreview,
+  canViewPricingDetails: boolean
+): ItemDetail => {
   if (canViewPricingDetails) {
     return {
       ...item,

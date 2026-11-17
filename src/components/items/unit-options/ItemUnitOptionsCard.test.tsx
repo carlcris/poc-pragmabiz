@@ -1,6 +1,8 @@
-import { expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ItemUnitOptionsCard } from "./ItemUnitOptionsCard";
+
+const mocks = vi.hoisted(() => ({ isInventoryPreview: false, isActive: true }));
 
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -22,7 +24,8 @@ vi.mock("@/hooks/useItemUnitOptions", () => {
             barcode: "BOX-12",
             isBase: false,
             isDefault: false,
-            isActive: true,
+            isActive: mocks.isActive,
+            isInventoryPreview: mocks.isInventoryPreview,
           },
         ],
       },
@@ -30,7 +33,13 @@ vi.mock("@/hooks/useItemUnitOptions", () => {
     useCreateItemUnitOption: () => mutation,
     useUpdateItemUnitOption: () => mutation,
     useDeleteItemUnitOption: () => mutation,
+    useSetItemInventoryPreview: () => mutation,
   };
+});
+
+beforeEach(() => {
+  mocks.isInventoryPreview = false;
+  mocks.isActive = true;
 });
 
 it("keeps Edit visible and moves secondary and destructive actions into the row menu", () => {
@@ -42,4 +51,29 @@ it("keeps Edit visible and moves secondary and destructive actions into the row 
   expect(html).not.toContain("setDefaultAction");
   expect(html).not.toContain("deleteAction");
   expect(html).toContain('class="divide-y rounded-md border md:hidden"');
+  expect(html).not.toContain("showInInventoryAction");
+});
+
+it("badges the nominated row independently of Set Default", () => {
+  mocks.isInventoryPreview = true;
+  const html = renderToStaticMarkup(
+    <ItemUnitOptionsCard itemId="item" baseUomCode="PC" editable />
+  );
+  // Both layouts render the badge; neither marks the row as the default unit.
+  expect(html.match(/inventoryPreviewLabel/g)?.length).toBe(2);
+  expect(html).not.toContain("defaultLabel");
+});
+
+it("omits the inventory preview badge when the row is not nominated", () => {
+  const html = renderToStaticMarkup(
+    <ItemUnitOptionsCard itemId="item" baseUomCode="PC" editable />
+  );
+  expect(html).not.toContain("inventoryPreviewLabel");
+});
+
+it("hides the row menu from non-editable users", () => {
+  mocks.isInventoryPreview = true;
+  const html = renderToStaticMarkup(<ItemUnitOptionsCard itemId="item" baseUomCode="PC" />);
+  expect(html).not.toContain("moreUnitOptionActions");
+  expect(html).toContain("inventoryPreviewLabel");
 });

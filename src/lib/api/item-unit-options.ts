@@ -1,9 +1,24 @@
 import { apiClient } from "@/lib/api";
-import type { ItemUnitOption } from "@/types/item";
+import type {
+  ItemInventoryPreviewErrorCode,
+  ItemUnitOption,
+  ItemUnitOptionWithInventoryPreview,
+} from "@/types/item";
 
 export type ItemUnitOptionsResponse = {
-  data: ItemUnitOption[];
+  data: ItemUnitOptionWithInventoryPreview[];
   total: number;
+};
+
+export const itemInventoryPreviewErrorCodes = [
+  "INVENTORY_PREVIEW_INVALID_REQUEST",
+  "INVENTORY_PREVIEW_FORBIDDEN",
+  "INVENTORY_PREVIEW_NOT_FOUND",
+  "INVENTORY_PREVIEW_INELIGIBLE",
+] as const satisfies readonly ItemInventoryPreviewErrorCode[];
+
+export type SetItemInventoryPreviewRequest = {
+  enabled: boolean;
 };
 
 export type CreateItemUnitOptionRequest = {
@@ -64,4 +79,14 @@ export const itemUnitOptionsApi = {
 
   deleteItemUnitOption: async (itemId: string, unitOptionId: string): Promise<{ success: true }> =>
     apiClient.delete<{ success: true }>(`/api/items/${itemId}/unit-options/${unitOptionId}`),
+
+  setItemInventoryPreview: async (
+    itemId: string,
+    unitOptionId: string,
+    data: SetItemInventoryPreviewRequest
+  ): Promise<{ success: true }> =>
+    apiClient.put<{ success: true }>(
+      `/api/items/${itemId}/unit-options/${unitOptionId}/inventory-preview`,
+      data
+    ),
 };

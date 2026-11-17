@@ -8,15 +8,19 @@ import {
   warehouseLocationTypeLabelKeys,
 } from "@/lib/warehouse-location-form";
 import { ItemLocationBatches } from "@/components/items/locations/ItemLocationBatches";
+import { ItemLocationPreviewQuantity } from "@/components/items/locations/ItemLocationPreviewQuantity";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { ItemInventoryPreviewLabel } from "@/lib/items/inventory-preview-quantity";
 import type { ItemLocationBatch, ItemLocationStockNode } from "@/types/inventory-location";
 
 type ItemLocationStockPanelProps = {
   itemId: string;
   warehouseName: string;
   node: ItemLocationStockNode;
+  /** Built once per item by the Locations tab; adds the nominated whole-unit equivalent. */
+  previewLabel: ItemInventoryPreviewLabel;
   canMoveStock: boolean;
   canPrint: boolean;
   printDisabled: boolean;
@@ -32,6 +36,7 @@ export function ItemLocationStockPanel({
   itemId,
   warehouseName,
   node,
+  previewLabel,
   canMoveStock,
   canPrint,
   printDisabled,
@@ -114,7 +119,10 @@ export function ItemLocationStockPanel({
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-lg bg-muted/50 px-3 py-2">
             <dt className="text-xs text-muted-foreground">{stat.label}</dt>
-            <dd className="text-base font-semibold tabular-nums">{quantity(stat.value)}</dd>
+            <dd className="text-base font-semibold tabular-nums">
+              {quantity(stat.value)}
+              <ItemLocationPreviewQuantity baseQuantity={stat.value} previewLabel={previewLabel} />
+            </dd>
           </div>
         ))}
       </dl>
@@ -136,7 +144,13 @@ export function ItemLocationStockPanel({
                     <span className="min-w-0 flex-1 truncate font-medium">
                       {getWarehouseLocationDisplayName(child)}
                     </span>
-                    <span className="tabular-nums">{quantity(child.subtreeOnHand)}</span>
+                    <span className="text-right tabular-nums">
+                      {quantity(child.subtreeOnHand)}
+                      <ItemLocationPreviewQuantity
+                        baseQuantity={child.subtreeOnHand}
+                        previewLabel={previewLabel}
+                      />
+                    </span>
                   </button>
                 </li>
               ))}
@@ -161,6 +175,7 @@ export function ItemLocationStockPanel({
             key={node.locationId}
             itemId={itemId}
             locationId={node.locationId}
+            previewLabel={previewLabel}
             canPrint={canPrint}
             printDisabled={printDisabled}
             onPrint={onPrint}

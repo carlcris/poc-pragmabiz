@@ -1,3 +1,5 @@
+import type { InventoryPreviewUnit } from "./item-inventory";
+
 export type ItemType = "raw_material" | "finished_good" | "asset" | "service";
 
 export type ItemDimensions = {
@@ -23,6 +25,16 @@ export type ItemUnitOption = {
   isActive: boolean;
   sortOrder: number;
 };
+
+export type ItemUnitOptionWithInventoryPreview = ItemUnitOption & {
+  isInventoryPreview: boolean;
+};
+
+export type ItemInventoryPreviewErrorCode =
+  | "INVENTORY_PREVIEW_INVALID_REQUEST"
+  | "INVENTORY_PREVIEW_FORBIDDEN"
+  | "INVENTORY_PREVIEW_NOT_FOUND"
+  | "INVENTORY_PREVIEW_INELIGIBLE";
 
 export type ItemCustomFields = Record<string, unknown>;
 
@@ -78,7 +90,11 @@ export type Item = {
   updatedAt: string;
 };
 
-export type ItemDetail = Omit<Item, "purchasePrice" | "importCost" | "importCurrency" | "listPrice"> & {
+export type ItemDetail = Omit<
+  Item,
+  "purchasePrice" | "importCost" | "importCurrency" | "listPrice"
+> & {
+  inventoryPreviewUnit: InventoryPreviewUnit | null;
   purchasePrice: number | null;
   importCost: number | null;
   importCurrency: string | null;
@@ -156,6 +172,10 @@ export type ItemResponse = {
     canViewSop?: boolean;
     canEditSop?: boolean;
   };
+};
+
+export type CreateItemResponse = {
+  data: Item;
 };
 
 export type ItemFilters = {

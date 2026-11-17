@@ -2,6 +2,10 @@ import type { ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, it, vi } from "vitest";
 import { translations } from "@/lib/i18n/translations";
+import {
+  createItemInventoryPreviewLabel,
+  type ItemInventoryPreviewLabel,
+} from "@/lib/items/inventory-preview-quantity";
 import { ItemLocationBatches } from "./ItemLocationBatches";
 
 const state = vi.hoisted(() => ({
@@ -11,6 +15,7 @@ const state = vi.hoisted(() => ({
   printed: vi.fn(),
   print: undefined as undefined | (() => void),
 }));
+const noPreview = () => null;
 vi.mock("react", async (load) => ({
   ...(await load<typeof import("react")>()),
   useState: (initial: unknown) =>
@@ -114,6 +119,7 @@ it("reaches and prints the stocked batch after twenty exhausted batches", () => 
       <ItemLocationBatches
         itemId="item"
         locationId="rack"
+        previewLabel={noPreview}
         canPrint
         printDisabled={false}
         onPrint={state.printed}
@@ -140,6 +146,7 @@ it("shows expiration editing only to item editors", () => {
       <ItemLocationBatches
         itemId="item"
         locationId="rack"
+        previewLabel={noPreview}
         canPrint={false}
         printDisabled={false}
         onPrint={state.printed}
@@ -148,6 +155,34 @@ it("shows expiration editing only to item editors", () => {
   expect(render()).not.toContain("Edit Expiration");
   state.canEdit = true;
   expect(render()).toContain("Edit Expiration");
+});
+
+it("shows the nominated whole-unit equivalent of every batch quantity in both layouts", () => {
+  state.page = 2;
+  const render = (previewLabel: ItemInventoryPreviewLabel) =>
+    renderToStaticMarkup(
+      <ItemLocationBatches
+        itemId="item"
+        locationId="rack"
+        previewLabel={previewLabel}
+        canPrint={false}
+        printDisabled={false}
+        onPrint={state.printed}
+      />
+    );
+
+  // 50 on hand, 0 reserved, 50 available at 12 per carton: 4 whole cartons, the partial dropped.
+  const html = render(
+    createItemInventoryPreviewLabel("en-US", { displayLabel: "CTN (12)", qtyPerUnit: 12 })
+  );
+  // The phone list and the desktop table both render, so each figure appears twice.
+  expect(html.match(/4 CTN \(12\)/g)).toHaveLength(4);
+  expect(html.match(/0 CTN \(12\)/g)).toHaveLength(2);
+  expect(html).toContain("50");
+
+  const withoutNomination = render(noPreview);
+  expect(withoutNomination).not.toContain("CTN (12)");
+  expect(withoutNomination).toContain("50");
 });
 
 it.each([
@@ -163,6 +198,7 @@ it.each([
       <ItemLocationBatches
         itemId="item"
         locationId="rack"
+        previewLabel={noPreview}
         canPrint={false}
         printDisabled={false}
         onPrint={state.printed}

@@ -24,6 +24,7 @@ const row = {
   item_name: "Item",
   item_name_cn: null,
   category_name: "Category",
+  uom_code: "PCS",
   on_hand: 8,
   allocated: 2,
   available: 6,
@@ -49,7 +50,33 @@ beforeEach(() => {
     throw new Error("Unexpected enrichment read");
   });
 });
-it("returns bounded stock rows without pricing, barcode, or capability reads", async () => {
+
+const mockInventoryPreviewRead = (
+  data: Array<{
+    item_id: string;
+    option_label: string | null;
+    qty_per_unit: number;
+    units_of_measure: { code: string };
+  }>
+) => {
+  const query = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
+    is: vi.fn().mockResolvedValue({ data, error: null }),
+  };
+  mocks.from.mockReturnValue(query);
+  return query;
+};
+
+it("returns nominated options alongside stock and only enriches the current page", async () => {
+  mocks.rpc.mockResolvedValue({
+    data: [row, { ...row, id: "second-item", item_code: "SECOND" }],
+    error: null,
+  });
+  const query = mockInventoryPreviewRead([
+    { item_id: "item", option_label: null, qty_per_unit: 50, units_of_measure: { code: "BOX" } },
+  ]);
   const response = await GET(
     new NextRequest("http://localhost/api/items?view=inventory&page=2&limit=10")
   );
@@ -61,7 +88,10 @@ it("returns bounded stock rows without pricing, barcode, or capability reads", a
     allocated: 2,
     available: 6,
     putawayQty: 1,
+    inventoryPreviewUnit: { displayLabel: "BOX (50 PCS)", qtyPerUnit: 50 },
   });
+  expect(body.data[1].inventoryPreviewUnit).toBeNull();
+  expect(body.data[0]).not.toHaveProperty("baseUomCode");
   expect(body.data[0]).not.toHaveProperty("purchasePrice");
   expect(body.data[0]).not.toHaveProperty("customFields");
   expect(body.pagination).toEqual({ page: 2, limit: 10, total: 81, totalPages: 9 });
@@ -69,8 +99,46 @@ it("returns bounded stock rows without pricing, barcode, or capability reads", a
     "get_items_enhanced_page",
     expect.objectContaining({ p_business_unit_id: "unit", p_page: 2, p_limit: 10 })
   );
-  expect(mocks.from).not.toHaveBeenCalled();
+  expect(mocks.from).toHaveBeenCalledExactlyOnceWith("item_unit_options");
+  expect(query.in).toHaveBeenCalledExactlyOnceWith("item_id", ["item", "second-item"]);
+  expect(query.eq).toHaveBeenCalledWith("company_id", "company");
+  expect(query.eq).toHaveBeenCalledWith("is_inventory_preview", true);
+  expect(query.eq).toHaveBeenCalledWith("is_active", true);
+  expect(query.eq).toHaveBeenCalledWith("is_base", false);
+  expect(query.is).toHaveBeenCalledWith("deleted_at", null);
   expect(mocks.capabilities).not.toHaveBeenCalled();
+});
+
+it("enriches only the returned item after first-page search ranking", async () => {
+  mocks.rpc.mockResolvedValue({
+    data: [{ ...row, id: "match", item_code: "MATCH-OTHER" }, row],
+    error: null,
+  });
+  const query = mockInventoryPreviewRead([
+    {
+      item_id: "item",
+      option_label: "Small carton",
+      qty_per_unit: 2.5,
+      units_of_measure: { code: "CTN" },
+    },
+  ]);
+  const response = await GET(
+    new NextRequest("http://localhost/api/items?view=inventory&search=ITEM&limit=1")
+  );
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  expect(body.data).toMatchObject([
+    { id: "item", inventoryPreviewUnit: { displayLabel: "Small carton", qtyPerUnit: 2.5 } },
+  ]);
+  expect(query.in).toHaveBeenCalledExactlyOnceWith("item_id", ["item"]);
+});
+
+it("skips the unit option read when the inventory page is empty", async () => {
+  mocks.rpc.mockResolvedValue({ data: [], error: null });
+  const response = await GET(new NextRequest("http://localhost/api/items?view=inventory"));
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ data: [] });
+  expect(mocks.from).not.toHaveBeenCalled();
 });
 it.each([false, true])(
   "stats skips settings and redacts total value when allowed=%s",

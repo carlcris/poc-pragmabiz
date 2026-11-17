@@ -2,6 +2,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ExpandedLocationTree } from "./ExpandedLocationTree";
 import type { LocationTreeNode } from "@/lib/warehouse-location-tree";
+import type { ItemInventoryPreviewLabel } from "@/lib/items/inventory-preview-quantity";
 const state = vi.hoisted(() => ({
   data: undefined as LocationTreeNode[] | undefined,
   error: null as Error | null,
@@ -28,17 +29,33 @@ const expansion = {
   collapseAll: vi.fn(),
   expandPath: vi.fn(),
 };
-const render = () =>
+const render = (previewLabel?: ItemInventoryPreviewLabel) =>
   renderToStaticMarkup(
     <ExpandedLocationTree
       warehouseId="warehouse"
       itemId="item"
       label="Stock tree"
       selectedId={null}
+      previewLabel={previewLabel}
       expansion={expansion}
       onSelect={vi.fn()}
     />
   );
+const stockedNode = (overrides: Partial<LocationTreeNode> = {}): LocationTreeNode => ({
+  id: "bin-1",
+  parentId: null,
+  code: "BIN-1",
+  name: "Bin 1",
+  locationType: "bin",
+  isActive: true,
+  isDefault: false,
+  hasChildren: false,
+  onHand: 240,
+  available: 120,
+  directOnHand: 60,
+  directAvailable: 30,
+  ...overrides,
+});
 beforeEach(() => {
   state.error = null;
   state.data = undefined;
@@ -65,6 +82,25 @@ it("renders at most 17 rows for 8,420 expanded nodes with an accessible tree tab
   expect(html).toContain('aria-activedescendant="expanded-item-warehouse-0"');
   expect(html).toContain("preferredBadge");
   expect(html).not.toContain("Location 500");
+});
+it("shows the nominated whole-unit equivalent beside subtree and direct-stock amounts", () => {
+  state.data = [stockedNode({ hasChildren: true })];
+  const html = render((baseQuantity) => `${Math.trunc(Number(baseQuantity) / 12)} Case of 12`);
+  // Subtree on-hand/available, then the direct-stock row's own on-hand/available.
+  expect(html).toContain("20 Case of 12");
+  expect(html).toContain("10 Case of 12");
+  expect(html).toContain("5 Case of 12");
+  expect(html).toContain("2 Case of 12");
+  // Long saved labels must truncate on one line rather than grow the fixed 44px row.
+  expect(html).toContain('title="20 Case of 12"');
+  expect(html).toContain("truncate");
+});
+it("renders only the base amounts when the item nominates no preview unit", () => {
+  state.data = [stockedNode({ hasChildren: true })];
+  const html = render(() => null);
+  expect(html).toContain("240");
+  expect(html).toContain("60");
+  expect(html).not.toContain("title=");
 });
 it("shows translated loading progress without mounting per-parent queries", () => {
   const html = render();

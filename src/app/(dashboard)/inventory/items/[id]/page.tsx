@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
   Package,
@@ -59,6 +59,7 @@ import { ItemImage } from "@/components/items/ItemImage";
 import { ItemUnitOptionsCard } from "@/components/items/unit-options/ItemUnitOptionsCard";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { MetricCard } from "@/components/shared/MetricCard";
+import { createItemInventoryPreviewLabel } from "@/lib/items/inventory-preview-quantity";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { EditGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
@@ -134,6 +135,7 @@ const customFieldsToRows = (
 
 function ItemDetailsContent({ params }: ItemDetailsPageProps) {
   const t = useTranslations("inventoryItemPage");
+  const locale = useLocale();
   const searchParams = useSearchParams();
   const unwrappedParams = React.use(params);
   const itemId = unwrappedParams.id;
@@ -172,6 +174,19 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
     : null;
   const formatQuantity = (value: number | undefined) =>
     new Intl.NumberFormat(undefined, { maximumFractionDigits: 4 }).format(value ?? 0);
+  // One label per item for every stock figure on this page and its Locations tab: the stock
+  // cards read in the nominated unit alongside the base quantity, and nothing is added when
+  // the item nominates no unit option.
+  const previewLabel = React.useMemo(
+    () => createItemInventoryPreviewLabel(locale, item?.inventoryPreviewUnit ?? null),
+    [item?.inventoryPreviewUnit, locale]
+  );
+  // The three stock cards are narrow on phones and a custom unit label can run long, so the
+  // caption wraps inside the card instead of widening it.
+  const renderStockPreviewCaption = (value: number | undefined) => {
+    const label = previewLabel(value ?? 0);
+    return label === null ? null : <span className="block break-words">{label}</span>;
+  };
   const formatImportCurrency = (amount: number, currency: string) =>
     new Intl.NumberFormat(undefined, {
       style: "currency",
@@ -516,18 +531,21 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
           title={t("availableQtyLabel")}
           icon={Package}
           value={formatQuantity(item.available)}
+          caption={renderStockPreviewCaption(item.available)}
           {...stockMetricCardLayout}
         />
         <MetricCard
           title={t("reservedQtyLabel")}
           icon={Lock}
           value={formatQuantity(item.allocated)}
+          caption={renderStockPreviewCaption(item.allocated)}
           {...stockMetricCardLayout}
         />
         <MetricCard
           title={t("onHandLabel")}
           icon={Warehouse}
           value={formatQuantity(item.onHand)}
+          caption={renderStockPreviewCaption(item.onHand)}
           {...stockMetricCardLayout}
         />
       </div>

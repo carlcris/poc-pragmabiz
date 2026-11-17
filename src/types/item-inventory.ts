@@ -1,3 +1,8 @@
+export type InventoryPreviewUnit = {
+  displayLabel: string;
+  qtyPerUnit: number;
+};
+
 export type ItemInventoryRow = {
   id: string;
   code: string;
@@ -8,6 +13,7 @@ export type ItemInventoryRow = {
   onHand: number;
   allocated: number;
   available: number;
+  inventoryPreviewUnit: InventoryPreviewUnit | null;
   putawayQty: number;
   reorderPoint: number;
   status: "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued";

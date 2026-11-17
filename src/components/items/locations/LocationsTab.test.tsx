@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   nodeQuery: vi.fn(),
   mutationError: undefined as undefined | ((error: Error) => void),
   toastError: vi.fn(),
+  previewUnit: null as null | { displayLabel: string; qtyPerUnit: number },
 }));
 vi.mock("sonner", () => ({ toast: { error: state.toastError } }));
 vi.mock("react", async (load) => ({
@@ -41,7 +42,16 @@ vi.mock("@/hooks/useGranularCapabilities", () => ({
   useGranularCapabilities: () => ({ data: {} }),
 }));
 vi.mock("@/hooks/useItems", () => ({
-  useItem: () => ({ data: { data: { id: "item", uom: "pc", unitOptions: [] } } }),
+  useItem: () => ({
+    data: {
+      data: {
+        id: "item",
+        uom: "pc",
+        unitOptions: [],
+        inventoryPreviewUnit: state.previewUnit,
+      },
+    },
+  }),
 }));
 vi.mock("@/hooks/useDebouncedValue", () => ({ useDebouncedValue: (value: unknown) => value }));
 vi.mock("@/hooks/useItemWarehouseStock", () => ({
@@ -164,6 +174,7 @@ beforeEach(() => {
   state.node = node;
   state.nodeQuery.mockClear();
   state.searchClick = undefined;
+  state.previewUnit = null;
 });
 it("re-renders the selected panel from refreshed query quantities and removes an empty source action", () => {
   render();
@@ -194,6 +205,36 @@ it("opens a direct-stock search hit with authoritative subtree totals and Inside
   expect(html).toContain("Child bin");
   expect(html).toMatch(/<dd[^>]*>12<\/dd>/);
   expect(html).toMatch(/<dd[^>]*>2<\/dd>/);
+});
+
+it("adds the nominated whole-unit equivalent to warehouse totals and selected location stats", () => {
+  state.previewUnit = { displayLabel: "BOX (5)", qtyPerUnit: 5 };
+  render();
+  state.select!(node);
+  const html = render();
+
+  // Warehouse On Hand 12, the subtree On Hand and Available 12, and the child's 10 each read
+  // as 2 BOX (5); warehouse Reserved 0, subtree Reserved 0, and the 2 stored directly here
+  // fall under one box, so they read as 0 BOX (5). Max Stock is a limit rather than stock on
+  // hand, so the nominated label appears exactly seven times and not on Max Stock.
+  expect(html.match(/2 BOX \(5\)/g)).toHaveLength(4);
+  expect(html.match(/0 BOX \(5\)/g)).toHaveLength(3);
+  expect(html.match(/BOX \(5\)/g)).toHaveLength(7);
+
+  state.previewUnit = null;
+  const withoutNomination = render();
+  expect(withoutNomination).not.toContain("BOX (5)");
+  expect(withoutNomination).toContain("12");
+});
+
+it("adds the nominated equivalent to paged location search results", () => {
+  state.previewUnit = { displayLabel: "BOX (5)", qtyPerUnit: 5 };
+  state.values[2] = "Rack";
+  const html = render();
+
+  // The search row holds 2 on hand, under one box.
+  expect(html).toContain("0 BOX (5)");
+  expect(html).toContain("Rack");
 });
 
 it.each([true, false])("only offers Set as Preferred for storable nodes (%s)", (isStorable) => {

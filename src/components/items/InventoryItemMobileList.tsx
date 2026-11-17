@@ -20,11 +20,13 @@ import {
 } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
 import type { ItemInventoryRow } from "@/types/item-inventory";
+import type { InventoryPreviewQuantityFormatter } from "@/lib/items/inventory-preview-quantity";
 
 type InventoryItemMobileListProps = {
   items: ItemInventoryRow[];
   renderStatus: (status: ItemInventoryRow["status"]) => ReactNode;
   formatQuantity: (value: number) => number;
+  formatPreviewQuantity: InventoryPreviewQuantityFormatter;
   onEditItem: (item: ItemInventoryRow) => void;
   onDeleteItem: (item: ItemInventoryRow) => void;
   isDeletePending: boolean;
@@ -38,12 +40,31 @@ export function InventoryItemMobileList({
   items,
   renderStatus,
   formatQuantity,
+  formatPreviewQuantity,
   onEditItem,
   onDeleteItem,
   isDeletePending,
 }: InventoryItemMobileListProps) {
   const t = useTranslations("itemsPage");
   const tCommon = useTranslations("common");
+
+  // Four columns leave no room for an inline equivalent, so the whole unit equivalent stays
+  // on its own subline under the base figure, with the unit's display label kept verbatim.
+  const renderPreviewQuantity = (item: ItemInventoryRow, baseQuantity: number) => {
+    const previewUnit = item.inventoryPreviewUnit;
+    const equivalent = formatPreviewQuantity.formatEquivalent(baseQuantity, previewUnit);
+
+    return (
+      <>
+        {formatPreviewQuantity.formatBase(baseQuantity)}
+        {previewUnit && equivalent !== null ? (
+          <span className="block break-words text-xs font-normal text-muted-foreground">
+            {equivalent} {previewUnit.displayLabel}
+          </span>
+        ) : null}
+      </>
+    );
+  };
 
   return (
     <ul className="border-t">
@@ -111,11 +132,11 @@ export function InventoryItemMobileList({
           <dl className="grid grid-cols-4 gap-2 tabular-nums">
             <div className="flex flex-col">
               <dt className="text-xs text-muted-foreground">{t("onHand")}</dt>
-              <dd className="text-sm font-medium">{formatQuantity(item.onHand)}</dd>
+              <dd className="text-sm font-medium">{renderPreviewQuantity(item, item.onHand)}</dd>
             </div>
             <div className="flex flex-col">
               <dt className="text-xs text-muted-foreground">{t("allocated")}</dt>
-              <dd className="text-sm font-medium">{formatQuantity(item.allocated)}</dd>
+              <dd className="text-sm font-medium">{renderPreviewQuantity(item, item.allocated)}</dd>
             </div>
             <div className="flex flex-col">
               <dt className="text-xs text-muted-foreground">{t("putawayQty")}</dt>
@@ -123,7 +144,7 @@ export function InventoryItemMobileList({
             </div>
             <div className="flex flex-col">
               <dt className="text-xs text-muted-foreground">{t("available")}</dt>
-              <dd className="text-sm font-bold">{formatQuantity(item.available)}</dd>
+              <dd className="text-sm font-bold">{renderPreviewQuantity(item, item.available)}</dd>
             </div>
           </dl>
         </li>
