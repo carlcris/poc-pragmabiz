@@ -1,5 +1,6 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
@@ -53,6 +54,7 @@ const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 50;
 const VALID_MOVEMENT_TYPES: ProductMovementReportType[] = ["fast", "slow"];
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const itemIdSchema = z.uuid();
 
 const asRpcClient = (client: unknown): RpcClient => client as RpcClient;
 
@@ -106,11 +108,16 @@ async function GETHandler(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.REPORTS, "view");
     if (unauthorized) return unauthorized;
 
+    const searchParams = request.nextUrl.searchParams;
+    const itemId = searchParams.get("itemId");
+    if (itemId !== null && !itemIdSchema.safeParse(itemId).success) {
+      return NextResponse.json({ error: "Invalid product movement item filter" }, { status: 400 });
+    }
+
     const context = await requireRequestContext();
     if ("status" in context) return context;
     const { supabase, companyId, currentBusinessUnitId } = context;
 
-    const searchParams = request.nextUrl.searchParams;
     const movementType = parseMovementType(searchParams.get("movementType"));
     const page = parsePositiveInt(searchParams.get("page"), 1, Number.MAX_SAFE_INTEGER);
     const limit = parsePositiveInt(searchParams.get("limit"), DEFAULT_PAGE_SIZE);
@@ -129,6 +136,7 @@ async function GETHandler(request: NextRequest) {
       p_search: search,
       p_page: page,
       p_limit: limit,
+      ...(itemId ? { p_item_id: itemId } : {}),
     });
 
     if (result.error) {
@@ -163,6 +171,7 @@ async function GETHandler(request: NextRequest) {
         totalPages: Math.max(1, Math.ceil(total / limit)),
       },
       filters: {
+        itemId,
         movementType,
         dateFrom,
         dateTo,

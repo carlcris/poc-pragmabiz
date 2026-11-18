@@ -13,6 +13,7 @@ export type StockAgingReportFilters = {
   page?: number;
   limit?: number;
   search?: string;
+  itemId?: string;
   category?: string;
   ageBucket?: StockAgingAgeBucket;
   groupBy?: StockAgingGroupBy;
@@ -71,6 +72,7 @@ export type StockAgingReportResponse = {
   };
   filters: {
     search: string | null;
+    itemId: string | null;
     category: string | null;
     ageBucket: StockAgingAgeBucket;
     groupBy: StockAgingGroupBy;

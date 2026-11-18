@@ -182,6 +182,8 @@ export type TranslationKeys = {
     searchItems: string;
     noItemsFound: string;
     loadingItems: string;
+    loadError: string;
+    retryLoadMore: string;
     outOfStock: string;
     lowStock: string;
     stockCount: string;
@@ -497,6 +499,7 @@ export type TranslationKeys = {
     empty: string;
     loading: string;
     loadError: string;
+    retryLoadMore: string;
   };
   warehouseSelect: {
     allWarehouses: string;
@@ -4408,6 +4411,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       searchItems: "Search by item code or name...",
       noItemsFound: "No items found.",
       loadingItems: "Loading items...",
+      loadError: "Could not load items. Try searching again.",
+      retryLoadMore: "Retry Loading More",
       outOfStock: "Out of Stock",
       lowStock: "Low Stock",
       stockCount: "Stock: {count}",
@@ -4841,6 +4846,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       empty: "No categories found",
       loading: "Loading categories...",
       loadError: "Unable to load categories. Try searching again.",
+      retryLoadMore: "Retry Loading More",
     },
     warehouseSelect: {
       allWarehouses: "All warehouses",
@@ -9952,7 +9958,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       batch: "Batch",
       warehouse: "Warehouse",
       category: "Category",
-      search: "Search item or batch",
       expiration: "Expiration Date",
       daysExpired: "Days Expired",
       onHand: "On Hand",
@@ -9963,7 +9968,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       empty: "No expired batches with stock match these filters.",
       loadError: "Could not load the report. Check the date and try again.",
       tooLarge:
-        "More than 500 batch rows match this PDF. Narrow the warehouse, category, or search filters.",
+        "More than 500 batch rows match this PDF. Narrow the item, warehouse, or category filters.",
       itemSubtotal: "Item Subtotal",
       batchSubtotal: "Batch Subtotal",
       generatedAt: "Generated At",
@@ -10166,7 +10171,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemSearch: "Item Search",
       category: "Category",
       allWarehouses: "All Warehouses",
-      allItems: "All Items",
       allCategories: "All Categories",
       searchPlaceholder: "Search item code, item name, SKU, or batch...",
       byItem: "By Item",
@@ -10209,8 +10213,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       subtitle:
         "Warehouse stock balances by item, category, status, and warehouse within the current business unit.",
       filters: "Filters",
-      itemSearch: "Item Search",
-      searchPlaceholder: "Search item code or item name...",
       warehouse: "Warehouse",
       selectWarehouse: "Select warehouse",
       category: "Category",
@@ -10264,12 +10266,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       filters: "Filters",
       warehouse: "Warehouse",
       item: "Item",
-      itemSearch: "Item Search",
       category: "Category",
       allWarehouses: "All Warehouses",
       allItems: "All Items",
       allCategories: "All Categories",
-      searchPlaceholder: "Search item code, item name, SKU, or batch...",
       exportPdf: "Export PDF",
       exportingPdf: "Exporting PDF...",
       generatedAt: "Generated At",
@@ -10315,7 +10315,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       reset: "Reset",
       loadError: "Failed to load stock aging report. Please try again.",
       reportTooLarge:
-        "This report exceeds 5,000 source rows. Narrow the category or switch business unit, then try again. Search and age filters do not reduce this limit.",
+        "This report exceeds 5,000 source rows. Narrow the item or category, or switch business unit, then try again. Age filters do not reduce this limit.",
       warehousesCaption: "{count} warehouses covered",
       rowsCaption: "{count} grouped rows",
       agingBasedOnReceiptDate: "Aging is based on batch receipt date.",
@@ -10422,8 +10422,6 @@ export const translations: Record<Locale, TranslationKeys> = {
         "Products ranked by sold quantity, sales velocity, and revenue within the selected period.",
       slowTitle: "Slow Moving Products",
       slowSubtitle: "Stocked products ranked by low or zero movement within the selected period.",
-      search: "Search",
-      searchPlaceholder: "Search item code, item name, or category...",
       startDate: "Start Date",
       endDate: "End Date",
       period: "Period",
@@ -11753,6 +11751,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       searchItems: "按商品编码或名称搜索...",
       noItemsFound: "未找到商品。",
       loadingItems: "正在加载商品...",
+      loadError: "无法加载商品。请重新搜索。",
+      retryLoadMore: "重试加载更多",
       outOfStock: "缺货",
       lowStock: "低库存",
       stockCount: "库存：{count}",
@@ -12165,6 +12165,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       empty: "未找到类别",
       loading: "正在加载类别...",
       loadError: "无法加载类别，请重新搜索。",
+      retryLoadMore: "重试加载更多",
     },
     warehouseSelect: {
       allWarehouses: "所有仓库",
@@ -17069,7 +17070,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       batch: "批次",
       warehouse: "仓库",
       category: "类别",
-      search: "搜索商品或批次",
       expiration: "到期日期",
       daysExpired: "过期天数",
       onHand: "现存数量",
@@ -17079,7 +17079,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       summary: "{date} 之前到期的批次：{count} 个",
       empty: "没有符合筛选条件且仍有库存的过期批次。",
       loadError: "无法加载报表。请检查日期后重试。",
-      tooLarge: "此 PDF 超过 500 条批次记录。请缩小仓库、类别或搜索范围。",
+      tooLarge: "此 PDF 超过 500 条批次记录。请缩小商品、仓库或类别范围。",
       itemSubtotal: "商品小计",
       batchSubtotal: "批次小计",
       generatedAt: "生成时间",
@@ -17262,7 +17262,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemSearch: "商品搜索",
       category: "分类",
       allWarehouses: "所有仓库",
-      allItems: "所有商品",
       allCategories: "所有分类",
       searchPlaceholder: "搜索商品编码、商品名称、SKU 或批次...",
       byItem: "按商品",
@@ -17304,8 +17303,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       title: "库存报表",
       subtitle: "在当前业务单元范围内，按商品、分类、状态和仓库查看库存余额。",
       filters: "筛选条件",
-      itemSearch: "商品搜索",
-      searchPlaceholder: "搜索商品编码或商品名称...",
       warehouse: "仓库",
       selectWarehouse: "选择仓库",
       category: "分类",
@@ -17358,12 +17355,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       filters: "筛选条件",
       warehouse: "仓库",
       item: "商品",
-      itemSearch: "商品搜索",
       category: "分类",
       allWarehouses: "所有仓库",
       allItems: "所有商品",
       allCategories: "所有分类",
-      searchPlaceholder: "搜索商品编码、商品名称、SKU 或批次...",
       exportPdf: "导出 PDF",
       exportingPdf: "正在导出 PDF...",
       generatedAt: "生成时间",
@@ -17409,7 +17404,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       reset: "重置",
       loadError: "加载库存库龄报表失败。请重试。",
       reportTooLarge:
-        "此报表超过 5,000 条来源记录。请缩小类别范围或切换业务单位后重试。搜索和库龄筛选不会减少此限制所统计的记录数。",
+        "此报表超过 5,000 条来源记录。请缩小商品或类别范围，或切换业务单位后重试。库龄筛选不会减少此限制所统计的记录数。",
       warehousesCaption: "覆盖 {count} 个仓库",
       rowsCaption: "{count} 个分组行",
       agingBasedOnReceiptDate: "库龄基于批次收货日期计算。",
@@ -17512,8 +17507,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       fastSubtitle: "按所选期间内的销售数量、销售速度和收入排行商品。",
       slowTitle: "滞销商品",
       slowSubtitle: "按所选期间内的低流动或零流动情况排行有库存商品。",
-      search: "搜索",
-      searchPlaceholder: "搜索商品编码、商品名称或分类...",
       startDate: "开始日期",
       endDate: "结束日期",
       period: "期间",

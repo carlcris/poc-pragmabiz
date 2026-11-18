@@ -45,6 +45,7 @@ vi.mock("@/lib/supabase/server-with-bu", () => ({
             return builder;
           },
           single: async () => ({ data: { company_id: "company" } }),
+          maybeSingle: async () => ({ data: null, error: null }),
           order: (column: string) => {
             state.orders.push(column);
             return builder;
@@ -125,13 +126,63 @@ it("keeps normal pagination bounded and summaries complete", async () => {
   expect(body.data).toHaveLength(50);
   expect(body.pagination).toEqual({ page: 2, limit: 50, total: 1205, totalPages: 25 });
   expect(body.summary.rowCount).toBe(1205);
+  expect(body.filters.itemId).toBeNull();
 });
+
+const selectedItemId = "5c9fe57e-ecad-461a-8f29-b719596ca84d";
+
+it.each(["item", "batch"])(
+  "filters the source before its ceiling and groups only the selected item in %s mode",
+  async (groupBy) => {
+    state.rows = rows(5002);
+    const sharedBatch = { received_at: "2020-01-01", batch_code: "SHARED" };
+    for (const index of [0, 1, 5001]) state.rows[index].item_batch = sharedBatch;
+    for (const index of [0, 5001]) state.rows[index].item_id = selectedItemId;
+
+    const { status, body } = await request(
+      "exportMode=pdf&search=SHARED&groupBy=" + groupBy + "&itemId=" + selectedItemId
+    );
+
+    expect(status).toBe(200);
+    expect(state.ranges).toEqual([[0, 999]]);
+    expect(body.filters).toMatchObject({ itemId: selectedItemId, groupBy, search: "SHARED" });
+    expect(body.data.map((row: { itemId: string }) => row.itemId)).toEqual([
+      selectedItemId,
+      selectedItemId,
+    ]);
+    expect(body.summary.rowCount).toBe(2);
+    expect(body.groups).toHaveLength(1);
+    expect(body.groups[0]).toMatchObject({ rowCount: 2, subtotalQtyOnHand: 4 });
+  }
+);
+
+it.each(["bad", ""])(
+  "rejects invalid item IDs (%s) before reading the report source",
+  async (id) => {
+    const { status, body } = await request("itemId=" + id);
+
+    expect(status).toBe(400);
+    expect(body).toEqual({ error: "Invalid stock aging item filter" });
+    expect(state.ranges).toEqual([]);
+  }
+);
+
+it("echoes the exact item filter when the selected category does not exist", async () => {
+  const { status, body } = await request("category=absent&itemId=" + selectedItemId);
+
+  expect(status).toBe(200);
+  expect(body.data).toEqual([]);
+  expect(body.filters).toMatchObject({ itemId: selectedItemId, category: "absent" });
+  expect(state.ranges).toEqual([]);
+});
+
 it("accepts exactly 5000 source rows and rejects 5001 even with a lower API cap", async () => {
   state.rows = rows(5000);
   expect((await request("exportMode=pdf")).body.data).toHaveLength(5000);
   state.rows = rows(5001);
   const result = await request("exportMode=pdf");
   expect(result.status).toBe(413);
+  expect(result.body.error).toContain("Choose an item");
   expect(result.body.data).toBeUndefined();
 });
 it("does not return partial results if a later batch fails or is unexpectedly empty", async () => {

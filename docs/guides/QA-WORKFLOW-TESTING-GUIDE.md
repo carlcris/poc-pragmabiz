@@ -1989,14 +1989,31 @@ redistribute stock. Concurrent allocation or location edits must not create dupl
 ### Stock Aging completeness regression
 
 - Create or select more than 50 matching location-batch balances within one business unit. Generate Stock Aging with All Ages and confirm the PDF includes rows after the first 50, complete item subtotals, and correct printed page numbers.
-- With more than 1,000 positive source balances (but at most 5,000), search for an item beyond the first source batch. Confirm it appears and totals include its complete matching stock. Repeat with a lower Supabase API row cap.
+- Open the Stock Aging Item picker. Confirm six items plus **All Items**, more results on scroll, search by code or name, and a full-name tooltip on item hover. Select an item and confirm Preview includes only that item, even when another item shares a batch code. Choose **All Items** to clear the filter.
+- With more than 1,000 positive source balances (but at most 5,000), make an API request with `search` for an item beyond the first source batch. Confirm it appears and totals include its complete matching stock. Repeat with a lower Supabase API row cap.
 - Confirm normal API requests remain paginated (10–50 rows) while `exportMode=pdf` returns all matches regardless of `page`/`limit`.
-- Above 5,000 source balances, confirm preview shows the translated size error and no stale/partial PDF. Narrow category or business-unit scope; search/age filters alone do not reduce the source count.
+- Above 5,000 source balances, confirm preview shows the translated size error and no stale or partial PDF. Select an item, narrow the category, or switch business units to reduce the source count. API text search and age filters apply after the limit.
 - Confirm zero-stock balances, other business units, and nonmatching categories/ages remain excluded. The default age filter is strictly greater than 90 days.
 
 - PDF performance: run `npx vitest run src/components/reports/StockAgingReportPDF.test.tsx` for a 1,000-row Unicode render benchmark and row-order/subtotal partition checks. Set `STOCK_AGING_PDF_OUTPUT=/tmp/stock-aging` (writes `-item.pdf` and `-batch.pdf`) to inspect the generated PDF. Check first, continuation, and final pages; all 1,000 batch codes must appear exactly once and the item subtotal once. Layout sections contain at most 50 rows and may span multiple printed pages; this does not limit exported data. Local benchmark: approximately 25 seconds before partitioning versus 4 seconds after (rendering only, not network/database time; hardware and content affect results).
 
 - Stock Aging grouping: confirm Item is selected by default. Switch to Batch and regenerate; identical batch codes across different items/warehouses in scope share one header and subtotal, while the detail column shows each item name/code. Confirm totals and row counts match Item mode, filters still apply, and switching grouping clears the old preview. Test a batch spanning more than 50 rows: repeated section headers are allowed, but the complete batch subtotal must appear once. Missing batch codes must remain separate by batch ID. English and Chinese grouping/subtotal/row-count labels must display correctly.
+
+### Inventory Report item picker
+
+- Open the Inventory Report preview. Verify six initial items plus **All Items**, more results on scroll, search by name or code, and the full name on item hover. Select an item and confirm the PDF and its row count include only that item's stock within the warehouse, category, and status filters. Choose **All Items** to clear the filter and prior preview.
+
+### Stock Reports item picker
+
+- Open **Stock Reports** and check the searchable Item picker in both Stock Movement and Stock Valuation. Verify six initial items, more on scroll, and full names on hover. Choose different items in each mode, verify that switching modes restores each selection, and confirm each PDF uses its selected item. Choose **All Items** to clear the current mode's item filter and previous preview.
+
+### Item Location Batch item picker
+
+- Open **Item Location Batch**. Verify six initial items, more on scroll, search by name or code, and full names on hover. Select an item and confirm Preview uses its exact ID along with the warehouse, grouping, and empty-batch settings. Choose **All Items** to clear the item filter and prior preview.
+
+### Fast-Moving and Slow-Moving Products item picker
+
+- Open each report and verify six initial items, more on scroll, search by name or code, and full names on hover. Select an eligible item and generate the PDF. Confirm the Item heading names the selected item and the rows, rank, and totals use that exact item with the date and category filters. Choose **All Items** to clear the filter and prior preview. Verify an item with no qualifying sales in Fast-Moving or no on-hand stock in Slow-Moving returns an empty report.
 
 ### Batch expiration during Move Stock
 
@@ -2017,7 +2034,7 @@ redistribute stock. Concurrent allocation or location edits must not create dupl
 Batch expiration editing: In **Inventory Items → Locations → Batches**, users with Items edit permission can choose **Edit Expiration**, enter a date or **Clear Date**, and **Save**. Cancel discards changes. The date belongs to the batch and applies to all its locations. The PATCH endpoint `/api/items/[id]/batch-locations/[batchLocationId]/expiration` accepts only `{ expirationDate: "YYYY-MM-DD" | null }`, validates company and business-unit access, and performs one batch update. Invalid dates, unavailable batches, and denied access return safe errors. Successful saves refresh active item location views and mark cached location pages and stock adjustments stale. Verify edits and clearing without reloading, permission denial, and that failed saves leave the dialog open for retry.
 
 
-Expired Batches report checks: Open **Reports → Inventory → Expired Batches**. Verify the Stock Aging-style settings sidebar and PDF placeholder, with no automatic report fetch or interactive table. Click Preview and verify Item/Batch grouping, conditional batch/item detail columns, per-unit group subtotals, search, category/warehouse filters, and PDF download/print. Only expiration dates before the selected date with positive on-hand stock qualify; test exhausted, future, same-day, and unset expiration dates. Confirm batches disappear immediately after clearing/changing expiration or exhausting stock. Check current-business-unit and company isolation, Reports permission denial, and safe 413 errors for more than 500 rows per group page or PDF. Run `supabase/tests/expired-batches-report.sql` against seeded local Supabase; all fixtures roll back. PDF render regression coverage is in `ExpiredBatchesReportPDF.test.tsx`.
+Expired Batches report checks: Open **Reports → Inventory → Expired Batches**. Verify the Stock Aging-style settings sidebar and PDF placeholder, with no automatic report fetch or interactive table. Open the Item picker and check six initial items plus **All Items**. Scroll to load more, search by item name or code, then select an item. Click Preview and verify the exact item filter in both grouping modes, conditional batch/item detail columns, per-unit group subtotals, category/warehouse filters, and PDF download/print. Choose **All Items** to clear the item filter. Only expiration dates before the selected date with positive on-hand stock qualify; test exhausted, future, same-day, and unset expiration dates. Confirm batches disappear immediately after clearing/changing expiration or exhausting stock. Check current-business-unit and company isolation, Reports permission denial, and safe 413 errors for more than 500 rows per group page or PDF. Run `supabase/tests/expired-batches-report.sql` against seeded local Supabase; all fixtures roll back. PDF render regression coverage is in `ExpiredBatchesReportPDF.test.tsx`.
 
 - Preferred-location deletion regression: assign an empty location as an item's preferred
   location, then delete it. Expect translated guidance to clear or reassign the preference;

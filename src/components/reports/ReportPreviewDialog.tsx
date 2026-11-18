@@ -8,7 +8,9 @@ import {
   REPORT_PREVIEW_FIELDS_CLASS_NAME,
 } from "./report-preview-layout";
 import { ExpiredBatchesReportPreview } from "./ExpiredBatchesReportPreview";
+import { ReportItemSelect } from "./ReportItemSelect";
 import type { StockAgingAgeBucket, StockAgingGroupBy } from "@/types/stock-aging-report";
+import type { ReportItemOption } from "@/types/report-item-options";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
@@ -65,7 +67,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ItemSelect } from "@/components/common/ItemSelect";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
@@ -148,8 +149,7 @@ function InventoryReportPreview({
   const tReports = useTranslations("reportsPage");
   const t = useTranslations("inventoryReportPage");
   const locale = useLocale();
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
+  const [selectedItem, setSelectedItem] = useState<ReportItemOption | null>(null);
   const [warehouseId, setWarehouseId] = useState("");
   const [selectedWarehouse, setSelectedWarehouse] = useState<LookupWarehouseOption | null>(null);
   const [category, setCategory] = useState("all");
@@ -161,13 +161,16 @@ function InventoryReportPreview({
       ? `${selectedWarehouse.code} - ${selectedWarehouse.name}`
       : selectedWarehouse.name
     : t("allWarehouses");
+  // The item picker filters by an exact id, so the report never receives a
+  // prose search term from this preview.
+  const itemId = selectedItem?.id;
 
   const reportQuery = useInventoryReport({
     enabled: false,
     page: 1,
     limit: PDF_REPORT_ROW_LIMIT,
     exportMode: "pdf",
-    search: search || undefined,
+    itemId,
     warehouseId: warehouseId || undefined,
     category: category === "all" ? undefined : category,
     stockStatus,
@@ -176,16 +179,8 @@ function InventoryReportPreview({
   });
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setSearch(searchInput.trim());
-    }, 300);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [searchInput]);
-
-  useEffect(() => {
     replacePreviewUrl(null);
-  }, [search, warehouseId, category, stockStatus, replacePreviewUrl]);
+  }, [itemId, warehouseId, category, stockStatus, replacePreviewUrl]);
 
   useEffect(() => {
     onPreviewStateChange({
@@ -257,11 +252,15 @@ function InventoryReportPreview({
         </div>
         <div className={REPORT_PREVIEW_FIELDS_CLASS_NAME}>
           <div className="space-y-2">
-            <label className="text-sm font-medium">{t("itemSearch")}</label>
-            <Input
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder={t("searchPlaceholder")}
+            <label htmlFor="inventory-report-item" className="text-sm font-medium">
+              {t("item")}
+            </label>
+            <ReportItemSelect
+              id="inventory-report-item"
+              value={selectedItem}
+              onValueChange={setSelectedItem}
+              enabled={open}
+              disabled={isGeneratingPreview}
             />
           </div>
           <div className="space-y-2">
@@ -344,34 +343,28 @@ function StockAgingReportPreview({
   const t = useTranslations("stockAgingReportPage");
   const [groupBy, setGroupBy] = useState<StockAgingGroupBy>("item");
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
+  const [selectedItem, setSelectedItem] = useState<ReportItemOption | null>(null);
   const [category, setCategory] = useState("all");
   const [ageBucket, setAgeBucket] = useState<StockAgingAgeBucket>("90_plus");
   const { previewUrl, isGeneratingPreview, setIsGeneratingPreview, replacePreviewUrl } =
     usePdfPreviewState(open);
+  // The item picker filters by an exact id, so the report never receives a
+  // prose search term from this preview.
+  const itemId = selectedItem?.id;
 
   const reportQuery = useStockAgingReport({
     enabled: false,
     exportMode: "pdf",
     groupBy,
-    search: search || undefined,
+    itemId,
     category: category === "all" ? undefined : category,
     ageBucket,
   });
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setSearch(searchInput.trim());
-    }, 300);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [searchInput]);
-
-  useEffect(() => {
     replacePreviewUrl(null);
     setPreviewError(null);
-  }, [search, category, ageBucket, groupBy, replacePreviewUrl]);
+  }, [itemId, category, ageBucket, groupBy, replacePreviewUrl]);
 
   useEffect(() => {
     onPreviewStateChange({
@@ -466,11 +459,15 @@ function StockAgingReportPreview({
             </Select>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">{t("itemSearch")}</label>
-            <Input
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder={t("searchPlaceholder")}
+            <label htmlFor="stock-aging-item" className="text-sm font-medium">
+              {t("item")}
+            </label>
+            <ReportItemSelect
+              id="stock-aging-item"
+              value={selectedItem}
+              onValueChange={setSelectedItem}
+              enabled={open}
+              disabled={isGeneratingPreview}
             />
           </div>
           <div className="space-y-2">
@@ -727,10 +724,10 @@ function ProductMovementReportPreview({
 }) {
   const tReports = useTranslations("reportsPage");
   const t = useTranslations("productMovementReportsPage");
+  const tItemSelect = useTranslations("inventoryItemSelect");
   const locale = useLocale();
   const { formatCurrency } = useCurrency();
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
+  const [selectedItem, setSelectedItem] = useState<ReportItemOption | null>(null);
   const [dateFrom, setDateFrom] = useState(
     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
   );
@@ -739,6 +736,9 @@ function ProductMovementReportPreview({
   const [selectedCategory, setSelectedCategory] = useState<ItemCategory | null>(null);
   const { previewUrl, isGeneratingPreview, setIsGeneratingPreview, replacePreviewUrl } =
     usePdfPreviewState(open);
+  // The item picker filters by an exact id, so the report never receives a
+  // prose search term from this preview.
+  const itemId = selectedItem?.id;
 
   const reportQuery = useProductMovementReport({
     enabled: false,
@@ -748,20 +748,12 @@ function ProductMovementReportPreview({
     dateFrom,
     dateTo,
     categoryId: categoryId === "all" ? undefined : categoryId,
-    search: search || undefined,
+    itemId,
   });
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setSearch(searchInput.trim());
-    }, 300);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [searchInput]);
-
-  useEffect(() => {
     replacePreviewUrl(null);
-  }, [categoryId, dateFrom, dateTo, movementType, replacePreviewUrl, search]);
+  }, [categoryId, dateFrom, dateTo, itemId, movementType, replacePreviewUrl]);
 
   useEffect(() => {
     onPreviewStateChange({
@@ -795,7 +787,6 @@ function ProductMovementReportPreview({
           generatedAtLabel={tReports("generatedAt")}
           periodLabel={t("period")}
           categoryLabel={t("category")}
-          searchLabel={t("search")}
           allCategoriesLabel={t("allCategories")}
           noValueLabel={t("noValue")}
           rankLabel={t("rank")}
@@ -820,7 +811,11 @@ function ProductMovementReportPreview({
           })}
           periodValue={`${dateFrom} - ${dateTo}`}
           categoryValue={selectedCategory?.name || null}
-          searchValue={search || null}
+          itemFilterValue={
+            selectedItem
+              ? `${selectedItem.name} (${selectedItem.code})`
+              : tItemSelect("allItems")
+          }
           totalProductsValue={formatNumber(data.summary.rowCount)}
           totalQtySoldValue={formatNumber(data.summary.totalQuantitySold, 2)}
           totalRevenueValue={formatCurrency(data.summary.totalRevenue)}
@@ -846,11 +841,15 @@ function ProductMovementReportPreview({
         </div>
         <div className={REPORT_PREVIEW_FIELDS_CLASS_NAME}>
           <div className="space-y-2">
-            <label className="text-sm font-medium">{t("search")}</label>
-            <Input
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder={t("searchPlaceholder")}
+            <label htmlFor="product-movement-report-item" className="text-sm font-medium">
+              {t("item")}
+            </label>
+            <ReportItemSelect
+              id="product-movement-report-item"
+              value={selectedItem}
+              onValueChange={setSelectedItem}
+              enabled={open}
+              disabled={isGeneratingPreview}
             />
           </div>
           <div className="space-y-2">
@@ -1400,15 +1399,19 @@ function StockReportsPreview({
   );
   const [movementEndDate, setMovementEndDate] = useState(new Date().toISOString().slice(0, 10));
   const [movementWarehouseId, setMovementWarehouseId] = useState("all");
-  const [movementItemId, setMovementItemId] = useState("all");
+  const [movementItem, setMovementItem] = useState<ReportItemOption | null>(null);
   const [movementGroupBy, setMovementGroupBy] = useState<StockMovementGroupBy>("item");
   const [valuationWarehouseId, setValuationWarehouseId] = useState("all");
-  const [valuationItemId, setValuationItemId] = useState("all");
+  const [valuationItem, setValuationItem] = useState<ReportItemOption | null>(null);
   const [valuationCategory, setValuationCategory] = useState("all");
   const [valuationGroupBy, setValuationGroupBy] = useState<StockValuationGroupBy>("item");
-  const { data: itemsData } = useItems({ limit: 50 });
+  // Only the valuation Category filter still needs the item page, so movement
+  // never pays for that request.
+  const { data: itemsData } = useItems({
+    limit: 50,
+    enabled: open && reportMode === "valuation",
+  });
   const { data: warehousesData } = useWarehouses({ limit: 50 });
-  const items = itemsData?.data ?? [];
   const warehouses = warehousesData?.data || [];
   const categories = useMemo(
     () => Array.from(new Set((itemsData?.data ?? []).map((item) => item.category).filter(Boolean))),
@@ -1416,19 +1419,23 @@ function StockReportsPreview({
   );
   const { previewUrl, isGeneratingPreview, setIsGeneratingPreview, replacePreviewUrl } =
     usePdfPreviewState(open);
+  // Each picker filters by an exact id, so neither report receives a prose
+  // search term from this preview.
+  const movementItemId = movementItem?.id;
+  const valuationItemId = valuationItem?.id;
 
   const movementQuery = useStockMovement({
     enabled: false,
     startDate: movementStartDate,
     endDate: movementEndDate,
     warehouseId: movementWarehouseId === "all" ? undefined : movementWarehouseId,
-    itemId: movementItemId === "all" ? undefined : movementItemId,
+    itemId: movementItemId,
     groupBy: movementGroupBy,
   });
   const valuationQuery = useStockValuation({
     enabled: false,
     warehouseId: valuationWarehouseId === "all" ? undefined : valuationWarehouseId,
-    itemId: valuationItemId === "all" ? undefined : valuationItemId,
+    itemId: valuationItemId,
     category: valuationCategory === "all" ? undefined : valuationCategory,
     groupBy: valuationGroupBy,
   });
@@ -1615,20 +1622,16 @@ function StockReportsPreview({
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">{t("item")}</label>
-                <Select value={movementItemId} onValueChange={setMovementItemId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("allItems")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t("allItems")}</SelectItem>
-                    {items.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.code} - {item.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <label htmlFor="stock-movement-report-item" className="text-sm font-medium">
+                  {t("item")}
+                </label>
+                <ReportItemSelect
+                  id="stock-movement-report-item"
+                  value={movementItem}
+                  onValueChange={setMovementItem}
+                  enabled={open}
+                  disabled={isGeneratingPreview}
+                />
               </div>
             </>
           ) : (
@@ -1667,20 +1670,16 @@ function StockReportsPreview({
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">{t("item")}</label>
-                <Select value={valuationItemId} onValueChange={setValuationItemId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("allItems")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t("allItems")}</SelectItem>
-                    {items.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.code} - {item.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <label htmlFor="stock-valuation-report-item" className="text-sm font-medium">
+                  {t("item")}
+                </label>
+                <ReportItemSelect
+                  id="stock-valuation-report-item"
+                  value={valuationItem}
+                  onValueChange={setValuationItem}
+                  enabled={open}
+                  disabled={isGeneratingPreview}
+                />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t("category")}</label>
@@ -1751,7 +1750,7 @@ function ItemLocationBatchReportPreview({
     };
   }, [open]);
   const [warehouseId, setWarehouseId] = useState("all");
-  const [itemId, setItemId] = useState("all");
+  const [selectedItem, setSelectedItem] = useState<ReportItemOption | null>(null);
   const [groupBy, setGroupBy] = useState<"item" | "batch">("item");
   const [includeEmptyBatches, setIncludeEmptyBatches] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -1759,12 +1758,15 @@ function ItemLocationBatchReportPreview({
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const { previewUrl, isGeneratingPreview, setIsGeneratingPreview, replacePreviewUrl } =
     usePdfPreviewState(open);
+  // The item picker filters by an exact id, so the report never receives a
+  // prose search term from this preview.
+  const itemId = selectedItem?.id;
 
   const reportQuery = useItemLocationBatchReport({
     enabled: false,
     locale,
     warehouseId: warehouseId === "all" ? undefined : warehouseId,
-    itemId: itemId === "all" ? undefined : itemId,
+    itemId,
     groupBy,
     includeEmptyBatches,
   });
@@ -1865,11 +1867,15 @@ function ItemLocationBatchReportPreview({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">{t("item")}</label>
-            <ItemSelect
-              value={itemId === "all" ? "" : itemId}
-              onValueChange={(value) => setItemId(value || "all")}
-              allowAll
+            <label htmlFor="item-location-batch-item" className="text-sm font-medium">
+              {t("item")}
+            </label>
+            <ReportItemSelect
+              id="item-location-batch-item"
+              value={selectedItem}
+              onValueChange={setSelectedItem}
+              enabled={open}
+              disabled={isGeneratingPreview}
             />
           </div>
           <div className="space-y-2">

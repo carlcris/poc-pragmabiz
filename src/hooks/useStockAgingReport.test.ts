@@ -31,6 +31,23 @@ it("sends explicit PDF mode and filters without unwrapping the report response",
   expect(url.searchParams.has("limit")).toBe(false);
   expect(state.options?.queryKey[1]).toMatchObject({ exportMode: "pdf" });
 });
+it("sends the picked item as an exact id and keys the query by it", async () => {
+  const itemId = "6f1a0c6e-1d4b-4f6a-9d2e-8a7c5b3e1f04";
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValue({ ok: true, json: async () => ({ data: [], pagination: { total: 0 } }) });
+  vi.stubGlobal("fetch", fetchMock);
+  useStockAgingReport({ exportMode: "pdf", itemId });
+  await state.options?.queryFn();
+  const url = new URL(fetchMock.mock.calls[0][0], "http://localhost");
+  expect(url.searchParams.get("itemId")).toBe(itemId);
+  // The item picker replaced the Stock Aging prose search box, so an unrequested
+  // `search` term must never be inferred from the selected item.
+  expect(url.searchParams.has("search")).toBe(false);
+  // Two selected items must not share a cached report, so the id has to reach
+  // the query key rather than only the request URL.
+  expect(state.options?.queryKey[1]).toMatchObject({ itemId });
+});
 it("preserves the status for translated oversized-report feedback without exposing server text", async () => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 413 }));
   useStockAgingReport({ exportMode: "pdf" });

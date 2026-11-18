@@ -1,9 +1,18 @@
 // Shared shell for every report preview dialog: settings panel beside the PDF preview.
-// The arbitrary grid tracks are intentional: Tailwind's presets have no fixed-width
-// sidebar column, and minmax(0,1fr) lets the preview shrink instead of overflowing
-// the dialog. Phones stack the settings above a preview row that fills the rest.
+// The arbitrary grid tracks are intentional: Tailwind has no preset for a flexible
+// sidebar next to a capped PDF viewport. The 66rem (1056px) cap on the preview track
+// is sized around the viewer's native 90% zoom: every generated report is landscape
+// A4 (841.89pt), so the page renders about 1010 CSS px wide in Chrome, and the
+// remaining ~46px covers the browser viewer's page insets, border, and vertical
+// scrollbar. Capping the preview there hands the leftover dialog width to the
+// settings track, which grows from 18rem (w-72) to about 370px at full width.
+// minmax(0,...) lets the preview shrink within narrower side-by-side widths instead
+// of overflowing. Phones stack the settings above the preview in two equal bounded
+// rows: an auto settings row would claim its full content height and leave the
+// preview no space, so each row takes half the dialog body and the settings fields
+// scroll inside their own scroll region.
 export const REPORT_PREVIEW_GRID_CLASS_NAME =
-  "grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-6 md:grid-cols-[280px_minmax(0,1fr)] md:grid-rows-1";
+  "grid h-full min-h-0 grid-cols-1 grid-rows-2 gap-6 md:grid-cols-[minmax(18rem,1fr)_minmax(0,66rem)] md:grid-rows-1";
 export const REPORT_PREVIEW_SETTINGS_CLASS_NAME =
   "flex min-h-0 flex-col rounded-lg border bg-muted/20 p-4 md:h-full";
 export const REPORT_PREVIEW_ACTIONS_CLASS_NAME = "shrink-0 pt-4 md:pt-6";

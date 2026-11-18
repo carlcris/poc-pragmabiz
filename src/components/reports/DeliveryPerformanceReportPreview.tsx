@@ -22,6 +22,13 @@ import {
   ReportPreviewFrame,
   useReportPdfPreviewState,
 } from "@/components/reports/ReportPreviewFrame";
+import {
+  REPORT_PREVIEW_ACTIONS_CLASS_NAME,
+  REPORT_PREVIEW_CONTENT_CLASS_NAME,
+  REPORT_PREVIEW_FIELDS_CLASS_NAME,
+  REPORT_PREVIEW_GRID_CLASS_NAME,
+  REPORT_PREVIEW_SETTINGS_CLASS_NAME,
+} from "./report-preview-layout";
 
 type DeliveryPerformanceReportPreviewProps = {
   open: boolean;
@@ -164,12 +171,12 @@ export function DeliveryPerformanceReportPreview({
   };
 
   return (
-    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-4">
-      <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
+    <div className={REPORT_PREVIEW_GRID_CLASS_NAME}>
+      <div className={REPORT_PREVIEW_SETTINGS_CLASS_NAME}>
         <div className="space-y-1">
           <h3 className="font-semibold">{tReports("reportSettings")}</h3>
         </div>
-        <div className="mt-4 space-y-4">
+        <div className={REPORT_PREVIEW_FIELDS_CLASS_NAME}>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("startDate")}</label>
             <Input
@@ -237,7 +244,7 @@ export function DeliveryPerformanceReportPreview({
             <p className="text-sm text-destructive">{t("invalidDateRange")}</p>
           )}
         </div>
-        <div className="mt-auto pt-6">
+        <div className={REPORT_PREVIEW_ACTIONS_CLASS_NAME}>
           <Button
             className="w-full"
             onClick={handlePreview}
@@ -253,7 +260,7 @@ export function DeliveryPerformanceReportPreview({
         </div>
       </div>
 
-      <div className="flex h-full min-h-0 flex-col gap-4 lg:col-span-3">
+      <div className={REPORT_PREVIEW_CONTENT_CLASS_NAME}>
         <ReportPreviewFrame
           url={previewUrl}
           isGenerating={isGeneratingPreview}

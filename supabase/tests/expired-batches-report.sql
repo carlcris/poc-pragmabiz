@@ -34,9 +34,29 @@ BEGIN
   result := public.get_expired_batches_report(c.company_id,'2026-11-10',c.business_unit_id,c.warehouse_id,NULL,c.prefix,'batch',2,1);
   second_key := result->'data'->0->>'groupKey';
   IF first_key = second_key OR jsonb_array_length(result->'data') <> 2 THEN RAISE EXCEPTION 'Second whole group page failed'; END IF;
-  result := public.get_expired_batches_report(c.company_id,'2026-11-10',gen_random_uuid(),NULL,NULL,c.prefix);
+  result := public.get_expired_batches_report(
+    c.company_id, '2026-11-10', c.business_unit_id, c.warehouse_id,
+    p_search => c.prefix, p_group_by => 'batch', p_item_id => c.item_id
+  );
+  IF (result->>'totalRows')::INT <> 2 OR (result->>'pageRows')::INT <> 2
+    OR (result->'pagination'->>'total')::INT <> 2 OR jsonb_array_length(result->'data') <> 2
+    OR EXISTS (
+      SELECT 1 FROM jsonb_array_elements(result->'data') AS batch(row_data)
+      WHERE row_data->>'itemId' IS DISTINCT FROM c.item_id::TEXT
+    )
+  THEN RAISE EXCEPTION 'Selected item returned other items or incorrect batch group counts: %', result; END IF;
+  result := public.get_expired_batches_report(
+    c.company_id, '2026-11-10', c.business_unit_id, c.warehouse_id, p_item_id => gen_random_uuid()
+  );
+  IF (result->>'totalRows')::INT <> 0 OR jsonb_array_length(result->'data') <> 0
+  THEN RAISE EXCEPTION 'Missing selected item should return no rows'; END IF;
+  result := public.get_expired_batches_report(
+    c.company_id, '2026-11-10', gen_random_uuid(), NULL, NULL, c.prefix, p_item_id => c.item_id
+  );
   IF (result->>'totalRows')::INT <> 0 THEN RAISE EXCEPTION 'Business unit scope failed'; END IF;
-  result := public.get_expired_batches_report(gen_random_uuid(),'2026-11-10',NULL,NULL,NULL,c.prefix);
+  result := public.get_expired_batches_report(
+    gen_random_uuid(), '2026-11-10', NULL, NULL, NULL, c.prefix, p_item_id => c.item_id
+  );
   IF (result->>'totalRows')::INT <> 0 THEN RAISE EXCEPTION 'Company scope failed'; END IF;
   result := public.get_expired_batches_report(c.company_id,'2026-11-10',c.business_unit_id,NULL,gen_random_uuid(),c.prefix);
   IF (result->>'totalRows')::INT <> 0 THEN RAISE EXCEPTION 'Category filter failed'; END IF;
@@ -47,6 +67,6 @@ BEGIN
   IF (result->>'pageRows')::INT <> 502 OR jsonb_array_length(result->'data') <> 501 THEN
     RAISE EXCEPTION 'Bounded response or complete oversized group count failed';
   END IF;
-  RAISE NOTICE 'Passed: expired stocked batches only, item/batch grouping, whole-group pages, company/BU scope, category filter';
+  RAISE NOTICE 'Passed: expired stocked batches only, item/batch grouping, whole-group pages, company/BU scope, item and category filtering';
 END $$;
 ROLLBACK;

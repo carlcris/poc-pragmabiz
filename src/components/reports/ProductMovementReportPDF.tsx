@@ -16,7 +16,6 @@ type ProductMovementReportPDFProps = {
   generatedAtLabel: string;
   periodLabel: string;
   categoryLabel: string;
-  searchLabel: string;
   allCategoriesLabel: string;
   noValueLabel: string;
   rankLabel: string;
@@ -37,7 +36,8 @@ type ProductMovementReportPDFProps = {
   pageSummary: string;
   periodValue: string;
   categoryValue: string | null;
-  searchValue: string | null;
+  /** The selected item filter, or the All Items label when none is selected. */
+  itemFilterValue: string;
   totalProductsValue: string;
   totalQtySoldValue: string;
   totalRevenueValue: string;
@@ -193,7 +193,6 @@ export const ProductMovementReportPDF = ({
   generatedAtLabel,
   periodLabel,
   categoryLabel,
-  searchLabel,
   allCategoriesLabel,
   noValueLabel,
   rankLabel,
@@ -214,7 +213,7 @@ export const ProductMovementReportPDF = ({
   pageSummary,
   periodValue,
   categoryValue,
-  searchValue,
+  itemFilterValue,
   totalProductsValue,
   totalQtySoldValue,
   totalRevenueValue,
@@ -245,8 +244,8 @@ export const ProductMovementReportPDF = ({
             <Text style={styles.value}>{categoryValue || allCategoriesLabel}</Text>
           </View>
           <View style={styles.filterItem}>
-            <Text style={styles.label}>{searchLabel}</Text>
-            <Text style={styles.value}>{searchValue || noValueLabel}</Text>
+            <Text style={styles.label}>{itemLabel}</Text>
+            <Text style={styles.value}>{itemFilterValue}</Text>
           </View>
         </View>
       </View>

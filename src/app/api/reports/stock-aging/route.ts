@@ -1,9 +1,10 @@
-import type { StockAgingReportRow } from "@/types/stock-aging-report";
+import type { StockAgingReportResponse, StockAgingReportRow } from "@/types/stock-aging-report";
 import { fetchStockAgingLocationPaths } from "@/lib/reports/stock-aging-location-paths";
 import { calculateStockAge } from "@/lib/reports/stock-aging-age";
 import { groupStockAgingRows } from "@/lib/reports/stock-aging-groups";
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -96,6 +97,7 @@ type StockAgingRowSource = {
 type AgeBucket = "all" | "0_30" | "31_60" | "61_90" | "91_180" | "181_plus" | "90_plus";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const itemIdSchema = z.uuid();
 const MAX_SOURCE_ROWS = 5000;
 const SOURCE_PAGE_SIZE = 1000;
 
@@ -127,8 +129,13 @@ async function GETHandler(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.REPORTS, "view");
     if (unauthorized) return unauthorized;
 
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
     const { searchParams } = new URL(request.url);
+    const itemId = searchParams.get("itemId");
+    if (itemId !== null && !itemIdSchema.safeParse(itemId).success) {
+      return NextResponse.json({ error: "Invalid stock aging item filter" }, { status: 400 });
+    }
+
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     const {
       data: { user },
@@ -208,6 +215,10 @@ async function GETHandler(request: NextRequest) {
       .is("deleted_at", null)
       .gt("qty_on_hand", 0);
 
+    if (itemId) {
+      query = query.eq("item_id", itemId);
+    }
+
     if (categoryFilter) {
       if (UUID_REGEX.test(categoryFilter)) {
         query = query.eq("item.category_id", categoryFilter);
@@ -228,7 +239,7 @@ async function GETHandler(request: NextRequest) {
         }
 
         if (!categoryData?.id) {
-          return NextResponse.json({
+          return NextResponse.json<StockAgingReportResponse>({
             data: [],
             groups: [],
             summary: {
@@ -246,6 +257,7 @@ async function GETHandler(request: NextRequest) {
             pagination: { page, limit, total: 0, totalPages: 1 },
             filters: {
               search: search || null,
+              itemId,
               category: categoryFilter,
               ageBucket,
               groupBy,
@@ -275,7 +287,10 @@ async function GETHandler(request: NextRequest) {
       }
       if (result.count > MAX_SOURCE_ROWS) {
         return NextResponse.json(
-          { error: "Stock aging report is too large. Narrow the category or business-unit scope." },
+          {
+            error:
+              "Stock aging report is too large. Choose an item or narrow the category or business-unit scope.",
+          },
           { status: 413 }
         );
       }
@@ -409,7 +424,7 @@ async function GETHandler(request: NextRequest) {
     for (const row of reportRows) row.locationPath = namePaths.get(row.locationId) || null;
 
     const exportGroups = exportMode === "pdf" ? groupStockAgingRows(sortedRows, groupBy) : null;
-    return NextResponse.json({
+    return NextResponse.json<StockAgingReportResponse>({
       data: exportGroups?.data ?? pagedRows,
       groups: exportGroups?.groups ?? [],
       summary: {
@@ -434,6 +449,7 @@ async function GETHandler(request: NextRequest) {
       },
       filters: {
         search: search || null,
+        itemId,
         category: categoryFilter || null,
         ageBucket,
         groupBy,

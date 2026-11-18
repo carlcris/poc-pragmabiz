@@ -110,7 +110,14 @@ Widgets have granular capabilities:
 The Reports directory displays available and in-development reports only. Report definitions
 marked as coming soon remain hidden until their implementation is ready for users.
 
+The shared report preview opens PDFs at 90% zoom when the browser's PDF viewer supports it.
+On wider screens, the preview panel is sized to fit the landscape page at 90%, giving the
+remaining space to the report settings. On phones, the settings and the preview stack, and
+the PDF can scroll within its panel.
+
 ### Inventory Reports
+
+In **Stock Reports**, both Stock Movement and Stock Valuation use the searchable Item picker. It loads six items initially and fetches more as you scroll. Search by name or code, or hover over an item to read its full name. Each mode keeps its own item selection. Choose **All Items** to clear that mode's filter.
 
 #### Stock Valuation Report
 **Endpoint**: `GET /api/reports/stock-valuation`
@@ -118,8 +125,10 @@ marked as coming soon remain hidden until their implementation is ready for user
 Shows total inventory value by warehouse using the configured inventory default pricing tier for item valuation, with item sales price and purchase price fallback when no active default-tier item price exists.
 
 **Parameters**:
-- `warehouse_id` (optional) - Filter by warehouse
-- `as_of_date` (optional) - Valuation as of date
+- `warehouseId` (optional, filters by warehouse)
+- `itemId` (optional, filters by exact item UUID)
+- `category` (optional, category ID or name)
+- `groupBy` (optional, `item`, `warehouse`, `category`, or `item-warehouse`)
 
 **Output**:
 ```json
@@ -150,11 +159,17 @@ Available from **Reports → Inventory → Expired Batches**. Includes only non-
 
 The report follows Stock Aging’s left settings panel and right PDF preview layout. No report data is fetched until Preview is clicked; there is no interactive result table or pagination control. Changing filters clears the prior preview. PDF detail columns show batches in Item mode and item code/name in Batch mode. Group headings repeat across pages; each group ends with quantity subtotals per base unit. Empty results generate an explicit empty-report PDF.
 
-Users can group by Item (default) or Batch and filter by warehouse, category, and item code/name or batch-code search. Batch grouping combines the same batch code across items and warehouses within the permitted scope. Rows show item, warehouse, batch, expiration, days expired, on-hand/reserved/available quantities, and base unit. Groups are ordered by label/key; rows within groups by expiration and batch ID. No quantities across different units are summed.
+Users can group by Item (default) or Batch and filter by item, warehouse, and category. Batch grouping combines the same batch code across items and warehouses within the permitted scope. Rows show item, warehouse, batch, expiration, days expired, on-hand/reserved/available quantities, and base unit. Groups are ordered by label/key; rows within groups by expiration and batch ID. No quantities across different units are summed.
 
-`GET /api/reports/expired-batches` requires Reports view permission before report work. It calls invoker RPC `get_expired_batches_report`, applying company, accessible-business-unit membership, and selected-business-unit scope. `asOf=YYYY-MM-DD` is required; `groupBy=item|batch` defaults to item. Optional filters: `warehouseId`, `categoryId`, `search` (100 characters). Normal `page`/`limit` paginate complete groups, default 20 and maximum 50 groups. Each response is bounded to 500 batch rows; oversized pages return safe HTTP 413 requiring narrower filters. `exportMode=pdf` exports all matching groups from page one, with an explicit 500-row cap and HTTP 413 instead of partial output. PDF preview supports the shared download/print actions and repeats group labels across PDF pages.
+The Item and Category pickers each load six results initially and fetch more as you scroll. Search for items by code or name and categories by name. Choosing an item filters the report to that exact item, including in Batch grouping. **All Items** and **All Categories** clear their respective filters.
 
-The report query key includes business-unit context and all filters. Expiration edits and relevant inventory mutations invalidate the report cache; preview URLs are cleared when invalidated. Migration `20261110110000_expired_batches_report.sql` adds the RPC and partial company/expiration index. Authenticated SQL tests: `supabase/tests/expired-batches-report.sql`.
+Hover over an item in the open Item picker to see its full name before selecting it.
+
+`GET /api/reports/expired-batches` requires Reports view permission before report work. It calls invoker RPC `get_expired_batches_report`, applying company, accessible-business-unit membership, and selected-business-unit scope. `asOf=YYYY-MM-DD` is required; `groupBy=item|batch` defaults to item. Optional filters: `itemId` (exact UUID), `warehouseId`, `categoryId`, and `search` (up to 100 characters, matching item code/name or batch code). Normal `page`/`limit` paginate complete groups, default 20 and maximum 50 groups. Each response is bounded to 500 batch rows; oversized pages return safe HTTP 413 requiring narrower filters. `exportMode=pdf` exports all matching groups from page one, with an explicit 500-row cap and HTTP 413 instead of partial output. PDF preview supports the shared download/print actions and repeats group labels across PDF pages.
+
+The Item pickers in Stock Reports, Expired Batches, Stock Aging, Inventory Report, Item Location Batch, and Fast- and Slow-Moving Products use `GET /api/reports/item-options`. It requires Reports view permission and returns company item IDs, codes and names, including inactive items that may still have stock. It accepts `search`, `page` and `limit` (default 6, maximum 50), sorts by item name then ID, and returns `{ data, hasMore }`.
+
+The report query key includes business-unit context and all filters. Expiration edits and relevant inventory mutations invalidate the report cache; preview URLs are cleared when invalidated. Migration `20261110110000_expired_batches_report.sql` adds the RPC and partial company/expiration index. Migration `20261118053000_expired_batches_report_item_filter.sql` adds exact item filtering before grouping. Authenticated SQL tests: `supabase/tests/expired-batches-report.sql`.
 
 
 #### Stock Aging Report
@@ -162,23 +177,32 @@ The report query key includes business-unit context and all filters. Expiration 
 
 Shows positive, non-deleted location-batch stock balances in the current business unit, grouped by item (default) or batch code in the PDF. Items without positive location-batch stock are excluded.
 
+The Item picker loads six options initially and loads more as you scroll. Search by item code or name. Each option shows the name above the code, and hovering shows the full name before selection. Select **All Items** to clear the item filter.
+
 **Parameters**:
 - `page` / `limit` (optional; normal responses default to 25 rows and allow 10–50 rows per page)
 - `exportMode=pdf` (optional; returns all matching rows in one response, ignoring `page` and `limit`)
 - `groupBy=item|batch` (optional, defaults to `item`; invalid values return `400`)
+- `itemId` (optional, filters by exact item UUID; invalid values return `400`)
 - `search` (optional, matches item code/name, batch code, or batch-location scan code)
 - `category` (optional, category id or name)
 - `ageBucket` (optional, defaults to `90_plus`, meaning strictly older than 90 days)
 
 **Age Buckets**: `all`, `0_30`, `31_60`, `61_90`, `91_180`, `181_plus`, `90_plus`
 
-Company, business-unit, category, positive quantity, and non-deleted balance filters apply in the database. The API reads source rows in stable ID order in batches of up to 1,000, advancing by the actual returned row count so a lower Supabase response cap cannot silently truncate the report. An exact count verifies completeness; source-count changes during retrieval return `409` and require retrying.
+Company, business-unit, item, category, positive quantity, and non-deleted balance filters apply in the database. The API reads source rows in stable ID order in batches of up to 1,000, advancing by the actual returned row count so a lower Supabase response cap cannot silently truncate the report. An exact count verifies completeness; source-count changes during retrieval return `409` and require retrying.
 
-The existing safety ceiling is **5,000 source location-batch rows**, before search and age filtering. Requests above that ceiling return `413` without partial data. Narrow the category or business-unit scope; changing search or age filters does not reduce the source count. Accepted requests apply search, aging, sorting, summaries, and pagination on the server across the complete source dataset.
+The safety ceiling is **5,000 source location-batch rows**, after item and category filtering and before text search and age filtering. Requests above that ceiling return `413` without partial data. Choose an item, narrow the category, or switch business units to reduce the source count. Accepted requests apply search, aging, sorting, summaries, and pagination on the server across the complete source dataset.
 
 PDF preview/download uses `exportMode=pdf`, including every matching row for an accepted request, rather than only the first 50 rows. Groups are ordered by their oldest stock age descending, and rows within each group are ordered by age descending. Normal paginated API rows are also sorted by age descending before pagination. Each group subtotal includes all its matching location-batch rows. Batch mode combines identical batch codes across items and warehouses within the filtered business-unit scope, including shared opening-balance codes. Missing batch codes remain separate by batch ID. Batch headers show the batch code; detail rows show item name/code and receipt date. Item mode retains item headers and batch details. Oversized and failed requests show a translated error and clear the previous preview. The warehouse/location cell shows the warehouse name only, with the full ancestor-to-leaf location-name path underneath. Warehouse and location codes are omitted, and the warehouse name is not repeated in the subtext. `locationPath` contains this names-only location address, resolved from hierarchy IDs with deduplicated, bounded ancestor queries. PDF columns show warehouse/location, batch or item details, age, on-hand/reserved/available quantities, and stock value; Updated At is not displayed. The age column shows total elapsed days with smaller calendar year/month/day subtext, calculated server-side from the batch receipt timestamp to one shared report-time snapshot. Calendar arithmetic uses UTC, actual month lengths, and leap years; month-end anniversaries clamp to the last day of shorter months. Remaining partial days are not counted. For example, 2025-01-01 to 2026-02-04 is 399 days and `1 y 1 m 3 d`. Missing/invalid receipt dates show `--` for the duration; future receipts show zero age. Zero-valued units are omitted from the localized subtext (for example, `3 m 4 d`); an entirely zero duration displays `0 d`. Calendar components are supplied as `batchAgeDuration`; sorting still uses total age in days. Group stock-row counts appear beneath the subtotal label. PDF footers show actual printed page numbers and the matching row count. PDF layout is processed in sections of at most 50 stock rows to avoid repeatedly laying out a report-sized table. These are layout sections, not data limits: every matching row remains included, group headings repeat for continued sections, and each group subtotal appears only after its final section. Long content can still wrap onto additional printed pages. PDF libraries load concurrently with the data request.
 
 **Response**: `{ data, groups, summary, pagination, filters }`. PDF mode includes server-computed `groups`: group ID, title/subtitle, `startIndex` and `rowCount` into the returned `data` array, quantity/value subtotals, and oldest age. Rows are serialized only once. Normal paginated requests return an empty `groups` array; `filters.groupBy` records the selected mode. `data` contains location-batch rows with item, warehouse/location, receipt date, age, quantities, and stock value. `summary` covers all matching rows. Normal requests paginate `data`; PDF mode returns all matches with `pagination.page = 1`, `limit = 5000`, and `totalPages = 1` (API pages, not printed PDF pages).
+
+#### Fast-Moving and Slow-Moving Products
+
+Both previews use the same Item picker. It loads six items initially and loads more on scroll. Search by name or code, and hover over a row to see its full name before selection. Choose **All Items** to clear the filter. The PDF lists the selected item alongside the period and category.
+
+`GET /api/reports/product-movement` requires Reports view permission. `movementType=fast|slow` selects the report. Optional filters include `itemId` (exact UUID), `categoryId`, `dateFrom`, `dateTo`, and API text `search`. An invalid item ID returns HTTP 400. The database applies the item filter before aggregating sales and stock, ranking, computing totals, and paging. Fast-moving results require sales in the period, and slow-moving results require stock on hand. The selected item still needs to meet the report's criteria and existing company and business-unit scope. Normal pages contain up to 50 items; PDF Preview requests the first page of up to 50.
 
 #### Stock Movement Report
 **Endpoint**: `GET /api/reports/stock-movement`
@@ -186,10 +210,10 @@ PDF preview/download uses `exportMode=pdf`, including every matching row for an 
 Shows all stock transactions for a period.
 
 **Parameters**:
-- `start_date`, `end_date` (required)
-- `warehouse_id` (optional)
-- `item_id` (optional)
-- `transaction_type` (optional)
+- `startDate`, `endDate` (optional date bounds, `YYYY-MM-DD`)
+- `warehouseId` (optional, filters by warehouse)
+- `itemId` (optional, filters by exact item UUID)
+- `groupBy` (optional, `item`, `warehouse`, or `item-warehouse`)
 
 **Output**:
 ```json
@@ -212,13 +236,16 @@ Shows all stock transactions for a period.
 #### Inventory Report (Current Stock)
 **Endpoint**: `GET /api/reports/inventory`
 
-Current stock levels with location and batch details.
+Current stock levels by item and warehouse. The Item picker starts with six items, searches by code or name, and loads more as you scroll. Hover over an item to read its full name before selecting it. The report counts and displays rows for the exact selected item. Choose **All Items** to clear the filter.
 
 **Parameters**:
-- `warehouse_id` (optional)
-- `category_id` (optional)
-- `show_locations` (boolean) - Include location-level detail
-- `show_zero_stock` (boolean) - Include items with zero stock
+- `itemId` (optional, exact item UUID; invalid values return `400`)
+- `warehouseId` (optional, warehouse UUID)
+- `category` (optional, category ID or name)
+- `search` (optional, API text search by item code or name)
+- `stockStatus` (optional, `all`, `on_hand`, `available`, `allocated`, or `zero`)
+- `sortBy` / `sortOrder` (optional; default `updated_at` descending)
+- `page` / `limit` (optional; default 25 rows, maximum 50 normally or 500 with `exportMode=pdf`)
 
 ### Sales Reports
 
@@ -748,7 +775,9 @@ Available subtotals, computed over all matching location rows on the server. Sub
 once at the true group end even across PDF rendering jobs/pages. The PDF omits the Updated column. Missing batch codes remain separate
 by batch identity. The API groups
 the complete bounded export before PDF chunking, so a group is never fragmented by fetch order.
-Warehouse and item selectors query the server with five initial results and support lookup search.
+The Warehouse picker searches the server and loads five initial results. The Item picker loads six
+initial items and fetches more as you scroll. Search by item code or name, or hover over an item to
+read its full name. Select **All Items** to clear the exact item filter.
 
 **Include empty batches** is unchecked by default. Unchecked reports include only location/batch
 records with positive on-hand quantity; checking it also includes existing zero-on-hand records.

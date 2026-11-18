@@ -3,6 +3,7 @@ export type ExpiredBatchesFilters = {
   asOf: string;
   groupBy: ExpiredBatchesGroupBy;
   search?: string;
+  itemId?: string;
   warehouseId?: string;
   categoryId?: string;
   page?: number;

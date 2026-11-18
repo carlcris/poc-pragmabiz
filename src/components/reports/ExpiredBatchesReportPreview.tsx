@@ -15,8 +15,10 @@ import { useExpiredBatchesReport } from "@/hooks/useExpiredBatchesReport";
 import { EXPIRED_BATCHES_REPORT_QUERY_KEY } from "@/hooks/queryKeys";
 import { getApiErrorCode } from "@/lib/api";
 import type { ExpiredBatchesGroupBy } from "@/types/expired-batches-report";
+import type { ReportItemOption } from "@/types/report-item-options";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import { ItemCategorySelect } from "@/components/items/ItemCategorySelect";
+import { ReportItemSelect } from "./ReportItemSelect";
 import { Eye, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,18 +50,18 @@ export function ExpiredBatchesReportPreview({ open, reportName, onPreviewStateCh
   const businessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
   const [asOf, setAsOf] = useState(format(new Date(), "yyyy-MM-dd"));
   const [groupBy, setGroupBy] = useState<ExpiredBatchesGroupBy>("item");
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
+  const [selectedItem, setSelectedItem] = useState<ReportItemOption | null>(null);
   const [warehouseId, setWarehouseId] = useState("");
   const [categoryId, setCategoryId] = useState("all");
   const [error, setError] = useState("");
   const previewVersion = useRef(0);
   const { previewUrl, isGeneratingPreview, setIsGeneratingPreview, replacePreviewUrl } =
     useReportPdfPreviewState(open);
+  const itemId = selectedItem?.id;
   const filters = {
     asOf,
     groupBy,
-    search: search || undefined,
+    itemId,
     warehouseId: warehouseId || undefined,
     categoryId: categoryId === "all" ? undefined : categoryId,
   };
@@ -84,19 +86,13 @@ export function ExpiredBatchesReportPreview({ open, reportName, onPreviewStateCh
     empty: t("empty"),
   };
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setSearch(searchInput.trim());
-    }, 300);
-    return () => window.clearTimeout(timer);
-  }, [searchInput]);
-  useEffect(() => {
     previewVersion.current += 1;
     replacePreviewUrl(null);
     setError("");
     return () => {
       previewVersion.current += 1;
     };
-  }, [asOf, groupBy, search, warehouseId, categoryId, businessUnitId, replacePreviewUrl]);
+  }, [asOf, groupBy, itemId, warehouseId, categoryId, businessUnitId, replacePreviewUrl]);
   useEffect(() => {
     onPreviewStateChange({
       url: previewUrl,
@@ -172,12 +168,13 @@ export function ExpiredBatchesReportPreview({ open, reportName, onPreviewStateCh
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="expired-search">{t("search")}</Label>
-            <Input
-              id="expired-search"
-              value={searchInput}
+            <Label htmlFor="expired-item">{t("item")}</Label>
+            <ReportItemSelect
+              id="expired-item"
+              value={selectedItem}
+              onValueChange={setSelectedItem}
+              enabled={open}
               disabled={isGeneratingPreview}
-              onChange={(event) => setSearchInput(event.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -209,12 +206,7 @@ export function ExpiredBatchesReportPreview({ open, reportName, onPreviewStateCh
           <Button
             className="w-full"
             onClick={preview}
-            disabled={
-              isGeneratingPreview ||
-              exportQuery.isFetching ||
-              !asOf ||
-              searchInput.trim() !== search
-            }
+            disabled={isGeneratingPreview || exportQuery.isFetching || !asOf}
           >
             {isGeneratingPreview ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -12,6 +12,7 @@ export type ProductMovementReportFilters = {
   dateFrom?: string;
   dateTo?: string;
   categoryId?: string;
+  itemId?: string;
   search?: string;
   enabled?: boolean;
 };
@@ -57,6 +58,7 @@ export type ProductMovementReportResponse = {
     dateFrom: string | null;
     dateTo: string | null;
     categoryId: string | null;
+    itemId: string | null;
     search: string | null;
     currentBusinessUnitId: string | null;
   };
@@ -77,6 +79,7 @@ export function useProductMovementReport(filters: ProductMovementReportFilters) 
       if (queryFilters.dateFrom) params.append("dateFrom", queryFilters.dateFrom);
       if (queryFilters.dateTo) params.append("dateTo", queryFilters.dateTo);
       if (queryFilters.categoryId) params.append("categoryId", queryFilters.categoryId);
+      if (queryFilters.itemId) params.append("itemId", queryFilters.itemId);
       if (queryFilters.search) params.append("search", queryFilters.search);
 
       const response = await fetch(`${API_BASE_URL}/reports/product-movement?${params}`);

@@ -23,6 +23,7 @@ export function useStockAgingReport(filters: StockAgingReportFilters) {
       if (queryFilters.page) params.append("page", String(queryFilters.page));
       if (queryFilters.limit) params.append("limit", String(queryFilters.limit));
       if (queryFilters.search) params.append("search", queryFilters.search);
+      if (queryFilters.itemId) params.append("itemId", queryFilters.itemId);
       if (queryFilters.category) params.append("category", queryFilters.category);
       if (queryFilters.ageBucket) params.append("ageBucket", queryFilters.ageBucket);
 

@@ -1,5 +1,6 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -57,6 +58,7 @@ type InventorySourceRow = {
 };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const itemIdSchema = z.uuid();
 const SORT_FIELDS = new Set<SortBy>([
   "updated_at",
   "current_stock",
@@ -114,8 +116,13 @@ async function GETHandler(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.REPORTS, "view");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
     const { searchParams } = new URL(request.url);
+    const itemId = searchParams.get("itemId");
+    if (itemId !== null && !itemIdSchema.safeParse(itemId).success) {
+      return NextResponse.json({ error: "Invalid inventory item filter" }, { status: 400 });
+    }
+
+    const { supabase } = await createServerClientWithBU();
 
     const {
       data: { user },
@@ -201,6 +208,11 @@ async function GETHandler(request: NextRequest) {
       .eq("company_id", userData.company_id)
       .is("deleted_at", null)
       .eq("is_active", true);
+
+    if (itemId) {
+      countQuery = countQuery.eq("item_id", itemId);
+      dataQuery = dataQuery.eq("item_id", itemId);
+    }
 
     if (warehouseId) {
       countQuery = countQuery.eq("warehouse_id", warehouseId);
@@ -322,6 +334,7 @@ async function GETHandler(request: NextRequest) {
         totalPages: Math.max(1, Math.ceil(total / limit)),
       },
       filters: {
+        itemId,
         warehouseId: warehouseId || null,
         category: category || null,
         search: search || null,

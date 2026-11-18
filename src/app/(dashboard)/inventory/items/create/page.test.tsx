@@ -6,7 +6,9 @@ import CreateItemPage from "./page";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/hooks/useItems", () => ({ useCreateItem: () => ({ isPending: false }) }));
-vi.mock("@/hooks/useItemCategories", () => ({ useItemCategories: () => ({ data: { data: [] } }) }));
+vi.mock("@/hooks/useItemCategories", () => ({
+  useItemCategories: () => ({ data: { pages: [{ data: [] }] } }),
+}));
 vi.mock("@/hooks/useUnitsOfMeasure", () => ({ useUnitsOfMeasure: () => ({ data: { data: [] } }) }));
 vi.mock("@/hooks/useGranularCapabilities", () => ({
   useGranularCapabilities: () => ({ data: {} }),

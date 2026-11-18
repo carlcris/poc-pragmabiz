@@ -44,6 +44,7 @@ it.each(["item", "batch"])("passes server scope and %s grouping", async (groupBy
       p_page: 2,
       p_limit: 5,
       p_search: "JIS",
+      p_item_id: null,
       p_as_of: "2026-11-10",
     })
   );
@@ -53,6 +54,7 @@ it.each([
   "&limit=51",
   "&page=0",
   "&warehouseId=bad",
+  "&itemId=bad",
   "&inStockOnly=false",
   "&search=" + "a".repeat(101),
 ])("rejects invalid filters %s", async (query) => {
@@ -60,10 +62,11 @@ it.each([
   expect(state.rpc).not.toHaveBeenCalled();
 });
 it("exports a full bounded report from page one", async () => {
-  expect((await request("&exportMode=pdf&page=3")).status).toBe(200);
+  const itemId = "5c9fe57e-ecad-461a-8f29-b719596ca84d";
+  expect((await request("&exportMode=pdf&page=3&itemId=" + itemId)).status).toBe(200);
   expect(state.rpc).toHaveBeenCalledWith(
     "get_expired_batches_report",
-    expect.objectContaining({ p_page: 1, p_limit: 501 })
+    expect.objectContaining({ p_page: 1, p_limit: 501, p_item_id: itemId })
   );
 });
 it.each([

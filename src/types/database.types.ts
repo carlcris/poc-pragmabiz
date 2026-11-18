@@ -12733,6 +12733,7 @@ export type Database = {
           p_category_id?: string;
           p_company_id: string;
           p_group_by?: string;
+          p_item_id?: string;
           p_limit?: number;
           p_page?: number;
           p_search?: string;
@@ -12929,6 +12930,7 @@ export type Database = {
           p_company_id: string;
           p_date_from?: string;
           p_date_to?: string;
+          p_item_id?: string;
           p_limit?: number;
           p_movement_type?: string;
           p_page?: number;

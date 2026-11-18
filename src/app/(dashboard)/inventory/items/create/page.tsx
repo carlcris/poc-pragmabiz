@@ -56,7 +56,8 @@ function CreateItemContent() {
   );
   const canEditSop = !!sopEditCapabilities[GRANULAR_CAPABILITIES.ITEM_SOP_EDIT];
 
-  const categories = useMemo(() => categoriesData?.data || [], [categoriesData?.data]);
+  // Only the first page is needed here: the default selection is the first category.
+  const firstCategory = categoriesData?.pages[0]?.data[0];
   const unitsOfMeasure = useMemo(
     () => (uomsData?.data || []).filter((unit) => unit.isActive !== false),
     [uomsData?.data]
@@ -116,12 +117,12 @@ function CreateItemContent() {
 
   // Auto-select first category if available
   useEffect(() => {
-    if (categories.length === 0) return;
+    if (!firstCategory) return;
     const currentCategory = form.getValues("category");
     if (!currentCategory) {
-      form.setValue("category", categories[0].name);
+      form.setValue("category", firstCategory.name);
     }
-  }, [categories, form]);
+  }, [firstCategory, form]);
 
   const onSubmit = async (values: ItemFormInput) => {
     try {

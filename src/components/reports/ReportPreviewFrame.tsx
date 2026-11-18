@@ -5,6 +5,12 @@ import { Eye, Loader2 } from "lucide-react";
 
 export const PDF_REPORT_ROW_LIMIT = 500;
 
+// Browser-native PDF viewers read their initial zoom from the URL fragment, so
+// the preview opens at 90% to fit more of the page inside the preview panel.
+// The fragment stays on the iframe src only; print and download keep the
+// original URL. Preview URLs are blob or named-preview paths with no fragment.
+const PDF_VIEWER_INITIAL_ZOOM_FRAGMENT = "#zoom=90";
+
 type ReportPreviewFrameProps = {
   url: string | null;
   isGenerating: boolean;
@@ -22,7 +28,7 @@ export function ReportPreviewFrame({
 }: ReportPreviewFrameProps) {
   if (isGenerating) {
     return (
-      <div className="flex h-full min-h-[560px] items-center justify-center rounded-lg border bg-muted/30">
+      <div className="flex h-full min-h-0 items-center justify-center rounded-lg border bg-muted/30">
         <div className="text-center">
           <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-muted-foreground" />
           <p className="text-sm text-muted-foreground">{loadingLabel}</p>
@@ -33,7 +39,7 @@ export function ReportPreviewFrame({
 
   if (!url) {
     return (
-      <div className="flex h-full min-h-[560px] items-center justify-center rounded-lg border border-dashed bg-muted/20 px-6 text-center">
+      <div className="flex h-full min-h-0 items-center justify-center rounded-lg border border-dashed bg-muted/20 px-6 text-center">
         <div className="max-w-sm space-y-2">
           <Eye className="mx-auto h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">{emptyLabel}</p>
@@ -43,8 +49,12 @@ export function ReportPreviewFrame({
   }
 
   return (
-    <div className="h-full min-h-[560px] overflow-hidden rounded-lg border bg-white">
-      <iframe src={url} title={title} className="h-full min-h-[560px] w-full border-0" />
+    <div className="h-full min-h-0 overflow-hidden rounded-lg border bg-white">
+      <iframe
+        src={`${url}${PDF_VIEWER_INITIAL_ZOOM_FRAGMENT}`}
+        title={title}
+        className="h-full w-full border-0"
+      />
     </div>
   );
 }

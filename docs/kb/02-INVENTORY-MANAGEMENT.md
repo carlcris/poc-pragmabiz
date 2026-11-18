@@ -984,13 +984,14 @@ default in one transaction. A failed edit leaves the previous default in place.
 
 #### GET /api/item-categories
 
-Category selectors in inventory, item create/edit, and the inventory/aging/product-movement report
-previews use server search. Requests accept `search` (up to 100 characters), `page` (default 1),
+Category selectors in inventory, item create/edit, and report previews such as Expired Batches
+use server search. Requests accept `search` (up to 100 characters), `page` (default 1),
 and `limit` (default 5, maximum 50). Invalid bounds return 400. Results use company scope,
 exclude deleted categories, and order by name then ID. The response contains `data: [{ id, name }]`
 and `pagination: { page, limit, total, totalPages }`.
 
-The first five results are shown initially; users search for other categories. Selected labels
+The selector loads six results initially and fetches more as users scroll. Users can also
+choose **Load more** or search for a category by name across all pages. Selected labels
 remain visible when the selection is outside the current search results. Item forms retain category
 names in their existing mutation contracts; ID-based filters still submit IDs. Lookup authorization
 preserves direct category-view access and dependent-feature access, reusing one verified request
@@ -1710,7 +1711,7 @@ Requests that would aggregate more than 5,000 source rows are rejected so the re
 
 Shows how long inventory has been in stock, categorized by age buckets (0-30, 31-60, 61-90, 90+ days).
 
-The report includes positive location-batch stock in the current business unit and defaults to stock strictly older than 90 days; choose All Ages to include younger stock. Choose Group By → Item (default) or Batch in report settings. Batch mode groups the same batch code across matching items/warehouses and displays item details with batch subtotals. PDF preview/download includes all matching rows, not just the first 50. Source rows are retrieved in ordered batches to avoid Supabase response truncation. Requests above 5,000 source rows are rejected with a visible error rather than a partial report. Narrow category or business-unit scope to reduce this count; search and age filters apply after the source limit. See the Stock Aging section in [Reporting & Analytics](07-REPORTING-ANALYTICS.md) for API details.
+The report includes positive location-batch stock in the current business unit and defaults to stock strictly older than 90 days; choose All Ages to include younger stock. Use the searchable Item picker to filter to an exact item, or choose **All Items** to clear it. Choose Group By → Item (default) or Batch in report settings. Batch mode groups the same batch code across matching items/warehouses and displays item details with batch subtotals. PDF preview/download includes all matching rows. Source rows are retrieved in ordered batches to avoid Supabase response truncation. Requests above 5,000 source rows return an error. Selecting an item, narrowing the category, or switching business units reduces the source count; API text search and age filters apply after the source limit. See the Stock Aging section in [Reporting & Analytics](07-REPORTING-ANALYTICS.md) for API details.
 
 ### Stock Movement Report
 
@@ -1724,8 +1725,11 @@ The report rejects current or comparison periods above 5,000 source transaction 
 
 **Location**: `/api/reports/inventory`
 
-Current stock levels across all active warehouses in the current business unit by default, with an
-optional warehouse filter and location details.
+Current stock levels by item and warehouse, with optional warehouse, category, and stock status
+filters.
+
+Use the **Item** picker to search the catalog by name or code and select the exact item for the report.
+The picker starts with six items and loads more on scroll. Choose **All Items** to clear the item filter.
 
 Normal list calls are capped at 50 rows per page. PDF preview uses `exportMode=pdf` and can include up to 500 matching rows in one preview request.
 

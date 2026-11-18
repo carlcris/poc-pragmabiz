@@ -22,6 +22,8 @@ export type InventoryReportFilters = {
   exportMode?: "pdf";
   warehouseId?: string;
   category?: string;
+  /** Exact item match. The report preview filters by id instead of a search term. */
+  itemId?: string;
   search?: string;
   stockStatus?: InventoryStockStatus;
   sortBy?: InventoryReportSortBy;
@@ -69,6 +71,7 @@ export type InventoryReportResponse = {
     totalPages: number;
   };
   filters: {
+    itemId: string | null;
     warehouseId: string | null;
     category: string | null;
     search: string | null;
@@ -92,6 +95,7 @@ export function useInventoryReport(filters: InventoryReportFilters) {
       if (queryFilters.exportMode) params.append("exportMode", queryFilters.exportMode);
       if (queryFilters.warehouseId) params.append("warehouseId", queryFilters.warehouseId);
       if (queryFilters.category) params.append("category", queryFilters.category);
+      if (queryFilters.itemId) params.append("itemId", queryFilters.itemId);
       if (queryFilters.search) params.append("search", queryFilters.search);
       if (queryFilters.stockStatus) params.append("stockStatus", queryFilters.stockStatus);
       if (queryFilters.sortBy) params.append("sortBy", queryFilters.sortBy);
