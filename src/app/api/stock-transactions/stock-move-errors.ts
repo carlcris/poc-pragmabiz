@@ -13,7 +13,7 @@ const STOCK_MOVE_ERRORS = {
   STOCK_MOVE_DETAILS_INVALID: {
     status: 400,
     error:
-      "Select distinct source and destination locations and enter a positive quantity with at most two decimal places.",
+      "Select distinct source and destination locations, choose batches to move, and enter a positive quantity with at most two decimal places.",
   },
   STOCK_MOVE_WAREHOUSE_INVALID: {
     status: 400,
@@ -27,10 +27,15 @@ const STOCK_MOVE_ERRORS = {
     status: 409,
     error: "This item is no longer available. Refresh the item and try again.",
   },
+  STOCK_MOVE_BATCH_UNAVAILABLE: {
+    status: 409,
+    error:
+      "One or more selected batches are no longer available at the source location. Refresh the batch list and update your selection.",
+  },
   STOCK_MOVE_INSUFFICIENT_STOCK: {
     status: 409,
     error:
-      "The source location no longer has enough available stock. Reduce the quantity or select another source.",
+      "The selected batches no longer have enough available stock. Reduce the quantity or update your selection.",
   },
   STOCK_MOVE_DESTINATION_UNAVAILABLE: {
     status: 409,

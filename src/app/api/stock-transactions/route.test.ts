@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 import { POST } from "./route";
-import type { StockMovePayload } from "@/lib/validations/stock-move";
+import type { StockMoveBatchSelection, StockMovePayload } from "@/lib/validations/stock-move";
+import { MAX_STOCK_MOVE_BATCH_SELECTION } from "@/types/stock-move";
 
 const mocks = vi.hoisted(() => ({
   permission: vi.fn(),
@@ -19,6 +20,14 @@ vi.mock("@/lib/auth/requestContext", () => ({ requireRequestContext: mocks.conte
 const warehouseId = "10000000-0000-4000-8000-000000000001";
 const destinationWarehouseId = "10000000-0000-4000-8000-000000000002";
 const businessUnitId = "10000000-0000-4000-8000-000000000003";
+const batchLocationIds = [
+  "10000000-0000-4000-8000-00000000007a",
+  "10000000-0000-4000-8000-00000000007b",
+];
+const maximumSelection = Array.from(
+  { length: MAX_STOCK_MOVE_BATCH_SELECTION },
+  (_, index) => `20000000-0000-4000-8000-${index.toString(16).padStart(12, "0")}`
+);
 const payload: StockMovePayload = {
   transactionType: "transfer",
   warehouseId,
@@ -26,8 +35,23 @@ const payload: StockMovePayload = {
   fromLocationId: "10000000-0000-4000-8000-000000000004",
   toLocationId: "10000000-0000-4000-8000-000000000005",
   transactionDate: "2026-10-05",
-  items: [{ itemId: "10000000-0000-4000-8000-000000000006", quantity: 3.25 }],
+  items: [
+    {
+      itemId: "10000000-0000-4000-8000-000000000006",
+      batchSelection: { mode: "exclude", batchLocationIds: [] },
+      quantity: 3.25,
+    },
+  ],
 };
+const withBatchSelection = (batchSelection: StockMoveBatchSelection): StockMovePayload => ({
+  ...payload,
+  items: [{ ...payload.items[0], batchSelection }],
+});
+const selectiveMoves: StockMoveBatchSelection[] = [
+  { mode: "include", batchLocationIds },
+  { mode: "exclude", batchLocationIds },
+  { mode: "include", batchLocationIds: maximumSelection },
+];
 const request = (body: unknown) =>
   new NextRequest("http://localhost/api/stock-transactions", {
     method: "POST",
@@ -68,8 +92,27 @@ describe("transactional Move Stock API", () => {
         p_from_location_id: payload.fromLocationId,
         p_to_location_id: payload.toLocationId,
         p_quantity: 3.25,
+        p_batch_selection_mode: "exclude",
+        p_batch_location_ids: [],
         p_transaction_date: payload.transactionDate,
       });
+      expect(mocks.from).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(selectiveMoves)(
+    "moves the requested quantity through one RPC for $mode mode with explicit batch IDs",
+    async (selection) => {
+      const response = await POST(request(withBatchSelection(selection)));
+      expect(response.status).toBe(201);
+      expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith(
+        "move_stock_transactionally",
+        expect.objectContaining({
+          p_batch_selection_mode: selection.mode,
+          p_batch_location_ids: selection.batchLocationIds,
+          p_quantity: 3.25,
+        })
+      );
       expect(mocks.from).not.toHaveBeenCalled();
     }
   );
@@ -78,6 +121,11 @@ describe("transactional Move Stock API", () => {
     { ...payload, items: [{ ...payload.items[0], quantity: -1 }] },
     { ...payload, items: [{ ...payload.items[0], quantity: 0.001 }] },
     { ...payload, items: [{ ...payload.items[0], quantity: 1_000_000_001 }] },
+    {
+      ...payload,
+      items: [{ itemId: payload.items[0].itemId, quantity: 3.25, batchLocationId: null }],
+    },
+    { ...payload, items: [{ itemId: payload.items[0].itemId, quantity: 3.25 }] },
     { ...payload, items: [payload.items[0], payload.items[0]] },
     { ...payload, items: [{ ...payload.items[0], unitCost: 5 }] },
     { ...payload, fromLocationId: payload.toLocationId },
@@ -90,6 +138,52 @@ describe("transactional Move Stock API", () => {
     expect(await response.json()).toMatchObject({ code: "STOCK_MOVE_DETAILS_INVALID" });
     expect(mocks.rpc).not.toHaveBeenCalled();
     expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { name: "null selection", selection: null },
+    { name: "invalid mode", selection: { mode: "all", batchLocationIds: [] } },
+    { name: "empty include list", selection: { mode: "include", batchLocationIds: [] } },
+    { name: "null batch list", selection: { mode: "exclude", batchLocationIds: null } },
+    { name: "null batch ID", selection: { mode: "include", batchLocationIds: [null] } },
+    { name: "invalid batch ID", selection: { mode: "exclude", batchLocationIds: ["invalid"] } },
+    {
+      name: "duplicate UUIDs with different casing",
+      selection: {
+        mode: "include",
+        batchLocationIds: [batchLocationIds[0], batchLocationIds[0].toUpperCase()],
+      },
+    },
+    {
+      name: "oversized selection",
+      selection: { mode: "exclude", batchLocationIds: [...maximumSelection, batchLocationIds[0]] },
+    },
+    {
+      name: "unexpected nested field",
+      selection: { mode: "exclude", batchLocationIds: [], warehouseId },
+    },
+  ])("rejects $name before writing", async ({ selection }) => {
+    const response = await POST(
+      request({ ...payload, items: [{ ...payload.items[0], batchSelection: selection }] })
+    );
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "STOCK_MOVE_DETAILS_INVALID" });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("returns recovery guidance when an included batch is no longer at the source", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: { message: "STOCK_MOVE_BATCH_UNAVAILABLE", details: "private database detail" },
+    });
+    const response = await POST(request(withBatchSelection({ mode: "include", batchLocationIds })));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      code: "STOCK_MOVE_BATCH_UNAVAILABLE",
+      error:
+        "One or more selected batches are no longer available at the source location. Refresh the batch list and update your selection.",
+    });
   });
 
   it.each(["stock_transactions", "transfer_between_locations"])(

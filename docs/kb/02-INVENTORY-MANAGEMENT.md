@@ -367,15 +367,25 @@ highlighted on the selected floor plan. The viewer reports missing floor maps an
 
 **Move Stock** on the item's **Locations** tab moves available stock between racks in one warehouse
 or between two warehouses in the current business unit. Users select the source warehouse/rack,
-destination warehouse/rack, quantity, and unit. The base unit is selected initially; active item unit
-options show their conversion factor. The dialog previews the total in base units (for example,
+destination warehouse/rack, batches, quantity, and unit. The source batch list shows a checkbox and
+available base quantity for each batch. Users can check specific batches or use **Select All**
+to check every available batch at the source, including batches on other pages. Unchecking a batch
+excludes it from the move. Moving between pages preserves the selection. To clear all checks,
+uncheck **Select All**. If it is partially checked, check it first, then uncheck it. Changing the
+source clears the selection and quantity. At least one batch must be checked to move stock.
+The quantity defaults to the checked batches' movable balance. The server caps each batch by its
+warehouse batch balance and caps the combined amount by warehouse availability. An entered partial
+quantity draws stock from the oldest checked batches first. The base unit is selected initially,
+and active item unit options show their conversion factor. The dialog previews the total in base units (for example,
 2 boxes of 144 transfers 288 base units) and sends only that converted quantity. Both entered and
 converted quantities must be positive with at most two decimal places; the base total cannot exceed
-1,000,000,000. Conversion does not silently round fractional base stock. The dialog shows the selected
-source rack’s available base quantity and blocks a converted total above it (1 box of 144 cannot
-move from a source with 58). Reserved stock is excluded. Submission is blocked if location stock
-cannot be loaded; the database rechecks availability transactionally to handle concurrent changes. The
-warehouse and rack selectors search the server and initially return at most five options.
+1,000,000,000. If the available checked balance exceeds the limit or needs more precision, enter a
+quantity within the supported range. The dialog shows the checked batches’ available base quantity
+and blocks a converted total above it (1 box of 144 cannot move from checked batches with 58).
+Reserved stock is excluded, and the database rechecks availability transactionally to handle
+concurrent changes. If a move encounters changed stock, the dialog refreshes availability for the
+whole selection across pages. It keeps the checked and unchecked choices and any quantity the user
+typed. Warehouse and rack searches run on the server. The batch list shows up to five options per page.
 **From Location** lists only locations holding positive on-hand stock of the selected item in the
 source warehouse; this filter also applies to search, later pages, and selected-location lookup. The
 destination warehouse need not already hold the item. Both warehouses must be active and belong
@@ -397,14 +407,27 @@ destination. Warehouse administration remains separately authorized.
 
 The Move Stock request uses `POST /api/stock-transactions` with `transactionType: "transfer"`,
 `warehouseId`, `toWarehouseId`, `fromLocationId`, `toLocationId`, `transactionDate`, and exactly one
-`items` entry containing `itemId` and `quantity`. The transfer contract rejects other fields,
+`items` entry containing `itemId`, `quantity`, and `batchSelection`. The selection has a `mode` and
+a `batchLocationIds` array. `include` moves only from the listed source placements. `exclude`
+moves from all eligible source placements except the listed ones, and an empty exclusion list
+means all batches. The array accepts up to 100 distinct IDs, and an inclusion list must contain at
+least one ID. The transfer contract rejects other fields,
 including client-supplied costs and business-unit identities; the database resolves the base UOM,
 valuation cost, actor, and company. Its successful response keeps `id`, `transactionCode`, and
 `message`. Quantities must be positive, at most 1,000,000,000, and have at most two decimal places.
+`GET /api/lookups/stock-move-batches` lists available batches for the specified item, warehouse, and
+source location in the current business unit. It requires both Move Stock permissions and searches
+by batch code on the server, returning up to five options per page.
+With `view=availability`, send `selectionMode` and an optional comma-separated `batchLocationIds`
+list of up to 100 distinct source placement IDs. The response provides the selected movable balance
+and current quantities for eligible named placements across pages. Missing named placements have
+zero available stock.
 
-One database transaction locks the affected item/warehouse balances, consumes only unreserved
-source-rack batches in FIFO order, preserves each batch's code and original receipt timestamp,
-updates destination batches/racks and warehouse totals, and posts the stock movement. A rack move
+One database transaction locks the affected item/warehouse balances and validates that all included
+batch placements are still available at the source. It consumes only unreserved stock from the
+eligible placements in FIFO order. It preserves each moved batch's code and original receipt
+timestamp, updates destination batches/racks and warehouse totals,
+and posts the stock movement. A rack move
 within one warehouse leaves warehouse and batch totals unchanged. Reserved and pending-putaway
 quantities remain at their original sources. A warehouse move posts linked `out` and `in` stock
 transactions, each with one line per consumed batch and its own warehouse's running balance. Both
@@ -417,11 +440,11 @@ Stock transaction batch codes support the same 150-character limit as the invent
 The destination batch-location SKU is database generated for a new placement, or reused when the
 placement already exists.
 
-Known failures return safe `STOCK_MOVE_*` codes and translated inline recovery guidance. An
-insufficient source, inactive/deleted destination stock record, or destination batch with a
-conflicting receipt timestamp returns `409`; invalid warehouse/rack choices return `400`, and
-authorization failures return `401`/`403`. Any failure rolls back all stock, batch, and movement
-records. The dialog stays open for correction, blocks duplicate submission and closing while
+Known failures return safe `STOCK_MOVE_*` codes and translated inline recovery guidance. Insufficient
+stock in the chosen location or batches, an unavailable selected batch, an inactive/deleted destination
+stock record, or a conflicting destination batch returns `409`. Invalid warehouse or rack choices
+return `400`, and authorization failures return `401`/`403`. Any failure rolls back all stock, batch,
+and movement records. The dialog stays open for correction, blocks duplicate submission and closing while
 pending, and refreshes affected inventory, allocation, selector, dashboard, and report queries
 after success. Unknown errors stay generic and internal details are logged server-side.
 

@@ -742,7 +742,6 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
           itemId={itemId}
           baseUnit={item.uom}
           unitOptions={item.unitOptions ?? []}
-          sourceLocations={undefined}
           initialSource={moveDialogSource ?? undefined}
           onOpenChange={setMoveDialogOpen}
         />

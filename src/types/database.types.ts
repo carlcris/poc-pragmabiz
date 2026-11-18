@@ -13040,6 +13040,20 @@ export type Database = {
           total_out: number;
         }[];
       };
+      get_stock_move_source_availability: {
+        Args: {
+          p_batch_location_ids: string[];
+          p_batch_selection_mode: string;
+          p_business_unit_id: string;
+          p_from_location_id: string;
+          p_item_id: string;
+          p_source_warehouse_id: string;
+        };
+        Returns: {
+          available_quantity: number;
+          named_batches: Json;
+        }[];
+      };
       get_transformation_template_copy_source: {
         Args: { p_template_id: string };
         Returns: Json;
@@ -13407,6 +13421,8 @@ export type Database = {
       };
       move_stock_transactionally: {
         Args: {
+          p_batch_location_ids: string[];
+          p_batch_selection_mode: string;
           p_business_unit_id: string;
           p_destination_warehouse_id: string;
           p_from_location_id: string;

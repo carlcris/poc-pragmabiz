@@ -1,9 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { ITEM_LOCATIONS_QUERY_KEY } from "@/hooks/queryKeys";
+import { useQueryClient } from "@tanstack/react-query";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
-import { apiClient } from "@/lib/api";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { format } from "date-fns";
@@ -17,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ItemLocation } from "@/types/inventory-location";
 import type { ItemUnitOption } from "@/types/item";
 import { Label } from "@/components/ui/label";
 import {
@@ -30,16 +27,30 @@ import {
 } from "@/components/ui/dialog";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import { WarehouseLocationSelect } from "@/components/warehouses/WarehouseLocationSelect";
+import { MoveStockBatchChecklist } from "@/components/items/locations/MoveStockBatchChecklist";
 import { useMoveStock } from "@/hooks/useMoveStock";
+import { useMoveStockSourceAvailability } from "@/hooks/useMoveStockSourceAvailability";
+import { moveStockSourceBatchesKey } from "@/hooks/useMoveStockSourceBatches";
 import { getApiErrorCode } from "@/lib/api";
 import { stockMoveSchema } from "@/lib/validations/stock-move";
-import { STOCK_MOVE_ERROR_CODES } from "@/types/stock-move";
+import {
+  countSelectedBatches,
+  emptyBatchSelection,
+  hasBatchSelection,
+  toggleAllBatches,
+  toggleBatch,
+} from "@/lib/stock-move-batch-selection";
+import { MAX_STOCK_MOVE_BATCH_SELECTION, STOCK_MOVE_ERROR_CODES } from "@/types/stock-move";
+
+// A numeric draft that is not yet a number: "", "-", ".", "-." or a trailing
+// dot such as "1.". The shared Input swallows exactly these before calling
+// `onChange`, so the dialog reads them off the DOM event instead.
+const INCOMPLETE_QUANTITY = /^-?(?:\d*\.)?$/;
 
 type MoveStockDialogProps = {
   itemId: string;
   baseUnit: string;
   unitOptions: ItemUnitOption[];
-  sourceLocations: ItemLocation[] | undefined;
   // Pre-fills the source when moving from a selected location.
   initialSource?: { warehouseId: string; locationId: string };
   onOpenChange: (open: boolean) => void;
@@ -49,7 +60,6 @@ export function MoveStockDialog({
   itemId,
   baseUnit,
   unitOptions,
-  sourceLocations,
   initialSource,
   onOpenChange,
 }: MoveStockDialogProps) {
@@ -59,8 +69,12 @@ export function MoveStockDialog({
   const [destinationWarehouseId, setDestinationWarehouseId] = useState("");
   const [fromLocationId, setFromLocationId] = useState(initialSource?.locationId ?? "");
   const [toLocationId, setToLocationId] = useState("");
-  const [quantity, setQuantity] = useState("");
+  // `null` means the quantity follows the checked batches automatically; any
+  // string, including "", is a value the user typed and must be honoured
+  // verbatim so a deliberately erased field never moves the whole balance.
+  const [quantityDraft, setQuantityDraft] = useState<string | null>(null);
   const [unitOptionId, setUnitOptionId] = useState("base");
+  const [batchSelection, setBatchSelection] = useState(emptyBatchSelection);
   const alternateUnits = unitOptions.filter(
     (option) =>
       !option.isBase &&
@@ -72,39 +86,71 @@ export function MoveStockDialog({
     unitOptionId === "base"
       ? 1
       : alternateUnits.find((option) => option.id === unitOptionId)?.qtyPerUnit;
+  const businessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
+  const [selectionBusinessUnitId, setSelectionBusinessUnitId] = useState(businessUnitId);
+  const queryClient = useQueryClient();
+  // Switching business unit rescopes the warehouses, so batch selections made in
+  // the previous unit must not survive into a move they no longer describe.
+  if (selectionBusinessUnitId !== businessUnitId) {
+    setSelectionBusinessUnitId(businessUnitId);
+    setSourceWarehouseId("");
+    setDestinationWarehouseId("");
+    setFromLocationId("");
+    setToLocationId("");
+    setBatchSelection(emptyBatchSelection);
+    setQuantityDraft(null);
+    setUnitOptionId("base");
+  }
+  const source = {
+    itemId,
+    businessUnitId,
+    warehouseId: sourceWarehouseId,
+    locationId: fromLocationId,
+  };
+  const availabilityQuery = useMoveStockSourceAvailability(source, batchSelection);
+  const isCheckingAvailability = availabilityQuery.fetchStatus !== "idle";
+  const availability = availabilityQuery.isError ? undefined : availabilityQuery.data;
+  const sourceAvailable = availability?.availableQuantity;
+  const namedAvailability = availability
+    ? new Map([
+        ...batchSelection.batchLocationIds.map((id) => [id, 0] as const),
+        ...availability.namedBatches.map(({ id, qtyAvailable }) => [id, qtyAvailable] as const),
+      ])
+    : undefined;
+  const unavailableCheckedIds =
+    batchSelection.mode === "include" && namedAvailability
+      ? batchSelection.batchLocationIds.filter((id) => namedAvailability.get(id) === 0)
+      : [];
+  const batchIsSelected = hasBatchSelection(batchSelection);
+  const namedBatchCount = countSelectedBatches(batchSelection);
+  const selectionExceedsLimit = namedBatchCount > MAX_STOCK_MOVE_BATCH_SELECTION;
+  // Until the user types, the field auto-fills with the checked balance so the
+  // amount shown is always the amount submitted. The auto value only exists in
+  // the base unit: an alternate unit has no unambiguous equivalent, so the user
+  // must state the quantity in that unit instead.
+  const autoQuantity =
+    unitOptionId === "base" && sourceAvailable !== undefined && sourceAvailable > 0
+      ? String(sourceAvailable)
+      : "";
+  const quantity = quantityDraft ?? autoQuantity;
+  const quantityRule = stockMoveSchema.shape.items.element.shape.quantity;
   // Remove floating-point multiplication noise without rounding fractional base stock.
   const baseQuantity = Number((Number(quantity) * (conversionFactor ?? NaN)).toPrecision(15));
+  // The shown value and the converted base value are both checked, so the
+  // submitted amount is exactly the one rendered in the field and the preview.
+  // `Number("")`, `Number("-")` and `Number("1.")` all coerce to a number the
+  // rule would accept or reject for the wrong reason, so an unfinished draft is
+  // rejected as text before any coercion happens.
   const quantityIsValid =
-    stockMoveSchema.shape.items.element.shape.quantity.safeParse(Number(quantity)).success &&
-    stockMoveSchema.shape.items.element.shape.quantity.safeParse(baseQuantity).success;
-  const businessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
-  const loadedSource = sourceLocations?.find(
-    (location) =>
-      location.itemId === itemId &&
-      location.warehouseId === sourceWarehouseId &&
-      location.locationId === fromLocationId
-  );
-  const sourceQuery = useQuery<{ data: ItemLocation[] }>({
-    queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId, businessUnitId, "move-source", fromLocationId],
-    queryFn: () =>
-      apiClient.get(`/api/items/${itemId}/locations`, {
-        params: { locationId: fromLocationId, limit: 1 },
-      }),
-    enabled: Boolean(fromLocationId && sourceWarehouseId && !loadedSource),
-  });
-  const sourceAvailable =
-    loadedSource?.qtyAvailable ??
-    (sourceQuery.data
-      ? (sourceQuery.data.data.find(
-          (location) =>
-            location.warehouseId === sourceWarehouseId &&
-            location.locationId === fromLocationId &&
-            location.itemId === itemId
-        )?.qtyAvailable ?? 0)
-      : undefined);
+    !INCOMPLETE_QUANTITY.test(quantity) &&
+    quantityRule.safeParse(Number(quantity)).success &&
+    quantityRule.safeParse(baseQuantity).success;
   const hasSufficientStock =
+    !isCheckingAvailability &&
+    unavailableCheckedIds.length === 0 &&
     sourceAvailable !== undefined &&
     Number.isFinite(sourceAvailable) &&
+    quantityIsValid &&
     baseQuantity <= sourceAvailable;
   const payload = stockMoveSchema.safeParse({
     transactionType: "transfer",
@@ -113,11 +159,55 @@ export function MoveStockDialog({
     fromLocationId,
     toLocationId,
     transactionDate: format(new Date(), "yyyy-MM-dd"),
-    items: [{ itemId, quantity: baseQuantity }],
+    items: [
+      {
+        itemId,
+        batchSelection,
+        quantity: baseQuantity,
+      },
+    ],
   });
 
+  // Source changes invalidate the batch selection and any quantity derived from
+  // it, so a move never silently retargets batches the user never saw.
+  const resetSourceSelection = () => {
+    setBatchSelection(emptyBatchSelection);
+    setQuantityDraft(null);
+    setUnitOptionId("base");
+    moveStock.reset();
+  };
+  // Checking or unchecking one batch only re-derives an auto quantity. A typed
+  // amount, including a deliberately emptied field, is the user's and survives.
+  const changeBatchSelection = (next: typeof batchSelection) => {
+    setBatchSelection(next);
+    moveStock.reset();
+  };
+
+  // A known positive balance that the quantity rule rejects (too many decimal
+  // places, or above the maximum) cannot be moved in one transfer. This is
+  // about the balance itself, so it must not fire for a whole-payload failure
+  // such as an unset or identical destination, or a selection over the cap.
+  const unmovableFullAvailability =
+    quantityDraft === null &&
+    batchIsSelected &&
+    sourceAvailable !== undefined &&
+    sourceAvailable > 0 &&
+    !quantityRule.safeParse(sourceAvailable).success
+      ? sourceAvailable
+      : undefined;
+  const quantityBlocksSubmission = !quantityIsValid && unmovableFullAvailability === undefined;
+
+  const errorCode = getApiErrorCode(moveStock.error, STOCK_MOVE_ERROR_CODES);
+  // The availability query follows named IDs across pages. Invalidate the same
+  // source prefix for it and the batch pages, without changing the selection.
+  const refreshStaleBatchChoices = (error: unknown) => {
+    const code = getApiErrorCode(error, STOCK_MOVE_ERROR_CODES);
+    if (code !== "STOCK_MOVE_BATCH_UNAVAILABLE" && code !== "STOCK_MOVE_INSUFFICIENT_STOCK") return;
+    void queryClient.invalidateQueries({ queryKey: moveStockSourceBatchesKey(source) });
+  };
+
   const errorMessage = () => {
-    switch (getApiErrorCode(moveStock.error, STOCK_MOVE_ERROR_CODES)) {
+    switch (errorCode) {
       case "STOCK_MOVE_UNAUTHORIZED":
         return t("moveUnauthorized");
       case "STOCK_MOVE_FORBIDDEN":
@@ -132,8 +222,12 @@ export function MoveStockDialog({
         return t("moveLocationInvalid");
       case "STOCK_MOVE_ITEM_UNAVAILABLE":
         return t("moveItemUnavailable");
+      case "STOCK_MOVE_BATCH_UNAVAILABLE":
+        return t("moveBatchUnavailable");
       case "STOCK_MOVE_INSUFFICIENT_STOCK":
-        return t("moveInsufficientStock");
+        return batchSelection.mode === "include"
+          ? t("moveBatchInsufficientStock")
+          : t("moveInsufficientStock");
       case "STOCK_MOVE_DESTINATION_UNAVAILABLE":
         return t("moveDestinationUnavailable");
       case "STOCK_MOVE_BATCH_CONFLICT":
@@ -165,7 +259,7 @@ export function MoveStockDialog({
               onValueChange={(id) => {
                 setSourceWarehouseId(id);
                 setFromLocationId("");
-                moveStock.reset();
+                resetSourceSelection();
               }}
             />
           </fieldset>
@@ -180,9 +274,60 @@ export function MoveStockDialog({
               disabled={moveStock.isPending}
               onValueChange={(id) => {
                 setFromLocationId(id);
-                moveStock.reset();
+                resetSourceSelection();
               }}
             />
+          </fieldset>
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium">{t("moveBatchLabel")}</legend>
+            <MoveStockBatchChecklist
+              itemId={itemId}
+              businessUnitId={businessUnitId}
+              warehouseId={sourceWarehouseId}
+              locationId={fromLocationId}
+              baseUnit={baseUnit}
+              selection={batchSelection}
+              namedAvailability={namedAvailability}
+              onToggleBatch={(id, checked) =>
+                changeBatchSelection(toggleBatch(batchSelection, id, checked))
+              }
+              onToggleAll={(checked: boolean) => changeBatchSelection(toggleAllBatches(checked))}
+              disabled={moveStock.isPending || !fromLocationId}
+              listId="move-stock-batches"
+            />
+            <p className="text-sm text-muted-foreground">
+              {batchSelection.mode === "exclude"
+                ? t("moveAllBatchesHelp")
+                : t("moveSelectedBatchesHelp")}
+            </p>
+            {selectionExceedsLimit ? (
+              <p role="alert" className="text-sm text-destructive">
+                {t("moveBatchLimitExceeded", { limit: MAX_STOCK_MOVE_BATCH_SELECTION })}
+              </p>
+            ) : null}
+            {unavailableCheckedIds.length > 0 && !isCheckingAvailability ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <p role="alert" className="text-sm text-destructive">
+                  {t("moveBatchUnavailable")}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={moveStock.isPending}
+                  onClick={() =>
+                    changeBatchSelection({
+                      ...batchSelection,
+                      batchLocationIds: batchSelection.batchLocationIds.filter(
+                        (id) => namedAvailability?.get(id) !== 0
+                      ),
+                    })
+                  }
+                >
+                  {t("moveRemoveUnavailableBatches")}
+                </Button>
+              </div>
+            ) : null}
           </fieldset>
           <fieldset className="space-y-2">
             <legend className="text-sm font-medium">{t("destinationWarehouseLabel")}</legend>
@@ -218,6 +363,9 @@ export function MoveStockDialog({
               disabled={moveStock.isPending}
               onValueChange={(value) => {
                 setUnitOptionId(value);
+                // An auto base quantity has no unambiguous equivalent in an
+                // alternate unit, so the field stays on auto and simply empties
+                // until the user states the amount in the unit they picked.
                 moveStock.reset();
               }}
             >
@@ -244,8 +392,19 @@ export function MoveStockDialog({
               max="1000000000"
               value={quantity}
               disabled={moveStock.isPending}
+              // The shared Input keeps an unfinished numeric draft in its own
+              // display state and never calls `onChange` for it, which would
+              // leave an emptied field still submitting its previous amount.
+              // `onInput` is forwarded untouched, so the draft is captured here
+              // and `onChange` still owns every completed numeric value.
+              onInput={(event) => {
+                const draft = event.currentTarget.value;
+                if (!INCOMPLETE_QUANTITY.test(draft)) return;
+                setQuantityDraft(draft);
+                moveStock.reset();
+              }}
               onChange={(event) => {
-                setQuantity(event.target.value);
+                setQuantityDraft(event.target.value);
                 moveStock.reset();
               }}
               placeholder={t("quantityPlaceholder")}
@@ -254,32 +413,79 @@ export function MoveStockDialog({
             <p id="move-stock-quantity-help" className="text-sm text-muted-foreground">
               {t("moveQuantityHelp", { unit: baseUnit })}
             </p>
-            {quantity && Number.isFinite(baseQuantity) ? (
+            {!INCOMPLETE_QUANTITY.test(quantity) && Number.isFinite(baseQuantity) ? (
               <p className="text-sm font-medium" aria-live="polite">
                 {t("moveTotalQuantity", { quantity: baseQuantity, unit: baseUnit })}
               </p>
             ) : null}
-            {fromLocationId && sourceAvailable !== undefined ? (
+            {fromLocationId && batchIsSelected && sourceAvailable !== undefined ? (
               <p className="text-sm text-muted-foreground" aria-live="polite">
-                {t("moveSourceAvailable", { quantity: sourceAvailable, unit: baseUnit })}
+                {batchSelection.mode === "include"
+                  ? t("moveSelectedBatchesAvailable", {
+                      count: namedBatchCount,
+                      quantity: sourceAvailable,
+                      unit: baseUnit,
+                    })
+                  : t("moveSourceAvailable", { quantity: sourceAvailable, unit: baseUnit })}
               </p>
             ) : null}
-            {fromLocationId && sourceAvailable === undefined ? (
-              <p role="alert" className="text-sm text-destructive">
-                {t("moveAvailabilityUnavailable")}
+            {batchIsSelected && isCheckingAvailability ? (
+              <p role="status" className="text-sm text-muted-foreground">
+                {t("moveAvailabilityLoading")}
               </p>
             ) : null}
             {fromLocationId &&
-            quantityIsValid &&
-            sourceAvailable !== undefined &&
-            !hasSufficientStock ? (
+            batchIsSelected &&
+            !selectionExceedsLimit &&
+            !isCheckingAvailability &&
+            sourceAvailable === undefined ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <p role="alert" className="text-sm text-destructive">
+                  {t("moveAvailabilityUnavailable")}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void availabilityQuery.refetch()}
+                >
+                  {t("moveBatchesRetry")}
+                </Button>
+              </div>
+            ) : null}
+            {fromLocationId && !batchIsSelected ? (
               <p role="alert" className="text-sm text-destructive">
-                {t("moveInsufficientStock")}
+                {t("moveBatchSelectionRequired")}
               </p>
             ) : null}
-            {quantity && !quantityIsValid ? (
+            {fromLocationId &&
+            batchIsSelected &&
+            quantityIsValid &&
+            sourceAvailable !== undefined &&
+            !isCheckingAvailability &&
+            baseQuantity > sourceAvailable ? (
               <p role="alert" className="text-sm text-destructive">
-                {t("moveQuantityInvalid")}
+                {batchSelection.mode === "include"
+                  ? t("moveBatchInsufficientStock")
+                  : t("moveInsufficientStock")}
+              </p>
+            ) : null}
+            {/* Only complain about the amount once there is something to move;
+                an untouched dialog has no quantity to be wrong about yet. */}
+            {quantityBlocksSubmission &&
+            batchIsSelected &&
+            sourceAvailable !== undefined &&
+            !isCheckingAvailability ? (
+              <p role="alert" className="text-sm text-destructive">
+                {t("moveStockQuantityInvalid")}
+              </p>
+            ) : null}
+            {unmovableFullAvailability !== undefined ? (
+              <p role="alert" className="text-sm text-destructive">
+                {t("moveFullAvailabilityNotMovable", {
+                  quantity: unmovableFullAvailability,
+                  unit: baseUnit,
+                })}
               </p>
             ) : null}
           </div>
@@ -288,7 +494,8 @@ export function MoveStockDialog({
               {t("selectDifferentLocations")}
             </p>
           ) : null}
-          {moveStock.error ? (
+          {moveStock.error &&
+          !(errorCode === "STOCK_MOVE_BATCH_UNAVAILABLE" && unavailableCheckedIds.length > 0) ? (
             <p role="alert" className="text-sm text-destructive">
               {errorMessage()}
             </p>
@@ -304,12 +511,19 @@ export function MoveStockDialog({
           </Button>
           <Button
             disabled={
-              moveStock.isPending || !quantityIsValid || !hasSufficientStock || !payload.success
+              moveStock.isPending ||
+              !batchIsSelected ||
+              selectionExceedsLimit ||
+              quantityBlocksSubmission ||
+              !hasSufficientStock ||
+              !payload.success
             }
             onClick={() => {
               if (
                 moveStock.isPending ||
-                !quantityIsValid ||
+                !batchIsSelected ||
+                selectionExceedsLimit ||
+                quantityBlocksSubmission ||
                 !hasSufficientStock ||
                 !payload.success
               )
@@ -319,6 +533,7 @@ export function MoveStockDialog({
                   toast.success(t("stockMoved"));
                   onOpenChange(false);
                 },
+                onError: refreshStaleBatchChoices,
               });
             }}
           >

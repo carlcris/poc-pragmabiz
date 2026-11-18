@@ -3619,10 +3619,33 @@ export type TranslationKeys = {
     destinationWarehouseLabel: string;
     moveQuantityHelp: string;
     moveUnitLabel: string;
+    moveBatchLabel: string;
+    moveAllBatchesHelp: string;
+    moveSelectedBatchesHelp: string;
+    moveBatchSelectAll: string;
+    moveBatchSelectionRequired: string;
+    moveBatchLimitExceeded: string;
+    moveBatchNoneSelected: string;
+    moveBatchCountSelected: string;
+    moveBatchAllSelected: string;
+    moveBatchAllExceptSelected: string;
+    moveBatchPageContext: string;
+    moveBatchAvailable: string;
+    moveSelectedBatchesAvailable: string;
+    moveBatchesLoading: string;
+    moveBatchesEmpty: string;
+    moveBatchesError: string;
+    moveBatchesRetry: string;
+    moveBatchInsufficientStock: string;
+    moveBatchUnavailable: string;
+    moveRemoveUnavailableBatches: string;
+    moveFullAvailabilityNotMovable: string;
     moveSourceAvailable: string;
     moveAvailabilityUnavailable: string;
+    moveAvailabilityLoading: string;
     moveTotalQuantity: string;
     moveQuantityInvalid: string;
+    moveStockQuantityInvalid: string;
     moveUnauthorized: string;
     moveForbidden: string;
     moveContextInvalid: string;
@@ -8077,14 +8100,43 @@ export const translations: Record<Locale, TranslationKeys> = {
       sourceWarehouseLabel: "Source Warehouse",
       destinationWarehouseLabel: "Destination Warehouse",
       moveUnitLabel: "Unit",
+      moveBatchLabel: "Batches",
+      moveAllBatchesHelp:
+        "Every batch at the source location is selected, except the ones you uncheck. Stock leaves the oldest selected batches first.",
+      moveSelectedBatchesHelp:
+        "Only the checked batches will move. Stock leaves the oldest checked batch first.",
+      moveBatchSelectAll: "Select All",
+      moveBatchSelectionRequired: "Check at least one batch to move.",
+      moveBatchLimitExceeded:
+        "Select at most {limit} individual batches. Use Select All to move every batch instead.",
+      moveBatchNoneSelected: "No batches selected.",
+      moveBatchCountSelected: "{count} selected across all pages.",
+      moveBatchAllSelected: "All batches selected, including batches on other pages.",
+      moveBatchAllExceptSelected: "All batches selected except {count} unchecked.",
+      moveBatchPageContext: "Page {page}, up to {size} batches per page.",
+      moveBatchAvailable: "Available: {quantity} {unit}",
+      moveSelectedBatchesAvailable: "Available in {count} selected batches: {quantity} {unit}",
+      moveBatchesLoading: "Loading batches...",
+      moveBatchesEmpty: "No batches with available stock at this location.",
+      moveBatchesError: "Could not load batches.",
+      moveBatchesRetry: "Retry",
+      moveBatchInsufficientStock:
+        "The selected batches no longer hold enough available stock, even if the source location does. Reduce the quantity, check more batches, or choose Select All to move across every batch.",
+      moveBatchUnavailable:
+        "A selected batch is no longer available at the source location. Remove unavailable batches or choose another source.",
+      moveRemoveUnavailableBatches: "Remove unavailable batches",
+      moveFullAvailabilityNotMovable:
+        "The full selected quantity of {quantity} {unit} cannot be moved in one transfer because quantities are limited to two decimal places and 1,000,000,000. Enter a smaller quantity.",
       moveSourceAvailable: "Available at source: {quantity} {unit}",
       moveAvailabilityUnavailable:
-        "Source stock is unavailable. Refresh the Locations tab before moving stock.",
+        "Source stock is unavailable. Retry to check the available balance.",
+      moveAvailabilityLoading: "Checking available stock...",
       moveTotalQuantity: "Total quantity: {quantity} {unit}",
       moveQuantityInvalid:
         "Enter a positive quantity with at most two decimal places. The converted base quantity must also have at most two decimal places and cannot exceed 1,000,000,000.",
+      moveStockQuantityInvalid: "Enter a positive quantity with at most two decimal places.",
       moveQuantityHelp:
-        "Enter quantity in the selected unit. Stock moves in base units ({unit}) using available FIFO batches.",
+        "The amount defaults to everything the selected batches hold. Change it to move less. Stock moves in base units ({unit}), oldest selected batch first.",
       moveUnauthorized: "Sign in again before moving stock.",
       moveForbidden:
         "You do not have permission to move stock in this business unit. Ask an administrator for access.",
@@ -15252,13 +15304,39 @@ export const translations: Record<Locale, TranslationKeys> = {
       sourceWarehouseLabel: "来源仓库",
       destinationWarehouseLabel: "目标仓库",
       moveUnitLabel: "单位",
+      moveBatchLabel: "批次",
+      moveAllBatchesHelp:
+        "已选择来源库位的全部批次，取消勾选的批次除外。库存将优先从最早的已选批次扣减。",
+      moveSelectedBatchesHelp: "仅移动已勾选的批次。库存将优先从最早的已勾选批次扣减。",
+      moveBatchSelectAll: "全选",
+      moveBatchSelectionRequired: "请至少勾选一个要移动的批次。",
+      moveBatchLimitExceeded: "最多只能单独选择 {limit} 个批次。如需移动全部批次，请使用“全选”。",
+      moveBatchNoneSelected: "未选择批次。",
+      moveBatchCountSelected: "已在所有页中选择 {count} 个。",
+      moveBatchAllSelected: "已选择全部批次，包括其他页中的批次。",
+      moveBatchAllExceptSelected: "已选择全部批次，其中 {count} 个已取消勾选。",
+      moveBatchPageContext: "第 {page} 页，每页最多 {size} 个批次。",
+      moveBatchAvailable: "可用：{quantity} {unit}",
+      moveSelectedBatchesAvailable: "已选 {count} 个批次可用：{quantity} {unit}",
+      moveBatchesLoading: "正在加载批次...",
+      moveBatchesEmpty: "此库位没有有可用库存的批次。",
+      moveBatchesError: "无法加载批次。",
+      moveBatchesRetry: "重试",
+      moveBatchInsufficientStock:
+        "即使来源库位库存充足，所选批次的可用库存也已不足。请减少数量、勾选更多批次，或选择“全选”以跨全部批次移动。",
+      moveBatchUnavailable: "某个所选批次在来源库位已不可用。请移除不可用批次或选择其他来源。",
+      moveRemoveUnavailableBatches: "移除不可用批次",
+      moveFullAvailabilityNotMovable:
+        "所选的全部数量 {quantity} {unit} 无法一次移动，因为数量最多保留两位小数且不能超过1,000,000,000。请输入较小的数量。",
       moveSourceAvailable: "来源可用库存：{quantity} {unit}",
-      moveAvailabilityUnavailable: "无法获取来源库存。请刷新库位标签页后再移动库存。",
+      moveAvailabilityUnavailable: "无法获取来源库存。请重试以检查可用库存。",
+      moveAvailabilityLoading: "正在检查可用库存...",
       moveTotalQuantity: "总数量：{quantity} {unit}",
       moveQuantityInvalid:
         "请输入最多两位小数的正数。换算后的基本单位数量也必须最多保留两位小数，且不能超过1,000,000,000。",
+      moveStockQuantityInvalid: "请输入最多两位小数的正数。",
       moveQuantityHelp:
-        "按所选单位输入数量。库存将以基本单位（{unit}）按可用批次先进先出顺序移动。",
+        "数量默认为所选批次的全部库存。如需移动较少数量，请修改该数量。库存将以基本单位（{unit}）按已选批次先进先出顺序移动。",
       moveUnauthorized: "请重新登录后再移动库存。",
       moveForbidden: "您没有在此业务单元移动库存的权限。请联系管理员申请权限。",
       moveContextInvalid: "请先选择有效的业务单元，再移动库存。",

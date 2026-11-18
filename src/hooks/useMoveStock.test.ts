@@ -49,6 +49,20 @@ it("refreshes loaded warehouse location quantities and marks inactive locations 
     ["warehouse-locations", "wh", "children", "root", 1],
     ["warehouse-locations", "wh", "detail", "bin1"],
     ["warehouse-locations", "wh", "detail", "bin2"],
+    // An open Move Stock dialog's visible batch page must refetch, not just go
+    // stale, so its checkboxes stop offering batches the move just emptied.
+    [ITEM_LOCATIONS_QUERY_KEY, "item", "bu", "move-batches", "source-wh", "bin1", 1],
+    [
+      ITEM_LOCATIONS_QUERY_KEY,
+      "item",
+      "bu",
+      "move-batches",
+      "source-wh",
+      "bin1",
+      "availability",
+      "exclude",
+      [],
+    ],
   ];
   const observers = keys.map((queryKey) => {
     client.setQueryData(queryKey, before);
@@ -61,6 +75,24 @@ it("refreshes loaded warehouse location quantities and marks inactive locations 
   client.setQueryData(inactiveKey, before);
   const inactiveLookup = [ITEM_LOCATIONS_QUERY_KEY, "warehouse_locations", "destination-wh"];
   client.setQueryData(inactiveLookup, before);
+  // Other cached Move Stock batch pages: a completed move changes which batches
+  // are eligible, so returning to them must not show stale rows.
+  const inactiveBatchPages = [
+    [ITEM_LOCATIONS_QUERY_KEY, "item", "bu", "move-batches", "source-wh", "bin1", 2],
+    [ITEM_LOCATIONS_QUERY_KEY, "item", "bu", "move-batches", "source-wh", "bin1", 3],
+    [
+      ITEM_LOCATIONS_QUERY_KEY,
+      "item",
+      "bu",
+      "move-batches",
+      "source-wh",
+      "bin1",
+      "availability",
+      "include",
+      ["batch-id"],
+    ],
+  ];
+  for (const queryKey of inactiveBatchPages) client.setQueryData(queryKey, before);
   client.setQueryData(["unrelated"], "unchanged");
 
   useMoveStock();
@@ -74,6 +106,9 @@ it("refreshes loaded warehouse location quantities and marks inactive locations 
   });
   expect(client.getQueryState(inactiveKey)?.isInvalidated).toBe(true);
   expect(client.getQueryState(inactiveLookup)?.isInvalidated).toBe(true);
+  for (const queryKey of inactiveBatchPages) {
+    expect(client.getQueryState(queryKey)?.isInvalidated).toBe(true);
+  }
   expect(client.getQueryState(["unrelated"])?.isInvalidated).toBe(false);
   observers.forEach(({ unsubscribe }) => unsubscribe());
 });

@@ -467,20 +467,23 @@ async function POSTHandler(request: NextRequest) {
         return NextResponse.json(failure.body, { status: failure.status });
       }
       const move = parsed.data;
+      const [item] = move.items;
       const { data, error } = await supabase.rpc("move_stock_transactionally", {
         p_business_unit_id: currentBusinessUnitId,
-        p_item_id: move.items[0].itemId,
+        p_item_id: item.itemId,
         p_source_warehouse_id: move.warehouseId,
         p_destination_warehouse_id: move.toWarehouseId,
         p_from_location_id: move.fromLocationId,
         p_to_location_id: move.toLocationId,
-        p_quantity: move.items[0].quantity,
+        p_quantity: item.quantity,
+        p_batch_selection_mode: item.batchSelection.mode,
+        p_batch_location_ids: item.batchSelection.batchLocationIds,
         p_transaction_date: move.transactionDate,
       });
       if (error || !data) {
         console.error("Error moving stock transactionally", {
           error,
-          itemId: move.items[0].itemId,
+          itemId: item.itemId,
         });
         const failure = mapStockMoveRpcError(error?.message ?? "");
         return NextResponse.json(failure.body, { status: failure.status });

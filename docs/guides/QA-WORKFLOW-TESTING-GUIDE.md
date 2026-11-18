@@ -259,9 +259,12 @@ holding only other items must be absent. Empty destination locations remain sele
 moving all stock out of a source, reopen the dialog and verify that source is no longer offered.
 
 Open an item's **Locations** tab and click **Move Stock**. Choose source and destination
-warehouses/racks in the current business unit, then enter a positive quantity and select its unit.
-The base unit is selected initially. Entered and converted quantities allow at most two decimal places. The move posts immediately. `create` access to both Stock
-Transactions and Location Transfers is required; the button is hidden without either permission.
+warehouses/racks in the current business unit. Confirm that each available source batch has its own
+checkbox and that **Select All** is a checkbox above them. With no batches checked, submission
+is disabled. Checking batches fills the available quantity in base units. For a partial move, enter
+the quantity and select its unit. The base unit is selected initially. Entered and converted quantities
+allow at most two decimal places. The move posts immediately. `create` access to both Stock Transactions
+and Location Transfers is required, and the button is hidden without either permission.
 
 - Select BOX (144) and enter 2: confirm the total and submitted movement are 288 base units.
   Switch to the base unit and enter 5: confirm 5 base units. Verify inactive units are unavailable,
@@ -269,12 +272,32 @@ Transactions and Location Transfers is required; the button is hidden without ei
 - Move to another warehouse in the same business unit, including a warehouse that does not yet
   hold the item. Confirm source decreases, destination increases, and total on-hand is conserved.
 - Move between two racks in the same warehouse and confirm warehouse and batch totals are unchanged.
+- Use a source with at least six batches. Check one batch on the first page and another on the next
+  page, leaving the oldest batch unchecked. Confirm that page changes preserve the checks. Submit
+  and verify that only the two checked batches move and appear in movement history.
+  Try a quantity above their combined availability while the rack total is sufficient and confirm
+  submission is blocked.
+- Use **Select All**, then uncheck one batch. Confirm the checkbox shows a partial selection,
+  the quantity excludes that batch, and moving the selection leaves both the unchecked batch and
+  reserved stock at the source. Changing the source clears the batch selection and entered quantity.
+- With 15 available at the rack and a warehouse batch reservation limiting the movable balance to
+  13, confirm **Select All** fills 13 base units and allows a move for that amount.
+- Check and then uncheck **Select All**. Confirm the list has no checked batches and submission is disabled.
+- Clear a filled quantity while batches are checked and verify that **Move Stock** stays disabled
+  until a valid quantity is entered.
+- Confirm each page shows at most five available batches from the selected source and excludes
+  fully reserved batches and batches in other racks. Make a checked batch unavailable before
+  submitting and confirm inline guidance allows reselection.
+- With the dialog open on another page, decrease a checked batch's available quantity and trigger
+  a stock conflict. Confirm the refreshed amount reflects the decrease and the batch stays checked.
+  Repeat after **Select All** with an unchecked batch that drops to zero. Confirm that it stays
+  excluded and no longer reduces the movable balance. A manually entered quantity should stay in the field.
 - Load the warehouse Locations list, tree, and bin details, then move all 500 units from Bin 1
   to an empty Bin 2 using the item's Move Stock dialog. Return to warehouse Locations without
   reloading the browser: confirm Bin 1 shows 0 and Bin 2 shows 500, including their detail totals.
-- Use multiple source batches and confirm FIFO consumption and original batch codes and receipt
-  dates. A warehouse move posts linked Out and In entries, with one line per consumed batch at each
-  warehouse; confirm both warehouses' ledger totals and closing balances. A rack move posts one
+- Enter a partial quantity and confirm FIFO consumption within the checked batches, original batch
+  codes, and receipt dates. A warehouse move posts linked Out and In entries, with one line per
+  consumed batch at each warehouse. Confirm both warehouses' ledger totals and closing balances. A rack move posts one
   Transfer entry with no warehouse balance change. Reservations and pending putaway stay at source.
 - Confirm warehouse and rack pickers initially load at most five server-filtered options and
   changing a warehouse clears its rack selection. Switching business units clears the open move's
@@ -300,6 +323,7 @@ For authenticated database checks and an injected failure after batch writes, ru
 The script rolls back all fixtures and changes. Focused API and dialog checks are in
 `src/app/api/stock-transactions/route.test.ts` and
 `src/components/items/locations/MoveStockDialog.test.tsx`.
+Batch lookup access and pagination checks are in `src/app/api/lookups/stock-move-batches/route.test.ts`.
 
 ## 2. Item Categories
 

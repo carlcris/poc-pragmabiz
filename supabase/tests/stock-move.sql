@@ -137,8 +137,16 @@ DECLARE
   v_transaction_id UUID;
   v_receipt_id UUID;
   v_summary RECORD;
+  v_availability RECORD;
   v_source_quantity NUMERIC;
   v_expiration_case RECORD;
+  v_old_batch_location_id UUID;
+  v_new_batch_location_id UUID;
+  v_middle_batch_id UUID := gen_random_uuid();
+  v_middle_batch_location_id UUID;
+  v_other_batch_location_id UUID;
+  v_unavailable_batch RECORD;
+  v_invalid_selection RECORD;
 BEGIN
   SELECT actor_id, company_id, business_unit_id, item_id, source_warehouse_id,
     destination_warehouse_id, foreign_warehouse_id, source_location_id, destination_location_id,
@@ -146,49 +154,71 @@ BEGIN
   INTO STRICT v_context FROM stock_move_test_context;
   SELECT id INTO STRICT v_denied_actor FROM stock_move_denied_actor;
   IF current_user <> 'authenticated' THEN RAISE EXCEPTION 'Tests must run with RLS applied'; END IF;
-  IF has_function_privilege('anon', 'public.move_stock_transactionally(uuid,uuid,uuid,uuid,uuid,uuid,numeric,date)', 'EXECUTE') THEN
+  IF to_regprocedure('public.move_stock_transactionally(uuid,uuid,uuid,uuid,uuid,uuid,numeric,date)') IS NOT NULL THEN
+    RAISE EXCEPTION 'Quantity-only stock move signature is still available';
+  END IF;
+  IF has_function_privilege('anon', 'public.move_stock_transactionally(uuid,uuid,uuid,uuid,uuid,uuid,numeric,text,uuid[],date)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Anonymous role can execute stock move';
+  END IF;
+  IF has_function_privilege('anon', 'public.get_stock_move_source_availability(uuid,uuid,uuid,uuid,text,uuid[])', 'EXECUTE')
+    OR has_function_privilege('service_role', 'public.get_stock_move_source_availability(uuid,uuid,uuid,uuid,text,uuid[])', 'EXECUTE') THEN
+    RAISE EXCEPTION 'An unauthenticated role can execute stock move availability';
   END IF;
 
   PERFORM set_config('request.jwt.claims', '{}', TRUE);
   BEGIN
     PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
       v_context.source_warehouse_id, v_context.destination_warehouse_id,
-      v_context.source_location_id, v_context.destination_location_id, 1);
+      v_context.source_location_id, v_context.destination_location_id, 1, 'exclude', '{}'::UUID[]);
     RAISE EXCEPTION 'TEST_EXPECTED_AUTHENTICATION_REJECTION';
   EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_UNAUTHORIZED' THEN RAISE; END IF; END;
 
   PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_denied_actor,
     'role', 'authenticated', 'current_business_unit_id', v_context.business_unit_id)::TEXT, TRUE);
   BEGIN
+    PERFORM public.get_stock_move_source_availability(v_context.business_unit_id,
+      v_context.item_id, v_context.source_warehouse_id, v_context.source_location_id, 'exclude', '{}'::UUID[]);
+    RAISE EXCEPTION 'Stock move availability accepted an unauthorized actor';
+  EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+  BEGIN
     PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
       v_context.source_warehouse_id, v_context.destination_warehouse_id,
-      v_context.source_location_id, v_context.destination_location_id, 1);
+      v_context.source_location_id, v_context.destination_location_id, 1, 'exclude', '{}'::UUID[]);
     RAISE EXCEPTION 'TEST_EXPECTED_FORBIDDEN';
   EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_FORBIDDEN' THEN RAISE; END IF; END;
 
   PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_context.actor_id,
     'role', 'authenticated', 'current_business_unit_id', v_context.business_unit_id)::TEXT, TRUE);
+  SELECT id INTO STRICT v_old_batch_location_id FROM public.item_batch_locations
+  WHERE location_id = v_context.source_location_id AND item_batch_id = v_context.old_batch_id;
+  SELECT id INTO STRICT v_new_batch_location_id FROM public.item_batch_locations
+  WHERE location_id = v_context.source_location_id AND item_batch_id = v_context.new_batch_id;
   v_before := pg_temp.stock_move_snapshot();
+
+  BEGIN
+    PERFORM public.get_stock_move_source_availability(v_context.business_unit_id,
+      v_context.item_id, v_context.foreign_warehouse_id, v_context.foreign_location_id, 'exclude', '{}'::UUID[]);
+    RAISE EXCEPTION 'Stock move availability accepted a source outside the business unit';
+  EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
 
   BEGIN
     PERFORM public.move_stock_transactionally(gen_random_uuid(), v_context.item_id,
       v_context.source_warehouse_id, v_context.destination_warehouse_id,
-      v_context.source_location_id, v_context.destination_location_id, 1);
+      v_context.source_location_id, v_context.destination_location_id, 1, 'exclude', '{}'::UUID[]);
     RAISE EXCEPTION 'TEST_EXPECTED_CONTEXT_REJECTION';
   EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_CONTEXT_INVALID' THEN RAISE; END IF; END;
 
   BEGIN
     PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
       v_context.source_warehouse_id, v_context.destination_warehouse_id,
-      v_context.source_location_id, v_context.destination_location_id, 0.001);
+      v_context.source_location_id, v_context.destination_location_id, 0.001, 'exclude', '{}'::UUID[]);
     RAISE EXCEPTION 'TEST_EXPECTED_PRECISION_REJECTION';
   EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_DETAILS_INVALID' THEN RAISE; END IF; END;
 
   BEGIN
     PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
       v_context.source_warehouse_id, v_context.destination_warehouse_id,
-      v_context.destination_location_id, v_context.source_location_id, 1);
+      v_context.destination_location_id, v_context.source_location_id, 1, 'exclude', '{}'::UUID[]);
     RAISE EXCEPTION 'TEST_EXPECTED_WRONG_RACK_REJECTION';
   EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_LOCATION_INVALID' THEN RAISE; END IF; END;
 
@@ -196,7 +226,7 @@ BEGIN
   BEGIN
     PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
       v_context.source_warehouse_id, v_context.destination_warehouse_id,
-      v_context.source_location_id, v_context.destination_location_id, 1);
+      v_context.source_location_id, v_context.destination_location_id, 1, 'exclude', '{}'::UUID[]);
     RAISE EXCEPTION 'TEST_EXPECTED_NONSTORABLE_REJECTION';
   EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_LOCATION_INVALID' THEN RAISE; END IF; END;
   UPDATE public.warehouse_locations SET is_storable = TRUE WHERE id = v_context.destination_location_id;
@@ -204,14 +234,14 @@ BEGIN
   BEGIN
     PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
       v_context.source_warehouse_id, v_context.foreign_warehouse_id,
-      v_context.source_location_id, v_context.foreign_location_id, 1);
+      v_context.source_location_id, v_context.foreign_location_id, 1, 'exclude', '{}'::UUID[]);
     RAISE EXCEPTION 'TEST_EXPECTED_CROSS_BU_REJECTION';
   EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_WAREHOUSE_INVALID' THEN RAISE; END IF; END;
 
   BEGIN
     PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
       v_context.source_warehouse_id, v_context.destination_warehouse_id,
-      v_context.source_location_id, v_context.destination_location_id, 16);
+      v_context.source_location_id, v_context.destination_location_id, 16, 'exclude', '{}'::UUID[]);
     RAISE EXCEPTION 'TEST_EXPECTED_RESERVED_PUTAWAY_REJECTION';
   EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_INSUFFICIENT_STOCK' THEN RAISE; END IF; END;
 
@@ -219,9 +249,36 @@ BEGIN
   BEGIN
     PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
       v_context.source_warehouse_id, v_context.destination_warehouse_id,
-      v_context.other_location_id, v_context.destination_location_id, 1);
+      v_context.other_location_id, v_context.destination_location_id, 1, 'exclude', '{}'::UUID[]);
     RAISE EXCEPTION 'TEST_EXPECTED_EMPTY_RACK_REJECTION';
   EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_INSUFFICIENT_STOCK' THEN RAISE; END IF; END;
+
+  -- A specific batch cannot borrow stock from older batches to cover the requested quantity.
+  BEGIN
+    PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
+      v_context.source_warehouse_id, v_context.destination_warehouse_id,
+      v_context.source_location_id, v_context.destination_location_id, 8, 'include', ARRAY[v_new_batch_location_id]);
+    RAISE EXCEPTION 'TEST_EXPECTED_SELECTED_BATCH_QUANTITY_REJECTION';
+  EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_INSUFFICIENT_STOCK' THEN RAISE; END IF; END;
+
+  FOR v_invalid_selection IN
+    SELECT selection.mode, selection.batch_ids
+    FROM (VALUES
+      ('invalid', '{}'::UUID[]),
+      ('include', '{}'::UUID[]),
+      ('include', ARRAY[v_new_batch_location_id, v_new_batch_location_id]),
+      ('exclude', ARRAY[NULL::UUID]),
+      ('exclude', ARRAY(SELECT gen_random_uuid() FROM generate_series(1, 101)))
+    ) selection(mode, batch_ids)
+  LOOP
+    BEGIN
+      PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
+        v_context.source_warehouse_id, v_context.destination_warehouse_id,
+        v_context.source_location_id, v_context.destination_location_id, 1,
+        v_invalid_selection.mode, v_invalid_selection.batch_ids);
+      RAISE EXCEPTION 'TEST_EXPECTED_INVALID_BATCH_SELECTION_REJECTION';
+    EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_DETAILS_INVALID' THEN RAISE; END IF; END;
+  END LOOP;
   IF v_before IS DISTINCT FROM pg_temp.stock_move_snapshot() THEN RAISE EXCEPTION 'Rejected move left partial writes'; END IF;
 
   -- Regression: 1 box of 144 cannot move from a rack with 58 base units,
@@ -247,7 +304,7 @@ BEGIN
     BEGIN
       PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
         v_context.source_warehouse_id, v_context.destination_warehouse_id,
-        v_context.source_location_id, v_context.destination_location_id, 144);
+        v_context.source_location_id, v_context.destination_location_id, 144, 'exclude', '{}'::UUID[]);
       RAISE EXCEPTION 'TEST_EXPECTED_144_FROM_58_REJECTION';
     EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_INSUFFICIENT_STOCK' THEN RAISE; END IF; END;
     IF v_before IS DISTINCT FROM pg_temp.stock_move_snapshot() THEN
@@ -256,7 +313,7 @@ BEGIN
     BEGIN
       PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
         v_context.source_warehouse_id, v_context.source_warehouse_id,
-        v_context.source_location_id, v_context.other_location_id, 144);
+        v_context.source_location_id, v_context.other_location_id, 144, 'exclude', '{}'::UUID[]);
       RAISE EXCEPTION 'TEST_EXPECTED_144_FROM_58_RACK_REJECTION';
     EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_INSUFFICIENT_STOCK' THEN RAISE; END IF; END;
     IF v_before IS DISTINCT FROM pg_temp.stock_move_snapshot() THEN
@@ -268,9 +325,160 @@ BEGIN
   END;
   v_before := pg_temp.stock_move_snapshot();
 
+  -- Warehouse-batch reservations can impose a lower cap than the source placement.
+  BEGIN
+    UPDATE public.item_batches SET qty_reserved = 4 WHERE id = v_context.old_batch_id;
+    SELECT available_quantity, named_batches INTO STRICT v_availability
+    FROM public.get_stock_move_source_availability(v_context.business_unit_id, v_context.item_id,
+      v_context.source_warehouse_id, v_context.source_location_id, 'exclude', '{}'::UUID[]);
+    IF v_availability.available_quantity IS DISTINCT FROM 13
+      OR v_availability.named_batches IS DISTINCT FROM '[]'::JSONB THEN
+      RAISE EXCEPTION 'Select All exposed the rack placement balance of 15 instead of the movable 13';
+    END IF;
+    BEGIN
+      v_result := public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
+        v_context.source_warehouse_id, v_context.destination_warehouse_id,
+        v_context.source_location_id, v_context.destination_location_id,
+        v_availability.available_quantity, 'exclude', '{}'::UUID[]);
+      v_transaction_id := (v_result ->> 'id')::UUID;
+      IF (SELECT quantity FROM public.stock_transaction_items
+          WHERE transaction_id = v_transaction_id AND batch_no = v_context.old_batch_code) IS DISTINCT FROM 6
+        OR (SELECT quantity FROM public.stock_transaction_items
+            WHERE transaction_id = v_transaction_id AND batch_no = 'MOVE-NEW') IS DISTINCT FROM 7 THEN
+        RAISE EXCEPTION 'Select All did not move the full previewed quantity across both batches';
+      END IF;
+      RAISE EXCEPTION USING ERRCODE = 'ZX063', MESSAGE = 'Restore Select All move fixtures';
+    EXCEPTION WHEN SQLSTATE 'ZX063' THEN NULL;
+    END;
+
+    v_result := public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
+      v_context.source_warehouse_id, v_context.destination_warehouse_id,
+      v_context.source_location_id, v_context.destination_location_id, 7, 'include',
+      ARRAY[v_old_batch_location_id, v_new_batch_location_id]);
+    v_transaction_id := (v_result ->> 'id')::UUID;
+    IF (SELECT quantity FROM public.stock_transaction_items
+        WHERE transaction_id = v_transaction_id AND batch_no = v_context.old_batch_code) IS DISTINCT FROM 6
+      OR (SELECT quantity FROM public.stock_transaction_items
+          WHERE transaction_id = v_transaction_id AND batch_no = 'MOVE-NEW') IS DISTINCT FROM 1 THEN
+      RAISE EXCEPTION 'Move failed to cap a batch at its warehouse availability and continue within the selection';
+    END IF;
+    RAISE EXCEPTION USING ERRCODE = 'ZX061', MESSAGE = 'Restore capped batch fixtures';
+  EXCEPTION WHEN SQLSTATE 'ZX061' THEN NULL;
+  END;
+
+  -- Check the warehouse cap and refresh named IDs without paging the rack.
+  BEGIN
+    UPDATE public.item_warehouse SET reserved_stock = 8
+    WHERE item_id = v_context.item_id AND warehouse_id = v_context.source_warehouse_id;
+    SELECT available_quantity, named_batches INTO STRICT v_availability
+    FROM public.get_stock_move_source_availability(v_context.business_unit_id, v_context.item_id,
+      v_context.source_warehouse_id, v_context.source_location_id, 'include',
+      ARRAY[v_old_batch_location_id, v_new_batch_location_id]);
+    IF v_availability.available_quantity IS DISTINCT FROM 9
+      OR NOT (v_availability.named_batches @> jsonb_build_array(
+        jsonb_build_object('id', v_old_batch_location_id, 'qtyAvailable', 8),
+        jsonb_build_object('id', v_new_batch_location_id, 'qtyAvailable', 7))) THEN
+      RAISE EXCEPTION 'The warehouse cap or named batch availability was ignored';
+    END IF;
+
+    SELECT available_quantity, named_batches INTO STRICT v_availability
+    FROM public.get_stock_move_source_availability(v_context.business_unit_id, v_context.item_id,
+      v_context.source_warehouse_id, v_context.source_location_id, 'exclude', ARRAY[v_new_batch_location_id]);
+    IF v_availability.available_quantity IS DISTINCT FROM 8
+      OR v_availability.named_batches IS DISTINCT FROM jsonb_build_array(
+        jsonb_build_object('id', v_new_batch_location_id, 'qtyAvailable', 7)) THEN
+      RAISE EXCEPTION 'The excluded balance was not refreshed before applying the warehouse cap';
+    END IF;
+
+    UPDATE public.item_batches SET qty_reserved = 5 WHERE id = v_context.old_batch_id;
+    UPDATE public.item_batch_locations SET qty_reserved = qty_on_hand WHERE id = v_new_batch_location_id;
+    SELECT available_quantity, named_batches INTO STRICT v_availability
+    FROM public.get_stock_move_source_availability(v_context.business_unit_id, v_context.item_id,
+      v_context.source_warehouse_id, v_context.source_location_id, 'include',
+      ARRAY[v_old_batch_location_id, v_new_batch_location_id]);
+    IF v_availability.available_quantity IS DISTINCT FROM 5
+      OR v_availability.named_batches IS DISTINCT FROM jsonb_build_array(
+        jsonb_build_object('id', v_old_batch_location_id, 'qtyAvailable', 5)) THEN
+      RAISE EXCEPTION 'A reduced or exhausted checked batch kept its old availability';
+    END IF;
+
+    SELECT available_quantity, named_batches INTO STRICT v_availability
+    FROM public.get_stock_move_source_availability(v_context.business_unit_id, v_context.item_id,
+      v_context.source_warehouse_id, v_context.source_location_id, 'exclude', ARRAY[v_new_batch_location_id]);
+    IF v_availability.available_quantity IS DISTINCT FROM 5
+      OR v_availability.named_batches IS DISTINCT FROM '[]'::JSONB THEN
+      RAISE EXCEPTION 'An exhausted unchecked batch reduced the available balance';
+    END IF;
+    RAISE EXCEPTION USING ERRCODE = 'ZX062', MESSAGE = 'Restore availability fixtures';
+  EXCEPTION WHEN SQLSTATE 'ZX062' THEN NULL;
+  END;
+
+  -- Include two nonadjacent batches in reverse order. FIFO must consume the
+  -- oldest available included batch first and skip the unselected middle batch.
+  BEGIN
+    INSERT INTO public.item_batches (id, company_id, item_id, warehouse_id, batch_code, received_at,
+      qty_on_hand, qty_reserved, created_by, updated_by)
+    VALUES (v_middle_batch_id, v_context.company_id, v_context.item_id, v_context.source_warehouse_id,
+      'MOVE-MIDDLE', NOW() - INTERVAL '5 days', 4, 0, v_context.actor_id, v_context.actor_id);
+    INSERT INTO public.item_batch_locations (company_id, item_id, warehouse_id, location_id,
+      item_batch_id, qty_on_hand, qty_reserved, created_by, updated_by)
+    VALUES (v_context.company_id, v_context.item_id, v_context.source_warehouse_id,
+      v_context.source_location_id, v_middle_batch_id, 4, 0, v_context.actor_id, v_context.actor_id)
+    RETURNING id INTO v_middle_batch_location_id;
+    UPDATE public.item_warehouse SET current_stock = current_stock + 4
+    WHERE item_id = v_context.item_id AND warehouse_id = v_context.source_warehouse_id;
+
+    v_result := public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
+      v_context.source_warehouse_id, v_context.destination_warehouse_id,
+      v_context.source_location_id, v_context.destination_location_id, 11, 'include',
+      ARRAY[v_new_batch_location_id, v_old_batch_location_id]);
+    v_transaction_id := (v_result ->> 'id')::UUID;
+    SELECT id INTO STRICT v_receipt_id FROM public.stock_transactions
+    WHERE reference_type = 'stock_move' AND reference_id = v_transaction_id AND transaction_type = 'in';
+    IF (SELECT qty_on_hand FROM public.item_batch_locations WHERE id = v_old_batch_location_id) IS DISTINCT FROM 2
+      OR (SELECT qty_on_hand FROM public.item_batch_locations WHERE id = v_new_batch_location_id) IS DISTINCT FROM 4
+      OR (SELECT qty_on_hand FROM public.item_batch_locations WHERE id = v_middle_batch_location_id) IS DISTINCT FROM 4
+      OR (SELECT SUM(qty_on_hand) FROM public.item_batch_locations
+          WHERE location_id = v_context.destination_location_id) IS DISTINCT FROM 11
+      OR (SELECT COUNT(*) FROM public.stock_transaction_items
+          WHERE transaction_id IN (v_transaction_id, v_receipt_id)
+            AND ((batch_no = v_context.old_batch_code AND quantity = 8) OR (batch_no = 'MOVE-NEW' AND quantity = 3))) <> 4
+      OR EXISTS (SELECT 1 FROM public.stock_transaction_items
+          WHERE transaction_id IN (v_transaction_id, v_receipt_id) AND batch_no = 'MOVE-MIDDLE') THEN
+      RAISE EXCEPTION 'Included batches did not move in FIFO order or touched an unselected batch';
+    END IF;
+
+    -- Exclude the remaining older batch and ignore a stale exclusion without reading it.
+    v_result := public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
+      v_context.source_warehouse_id, v_context.destination_warehouse_id,
+      v_context.source_location_id, v_context.destination_location_id, 4, 'exclude',
+      ARRAY[v_middle_batch_location_id, gen_random_uuid()]);
+    IF (SELECT qty_on_hand FROM public.item_batch_locations WHERE id = v_middle_batch_location_id) IS DISTINCT FROM 4
+      OR (SELECT qty_on_hand FROM public.item_batch_locations WHERE id = v_new_batch_location_id) IS DISTINCT FROM 0
+      OR (SELECT quantity FROM public.stock_transaction_items
+          WHERE transaction_id = (v_result ->> 'id')::UUID AND batch_no = 'MOVE-NEW') IS DISTINCT FROM 4 THEN
+      RAISE EXCEPTION 'Excluded batch moved or eligible stock was left behind';
+    END IF;
+
+    -- Moving the full available quantity across all batches leaves only reserved stock in the rack.
+    PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
+      v_context.source_warehouse_id, v_context.destination_warehouse_id,
+      v_context.source_location_id, v_context.destination_location_id, 4, 'exclude', '{}'::UUID[]);
+    IF (SELECT SUM(qty_on_hand) FROM public.item_batch_locations
+        WHERE location_id = v_context.source_location_id) IS DISTINCT FROM 2
+      OR (SELECT SUM(qty_available) FROM public.item_batch_locations
+          WHERE location_id = v_context.source_location_id) IS DISTINCT FROM 0
+      OR (SELECT SUM(qty_on_hand) FROM public.item_batch_locations
+          WHERE location_id = v_context.destination_location_id) IS DISTINCT FROM 19 THEN
+      RAISE EXCEPTION 'Full move did not move all available batches and preserve reservations';
+    END IF;
+    RAISE EXCEPTION USING ERRCODE = 'ZX060', MESSAGE = 'Restore selected move fixtures';
+  EXCEPTION WHEN SQLSTATE 'ZX060' THEN NULL;
+  END;
+
   v_result := public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
     v_context.source_warehouse_id, v_context.destination_warehouse_id,
-    v_context.source_location_id, v_context.destination_location_id, 9);
+    v_context.source_location_id, v_context.destination_location_id, 9, 'exclude', '{}'::UUID[]);
   v_transaction_id := (v_result ->> 'id')::UUID;
   SELECT id INTO STRICT v_receipt_id FROM public.stock_transactions
   WHERE reference_type = 'stock_move' AND reference_id = v_transaction_id AND transaction_type = 'in';
@@ -309,7 +517,7 @@ BEGIN
 
   v_result := public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
     v_context.source_warehouse_id, v_context.source_warehouse_id,
-    v_context.source_location_id, v_context.other_location_id, 1);
+    v_context.source_location_id, v_context.other_location_id, 1, 'include', ARRAY[v_new_batch_location_id]);
   IF (SELECT current_stock FROM public.item_warehouse WHERE warehouse_id = v_context.source_warehouse_id AND item_id = v_context.item_id) IS DISTINCT FROM 11
     OR (SELECT transaction_type FROM public.stock_transactions WHERE id = (v_result ->> 'id')::UUID) IS DISTINCT FROM 'transfer'
     OR (SELECT qty_on_hand FROM public.item_batches WHERE id = v_context.new_batch_id) IS DISTINCT FROM 6
@@ -319,13 +527,43 @@ BEGIN
   END IF;
 
   v_before := pg_temp.stock_move_snapshot();
+  SELECT id INTO STRICT v_other_batch_location_id FROM public.item_batch_locations
+  WHERE location_id = v_context.other_location_id AND item_batch_id = v_context.new_batch_id;
+
+  SELECT available_quantity, named_batches INTO STRICT v_availability
+  FROM public.get_stock_move_source_availability(v_context.business_unit_id, v_context.item_id,
+    v_context.source_warehouse_id, v_context.source_location_id, 'include', ARRAY[v_other_batch_location_id]);
+  IF v_availability.available_quantity IS DISTINCT FROM 0
+    OR v_availability.named_batches IS DISTINCT FROM '[]'::JSONB THEN
+    RAISE EXCEPTION 'Resolving named availability exposed stock from a different rack';
+  END IF;
+
+  -- Validate every included ID even when the valid batch alone covers the move.
+  FOR v_unavailable_batch IN
+    SELECT candidate.batch_location_id
+    FROM (VALUES
+      (gen_random_uuid()),
+      (v_old_batch_location_id),
+      (v_other_batch_location_id)
+    ) candidate(batch_location_id)
+  LOOP
+    BEGIN
+      PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
+        v_context.source_warehouse_id, v_context.destination_warehouse_id,
+        v_context.source_location_id, v_context.destination_location_id, 1, 'include',
+        ARRAY[v_new_batch_location_id, v_unavailable_batch.batch_location_id]);
+      RAISE EXCEPTION 'TEST_EXPECTED_UNAVAILABLE_BATCH_REJECTION';
+    EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_BATCH_UNAVAILABLE' THEN RAISE; END IF; END;
+  END LOOP;
+  IF v_before IS DISTINCT FROM pg_temp.stock_move_snapshot() THEN RAISE EXCEPTION 'Unavailable batch left partial writes'; END IF;
+
   SELECT SUM(qty_on_hand) INTO v_source_quantity FROM public.item_batch_locations WHERE location_id = v_context.source_location_id;
   PERFORM set_config('test.source_quantity_before', v_source_quantity::TEXT, TRUE);
   PERFORM set_config('test.fail_stock_move', 'yes', TRUE);
   BEGIN
     PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
       v_context.source_warehouse_id, v_context.destination_warehouse_id,
-      v_context.source_location_id, v_context.destination_location_id, 1);
+      v_context.source_location_id, v_context.destination_location_id, 1, 'include', ARRAY[v_new_batch_location_id]);
     RAISE EXCEPTION 'TEST_EXPECTED_LATE_FAILURE';
   EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'TEST_FAILURE_AFTER_BATCH_WRITE' THEN RAISE; END IF; END;
   PERFORM set_config('test.fail_stock_move', 'no', TRUE);
@@ -346,7 +584,7 @@ BEGIN
       BEGIN
         PERFORM public.move_stock_transactionally(v_context.business_unit_id,v_context.item_id,
           v_context.source_warehouse_id,v_context.destination_warehouse_id,
-          v_context.source_location_id,v_context.destination_location_id,1);
+          v_context.source_location_id,v_context.destination_location_id,1, 'exclude', '{}'::UUID[]);
         RAISE EXCEPTION 'TEST_EXPECTED_EXPIRATION_CONFLICT';
       EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_BATCH_CONFLICT' THEN RAISE; END IF; END;
       IF v_before IS DISTINCT FROM pg_temp.stock_move_snapshot() THEN
@@ -363,7 +601,7 @@ BEGIN
       WHERE id=v_context.new_batch_id OR (warehouse_id=v_context.destination_warehouse_id AND batch_code='MOVE-NEW');
       PERFORM public.move_stock_transactionally(v_context.business_unit_id,v_context.item_id,
         v_context.source_warehouse_id,v_context.destination_warehouse_id,
-        v_context.source_location_id,v_context.destination_location_id,1);
+        v_context.source_location_id,v_context.destination_location_id,1, 'exclude', '{}'::UUID[]);
       IF EXISTS(SELECT 1 FROM public.item_batches WHERE batch_code='MOVE-NEW'
         AND warehouse_id IN(v_context.source_warehouse_id,v_context.destination_warehouse_id)
         AND expiration_date IS DISTINCT FROM v_expiration_case.expiration) THEN
@@ -379,7 +617,7 @@ BEGIN
   BEGIN
     PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
       v_context.source_warehouse_id, v_context.destination_warehouse_id,
-      v_context.source_location_id, v_context.destination_location_id, 1);
+      v_context.source_location_id, v_context.destination_location_id, 1, 'exclude', '{}'::UUID[]);
     RAISE EXCEPTION 'TEST_EXPECTED_BATCH_CONFLICT';
   EXCEPTION WHEN OTHERS THEN IF SQLERRM <> 'STOCK_MOVE_BATCH_CONFLICT' THEN RAISE; END IF; END;
   IF v_before IS DISTINCT FROM pg_temp.stock_move_snapshot() THEN RAISE EXCEPTION 'Batch conflict left partial writes'; END IF;
@@ -389,7 +627,7 @@ BEGIN
   -- Return stock into an existing batch while keeping the reservation at its original source.
   PERFORM public.move_stock_transactionally(v_context.business_unit_id, v_context.item_id,
     v_context.destination_warehouse_id, v_context.source_warehouse_id,
-    v_context.destination_location_id, v_context.source_location_id, 3);
+    v_context.destination_location_id, v_context.source_location_id, 3, 'exclude', '{}'::UUID[]);
   IF (SELECT SUM(current_stock) FROM public.item_warehouse WHERE item_id = v_context.item_id
         AND warehouse_id IN (v_context.source_warehouse_id, v_context.destination_warehouse_id)) IS DISTINCT FROM 20
     OR (SELECT reserved_stock FROM public.item_warehouse WHERE item_id = v_context.item_id AND warehouse_id = v_context.source_warehouse_id) IS DISTINCT FROM 2
@@ -409,7 +647,7 @@ BEGIN
       WHERE location.item_id = stock.item_id AND location.warehouse_id = stock.warehouse_id AND location.deleted_at IS NULL
     )
   ) THEN RAISE EXCEPTION 'Warehouse, batch, and rack totals do not reconcile'; END IF;
-  RAISE NOTICE 'Authenticated stock moves passed: FIFO, both warehouse ledgers, same warehouse, existing batch merge, cross-BU/permission rejection, reservation protection, and rollback after writes';
+  RAISE NOTICE 'Authenticated stock moves passed: batch inclusion and exclusion, FIFO, both warehouse ledgers, same warehouse, existing batch merge, cross-BU/permission rejection, reservation protection, and rollback after writes';
 END $$;
 RESET ROLE;
 ROLLBACK;
