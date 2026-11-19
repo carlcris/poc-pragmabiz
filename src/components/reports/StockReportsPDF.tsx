@@ -79,11 +79,12 @@ const styles = StyleSheet.create({
   },
   wItem: { width: "20%" },
   wWarehouse: { width: "16%" },
+  wMovementWarehouse: { width: "12%" },
   wCategory: { width: "12%" },
   wUom: { width: "8%" },
   wQty: { width: "9%" },
   wValue: { width: "10%" },
-  wTxn: { width: "7%" },
+  wTxn: { width: "11%" },
 });
 
 const qty = (value: number) => value.toFixed(2);
@@ -134,12 +135,12 @@ export const StockMovementReportPDF = ({
         </Text>
       </View>
 
-      <View style={styles.table}>
+      <View>
         <View style={styles.tableHeader}>
           <View style={[styles.cell, styles.wItem]}>
             <Text style={styles.headerText}>{itemLabel}</Text>
           </View>
-          <View style={[styles.cell, styles.wWarehouse]}>
+          <View style={[styles.cell, styles.wMovementWarehouse]}>
             <Text style={styles.headerText}>{warehouseLabel}</Text>
           </View>
           <View style={[styles.cell, styles.wQty]}>
@@ -171,7 +172,7 @@ export const StockMovementReportPDF = ({
               <Text style={styles.cellText}>{row.itemCode || noValueLabel}</Text>
               <Text style={styles.muted}>{row.itemName || noValueLabel}</Text>
             </View>
-            <View style={[styles.cell, styles.wWarehouse]}>
+            <View style={[styles.cell, styles.wMovementWarehouse]}>
               <Text style={styles.cellText}>{row.warehouseCode || noValueLabel}</Text>
               <Text style={styles.muted}>{row.warehouseName || noValueLabel}</Text>
             </View>

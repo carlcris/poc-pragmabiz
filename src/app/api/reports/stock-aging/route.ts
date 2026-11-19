@@ -1,5 +1,5 @@
 import type { StockAgingReportResponse, StockAgingReportRow } from "@/types/stock-aging-report";
-import { fetchStockAgingLocationPaths } from "@/lib/reports/stock-aging-location-paths";
+import { fetchWarehouseLocationNamePaths } from "@/lib/reports/warehouse-location-name-paths";
 import { calculateStockAge } from "@/lib/reports/stock-aging-age";
 import { groupStockAgingRows } from "@/lib/reports/stock-aging-groups";
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
@@ -418,7 +418,7 @@ async function GETHandler(request: NextRequest) {
         return location && locationIds.has(location.id) ? [[location.id, location] as const] : [];
       })
     );
-    const namePaths = await fetchStockAgingLocationPaths(supabase, userData.company_id, [
+    const namePaths = await fetchWarehouseLocationNamePaths(supabase, userData.company_id, [
       ...locations.values(),
     ]);
     for (const row of reportRows) row.locationPath = namePaths.get(row.locationId) || null;

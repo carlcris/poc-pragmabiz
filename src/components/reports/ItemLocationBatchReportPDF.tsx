@@ -1,6 +1,8 @@
 import {
   itemLocationBatchGroupKey,
+  itemLocationReportGroupKey,
   type ItemLocationGroupSubtotal,
+  type ItemLocationReportGroupBy,
 } from "@/lib/reports/item-location-report-groups";
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { ItemLocationBatchReportRow } from "@/hooks/useItemLocationBatchReport";
@@ -15,12 +17,13 @@ export type ItemLocationBatchReportPDFProps = {
   itemLabel: string;
   warehouseLocationLabel: string;
   batchLabel: string;
+  locationLabel: string;
   locationSkuLabel: string;
   onHandLabel: string;
   reservedLabel: string;
   availableLabel: string;
   noValueLabel: string;
-  groupBy: "item" | "batch";
+  groupBy: ItemLocationReportGroupBy;
   noRowsLabel: string;
   subtotalLabel: string;
   groupSubtotals: Record<string, ItemLocationGroupSubtotal>;
@@ -69,6 +72,16 @@ const styles = StyleSheet.create({
 
 const qty = (value: number) => value.toFixed(2);
 
+// Warehouse and location are presented by name only. The API still returns
+// warehouseCode and locationCode for ordering and row identity, but neither is
+// a presentation label here, so they are never used as a display fallback.
+const warehouseLabelOf = (row: ItemLocationBatchReportRow, noValueLabel: string) =>
+  row.warehouseName || noValueLabel;
+// locationPath is the resolved ancestor-to-leaf name path; locationName is the
+// leaf alone, used when the path is absent.
+const locationLabelOf = (row: ItemLocationBatchReportRow, noValueLabel: string) =>
+  row.locationPath || row.locationName || noValueLabel;
+
 export const ItemLocationBatchReportPDF = ({
   title,
   subtitle,
@@ -77,6 +90,7 @@ export const ItemLocationBatchReportPDF = ({
   itemLabel,
   warehouseLocationLabel,
   batchLabel,
+  locationLabel,
   locationSkuLabel,
   onHandLabel,
   reservedLabel,
@@ -109,7 +123,12 @@ export const ItemLocationBatchReportPDF = ({
 
       <View style={[styles.tableHeader, styles.columnHeadings]} fixed>
         <View style={[styles.cell, styles.wLocation]}>
-          <Text style={styles.headerText}>{warehouseLocationLabel}</Text>
+          {/* Location grouping already states the warehouse and location in the
+              group heading, so the detail column carries the batch instead of
+              repeating that identity on every row. */}
+          <Text style={styles.headerText}>
+            {groupBy === "location" ? batchLabel : warehouseLocationLabel}
+          </Text>
         </View>
         <View style={[styles.cell, styles.wSku]}>
           <Text style={styles.headerText}>{locationSkuLabel}</Text>
@@ -131,6 +150,18 @@ export const ItemLocationBatchReportPDF = ({
         const itemChanged = previous?.itemId !== row.itemId;
         const batchChanged =
           !previous || itemLocationBatchGroupKey(previous) !== itemLocationBatchGroupKey(row);
+        // The shared group identity also covers the render-job boundary, so a
+        // location change starts a new primary heading even when the item and
+        // batch continue, and equal labels in different locations stay apart.
+        const primaryChanged =
+          !previous ||
+          itemLocationReportGroupKey(previous, groupBy) !==
+            itemLocationReportGroupKey(row, groupBy);
+        // Location grouping prints the batch per detail row, so one item
+        // subheading covers all of that item's batches at the location. The
+        // other modes still subhead every item/batch pair change.
+        const subgroupChanged =
+          primaryChanged || itemChanged || (groupBy !== "location" && batchChanged);
         return (
           <View
             key={row.id}
@@ -138,29 +169,40 @@ export const ItemLocationBatchReportPDF = ({
             wrap={false}
             style={isLastJob && index === rows.length - 1 ? styles.tableEnd : undefined}
           >
-            {(groupBy === "item" ? itemChanged : batchChanged) && (
+            {primaryChanged && (
               <View style={styles.tableHeader}>
                 <Text style={styles.cell}>
                   {groupBy === "item"
                     ? `${itemLabel}: ${row.itemCode || noValueLabel} — ${row.itemName || noValueLabel}`
-                    : `${batchLabel}: ${row.batchCode || noValueLabel}`}
+                    : groupBy === "batch"
+                      ? `${batchLabel}: ${row.batchCode || noValueLabel}`
+                      : `${locationLabel}: ${warehouseLabelOf(row, noValueLabel)} — ${locationLabelOf(row, noValueLabel)}`}
                 </Text>
               </View>
             )}
-            {(itemChanged || batchChanged) && (
+            {subgroupChanged && (
               <View style={styles.subgroup}>
                 <Text style={styles.cellText}>
-                  {groupBy === "batch"
-                    ? `${row.itemCode || noValueLabel} — ${row.itemName || noValueLabel}`
-                    : row.batchCode || noValueLabel}
+                  {groupBy === "item"
+                    ? row.batchCode || noValueLabel
+                    : `${row.itemCode || noValueLabel} — ${row.itemName || noValueLabel}`}
                 </Text>
               </View>
             )}
             <View style={styles.row}>
-              <View style={[styles.cell, styles.wLocation, styles.locationIndent]}>
-                <Text style={styles.cellText}>{row.warehouseCode || noValueLabel}</Text>
-                <Text style={styles.muted}>{row.locationPath || noValueLabel}</Text>
-              </View>
+              {/* The batch is the only identity left to resolve under a
+                  location heading that already names the warehouse, the
+                  location path, and the item. */}
+              {groupBy === "location" ? (
+                <View style={[styles.cell, styles.wLocation, styles.locationIndent]}>
+                  <Text style={styles.cellText}>{row.batchCode || noValueLabel}</Text>
+                </View>
+              ) : (
+                <View style={[styles.cell, styles.wLocation, styles.locationIndent]}>
+                  <Text style={styles.cellText}>{warehouseLabelOf(row, noValueLabel)}</Text>
+                  <Text style={styles.muted}>{locationLabelOf(row, noValueLabel)}</Text>
+                </View>
+              )}
               <View style={[styles.cell, styles.wSku]}>
                 <Text style={styles.cellText}>{row.batchLocationSku || noValueLabel}</Text>
               </View>

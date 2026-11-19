@@ -72,9 +72,9 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   table: {
-    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: "#d1d5db",
-    borderRadius: 4,
     overflow: "hidden",
   },
   tableHeader: {

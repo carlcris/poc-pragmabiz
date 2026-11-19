@@ -24,6 +24,10 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { ItemCategorySelect } from "@/components/items/ItemCategorySelect";
 import type { ItemCategory } from "@/types/item-category";
 import { renderItemLocationReportPdf } from "@/lib/reports/item-location-report-pdf";
+import {
+  isItemLocationReportGroupBy,
+  type ItemLocationReportGroupBy,
+} from "@/lib/reports/item-location-report-groups";
 import { getNamedPdfPreviewUrl } from "@/lib/reports/named-pdf-preview-url";
 import { useItemLocationBatchReport } from "@/hooks/useItemLocationBatchReport";
 import { useItems } from "@/hooks/useItems";
@@ -1751,7 +1755,7 @@ function ItemLocationBatchReportPreview({
   }, [open]);
   const [warehouseId, setWarehouseId] = useState("all");
   const [selectedItem, setSelectedItem] = useState<ReportItemOption | null>(null);
-  const [groupBy, setGroupBy] = useState<"item" | "batch">("item");
+  const [groupBy, setGroupBy] = useState<ItemLocationReportGroupBy>("item");
   const [includeEmptyBatches, setIncludeEmptyBatches] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [fileName, setFileName] = useState("");
@@ -1806,6 +1810,7 @@ function ItemLocationBatchReportPreview({
           itemLabel: t("item"),
           warehouseLocationLabel: t("warehouseLocation"),
           batchLabel: t("batch"),
+          locationLabel: t("location"),
           locationSkuLabel: t("locationSku"),
           onHandLabel: t("onHand"),
           reservedLabel: t("reserved"),
@@ -1882,7 +1887,9 @@ function ItemLocationBatchReportPreview({
             <label className="text-sm font-medium">{t("groupBy")}</label>
             <Select
               value={groupBy}
-              onValueChange={(value) => setGroupBy(value as "item" | "batch")}
+              onValueChange={(value) => {
+                if (isItemLocationReportGroupBy(value)) setGroupBy(value);
+              }}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -1890,6 +1897,7 @@ function ItemLocationBatchReportPreview({
               <SelectContent>
                 <SelectItem value="item">{t("item")}</SelectItem>
                 <SelectItem value="batch">{t("batch")}</SelectItem>
+                <SelectItem value="location">{t("location")}</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -4,6 +4,7 @@ import {
   orderItemLocationReportRows,
 } from "@/lib/reports/item-location-report-groups";
 import { defaultLocale, isLocale } from "@/lib/i18n";
+import { fetchWarehouseLocationNamePaths } from "@/lib/reports/warehouse-location-name-paths";
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
@@ -48,8 +49,8 @@ type ItemLocationBatchRow = {
     | { id: string; warehouse_code: string | null; warehouse_name: string | null }[]
     | null;
   location?:
-    | { id: string; code: string | null; name: string | null; location_path: string }
-    | { id: string; code: string | null; name: string | null; location_path: string }[]
+    | { id: string; code: string | null; name: string | null; path_ids: string[] }
+    | { id: string; code: string | null; name: string | null; path_ids: string[] }[]
     | null;
 };
 
@@ -163,7 +164,7 @@ async function GETHandler(request: NextRequest) {
         location:warehouse_locations!item_batch_locations_location_id_fkey(
           id,
           code,
-          location_path,
+          path_ids,
           name
         )
       `
@@ -173,12 +174,16 @@ async function GETHandler(request: NextRequest) {
     if (warehouseId) rowQuery = rowQuery.eq("warehouse_id", warehouseId);
     if (itemId) rowQuery = rowQuery.eq("item_id", itemId);
     if (!includeEmptyBatches) rowQuery = rowQuery.gt("qty_on_hand", 0);
-    const query = rowQuery
-      .order(groupBy === "item" ? "item_id" : "item_batch_id", { ascending: true })
-      .order(groupBy === "item" ? "item_batch_id" : "item_id", { ascending: true })
-      .order("warehouse_id", { ascending: true })
-      .order("location_id", { ascending: true })
-      .order("id", { ascending: true });
+    const orderColumns =
+      groupBy === "location"
+        ? ["warehouse_id", "location_id", "item_id", "item_batch_id", "id"]
+        : groupBy === "item"
+          ? ["item_id", "item_batch_id", "warehouse_id", "location_id", "id"]
+          : ["item_batch_id", "item_id", "warehouse_id", "location_id", "id"];
+    const query = orderColumns.reduce(
+      (orderedQuery, column) => orderedQuery.order(column, { ascending: true }),
+      rowQuery
+    );
 
     // Keep each read at or below the API row ceiling. Stop rather than publishing
     // partial totals if the dataset changes between reads.
@@ -214,6 +219,16 @@ async function GETHandler(request: NextRequest) {
       );
     }
 
+    const locations = new Map(
+      sourceRows.flatMap((row) => {
+        const location = one(row.location);
+        return location ? [[location.id, location] as const] : [];
+      })
+    );
+    const namePaths = await fetchWarehouseLocationNamePaths(supabase, userData.company_id, [
+      ...locations.values(),
+    ]);
+
     const rows = sourceRows.map((row) => {
       const item = one(row.item);
       const warehouse = one(row.warehouse);
@@ -241,7 +256,7 @@ async function GETHandler(request: NextRequest) {
         locationId: row.location_id,
         locationCode: location?.code || null,
         locationName: location?.name || null,
-        locationPath: location?.location_path || null,
+        locationPath: namePaths.get(row.location_id) || null,
         itemBatchId: row.item_batch_id,
         batchCode: batch?.batch_code || null,
         batchReceivedAt: receivedAt,

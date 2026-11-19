@@ -2,6 +2,9 @@ import { expect, it } from "vitest";
 import {
   orderItemLocationReportRows,
   itemLocationBatchGroupKey,
+  itemLocationReportGroupKey,
+  isItemLocationReportGroupBy,
+  getItemLocationGroupSubtotals,
 } from "./item-location-report-groups";
 import type { ItemLocationBatchReportRow } from "@/hooks/useItemLocationBatchReport";
 
@@ -13,7 +16,9 @@ const row = (id: string, itemId: string, batchCode: string | null, warehouseCode
     itemName: itemId,
     batchCode,
     itemBatchId: `record-${id}`,
+    warehouseId: warehouseCode,
     warehouseCode,
+    locationId: `location-${id}`,
     locationPath: `Bin ${id}`,
   }) as ItemLocationBatchReportRow;
 const rows = [
@@ -63,6 +68,89 @@ it("keeps batches without codes separate", () => {
   expect(itemLocationBatchGroupKey(row("1", "item", null))).not.toBe(
     itemLocationBatchGroupKey(row("2", "item", null))
   );
+});
+
+it("accepts only the three supported grouping modes", () => {
+  expect(["item", "batch", "location"].every(isItemLocationReportGroupBy)).toBe(true);
+  expect(isItemLocationReportGroupBy("warehouse")).toBe(false);
+});
+
+it("groups physical locations separately despite matching warehouse and location labels", () => {
+  const locationRow = (id: string, warehouseId: string, locationId: string, itemId: string) => ({
+    ...row(id, itemId, "batch 1"),
+    warehouseId,
+    locationId,
+    locationCode: "BIN",
+    locationPath: "Zone / Bin",
+  });
+  const locations = [
+    locationRow("1", "warehouse-b", "location-a", "item 1"),
+    locationRow("2", "warehouse-a", "location-b", "item 1"),
+    locationRow("3", "warehouse-a", "location-a", "item 2"),
+    locationRow("4", "warehouse-a", "location-b", "item 2"),
+    locationRow("5", "warehouse-a", "location-a", "item 1"),
+    { ...locationRow("6", "warehouse-a", "location-a", "item 1"), batchCode: "batch 2" },
+  ];
+  const grouped = orderItemLocationReportRows(locations, "location", "en");
+  expect(grouped.map((location) => location.id)).toEqual(["5", "6", "3", "2", "4", "1"]);
+  expect(itemLocationReportGroupKey(grouped[0], "location")).toBe(
+    itemLocationReportGroupKey(grouped[2], "location")
+  );
+  expect(
+    new Set(grouped.map((location) => itemLocationReportGroupKey(location, "location"))).size
+  ).toBe(3);
+  expect(locations[0].id).toBe("1");
+});
+
+it("orders locations by warehouse and full path before item and batch, with deterministic ties", () => {
+  const locations = [
+    {
+      ...row("2", "item", "batch"),
+      warehouseId: "warehouse",
+      locationId: "same",
+      locationPath: "A",
+    },
+    {
+      ...row("1", "item", "batch"),
+      warehouseId: "warehouse",
+      locationId: "same",
+      locationPath: "A",
+    },
+    {
+      ...row("3", "item", "batch"),
+      warehouseId: "warehouse",
+      locationId: "other",
+      locationPath: "B",
+    },
+    {
+      ...row("4", "item", "batch", "WH0"),
+      warehouseId: "first",
+      locationId: "last",
+      locationPath: "Z",
+    },
+  ];
+  expect(
+    orderItemLocationReportRows(locations, "location", "en").map((location) => location.id)
+  ).toEqual(["4", "1", "2", "3"]);
+});
+
+it("totals each location across items and batches only at its final row", () => {
+  const locations = Array.from({ length: 1002 }, (_, index) => ({
+    ...row(String(index), `item ${index % 3}`, `batch ${index % 2}`),
+    warehouseId: index === 1001 ? "warehouse-b" : "warehouse-a",
+    locationId: "shared-location-id",
+    locationPath: "Zone / Bin",
+    qtyOnHand: index === 1000 ? 0 : 1.25,
+    qtyReserved: index === 1000 ? 0 : 0.25,
+    qtyAvailable: index === 1000 ? 0 : 1,
+  }));
+  const grouped = orderItemLocationReportRows(locations, "location", "en");
+  const lastMainRow = grouped[1000];
+  expect(getItemLocationGroupSubtotals(grouped, "location")).toEqual({
+    [lastMainRow.id]: { qtyOnHand: 1250, qtyReserved: 250, qtyAvailable: 1000 },
+    "1001": { qtyOnHand: 1.25, qtyReserved: 0.25, qtyAvailable: 1 },
+  });
+  expect(getItemLocationGroupSubtotals([], "location")).toEqual({});
 });
 
 it.each(["batch", "item"] as const)(

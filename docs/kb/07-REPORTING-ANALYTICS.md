@@ -207,7 +207,11 @@ Both previews use the same Item picker. It loads six items initially and loads m
 #### Stock Movement Report
 **Endpoint**: `GET /api/reports/stock-movement`
 
-Shows all stock transactions for a period.
+Summarizes inbound, outbound, and net stock quantities and values for the selected period and
+grouping. Its PDF table has no outer border, while retaining the shaded header and horizontal
+row separators. Warehouse uses 12% of the table width and Transactions uses 11%, keeping the
+Transactions heading on one line. Header and data cells use the same widths. Stock Valuation
+keeps its existing table border and column widths.
 
 **Parameters**:
 - `startDate`, `endDate` (optional date bounds, `YYYY-MM-DD`)
@@ -216,27 +220,19 @@ Shows all stock transactions for a period.
 - `groupBy` (optional, `item`, `warehouse`, or `item-warehouse`)
 
 **Output**:
-```json
-{
-  "movements": [
-    {
-      "date": "2025-06-14",
-      "item": "Widget ABC",
-      "warehouse": "Main Warehouse",
-      "location": "A-01-01",
-      "transaction_type": "purchase_receipt",
-      "quantity": 100,
-      "unit": "piece",
-      "reference": "PO-123"
-    }
-  ]
-}
-```
+
+The response contains `data` movement aggregates, `summary` totals, `periodComparison` (or
+`null`), and the applied `filters`. Each data row includes item/warehouse identifiers and labels,
+`totalIn`, `totalOut`, `netMovement`, `totalInValue`, `totalOutValue`, `netValue`, and
+`transactionCount`.
 
 #### Inventory Report (Current Stock)
 **Endpoint**: `GET /api/reports/inventory`
 
 Current stock levels by item and warehouse. The Item picker starts with six items, searches by code or name, and loads more as you scroll. Hover over an item to read its full name before selecting it. The report counts and displays rows for the exact selected item. Choose **All Items** to clear the filter.
+
+The PDF table has no left or right outer border. Its top and bottom borders, shaded header,
+and horizontal row separators remain visible.
 
 **Parameters**:
 - `itemId` (optional, exact item UUID; invalid values return `400`)
@@ -767,11 +763,24 @@ return reportData
 
 The PDF preview shows exact warehouse/location paths, item and batch identifiers, location SKU,
 and on-hand, reserved, and available quantities. Choose a warehouse and/or item, then group by
-**Item** (default) or **Batch**. Batch groups combine the same batch code across items and
-warehouses, with items nested below each batch. Item grouping nests batches below each item. Exact warehouse/location rows appear
-below each nested heading. Child headings omit the Item/Batch prefix and are indented; location
-rows are indented further. Each main batch or item group ends with On Hand, Reserved, and
-Available subtotals, computed over all matching location rows on the server. Subtotals appear
+**Item** (default), **Batch**, or **Location**. Batch groups combine the same batch code across
+items and warehouses, with items nested below each batch. Item grouping nests batches below
+each item. Exact warehouse/location rows appear below each nested heading. Location grouping
+collects each physical warehouse/location's items and batches under its full location path,
+with separate groups for distinct locations even when their displayed paths or codes match.
+In Location mode, the location appears once in the main heading. Each item has a child heading
+with its code and name, and its batch codes appear in the first detail column, labeled Batch,
+beside the location SKU and quantities. Multiple batches for one item share the item heading;
+the detail rows do not repeat the warehouse/location or append batches to the item heading.
+Warehouse/location headings and the detail cells in Item and Batch modes show names only:
+the warehouse name followed by the ancestor-to-leaf location names, such as
+`Zone 1 / Rack A / Bin 1`. Warehouse and location codes are omitted. Missing names or batch codes
+display `--`; item codes, batch codes, and location SKUs remain visible.
+The API resolves `locationPath` from hierarchy IDs and actual names using deduplicated,
+bounded ancestor lookups, preserving punctuation within names.
+Item and batch child headings are indented; location rows are indented further. Each main group
+ends with On Hand, Reserved, and Available subtotals, computed over all matching location rows
+on the server. Subtotals appear
 once at the true group end even across PDF rendering jobs/pages. The PDF omits the Updated column. Missing batch codes remain separate
 by batch identity. The API groups
 the complete bounded export before PDF chunking, so a group is never fragmented by fetch order.
@@ -785,13 +794,15 @@ It does not invent locations for batches that have no location record. The forme
 report search, and sorting controls are removed; ordering is deterministic within each group.
 
 `GET /api/reports/item-location-batch` is a PDF export endpoint. It accepts `warehouseId`, `itemId`,
-`groupBy=item|batch`, `includeEmptyBatches=true|false`, and `locale=en|zh`; other values return HTTP
-400. One exact count runs first: more than 10,000 matching rows returns HTTP 413 before any row is
-read. Accepted reports are then fetched in database batches of at most 1,000 rows (at most 20 reads
+`groupBy=item|batch|location`, `includeEmptyBatches=true|false`, and `locale=en|zh`; other values
+return HTTP 400. One exact count runs first: more than 10,000 matching rows returns HTTP 413
+before any row is read. Accepted reports are then fetched in database batches of at most 1,000 rows (at most 20 reads
 if the database applies a smaller per-request cap). Groups are ordered with the requested locale's
-collation. Responses include all matching rows, `groupSubtotals` keyed by each group's last location
-row ID, and summary quantities over the full dataset; there is no `page`/`limit` pagination. Empty,
-duplicate, or short reads return HTTP 409 with retry guidance; partial reports are never exported.
+collation. Location groups sort by warehouse, location, item, and batch, with identity tie-breakers
+to keep equal labels separate. Responses include all matching rows, `groupSubtotals` keyed by
+each group's last location row ID, and summary quantities over the full dataset; there is no
+`page`/`limit` pagination. Empty, duplicate, or short reads return HTTP 409 with retry guidance;
+partial reports are never exported.
 The reads are not a transactional snapshot, so concurrent updates that preserve the row count may
 still appear in the report. Report view permission, company scoping, and existing Supabase RLS
 remain in force.

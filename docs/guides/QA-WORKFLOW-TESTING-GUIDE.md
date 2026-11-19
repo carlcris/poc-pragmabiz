@@ -2001,15 +2001,37 @@ redistribute stock. Concurrent allocation or location edits must not create dupl
 
 ### Inventory Report item picker
 
+- Confirm the Inventory PDF table has no left or right outer border, while its top/bottom
+  borders, shaded header, and horizontal row separators remain. Quantities, statuses, and
+  valuation cells must remain aligned and readable.
 - Open the Inventory Report preview. Verify six initial items plus **All Items**, more results on scroll, search by name or code, and the full name on item hover. Select an item and confirm the PDF and its row count include only that item's stock within the warehouse, category, and status filters. Choose **All Items** to clear the filter and prior preview.
 
 ### Stock Reports item picker
 
 - Open **Stock Reports** and check the searchable Item picker in both Stock Movement and Stock Valuation. Verify six initial items, more on scroll, and full names on hover. Choose different items in each mode, verify that switching modes restores each selection, and confirm each PDF uses its selected item. Choose **All Items** to clear the current mode's item filter and previous preview.
+- Generate Stock Movement with long item/warehouse names and transaction counts. Confirm the
+  table has no outer border, Warehouse is narrower, and Transactions has enough space for its
+  heading on one line. Header and numeric cells must stay aligned with no clipping; long
+  warehouse names may wrap. Switch to Stock Valuation and confirm its table layout is unchanged.
 
 ### Item Location Batch item picker
 
 - Open **Item Location Batch**. Verify six initial items, more on scroll, search by name or code, and full names on hover. Select an item and confirm Preview uses its exact ID along with the warehouse, grouping, and empty-batch settings. Choose **All Items** to clear the item filter and prior preview.
+- Choose **Location** under **Group By** and regenerate. Confirm each warehouse/location heading
+  contains its items, batches, location SKUs, and quantities. Distinct locations with matching
+  paths or codes, including locations in different warehouses, must remain separate. Compare
+  overall quantities and row counts with Item and Batch modes, and verify each location subtotal
+  appears once at its final row, including a location spanning database batches or PDF render
+  jobs. Switching grouping clears the previous preview. Verify the Location label in English
+  and Chinese, warehouse/item filters, empty results, and **Include Empty Batches**.
+- In Location mode, confirm the warehouse/location appears only in the main heading. Each item
+  heading shows its code and name without an inline batch suffix. The first detail column is
+  **Batch** and contains the batch code beside its SKU and quantities. Multiple batches for the
+  same item share one item heading, including across render jobs; missing batch codes show `--`.
+- Confirm location headings and warehouse/location detail cells in Item and Batch modes show
+  the warehouse name and names-only hierarchy, such as `Zone 1 / Rack A / Bin 1`, without
+  warehouse or location codes. Names with hyphens or slashes must remain intact. Missing names
+  display `--` rather than codes. Item codes, batch codes, and location SKUs remain visible.
 
 ### Fast-Moving and Slow-Moving Products item picker
 

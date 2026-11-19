@@ -1,15 +1,23 @@
 import type { ItemLocationBatchReportRow } from "@/hooks/useItemLocationBatchReport";
 import type { Locale } from "@/lib/i18n";
 
-export type ItemLocationReportGroupBy = "item" | "batch";
+export type ItemLocationReportGroupBy = "item" | "batch" | "location";
 
 export const isItemLocationReportGroupBy = (value: string): value is ItemLocationReportGroupBy =>
-  value === "item" || value === "batch";
+  value === "item" || value === "batch" || value === "location";
 
 // A batch code represents the report batch across item/warehouse batch records.
 // Missing codes must not combine unrelated batches into one group.
 export const itemLocationBatchGroupKey = (row: ItemLocationBatchReportRow): string =>
   row.batchCode ? `code:${row.batchCode}` : `id:${row.itemBatchId}`;
+
+export function itemLocationReportGroupKey(
+  row: ItemLocationBatchReportRow,
+  groupBy: ItemLocationReportGroupBy
+): string {
+  if (groupBy === "location") return JSON.stringify([row.warehouseId, row.locationId]);
+  return groupBy === "item" ? row.itemId : itemLocationBatchGroupKey(row);
+}
 
 export function orderItemLocationReportRows(
   rows: ItemLocationBatchReportRow[],
@@ -26,6 +34,18 @@ export function orderItemLocationReportRows(
       compare(left.itemName, right.itemName) ||
       compare(left.itemCode, right.itemCode) ||
       compare(left.itemId, right.itemId);
+    if (groupBy === "location") {
+      return (
+        compare(left.warehouseCode, right.warehouseCode) ||
+        compare(left.warehouseId, right.warehouseId) ||
+        compare(left.locationPath, right.locationPath) ||
+        compare(left.locationCode, right.locationCode) ||
+        compare(left.locationId, right.locationId) ||
+        itemOrder ||
+        batchOrder ||
+        compare(left.id, right.id)
+      );
+    }
     return (
       (groupBy === "batch" ? batchOrder || itemOrder : itemOrder || batchOrder) ||
       compare(left.warehouseCode, right.warehouseCode) ||
@@ -49,7 +69,7 @@ export function getItemLocationGroupSubtotals(
 ): Record<string, ItemLocationGroupSubtotal> {
   const groups = new Map<string, ItemLocationGroupSubtotal & { lastRowId: string }>();
   for (const row of rows) {
-    const key = groupBy === "item" ? row.itemId : itemLocationBatchGroupKey(row);
+    const key = itemLocationReportGroupKey(row, groupBy);
     const total = groups.get(key) ?? {
       qtyOnHand: 0,
       qtyReserved: 0,
