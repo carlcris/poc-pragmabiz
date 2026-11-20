@@ -1,6 +1,12 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import type { TransformationTemplateListItemApi } from "@/types/transformation-template";
 import { getPlannedQuantityLines } from "./TransformationOrderCreateForm";
+
+// The form renders the shared warehouse picker, whose lookup hook pulls in the
+// auth store and Supabase client. These tests cover the pure planner helpers.
+vi.mock("@/hooks/useLookups", () => ({
+  useLookupWarehouses: () => ({ data: undefined, isLoading: false }),
+}));
 
 // A recipe template that repacks one bulk sack into 25 finished packs, with a
 // packaging input that scales with it.

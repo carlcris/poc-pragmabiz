@@ -295,9 +295,19 @@ export type TranslationKeys = {
     noActiveTemplates: string;
     noMatchingTemplates: string;
     templateListError: string;
-    expectedYield: string;
     expectedYieldQuantityWithUom: string;
-    expectedYieldUnavailable: string;
+    expectedYieldAnnouncement: string;
+    expectedYieldLine: string;
+    orderNotesPlaceholder: string;
+    createOrder: string;
+    creatingOrder: string;
+    itemColumn: string;
+    perRunColumn: string;
+    plannedQuantityColumn: string;
+    unitColumn: string;
+    plannedLineCount: string;
+    plannedScale: string;
+    plannedScaleValue: string;
     createPermissionRequired: string;
     createPermissionRequiredDescription: string;
     failedExecuteTransformation: string;
@@ -4548,10 +4558,19 @@ export const translations: Record<Locale, TranslationKeys> = {
       noActiveTemplates: "No active templates yet. Create one in Manage Templates first.",
       noMatchingTemplates: "No template matches your search.",
       templateListError: "We couldn't load templates. Try again.",
-      expectedYield: "Expected Yield",
       expectedYieldQuantityWithUom: "{quantity} {uom}",
-      expectedYieldUnavailable:
-        "Enter valid whole input and output quantities to see the expected yield.",
+      expectedYieldAnnouncement: "Expected Yield: {lines}",
+      expectedYieldLine: "{quantity} of {item}",
+      orderNotesPlaceholder: "Add instructions or context for this order",
+      createOrder: "Create Order",
+      creatingOrder: "Creating Order...",
+      itemColumn: "Item",
+      perRunColumn: "Per Run",
+      plannedQuantityColumn: "Planned Qty",
+      unitColumn: "Unit",
+      plannedLineCount: "{count, plural, one {# line} other {# lines}}",
+      plannedScale: "Scale",
+      plannedScaleValue: "{multiplier}× template",
       createPermissionRequired: "You do not have permission to create stock transformations.",
       createPermissionRequiredDescription:
         "Ask your administrator for the stock transformations create permission, then reload this page.",
@@ -11894,9 +11913,19 @@ export const translations: Record<Locale, TranslationKeys> = {
       noActiveTemplates: "暂无启用的模板。请先在“管理模板”中创建模板。",
       noMatchingTemplates: "没有匹配的模板。",
       templateListError: "无法加载模板。请重试。",
-      expectedYield: "预期产出",
       expectedYieldQuantityWithUom: "{quantity} {uom}",
-      expectedYieldUnavailable: "请输入有效的整数投入和产出数量以查看预期产出。",
+      expectedYieldAnnouncement: "预期产出：{lines}",
+      expectedYieldLine: "{item} {quantity}",
+      orderNotesPlaceholder: "添加此订单的说明或备注",
+      createOrder: "创建订单",
+      creatingOrder: "正在创建订单...",
+      itemColumn: "物料",
+      perRunColumn: "每次用量",
+      plannedQuantityColumn: "计划数量",
+      unitColumn: "单位",
+      plannedLineCount: "{count} 行",
+      plannedScale: "倍数",
+      plannedScaleValue: "模板 ×{multiplier}",
       createPermissionRequired: "您没有创建库存转换的权限。",
       createPermissionRequiredDescription: "请向管理员申请库存转换的创建权限，然后重新加载此页面。",
       failedExecuteTransformation: "无法完成转换订单。请重试；如果问题仍然存在，请联系管理员。",

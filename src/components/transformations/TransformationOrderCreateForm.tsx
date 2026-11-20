@@ -8,21 +8,21 @@ import { toast } from "sonner";
 import { useCreateTransformationOrder } from "@/hooks/useTransformationOrders";
 import { useActiveTransformationTemplateOptions } from "@/hooks/useTransformationTemplates";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { useWarehouses } from "@/hooks/useWarehouses";
 import { getApiErrorCode } from "@/lib/api";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import type { TransformationOrderCreateErrorCode } from "@/types/transformation-order";
 import type { TransformationTemplateListItemApi } from "@/types/transformation-template";
 
@@ -294,8 +294,6 @@ export function TransformationOrderCreateForm() {
     );
   }, [templatesData?.pages]);
 
-  const { data: warehousesData, isLoading: warehousesLoading } = useWarehouses({ limit: 50 });
-
   const [values, setValues] = useState<FormValues>({
     templateId: "",
     warehouseId: "",
@@ -542,36 +540,115 @@ export function TransformationOrderCreateForm() {
 
   const hasTemplateSearch = debouncedTemplateSearch.length > 0;
 
-  const quantityLineFields = (lines: PlannedQuantityLine[]) => (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {lines.map((line) => (
-        <div key={line.key} className="space-y-2">
-          <label htmlFor={line.key} className="text-sm font-medium">
-            {line.itemCode || t("notAvailable")}
-          </label>
-          <Input
-            id={line.key}
-            type="number"
-            min="1"
-            step="1"
-            value={plannedQuantityValues[line.key] ?? ""}
-            // An emptied or still-unfinished entry keeps the shared Input's own
-            // display state and never reaches `onChange`, which would leave the
-            // previous yield on screen and submittable. `onInput` is forwarded
-            // untouched, so the draft is captured here and `onChange` still owns
-            // every completed numeric value.
-            onInput={(event) => {
-              const draft = event.currentTarget.value;
-              if (!INCOMPLETE_QUANTITY.test(draft)) return;
-              onPlannedQuantityChange(line, draft);
-            }}
-            onChange={(event) => onPlannedQuantityChange(line, event.target.value)}
-            className="font-medium"
-          />
-        </div>
-      ))}
-    </div>
+  const plannedQuantityErrorId = "planned-quantity-error";
+
+  const plannedQuantityColumnId = "planned-quantity-column";
+
+  const formatBaseQuantity = (baseQuantity: string) => {
+    const value = Number(baseQuantity);
+    return Number.isFinite(value) ? value.toLocaleString(locale) : baseQuantity;
+  };
+
+  // One table row group per direction. Every line shows the item it names, its
+  // per-run template quantity, the planned quantity, and the unit, so an entry
+  // is never made against a bare item code and any line count fits one table.
+  // The group label takes the app's stock-out (consumed) or stock-in (produced)
+  // hue, in shades dark enough for text.
+  const quantityLineGroupTitleClass: Record<PlannedQuantityLine["direction"], string> = {
+    input: "text-orange-700 dark:text-orange-400",
+    output: "text-blue-700 dark:text-blue-400",
+  };
+
+  const quantityLineGroup = (
+    lines: PlannedQuantityLine[],
+    direction: PlannedQuantityLine["direction"],
+    title: string
+  ) => (
+    <TableBody>
+      <TableRow className="hover:bg-transparent">
+        <TableHead scope="colgroup" colSpan={5} className="h-10 text-foreground">
+          <span className={`font-semibold ${quantityLineGroupTitleClass[direction]}`}>{title}</span>{" "}
+          <span className="font-normal text-muted-foreground">
+            {t("plannedLineCount", { count: lines.length })}
+          </span>
+        </TableHead>
+      </TableRow>
+      {lines.map((line) => {
+        const itemId = `${line.key}-item`;
+        const unitId = `${line.key}-unit`;
+        const describedBy = [
+          line.uomLabel ? unitId : null,
+          errors.plannedQuantity ? plannedQuantityErrorId : null,
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        return (
+          <TableRow key={line.key} className="hover:bg-transparent">
+            <TableCell id={itemId} className="whitespace-nowrap py-2 font-medium">
+              {line.itemCode || t("notAvailable")}
+            </TableCell>
+            <TableCell
+              className="w-full max-w-0 truncate py-2 text-muted-foreground"
+              title={line.itemName ?? undefined}
+            >
+              {line.itemName ?? t("dash")}
+            </TableCell>
+            <TableCell className="whitespace-nowrap py-2 text-right tabular-nums text-muted-foreground">
+              {formatBaseQuantity(line.baseQuantity)}
+            </TableCell>
+            <TableCell className="py-2">
+              <Input
+                type="number"
+                inputMode="numeric"
+                min="1"
+                step="1"
+                value={plannedQuantityValues[line.key] ?? ""}
+                // An emptied or still-unfinished entry keeps the shared Input's own
+                // display state and never reaches `onChange`, which would leave the
+                // previous yield on screen and submittable. `onInput` is forwarded
+                // untouched, so the draft is captured here and `onChange` still owns
+                // every completed numeric value.
+                onInput={(event) => {
+                  const draft = event.currentTarget.value;
+                  if (!INCOMPLETE_QUANTITY.test(draft)) return;
+                  onPlannedQuantityChange(line, draft);
+                }}
+                onChange={(event) => onPlannedQuantityChange(line, event.target.value)}
+                aria-labelledby={`${plannedQuantityColumnId} ${itemId}`}
+                aria-invalid={Boolean(errors.plannedQuantity)}
+                aria-describedby={describedBy || undefined}
+                className={`ml-auto w-28 text-right font-medium tabular-nums ${
+                  errors.plannedQuantity ? "border-destructive" : ""
+                }`}
+              />
+            </TableCell>
+            <TableCell id={unitId} className="whitespace-nowrap py-2 text-muted-foreground">
+              {line.uomLabel ?? ""}
+            </TableCell>
+          </TableRow>
+        );
+      })}
+    </TableBody>
   );
+
+  const expectedYieldAnnouncement = expectedOutputYield
+    ? t("expectedYieldAnnouncement", {
+        lines: new Intl.ListFormat(locale, { type: "conjunction" }).format(
+          expectedOutputYield.map(({ line, quantity }) =>
+            t("expectedYieldLine", {
+              item: lineLabel(line),
+              quantity: line.uomLabel
+                ? t("expectedYieldQuantityWithUom", {
+                    quantity: formatQuantity(quantity),
+                    uom: line.uomLabel,
+                  })
+                : formatQuantity(quantity),
+            })
+          )
+        ),
+      })
+    : "";
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -579,9 +656,9 @@ export function TransformationOrderCreateForm() {
         <CardHeader>
           <CardTitle>{t("orderDetails")}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-2">
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-12">
+            <div className="space-y-2 xl:col-span-4">
               <label htmlFor="transformation-template" className="text-sm font-medium">
                 {t("transformationTemplate")} <span className="text-destructive">*</span>
               </label>
@@ -657,70 +734,105 @@ export function TransformationOrderCreateForm() {
               )}
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
+            <div className="space-y-2 xl:col-span-3">
+              <label htmlFor="transformation-warehouse" className="text-sm font-medium">
                 {tCommon("warehouse")} <span className="text-destructive">*</span>
               </label>
-              {warehousesLoading ? (
-                <Skeleton className="h-10 w-full" />
-              ) : (
-                <Select
-                  value={values.warehouseId}
-                  onValueChange={(value) => onFieldChange("warehouseId", value)}
-                >
-                  <SelectTrigger className={errors.warehouseId ? "border-destructive" : ""}>
-                    <SelectValue placeholder={t("selectWarehouse")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {warehousesData?.data.map((warehouse) => (
-                      <SelectItem key={warehouse.id} value={warehouse.id}>
-                        {warehouse.code} - {warehouse.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              <WarehouseSelect
+                triggerId="transformation-warehouse"
+                scope="current_business_unit"
+                value={values.warehouseId}
+                onValueChange={(value) => onFieldChange("warehouseId", value)}
+                invalid={Boolean(errors.warehouseId)}
+                describedBy={errors.warehouseId ? "transformation-warehouse-error" : undefined}
+                buttonClassName="w-full"
+              />
               {errors.warehouseId && (
-                <p className="text-sm text-destructive">{errors.warehouseId}</p>
+                <p
+                  id="transformation-warehouse-error"
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
+                  {errors.warehouseId}
+                </p>
               )}
             </div>
-          </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
+            <div className="space-y-2 xl:col-span-2">
+              <label htmlFor="transformation-order-date" className="text-sm font-medium">
                 {t("orderDate")} <span className="text-destructive">*</span>
               </label>
               <Input
+                id="transformation-order-date"
                 type="date"
                 value={values.orderDate}
                 onChange={(event) => onFieldChange("orderDate", event.target.value)}
+                aria-invalid={Boolean(errors.orderDate)}
+                aria-describedby={errors.orderDate ? "transformation-order-date-error" : undefined}
                 className={errors.orderDate ? "border-destructive" : ""}
               />
-              {errors.orderDate && <p className="text-sm text-destructive">{errors.orderDate}</p>}
+              {errors.orderDate && (
+                <p
+                  id="transformation-order-date-error"
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
+                  {errors.orderDate}
+                </p>
+              )}
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">{t("plannedExecutionDate")}</label>
+            <div className="space-y-2 xl:col-span-3">
+              <label htmlFor="transformation-planned-date" className="text-sm font-medium">
+                {t("plannedExecutionDate")}
+              </label>
               <Input
+                id="transformation-planned-date"
                 type="date"
                 value={values.plannedDate}
                 onChange={(event) => onFieldChange("plannedDate", event.target.value)}
               />
             </div>
           </div>
+
+          <div className="space-y-2">
+            <label htmlFor="transformation-notes" className="text-sm font-medium">
+              {tCommon("notes")}
+            </label>
+            <Textarea
+              id="transformation-notes"
+              placeholder={t("orderNotesPlaceholder")}
+              rows={1}
+              className="min-h-10 resize-y"
+              value={values.notes}
+              onChange={(event) => onFieldChange("notes", event.target.value)}
+            />
+          </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>
-            {t("plannedQuantity")} <span className="text-destructive">*</span>
-          </CardTitle>
+        <CardHeader className="flex-row flex-wrap items-start justify-between gap-4 space-y-0">
+          <div className="space-y-1.5">
+            <CardTitle>{t("plannedQuantity")}</CardTitle>
+            {plannedQuantityLines.length > 0 && (
+              <CardDescription>{t("plannedQuantityRatioHint")}</CardDescription>
+            )}
+          </div>
+          {plannedQuantityLines.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              {t("plannedScale")}{" "}
+              <span className="font-semibold tabular-nums text-foreground">
+                {validPlan
+                  ? t("plannedScaleValue", {
+                      multiplier: Number(validPlan.multiplier).toLocaleString(locale),
+                    })
+                  : t("dash")}
+              </span>
+            </p>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">{t("plannedQuantityRatioHint")}</p>
-
           {!selectedTemplate ? (
             <div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
               <p className="text-sm text-muted-foreground">
@@ -738,82 +850,43 @@ export function TransformationOrderCreateForm() {
             </div>
           ) : (
             <>
-              {inputQuantityLines.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-1 w-1 rounded-full bg-blue-500" />
-                    <p className="text-sm font-semibold text-foreground">{t("inputMaterials")}</p>
-                  </div>
-                  {quantityLineFields(inputQuantityLines)}
-                </div>
-              )}
+              <Table containerClassName="rounded-md border">
+                <TableHeader className="bg-muted/50">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="h-10 whitespace-nowrap">{t("itemColumn")}</TableHead>
+                    <TableHead className="h-10">{tCommon("description")}</TableHead>
+                    <TableHead className="h-10 whitespace-nowrap text-right">
+                      {t("perRunColumn")}
+                    </TableHead>
+                    <TableHead
+                      id={plannedQuantityColumnId}
+                      className="h-10 whitespace-nowrap text-right"
+                    >
+                      {t("plannedQuantityColumn")}
+                    </TableHead>
+                    <TableHead className="h-10 whitespace-nowrap">{t("unitColumn")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                {inputQuantityLines.length > 0 &&
+                  quantityLineGroup(inputQuantityLines, "input", t("inputMaterials"))}
+                {outputQuantityLines.length > 0 &&
+                  quantityLineGroup(outputQuantityLines, "output", t("outputProducts"))}
+              </Table>
 
-              {outputQuantityLines.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-1 w-1 rounded-full bg-green-500" />
-                    <p className="text-sm font-semibold text-foreground">{t("outputProducts")}</p>
-                  </div>
-                  {quantityLineFields(outputQuantityLines)}
-                </div>
-              )}
-
-              {outputQuantityLines.length > 0 && (
-                // Read-only restatement of what the current entries produce.
-                // It clears whenever the entries are not valid, which is the
-                // same condition that blocks the POST.
-                <div
-                  role="status"
-                  aria-live="polite"
-                  className="space-y-2 rounded-lg border bg-muted/20 p-4"
-                >
-                  <p className="text-sm font-medium">{t("expectedYield")}</p>
-                  {expectedOutputYield ? (
-                    <dl className="space-y-2">
-                      {expectedOutputYield.map(({ line, quantity }) => (
-                        <div
-                          key={line.key}
-                          className="flex flex-wrap items-baseline justify-between gap-2"
-                        >
-                          <dt className="text-xs text-muted-foreground">{lineLabel(line)}</dt>
-                          <dd className="text-sm font-semibold">
-                            {line.uomLabel
-                              ? t("expectedYieldQuantityWithUom", {
-                                  quantity: formatQuantity(quantity),
-                                  uom: line.uomLabel,
-                                })
-                              : formatQuantity(quantity)}
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">{t("expectedYieldUnavailable")}</p>
-                  )}
-                </div>
-              )}
+              {/* The output rows already show the yield. This announces it after
+                  an edit re-scales the other lines, and stays empty whenever the
+                  entries are invalid, the same condition that blocks the POST. */}
+              <p role="status" aria-live="polite" className="sr-only">
+                {expectedYieldAnnouncement}
+              </p>
             </>
           )}
 
           {errors.plannedQuantity && (
-            <p role="alert" className="text-sm text-destructive">
+            <p id={plannedQuantityErrorId} role="alert" className="text-sm text-destructive">
               {errors.plannedQuantity}
             </p>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{tCommon("notes")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            placeholder={`${tCommon("notes")}...`}
-            rows={4}
-            value={values.notes}
-            onChange={(event) => onFieldChange("notes", event.target.value)}
-          />
         </CardContent>
       </Card>
 
@@ -834,7 +907,7 @@ export function TransformationOrderCreateForm() {
           {tCommon("cancel")}
         </Button>
         <Button type="submit" disabled={createOrder.isPending}>
-          {createOrder.isPending ? `${tCommon("create")}...` : t("createFromTemplate")}
+          {createOrder.isPending ? t("creatingOrder") : t("createOrder")}
         </Button>
       </div>
     </form>

@@ -541,7 +541,10 @@ Create a draft transformation order atomically from a template.
   displayed input, primary output, or additional output quantity recalculates every other displayed
   quantity from the template ratios; the request still submits one consistent template scale as
   `plannedQuantity`. All displayed planned quantities must be whole numbers. A value that would
-  produce a fractional input or output is rejected without rounding.
+  produce a fractional input or output is rejected without rounding. The lines appear in one table
+  grouped into inputs and outputs, each with its item code, description, per-run template quantity,
+  planned quantity, and base unit, and the header shows the current template scale. The output lines
+  are the expected yield, so there is no separate yield panel. The warehouse is chosen from a server-searched picker scoped to the current business unit.
 - Additional-output item, quantity, and base UOM come from the selected template. The order request cannot override them.
 - Rejects the template before creating the order if any referenced input, primary output, additional output, or UOM is inactive or deleted.
 - Does not reserve inventory yet.
@@ -863,7 +866,7 @@ Transformation order creation and completion are database-owned operations:
    **1 sack** and **25 packs** for a 25 kg sack that yields twenty-five 1 kg packs. Add packaging
    materials after the bulk input if they are tracked in stock. Use whole quantities on each line.
 3. In **Stock Transformations → New Transformation**, select the recipe and warehouse. Enter the
-   number of sacks to consume. **Expected Yield** shows the planned pack quantity, such as
+   number of sacks to consume. The pack line under **Output Products** shows the planned quantity, such as
    **75 packs** for three sacks. The recipe also scales any packaging inputs.
 4. Create the order and use **Prepare** and **Complete** as for any stock transformation. Record
    the packs produced and account for any pack shortfall as waste. Finished packs go through

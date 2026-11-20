@@ -1,10 +1,16 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import {
   getExpectedOutputYield,
   getPlannedQuantityPlan,
   getPlannedQuantityValidationError,
   type PlannedQuantityLine,
 } from "./TransformationOrderCreateForm";
+
+// The form renders the shared warehouse picker, whose lookup hook pulls in the
+// auth store and Supabase client. These tests cover the pure planner helpers.
+vi.mock("@/hooks/useLookups", () => ({
+  useLookupWarehouses: () => ({ data: undefined, isLoading: false }),
+}));
 
 /** One bulk input scaling to one finished output, the 1-sack / 25-pack recipe. */
 const singleOutputLines: PlannedQuantityLine[] = [

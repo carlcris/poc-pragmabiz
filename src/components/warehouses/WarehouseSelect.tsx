@@ -25,6 +25,9 @@ type WarehouseSelectProps = {
   buttonClassName?: string;
   allOptionLabel?: string;
   showCodeInLabel?: boolean;
+  triggerId?: string;
+  invalid?: boolean;
+  describedBy?: string;
 };
 
 export function WarehouseSelect({
@@ -38,6 +41,9 @@ export function WarehouseSelect({
   buttonClassName,
   allOptionLabel,
   showCodeInLabel = true,
+  triggerId,
+  invalid,
+  describedBy,
 }: WarehouseSelectProps) {
   const t = useTranslations("warehouseSelect");
   const [search, setSearch] = useState("");
@@ -127,6 +133,9 @@ export function WarehouseSelect({
       isLoading={isLoading}
       disabled={disabled}
       buttonClassName={buttonClassName}
+      triggerId={triggerId}
+      invalid={invalid}
+      describedBy={describedBy}
     />
   );
 }

@@ -1045,7 +1045,7 @@ multiple warehouse-specific delivery notes from one action.
 
 **Step-by-step workflow**:
 
-1. **Create** → status Draft. Under **Planned Quantity**, the form shows the selected template's input and output item codes. Enter any input, primary output, or additional output quantity and confirm every other quantity recalculates from the template ratios. The order inherits those consistently scaled lines; it cannot add or remove them, and their base UOM comes from each inventory item.
+1. **Create** → status Draft. Under **Planned Quantity**, the form shows one line table grouped into **Input Materials** and **Output Products**, with each line's item code, description, per-run template quantity, planned quantity, and base unit, plus the current template **Scale** (for example 2× template). Enter any input, primary output, or additional output quantity and confirm every other quantity recalculates from the template ratios. The order inherits those consistently scaled lines; it cannot add or remove them, and their base UOM comes from each inventory item.
 2. **Prepare** → status Preparing. Before allowing this, the app re-checks the recipe is still active and that there's enough stock on hand for every input — if any input is short, it lists exactly which items and by how much, and refuses the transition.
 3. **Complete** → status Completed. The user accounts for every primary and additional output line as produced and/or wasted, with a waste reason when waste is greater than zero. On completing:
    - Input stock is deducted.
@@ -1061,19 +1061,19 @@ input and **25 finished packs** as an output. If the warehouse tracks empty bags
 **25 empty bags** as another input.
 
 - With Stock Transformations create access, open **New Transformation**, search for the active recipe,
-  select a warehouse, and confirm the expected yield starts at 25 packs. Enter 3 sacks and confirm
-  the yield changes to 75 packs and the packaging input, if present, scales to 75 bags.
-- Clear the sack quantity or enter zero or a fractional quantity. Confirm the yield clears and
+  select a warehouse, and confirm the pack output starts at 25 packs. Enter 3 sacks and confirm
+  the pack output changes to 75 packs and the packaging input, if present, scales to 75 bags.
+- Clear the sack quantity or enter zero or a fractional quantity. Confirm the form shows a quantity error and
   creation is blocked. Select a recipe for 2 sacks to 5 packs and confirm it starts at 2 sacks
   and 5 packs. Enter 1 sack and confirm the form rejects the fractional yield.
 - Use search and **Load more** to find active recipes and sheet layouts beyond the first five
-  results. Select a template with multiple or additional outputs and check that **Expected Yield**
-  lists each output with its own quantity.
+  results. Select a template with multiple or additional outputs and check that **Output Products**
+  lists each output with its own quantity and unit.
 - Create a valid repack and confirm the Draft order matches the preview. Prepare it, complete it,
   and confirm the bulk input is consumed and the packs wait in **Putaway**. Post the 25 packs to
   a storable rack and confirm available pack stock increases by 25.
 - Edit a planned output quantity to another valid whole quantity. Confirm the corresponding
-  inputs and **Expected Yield** recalculate from the same recipe ratio.
+  inputs and other outputs recalculate from the same recipe ratio.
 
 **Things to test**:
 
