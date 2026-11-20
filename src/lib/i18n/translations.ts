@@ -676,6 +676,7 @@ export type TranslationKeys = {
     contact: string;
     locations: string;
     floorMap: string;
+    moreActionsFor: string;
     deleteTitle: string;
     deleteDescription: string;
     deleteDescriptionWithName: string;
@@ -4962,6 +4963,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       contact: "Contact",
       locations: "Locations",
       floorMap: "Floor Map",
+      moreActionsFor: "More actions for {name}",
       deleteTitle: "Delete Warehouse",
       deleteDescription: "Are you sure you want to delete this warehouse?",
       deleteDescriptionWithName:
@@ -12280,6 +12282,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       contact: "联系方式",
       locations: "库位",
       floorMap: "仓库平面图",
+      moreActionsFor: "{name} 的更多操作",
       deleteTitle: "删除仓库",
       deleteDescription: "确定要删除此仓库吗？",
       deleteDescriptionWithName: "确定要删除“{name}”吗？此操作无法撤销。",

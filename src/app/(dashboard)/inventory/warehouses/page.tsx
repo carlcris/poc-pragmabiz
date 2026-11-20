@@ -35,8 +35,13 @@ import {
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { StatusText } from "@/components/shared/StatusText";
+import {
+  WarehouseMobileList,
+  WarehouseMobileListSkeleton,
+} from "@/components/warehouses/WarehouseMobileList";
 import { ViewGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import type { Warehouse } from "@/types/warehouse";
 
 const WAREHOUSE_DELETE_ERROR_CODES = [
@@ -70,6 +75,9 @@ export default function WarehousesPage() {
   const [warehouseToDelete, setWarehouseToDelete] = useState<Warehouse | null>(null);
 
   const deleteWarehouse = useDeleteWarehouse();
+  // Undefined until the client knows the viewport; loading renders both layouts via CSS.
+  const tableLayoutMatch = useMediaQuery("(min-width: 768px)");
+  const isPhoneLayout = tableLayoutMatch === false;
 
   const { data, isLoading, error } = useWarehouses({
     search: search || undefined,
@@ -134,7 +142,7 @@ export default function WarehousesPage() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-4 sm:gap-6">
+    <div className="flex flex-col gap-4 sm:gap-6 md:h-full">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight sm:text-xl">
@@ -158,12 +166,12 @@ export default function WarehousesPage() {
               placeholder={t("searchPlaceholder")}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-8"
+              className="pl-8 max-md:h-11"
             />
           </div>
           <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <Filter className="mr-2 h-4 w-4" />
+            <SelectTrigger className="w-full max-md:h-11 sm:w-[180px]">
+              <Filter className="mr-2 h-4 w-4 shrink-0 max-sm:hidden" />
               <SelectValue placeholder={t("statusPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
@@ -174,65 +182,79 @@ export default function WarehousesPage() {
           </Select>
         </div>
 
-        <div className="min-h-0 flex-1">
+        {/* md:min-h-80 keeps about two rows on short screens: the page scrolls instead of
+            squeezing the table. Phones use stacked rows and need no fixed height. */}
+        <div className="md:min-h-80 md:flex-1">
           {isLoading ? (
-            <div className="h-full overflow-auto overscroll-contain rounded-md border">
-              <Table className="min-w-[800px]">
-                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
-                  <TableRow>
-                    <TableHead>{tCommon("code")}</TableHead>
-                    <TableHead>{tCommon("name")}</TableHead>
-                    <TableHead>{t("location")}</TableHead>
-                    <TableHead>{t("manager")}</TableHead>
-                    <TableHead>{t("contact")}</TableHead>
-                    <TableHead>{tCommon("status")}</TableHead>
-                    <TableHead className="text-right">{tCommon("actions")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[...Array(8)].map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <Skeleton className="h-4 w-16" />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Skeleton className="h-4 w-4 rounded-full" />
-                          <Skeleton className="h-4 w-32" />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-36" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-24" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-28" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-5 w-16 rounded-full" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Skeleton className="h-8 w-24" />
-                          <Skeleton className="h-8 w-20" />
-                          <Skeleton className="h-8 w-8" />
-                        </div>
-                      </TableCell>
+            <>
+              <div className="md:hidden">
+                <WarehouseMobileListSkeleton rows={4} />
+              </div>
+              <div className="hidden h-full overflow-auto overscroll-contain rounded-md border md:block">
+                <Table className="min-w-[800px]">
+                  <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
+                    <TableRow>
+                      <TableHead>{tCommon("code")}</TableHead>
+                      <TableHead>{tCommon("name")}</TableHead>
+                      <TableHead>{t("location")}</TableHead>
+                      <TableHead>{t("manager")}</TableHead>
+                      <TableHead>{t("contact")}</TableHead>
+                      <TableHead>{tCommon("status")}</TableHead>
+                      <TableHead className="text-right">{tCommon("actions")}</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {[...Array(8)].map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell>
+                          <Skeleton className="h-4 w-16" />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="h-4 w-4 rounded-full" />
+                            <Skeleton className="h-4 w-32" />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-36" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-24" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-28" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-5 w-16 rounded-full" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Skeleton className="h-8 w-24" />
+                            <Skeleton className="h-8 w-20" />
+                            <Skeleton className="h-8 w-8" />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           ) : error ? (
-            <div className="flex h-full items-center justify-center text-center text-destructive">
+            <div className="flex h-48 items-center justify-center text-center text-destructive md:h-full">
               {t("loadingError")}
             </div>
           ) : warehouses.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
+            <div className="flex h-48 items-center justify-center text-muted-foreground md:h-full">
               {t("empty")}
             </div>
+          ) : isPhoneLayout ? (
+            <WarehouseMobileList
+              warehouses={warehouses}
+              onEditWarehouse={handleEditWarehouse}
+              onDeleteWarehouse={handleDeleteWarehouse}
+              isDeletePending={deleteWarehouse.isPending}
+            />
           ) : (
             <div className="h-full overflow-auto overscroll-contain rounded-md border">
               <Table className="min-w-[800px]">

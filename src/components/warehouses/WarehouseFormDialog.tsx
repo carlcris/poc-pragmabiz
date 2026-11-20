@@ -160,7 +160,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="code"
@@ -221,7 +221,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="city"
@@ -251,7 +251,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="postalCode"
@@ -285,7 +285,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
             <div className="space-y-3">
               <h3 className="text-sm font-medium">{t("contactInformation")}</h3>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="phone"

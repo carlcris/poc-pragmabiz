@@ -375,8 +375,11 @@ export function AddMultipleWarehouseLocationsDialog({
           ) : null}
         </div>
 
-        <DialogFooter className="items-center gap-2">
-          <p className="mr-auto text-xs text-muted-foreground">{t("batchAllOrNothing")}</p>
+        <DialogFooter className="gap-2 sm:items-center">
+          {/* Phones stack the footer in reverse, so order-last puts this note above the buttons. */}
+          <p className="text-xs text-muted-foreground max-sm:order-last sm:mr-auto">
+            {t("batchAllOrNothing")}
+          </p>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             {t("cancel")}
           </Button>

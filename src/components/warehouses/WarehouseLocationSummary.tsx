@@ -98,13 +98,14 @@ export function WarehouseLocationSummary({
             <div className="flex items-center gap-2">
               {canEdit ? (
                 <>
-                  <Button variant="outline" size="sm" onClick={onEdit}>
+                  <Button variant="outline" size="sm" className="max-md:h-11" onClick={onEdit}>
                     <Pencil className="mr-2 h-4 w-4" />
                     {t("edit")}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
+                    className="max-md:h-11"
                     disabled={Boolean(restrictions.move)}
                     aria-describedby={
                       restrictions.move ? "selected-location-move-reason" : undefined
@@ -120,7 +121,7 @@ export function WarehouseLocationSummary({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0"
+                    className="h-8 w-8 p-0 max-md:h-11 max-md:w-11"
                     aria-label={t("moreActionsFor", { code: location.code })}
                   >
                     <MoreVertical className="h-4 w-4" />

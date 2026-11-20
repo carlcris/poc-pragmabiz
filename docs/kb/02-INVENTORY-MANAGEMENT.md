@@ -188,6 +188,16 @@ unique constraint prevent duplicate allocations. Existing and soft-deleted codes
 Historical codes are not rewritten by migration; trusted database seed/import fixtures may retain
 explicit codes, while application inserts and updates must omit code.
 
+**Warehouse pages on phones**:
+Below 768px the Warehouses list and a warehouse's location list show one stacked row per record
+instead of the table, keeping every column. Tapping a warehouse opens its Locations (when the user
+can view locations); tapping a location opens it. **Edit** moves into the row's **More** menu with
+the other row actions, which keep their permission checks. From 768px the tables scroll sideways
+when they are wider than the screen, and the Warehouses table keeps a minimum height of about two
+rows so short screens scroll the page instead of hiding it. The
+Create/Edit Warehouse form stacks its paired fields in one column on phones. Server-side search,
+status filtering, and pagination are unchanged.
+
 Code is read-only and shows an **Auto Generated** placeholder for new locations or type changes,
 without a code template or explanatory paragraph. Existing saved codes remain visible when editing.
 **Save & Add Another** keeps the parent and settings, increments the name's

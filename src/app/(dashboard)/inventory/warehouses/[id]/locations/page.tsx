@@ -38,7 +38,12 @@ import { DeleteWarehouseLocationDialog } from "@/components/warehouses/DeleteWar
 import { useDeleteWarehouseLocation } from "@/hooks/useDeleteWarehouseLocation";
 import { WarehouseLocationSummary } from "@/components/warehouses/WarehouseLocationSummary";
 import { WarehouseLocationTree } from "@/components/warehouses/WarehouseLocationTree";
+import {
+  WarehouseLocationMobileList,
+  WarehouseLocationMobileListSkeleton,
+} from "@/components/warehouses/WarehouseLocationMobileList";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useWarehouse } from "@/hooks/useWarehouses";
 import { useInvalidateWarehouseLocations } from "@/hooks/useInvalidateWarehouseLocations";
 import { useWarehouseLocationDetail } from "@/hooks/useWarehouseLocationDetail";
@@ -76,6 +81,7 @@ import {
 import { useCanCreate, useCanDelete, useCanEdit, useCanView } from "@/hooks/usePermissions";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { RESOURCES } from "@/constants/resources";
+import { cn } from "@/lib/utils";
 import {
   getWarehouseLocationDisplayName,
   getWarehouseLocationErrorMessageKey,
@@ -165,6 +171,9 @@ export default function WarehouseLocationsPage() {
   const [batchKey, setBatchKey] = useState(0);
   const treeExpansion = useWarehouseLocationTreeExpansion();
   const [structureOpen, setStructureOpen] = useState(false);
+  // Undefined until the client knows the viewport; loading renders both layouts via CSS.
+  const tableLayoutMatch = useMediaQuery("(min-width: 768px)");
+  const isPhoneLayout = tableLayoutMatch === false;
 
   const { data: warehouseResponse } = useWarehouse(canViewWarehouse ? warehouseId : "");
   const warehouseLabel = warehouseResponse?.data.name ?? t("warehouseRoot");
@@ -242,6 +251,22 @@ export default function WarehouseLocationsPage() {
     isWarehouseLocationType(locationType)
       ? t(warehouseLocationTypeLabelKeys[locationType])
       : locationType;
+
+  const formatLocationCapacity = (location: WarehouseLocation) =>
+    location.isStorable && location.maxCapacity != null
+      ? `${format.number(location.usedCapacity ?? 0, { maximumFractionDigits: 2 })} / ${format.number(location.maxCapacity, { maximumFractionDigits: 2 })}`
+      : "—";
+  // No capacity set: same plain dash as Used / Max.
+  const renderLocationOccupancy = (location: WarehouseLocation) =>
+    location.capacityStatus === "not_configured" ? (
+      "—"
+    ) : (
+      <StatusText tone={capacityTone(location.capacityStatus)}>
+        {location.maxCapacity != null
+          ? `${capacityStatusLabel(location.capacityStatus)} · ${format.number(location.utilizationPercent ?? 0, { maximumFractionDigits: 1 })}%`
+          : capacityStatusLabel(location.capacityStatus)}
+      </StatusText>
+    );
 
   const deleteLocation = useDeleteWarehouseLocation(warehouseId);
   const invalidateLocationQueries = useInvalidateWarehouseLocations(warehouseId);
@@ -375,6 +400,88 @@ export default function WarehouseLocationsPage() {
     />
   );
 
+  // Phone rows have no visible Edit button, so their menu leads with Edit.
+  const renderLocationActionsMenu = (location: WarehouseLocation, layout: "table" | "phone") => {
+    const itemClassName = layout === "phone" ? "min-h-11" : undefined;
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={
+              layout === "phone" ? "-mr-2.5 -mt-1.5 h-11 w-11 shrink-0 p-0" : "h-8 w-8 p-0"
+            }
+            aria-label={t("moreActionsFor", { code: location.code })}
+          >
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {layout === "phone" && canEdit ? (
+            <DropdownMenuItem
+              className={itemClassName}
+              onClick={() => openLocationDialog({ mode: "edit", location })}
+            >
+              <Pencil className="h-4 w-4" />
+              <span>{t("edit")}</span>
+            </DropdownMenuItem>
+          ) : null}
+          {canDelete ? (
+            <DropdownMenuItem
+              className={cn(itemClassName, "text-destructive focus:text-destructive")}
+              onClick={() => setDeleteTarget(location)}
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>{t("deleteLocation")}</span>
+            </DropdownMenuItem>
+          ) : null}
+          {isSearching ? (
+            <DropdownMenuItem
+              className={itemClassName}
+              onClick={() => goToLocation(location.parentId ?? null)}
+            >
+              <FolderTree className="h-4 w-4" />
+              <span>{t("showInHierarchy")}</span>
+            </DropdownMenuItem>
+          ) : null}
+          {canCreate && location.isActive ? (
+            <DropdownMenuItem
+              className={itemClassName}
+              onClick={() => openLocationDialog({ mode: "create", parent: location })}
+            >
+              <FolderPlus className="h-4 w-4" />
+              <span>{t("addInside")}</span>
+            </DropdownMenuItem>
+          ) : null}
+          {canCreate ? (
+            <DropdownMenuItem className={itemClassName} onClick={() => openCopyDialog(location)}>
+              <Copy className="h-4 w-4" />
+              <span>{t("copyStructure")}</span>
+            </DropdownMenuItem>
+          ) : null}
+          {canEdit ? (
+            <DropdownMenuItem className={itemClassName} onClick={() => openMoveDialog(location)}>
+              <MoveRight className="h-4 w-4" />
+              <span>{t("move")}</span>
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem
+            disabled={!canEdit || toggleLocation.isPending}
+            onClick={() => toggleLocation.mutate({ id: location.id, isActive: !location.isActive })}
+            className={cn(
+              itemClassName,
+              location.isActive && "text-destructive focus:text-destructive"
+            )}
+          >
+            {location.isActive ? <Ban className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+            <span>{location.isActive ? t("disable") : t("enable")}</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
   return (
     <ProtectedRoute resource={RESOURCES.MANAGE_LOCATIONS}>
       <div className="space-y-6">
@@ -439,7 +546,7 @@ export default function WarehouseLocationsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="2xl:hidden"
+                    className="max-md:h-11 2xl:hidden"
                     onClick={() => setStructureOpen(true)}
                   >
                     <ListTree className="mr-2 h-4 w-4" />
@@ -451,7 +558,7 @@ export default function WarehouseLocationsPage() {
                   >
                     <Button
                       variant="link"
-                      className="h-auto px-1 py-0"
+                      className="h-auto px-1 py-0 max-md:min-h-11"
                       aria-current={selectedId ? undefined : "page"}
                       onClick={() => goToLocation(null)}
                     >
@@ -465,7 +572,7 @@ export default function WarehouseLocationsPage() {
                         </span>
                         <Button
                           variant="link"
-                          className="h-auto px-1 py-0"
+                          className="h-auto px-1 py-0 max-md:min-h-11"
                           onClick={() => goToLocation(ancestor.id)}
                         >
                           {getWarehouseLocationDisplayName(ancestor)}
@@ -503,6 +610,7 @@ export default function WarehouseLocationsPage() {
                   {selected ? (
                     <SegmentedControl
                       className="shrink-0 self-start whitespace-nowrap sm:self-auto"
+                      optionClassName="max-md:py-3"
                       aria-label={t("searchScope")}
                       value={searchScope}
                       onChange={(value) => {
@@ -566,217 +674,145 @@ export default function WarehouseLocationsPage() {
                       className="min-h-60"
                     />
                   )
+                ) : isPhoneLayout && !isPending ? (
+                  <WarehouseLocationMobileList
+                    locations={locations}
+                    isSearching={isSearching}
+                    onOpenLocation={goToLocation}
+                    getLocationTypeLabel={locationTypeLabel}
+                    formatCapacity={formatLocationCapacity}
+                    renderOccupancy={renderLocationOccupancy}
+                    renderActionsMenu={(location) => renderLocationActionsMenu(location, "phone")}
+                  />
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="whitespace-nowrap">{t("code")}</TableHead>
-                        <TableHead>{isSearching ? t("locationPath") : t("name")}</TableHead>
-                        <TableHead>{t("type")}</TableHead>
-                        <TableHead className="whitespace-nowrap">{t("use")}</TableHead>
-                        <TableHead className="text-right">{t("capacity")}</TableHead>
-                        <TableHead className="text-right">{t("subtreeQuantity")}</TableHead>
-                        <TableHead className="text-right">{t("occupancy")}</TableHead>
-                        <TableHead>{t("status")}</TableHead>
-                        <TableHead className="text-right">{t("actions")}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {isPending
-                        ? Array.from({ length: 8 }, (_, index) => `skeleton-${index}`).map(
-                            (rowKey) => (
-                              <TableRow key={rowKey}>
-                                <TableCell>
-                                  <Skeleton className="h-4 w-20" />
+                  <>
+                    {isPending ? (
+                      <div className="md:hidden">
+                        <WarehouseLocationMobileListSkeleton rows={4} />
+                      </div>
+                    ) : null}
+                    <Table containerClassName={isPending ? "max-md:hidden" : undefined}>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="whitespace-nowrap">{t("code")}</TableHead>
+                          <TableHead>{isSearching ? t("locationPath") : t("name")}</TableHead>
+                          <TableHead>{t("type")}</TableHead>
+                          <TableHead className="whitespace-nowrap">{t("use")}</TableHead>
+                          <TableHead className="text-right">{t("capacity")}</TableHead>
+                          <TableHead className="text-right">{t("subtreeQuantity")}</TableHead>
+                          <TableHead className="text-right">{t("occupancy")}</TableHead>
+                          <TableHead>{t("status")}</TableHead>
+                          <TableHead className="text-right">{t("actions")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {isPending
+                          ? Array.from({ length: 8 }, (_, index) => `skeleton-${index}`).map(
+                              (rowKey) => (
+                                <TableRow key={rowKey}>
+                                  <TableCell>
+                                    <Skeleton className="h-4 w-20" />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Skeleton className="h-4 w-36" />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Skeleton className="h-4 w-20" />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Skeleton className="h-4 w-24" />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Skeleton className="h-6 w-16 rounded-full" />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Skeleton className="h-4 w-20" />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Skeleton className="h-4 w-20" />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Skeleton className="h-4 w-16" />
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex justify-end gap-2">
+                                      <Skeleton className="h-8 w-16" />
+                                      <Skeleton className="h-8 w-8" />
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            )
+                          : locations.map((location) => (
+                              <TableRow
+                                key={location.id}
+                                className="cursor-pointer"
+                                onClick={() => goToLocation(location.id)}
+                              >
+                                <TableCell className="whitespace-nowrap font-medium">
+                                  {/* The row is clickable; this button gives keyboard and screen reader users the same action. */}
+                                  <button
+                                    type="button"
+                                    className="text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    aria-label={t("openLocation", {
+                                      location: getWarehouseLocationDisplayName(location),
+                                    })}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      goToLocation(location.id);
+                                    }}
+                                  >
+                                    {location.code}
+                                  </button>
                                 </TableCell>
                                 <TableCell>
-                                  <Skeleton className="h-4 w-36" />
+                                  {isSearching ? location.locationPath : location.name || "—"}
+                                </TableCell>
+                                <TableCell>{locationTypeLabel(location.locationType)}</TableCell>
+                                <TableCell className="whitespace-nowrap">
+                                  {t(
+                                    warehouseLocationUseLabelKeys[getWarehouseLocationUse(location)]
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                  {formatLocationCapacity(location)}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                  {format.number(location.subtreeQuantity ?? 0, {
+                                    maximumFractionDigits: 2,
+                                  })}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                  {renderLocationOccupancy(location)}
                                 </TableCell>
                                 <TableCell>
-                                  <Skeleton className="h-4 w-20" />
+                                  <StatusText tone={location.isActive ? "green" : "muted"}>
+                                    {location.isActive ? t("active") : t("inactive")}
+                                  </StatusText>
                                 </TableCell>
-                                <TableCell>
-                                  <Skeleton className="h-4 w-24" />
-                                </TableCell>
-                                <TableCell>
-                                  <Skeleton className="h-6 w-16 rounded-full" />
-                                </TableCell>
-                                <TableCell>
-                                  <Skeleton className="h-4 w-20" />
-                                </TableCell>
-                                <TableCell>
-                                  <Skeleton className="h-4 w-20" />
-                                </TableCell>
-                                <TableCell>
-                                  <Skeleton className="h-4 w-16" />
-                                </TableCell>
-                                <TableCell className="text-right">
+                                {/* Actions, including the portaled menu, must not also open the row. */}
+                                <TableCell
+                                  className="text-right"
+                                  onClick={(event) => event.stopPropagation()}
+                                >
                                   <div className="flex justify-end gap-2">
-                                    <Skeleton className="h-8 w-16" />
-                                    <Skeleton className="h-8 w-8" />
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={!canEdit}
+                                      onClick={() => openLocationDialog({ mode: "edit", location })}
+                                    >
+                                      <Pencil className="mr-2 h-4 w-4" />
+                                      {t("edit")}
+                                    </Button>
+                                    {renderLocationActionsMenu(location, "table")}
                                   </div>
                                 </TableCell>
                               </TableRow>
-                            )
-                          )
-                        : locations.map((location) => (
-                            <TableRow
-                              key={location.id}
-                              className="cursor-pointer"
-                              onClick={() => goToLocation(location.id)}
-                            >
-                              <TableCell className="whitespace-nowrap font-medium">
-                                {/* The row is clickable; this button gives keyboard and screen reader users the same action. */}
-                                <button
-                                  type="button"
-                                  className="text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                  aria-label={t("openLocation", {
-                                    location: getWarehouseLocationDisplayName(location),
-                                  })}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    goToLocation(location.id);
-                                  }}
-                                >
-                                  {location.code}
-                                </button>
-                              </TableCell>
-                              <TableCell>
-                                {isSearching ? location.locationPath : location.name || "—"}
-                              </TableCell>
-                              <TableCell>{locationTypeLabel(location.locationType)}</TableCell>
-                              <TableCell className="whitespace-nowrap">
-                                {t(
-                                  warehouseLocationUseLabelKeys[getWarehouseLocationUse(location)]
-                                )}
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums">
-                                {location.isStorable && location.maxCapacity != null
-                                  ? `${format.number(location.usedCapacity ?? 0, { maximumFractionDigits: 2 })} / ${format.number(location.maxCapacity, { maximumFractionDigits: 2 })}`
-                                  : "—"}
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums">
-                                {format.number(location.subtreeQuantity ?? 0, {
-                                  maximumFractionDigits: 2,
-                                })}
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums">
-                                {/* No capacity set: same plain dash as Used / Max. */}
-                                {location.capacityStatus === "not_configured" ? (
-                                  "—"
-                                ) : (
-                                  <StatusText tone={capacityTone(location.capacityStatus)}>
-                                    {location.maxCapacity != null
-                                      ? `${capacityStatusLabel(location.capacityStatus)} · ${format.number(location.utilizationPercent ?? 0, { maximumFractionDigits: 1 })}%`
-                                      : capacityStatusLabel(location.capacityStatus)}
-                                  </StatusText>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <StatusText tone={location.isActive ? "green" : "muted"}>
-                                  {location.isActive ? t("active") : t("inactive")}
-                                </StatusText>
-                              </TableCell>
-                              {/* Actions, including the portaled menu, must not also open the row. */}
-                              <TableCell
-                                className="text-right"
-                                onClick={(event) => event.stopPropagation()}
-                              >
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={!canEdit}
-                                    onClick={() => openLocationDialog({ mode: "edit", location })}
-                                  >
-                                    <Pencil className="mr-2 h-4 w-4" />
-                                    {t("edit")}
-                                  </Button>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0"
-                                        aria-label={t("moreActionsFor", { code: location.code })}
-                                      >
-                                        <MoreVertical className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      {canDelete ? (
-                                        <DropdownMenuItem
-                                          className="text-destructive focus:text-destructive"
-                                          onClick={() => setDeleteTarget(location)}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                          <span>{t("deleteLocation")}</span>
-                                        </DropdownMenuItem>
-                                      ) : null}
-                                      {isSearching ? (
-                                        <DropdownMenuItem
-                                          onClick={() => goToLocation(location.parentId ?? null)}
-                                        >
-                                          <FolderTree className="h-4 w-4" />
-                                          <span>{t("showInHierarchy")}</span>
-                                        </DropdownMenuItem>
-                                      ) : null}
-                                      {canCreate && location.isActive ? (
-                                        <DropdownMenuItem
-                                          onClick={() =>
-                                            openLocationDialog({
-                                              mode: "create",
-                                              parent: location,
-                                            })
-                                          }
-                                        >
-                                          <FolderPlus className="h-4 w-4" />
-                                          <span>{t("addInside")}</span>
-                                        </DropdownMenuItem>
-                                      ) : null}
-                                      {canCreate ? (
-                                        <DropdownMenuItem onClick={() => openCopyDialog(location)}>
-                                          <Copy className="h-4 w-4" />
-                                          <span>{t("copyStructure")}</span>
-                                        </DropdownMenuItem>
-                                      ) : null}
-                                      {canEdit ? (
-                                        <DropdownMenuItem onClick={() => openMoveDialog(location)}>
-                                          <MoveRight className="h-4 w-4" />
-                                          <span>{t("move")}</span>
-                                        </DropdownMenuItem>
-                                      ) : null}
-                                      <DropdownMenuItem
-                                        disabled={!canEdit || toggleLocation.isPending}
-                                        onClick={() =>
-                                          toggleLocation.mutate({
-                                            id: location.id,
-                                            isActive: !location.isActive,
-                                          })
-                                        }
-                                        className={
-                                          location.isActive
-                                            ? "text-destructive focus:text-destructive"
-                                            : undefined
-                                        }
-                                      >
-                                        {location.isActive ? (
-                                          <Ban className="h-4 w-4" />
-                                        ) : (
-                                          <CheckCircle2 className="h-4 w-4" />
-                                        )}
-                                        <span>
-                                          {location.isActive ? t("disable") : t("enable")}
-                                        </span>
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                    </TableBody>
-                  </Table>
+                            ))}
+                      </TableBody>
+                    </Table>
+                  </>
                 )}
               </CardContent>
             </Card>

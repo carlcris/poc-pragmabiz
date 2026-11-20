@@ -36,7 +36,7 @@ type TreeLevelProps = Omit<WarehouseLocationTreeProps, "warehouseLabel"> & {
 
 const itemClassName = (selected: boolean) =>
   cn(
-    "flex h-8 cursor-pointer items-center gap-1.5 rounded-md pr-2 text-sm outline-none",
+    "flex h-8 cursor-pointer items-center gap-1.5 rounded-md pr-2 text-sm outline-none max-md:h-11",
     "hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
     selected && "bg-primary/10 font-semibold text-primary"
   );
@@ -124,7 +124,8 @@ function TreeLevelPage({
                 tabIndex={-1}
                 aria-hidden
                 className={cn(
-                  "flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground",
+                  // The pseudo-element widens the tap area to 44px without moving the row.
+                  "relative flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground after:absolute after:-inset-3",
                   !isExpandable && "invisible"
                 )}
                 onClick={(event) => {
@@ -173,7 +174,7 @@ function TreeLevelPage({
         <li role="none" style={{ paddingLeft: `calc(${paddingLeft} + 1.625rem)` }}>
           <button
             type="button"
-            className="h-8 text-sm font-medium text-primary hover:underline"
+            className="h-8 text-sm font-medium text-primary hover:underline max-md:h-11"
             onClick={(event) => {
               event.stopPropagation();
               if (onShowAll) onShowAll(parentId);
@@ -230,6 +231,7 @@ export function WarehouseLocationTree({
           type="button"
           variant="ghost"
           size="sm"
+          className="max-md:h-11"
           disabled={!expansion.canExpandAll}
           onClick={expansion.expandAll}
         >
@@ -240,6 +242,7 @@ export function WarehouseLocationTree({
           type="button"
           variant="ghost"
           size="sm"
+          className="max-md:h-11"
           disabled={!expansion.canCollapseAll}
           onClick={expansion.collapseAll}
         >
@@ -249,7 +252,7 @@ export function WarehouseLocationTree({
       </div>
       {expansion.isAllExpanded ? (
         <>
-          <Button variant="ghost" size="sm" onClick={() => onSelect(null)}>
+          <Button variant="ghost" size="sm" className="max-md:h-11" onClick={() => onSelect(null)}>
             {warehouseLabel}
           </Button>
           <ExpandedLocationTree
