@@ -1,8 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { transformationTemplatesApi } from "@/lib/api/transformation-templates";
 import type {
   TransformationTemplateFilters,
+  TransformationTemplateListResponse,
   CreateTransformationTemplateRequest,
   UpdateTransformationTemplateRequest,
   TransformationTemplateCopySourceFilters,
@@ -36,6 +37,37 @@ export function useTransformationTemplates(params?: TransformationTemplateFilter
   return useQuery({
     queryKey: [TRANSFORMATION_TEMPLATES_QUERY_KEY, params],
     queryFn: () => transformationTemplatesApi.list(params),
+  });
+}
+
+/** One page of active templates for a picker, so each request stays bounded. */
+const ACTIVE_TEMPLATE_OPTIONS_PAGE_SIZE = 5;
+
+/**
+ * Pages the active templates a create form can pick from, of either template
+ * kind. The server owns search and ordering, so the combobox appends the next
+ * page when the person scrolls or asks for more rather than filtering a full
+ * list on the client.
+ */
+export function useActiveTransformationTemplateOptions(search = "") {
+  const normalizedSearch = search.trim();
+
+  return useInfiniteQuery({
+    queryKey: [
+      TRANSFORMATION_TEMPLATES_QUERY_KEY,
+      "active-options",
+      { search: normalizedSearch, limit: ACTIVE_TEMPLATE_OPTIONS_PAGE_SIZE },
+    ],
+    queryFn: ({ pageParam }) =>
+      transformationTemplatesApi.list({
+        isActive: true,
+        search: normalizedSearch || undefined,
+        page: pageParam,
+        limit: ACTIVE_TEMPLATE_OPTIONS_PAGE_SIZE,
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage: TransformationTemplateListResponse) =>
+      lastPage.page * lastPage.limit < lastPage.total ? lastPage.page + 1 : undefined,
   });
 }
 

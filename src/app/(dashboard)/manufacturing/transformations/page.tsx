@@ -57,6 +57,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { CreateGuard } from "@/components/permissions/PermissionGuard";
+import { RESOURCES } from "@/constants/resources";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { DataTableSkeletonRows } from "@/components/shared/DataTableSkeletonRows";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
@@ -261,12 +263,16 @@ export default function TransformationOrdersPage() {
             <Button variant="outline" asChild className="w-full sm:w-auto">
               <Link href="/manufacturing/transformations/templates">{t("manageTemplates")}</Link>
             </Button>
-            <Button asChild className="w-full sm:w-auto">
-              <Link href="/manufacturing/transformations/new">
-                <Plus className="mr-2 h-4 w-4" />
-                {t("newTransformation")}
-              </Link>
-            </Button>
+            {/* Guarded on the same resource the create page checks, so a
+                viewer is never offered a link to a page that denies them. */}
+            <CreateGuard resource={RESOURCES.STOCK_TRANSFORMATIONS}>
+              <Button asChild className="w-full sm:w-auto">
+                <Link href="/manufacturing/transformations/new">
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t("newTransformation")}
+                </Link>
+              </Button>
+            </CreateGuard>
           </>
         }
       />

@@ -435,6 +435,9 @@ List transformation templates owned by the current business unit.
 
 **Permissions**: `view` on `stock_transformations`
 
+**New Transformation** searches active recipe and sheet-layout templates by code, name, or
+description. The selector loads five results per request and can load more.
+
 **Response**:
 
 ```json
@@ -850,6 +853,21 @@ Transformation order creation and completion are database-owned operations:
    - Status: Completed
    - 160 pieces now available for sale
    - Scrap collected for recycling/disposal
+
+### Repack whole sacks into fixed-size packs
+
+1. Create or select separate inventory items for the bulk sack and the finished pack. Their base
+   units should count whole sacks and whole packs.
+2. In **Stock Transformations → Manage Templates → New Template**, create a recipe with the bulk
+   sack as an input and the finished pack as an output. For example, enter
+   **1 sack** and **25 packs** for a 25 kg sack that yields twenty-five 1 kg packs. Add packaging
+   materials after the bulk input if they are tracked in stock. Use whole quantities on each line.
+3. In **Stock Transformations → New Transformation**, select the recipe and warehouse. Enter the
+   number of sacks to consume. **Expected Yield** shows the planned pack quantity, such as
+   **75 packs** for three sacks. The recipe also scales any packaging inputs.
+4. Create the order and use **Prepare** and **Complete** as for any stock transformation. Record
+   the packs produced and account for any pack shortfall as waste. Finished packs go through
+   **Putaway** before they can be picked.
 
 ### Workflow 2: Cost Redistribution
 

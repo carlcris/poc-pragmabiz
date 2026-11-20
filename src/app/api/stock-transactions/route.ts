@@ -300,10 +300,8 @@ async function GETHandler(request: NextRequest) {
         .or(`item_code.ilike.%${search}%,item_name.ilike.%${search}%`)
         .limit(100);
       if (itemSearchError) {
-        return NextResponse.json(
-          { error: "Failed to search items", details: itemSearchError.message },
-          { status: 500 }
-        );
+        console.error("Error searching stock transaction items", itemSearchError);
+        return NextResponse.json({ error: "Failed to search items" }, { status: 500 });
       }
       const itemIdMatches = (matchedItems || []).map((row) => row.id);
       const searchClauses = [
@@ -320,13 +318,14 @@ async function GETHandler(request: NextRequest) {
       data: transactionItems,
       error: txError,
       count,
-    } = await query.order("id", { ascending: false }).range(offset, offset + limit - 1);
+    } = await query
+      .order("transaction(created_at)", { ascending: false })
+      .order("id", { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (txError) {
-      return NextResponse.json(
-        { error: "Failed to fetch transactions", details: txError.message },
-        { status: 500 }
-      );
+      console.error("Error fetching stock transactions", txError);
+      return NextResponse.json({ error: "Failed to fetch transactions" }, { status: 500 });
     }
 
     // Format stock transactions
@@ -416,7 +415,8 @@ async function GETHandler(request: NextRequest) {
         totalPages: Math.ceil((count || 0) / limit),
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("Error listing stock transactions", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

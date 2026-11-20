@@ -14,25 +14,18 @@ edits before handing off the next stage.
 - Use `explorer` to trace unfamiliar code paths and `architect` to settle cross-layer designs
   and contracts before implementation when needed.
 - Delegate API and server work to `backend` and Supabase work to `database`.
-- Route all frontend implementation to Claude Opus in Claude Code at `high` effort, including routine fixes,
-  large UI changes, styles, UI-facing hooks and state, translations, and fixes from review.
-  Run the handoff from the root of the current checkout.
+- Route all frontend implementation to `frontend`, configured with GPT-6.2 Sol at extra-high
+  (`xhigh`) effort, including routine fixes, large UI changes, styles, UI-facing hooks and state,
+  translations, and fixes from review.
 - Use `tester` for automated checks and `browser_tester` for live browser verification.
 - Use `reviewer` for ordinary diff reviews and `reviewer_deep` for high-risk changes such as
   transactions, RLS, permissions, or cross-module contracts. Route fixes back to the owning
   implementation role and rerun affected checks.
 
-For a frontend handoff, pass a brief with the requested behavior, agreed contracts, assigned
-files, existing edits to preserve, applicable skills, and verification criteria. Tell Claude Code
-to read this file and applicable nested `AGENTS.md` files, and to report changed files and checks.
-Run the following with `frontend_brief` set to the complete brief:
-
-```bash
-claude --print --model opus --effort high --permission-mode acceptEdits "$frontend_brief"
-```
-
-Inspect the handoff result and diff before verification. If the Claude handoff is blocked, report
-the specific failure and continue independent work that can proceed.
+For a frontend handoff, select the `frontend` agent role and pass a brief with the requested
+behavior, agreed contracts, assigned files, existing edits to preserve, applicable skills, and
+verification criteria. Tell the agent to read this file and applicable nested `AGENTS.md` files,
+and to report changed files and checks. Inspect the handoff result and diff before verification.
 
 ## Project Map
 

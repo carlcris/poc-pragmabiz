@@ -388,17 +388,17 @@ git push origin main
 
 ## Development Workflow
 
-### Codex and Claude Code Orchestration
+### Codex Agent Orchestration
 
 Open a local Codex chat in the trusted repository to load the [project configuration](../../.codex/config.toml),
 [agent roles](../../.codex/agents/), and [routing rules](../../AGENTS.md#agent-orchestration).
 Codex coordinates design, implementation, review, and testing. The project sets a cap of three
 concurrent Codex subagent threads.
 
-Frontend implementation uses Claude Opus at high effort for routine changes and larger UI work. Install Claude
-Code on the same host as Codex, make `claude` available on `PATH`, and sign in. Verify the setup
-with `claude --version` and `claude auth status`. The handoff runs from the project's current checkout
-and passes `--model opus --effort high` to Claude Code. The `tester` role handles
+Frontend implementation uses the `frontend` Codex role with GPT-6.2 Sol at extra-high effort
+(`model = "gpt-6.2-sol"`, `model_reasoning_effort = "xhigh"`) for routine fixes, larger UI changes,
+styles, UI-facing hooks and state, translations, and fixes from review. Select the `frontend`
+agent role when delegating so its model and effort settings apply. The `tester` role handles
 automated checks, and `browser_tester` uses GPT-6.1 Terra for live browser verification when the
 app and browser tooling are available.
 

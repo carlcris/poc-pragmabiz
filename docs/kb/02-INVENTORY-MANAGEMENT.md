@@ -514,6 +514,8 @@ Putaway tasks store their own source-unit name and quantity-per-unit conversion 
 
 Every stock movement is recorded as a **Stock Transaction** for full audit trail and stock ledger reporting.
 
+The Stock Transactions list shows newest entries first, using the creation date and time displayed in the Date column. This order applies across pages and when the list is filtered.
+
 Stock Ledger rows separate the quantity handled by a transaction from its effect on warehouse
 inventory. The transaction quantity remains visible for receipts, issues, and internal movements.
 Stock effect is derived from the recorded `qty_after - qty_before` balance delta: positive deltas are

@@ -289,6 +289,17 @@ export type TranslationKeys = {
     createOrderWarehouseUnavailable: string;
     createOrderTemplateLinesRequired: string;
     createOrderTemplateItemUnavailable: string;
+    searchTemplatesPlaceholder: string;
+    loadingTemplates: string;
+    retryLoadingTemplates: string;
+    noActiveTemplates: string;
+    noMatchingTemplates: string;
+    templateListError: string;
+    expectedYield: string;
+    expectedYieldQuantityWithUom: string;
+    expectedYieldUnavailable: string;
+    createPermissionRequired: string;
+    createPermissionRequiredDescription: string;
     failedExecuteTransformation: string;
     completeOrderBusinessUnitUnavailable: string;
     completeOrderPermissionLost: string;
@@ -4531,6 +4542,19 @@ export const translations: Record<Locale, TranslationKeys> = {
         "The selected template needs at least one input and one primary output. Update the template, then try again.",
       createOrderTemplateItemUnavailable:
         "The selected template references an inactive or deleted item or unit of measure. Reactivate or replace it in the template, then try again.",
+      searchTemplatesPlaceholder: "Search templates by code or name...",
+      loadingTemplates: "Loading templates...",
+      retryLoadingTemplates: "Retry Loading More",
+      noActiveTemplates: "No active templates yet. Create one in Manage Templates first.",
+      noMatchingTemplates: "No template matches your search.",
+      templateListError: "We couldn't load templates. Try again.",
+      expectedYield: "Expected Yield",
+      expectedYieldQuantityWithUom: "{quantity} {uom}",
+      expectedYieldUnavailable:
+        "Enter valid whole input and output quantities to see the expected yield.",
+      createPermissionRequired: "You do not have permission to create stock transformations.",
+      createPermissionRequiredDescription:
+        "Ask your administrator for the stock transformations create permission, then reload this page.",
       failedExecuteTransformation:
         "We couldn't complete the transformation order. Please try again. If it continues, contact your administrator.",
       completeOrderBusinessUnitUnavailable:
@@ -11864,6 +11888,17 @@ export const translations: Record<Locale, TranslationKeys> = {
         "所选模板至少需要一个输入和一个主要产出。请更新模板后重试。",
       createOrderTemplateItemUnavailable:
         "所选模板引用了已停用或已删除的物料或计量单位。请在模板中重新启用或替换后重试。",
+      searchTemplatesPlaceholder: "按编码或名称搜索模板…",
+      loadingTemplates: "正在加载模板…",
+      retryLoadingTemplates: "重试加载更多",
+      noActiveTemplates: "暂无启用的模板。请先在“管理模板”中创建模板。",
+      noMatchingTemplates: "没有匹配的模板。",
+      templateListError: "无法加载模板。请重试。",
+      expectedYield: "预期产出",
+      expectedYieldQuantityWithUom: "{quantity} {uom}",
+      expectedYieldUnavailable: "请输入有效的整数投入和产出数量以查看预期产出。",
+      createPermissionRequired: "您没有创建库存转换的权限。",
+      createPermissionRequiredDescription: "请向管理员申请库存转换的创建权限，然后重新加载此页面。",
       failedExecuteTransformation: "无法完成转换订单。请重试；如果问题仍然存在，请联系管理员。",
       completeOrderBusinessUnitUnavailable: "您的业务单位上下文已更改。请刷新页面后重试。",
       completeOrderPermissionLost: "您已无权完成转换订单。",

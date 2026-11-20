@@ -1053,7 +1053,27 @@ multiple warehouse-specific delivery notes from one action.
    - Cost and full input-to-output traceability are recorded.
 4. **Cancel Order** → status Cancelled, allowed from Draft or Preparing only (not once Completed).
 
-**Who can do it**: edit access to Stock Transformations.
+Use Stock Transformations create access to start an order and edit access to prepare or
+complete it.
+
+To test repacking through **New Transformation**, create a recipe with **1 bulk sack** as an
+input and **25 finished packs** as an output. If the warehouse tracks empty bags, add
+**25 empty bags** as another input.
+
+- With Stock Transformations create access, open **New Transformation**, search for the active recipe,
+  select a warehouse, and confirm the expected yield starts at 25 packs. Enter 3 sacks and confirm
+  the yield changes to 75 packs and the packaging input, if present, scales to 75 bags.
+- Clear the sack quantity or enter zero or a fractional quantity. Confirm the yield clears and
+  creation is blocked. Select a recipe for 2 sacks to 5 packs and confirm it starts at 2 sacks
+  and 5 packs. Enter 1 sack and confirm the form rejects the fractional yield.
+- Use search and **Load more** to find active recipes and sheet layouts beyond the first five
+  results. Select a template with multiple or additional outputs and check that **Expected Yield**
+  lists each output with its own quantity.
+- Create a valid repack and confirm the Draft order matches the preview. Prepare it, complete it,
+  and confirm the bulk input is consumed and the packs wait in **Putaway**. Post the 25 packs to
+  a storable rack and confirm available pack stock increases by 25.
+- Edit a planned output quantity to another valid whole quantity. Confirm the corresponding
+  inputs and **Expected Yield** recalculate from the same recipe ratio.
 
 **Things to test**:
 

@@ -111,7 +111,8 @@ async function GETHandler(request: NextRequest) {
       .select(TEMPLATE_DETAIL_SELECT, { count: "exact" })
       .eq("company_id", companyId)
       .is("deleted_at", null)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false });
 
     if (search) {
       query = query.or(

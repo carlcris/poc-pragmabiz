@@ -1,14 +1,17 @@
+import { createClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
-import { POST } from "./route";
+import { GET, POST } from "./route";
 import type { StockMoveBatchSelection, StockMovePayload } from "@/lib/validations/stock-move";
 import { MAX_STOCK_MOVE_BATCH_SELECTION } from "@/types/stock-move";
+import type { Database } from "@/types/database.types";
 
 const mocks = vi.hoisted(() => ({
   permission: vi.fn(),
   context: vi.fn(),
   rpc: vi.fn(),
   from: vi.fn(),
+  fetch: vi.fn<typeof fetch>(),
 }));
 vi.mock("@/lib/activity-logging/route-activity-logger", () => ({
   withActivityLogging: (handler: unknown) => handler,
@@ -73,6 +76,115 @@ beforeEach(() => {
     error: null,
   });
   vi.spyOn(console, "error").mockImplementation(() => {});
+});
+
+describe("stock transaction list API", () => {
+  beforeEach(() => {
+    const supabase = createClient<Database>("http://localhost:54321", "test-key", {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: mocks.fetch },
+    });
+    mocks.context.mockResolvedValue({
+      supabase,
+      companyId: "company",
+      userId: "actor",
+      currentBusinessUnitId: businessUnitId,
+    });
+  });
+
+  it.each([
+    { params: "", page: 1, limit: 10, offset: 0 },
+    { params: "page=2&limit=10", page: 2, limit: 10, offset: 10 },
+    { params: "page=2&limit=500", page: 2, limit: 50, offset: 50 },
+  ])(
+    "orders the full result by the displayed timestamp before paging $params",
+    async (testCase) => {
+      mocks.fetch.mockResolvedValueOnce(
+        Response.json([], { headers: { "Content-Range": "*/75" } })
+      );
+
+      const response = await GET(
+        new NextRequest(`http://localhost/api/stock-transactions?${testCase.params}`)
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        data: [],
+        pagination: {
+          total: 75,
+          page: testCase.page,
+          limit: testCase.limit,
+          totalPages: Math.ceil(75 / testCase.limit),
+        },
+      });
+      expect(mocks.permission).toHaveBeenCalledWith("stock_transactions", "view");
+      expect(mocks.fetch).toHaveBeenCalledTimes(1);
+      const [input] = mocks.fetch.mock.calls[0];
+      const url = new URL(String(input));
+      expect(url.pathname).toBe("/rest/v1/stock_transaction_items");
+      expect(url.searchParams.get("order")).toBe("transaction(created_at).desc,id.desc");
+      expect(url.searchParams.has("transaction.order")).toBe(false);
+      expect(url.searchParams.get("offset")).toBe(String(testCase.offset));
+      expect(url.searchParams.get("limit")).toBe(String(testCase.limit));
+      expect(url.searchParams.get("transaction.company_id")).toBe("eq.company");
+      expect(url.searchParams.get("transaction.business_unit_id")).toBe(`eq.${businessUnitId}`);
+    }
+  );
+
+  it("keeps filtered searches in the same server-side date order", async () => {
+    const itemId = payload.items[0].itemId;
+    mocks.fetch.mockResolvedValueOnce(Response.json([{ id: itemId }]));
+    mocks.fetch.mockResolvedValueOnce(Response.json([], { headers: { "Content-Range": "*/0" } }));
+    const params = new URLSearchParams({
+      search: "test item",
+      transactionType: "transfer",
+      warehouseId,
+      itemId,
+      startDate: "2026-10-01",
+      endDate: "2026-10-31",
+      page: "2",
+      limit: "10",
+    });
+
+    const response = await GET(
+      new NextRequest(`http://localhost/api/stock-transactions?${params}`)
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    const [input] = mocks.fetch.mock.calls[1];
+    const url = new URL(String(input));
+    expect(url.searchParams.get("order")).toBe("transaction(created_at).desc,id.desc");
+    expect(url.searchParams.get("offset")).toBe("10");
+    expect(url.searchParams.get("transaction.transaction_type")).toBe("eq.transfer");
+    expect(url.searchParams.get("transaction.warehouse_id")).toBe(`eq.${warehouseId}`);
+    expect(url.searchParams.get("item_id")).toBe(`eq.${itemId}`);
+    expect(url.searchParams.getAll("transaction.transaction_date")).toEqual([
+      "gte.2026-10-01",
+      "lte.2026-10-31",
+    ]);
+    expect(url.searchParams.get("or")).toContain(`item_id.in.(${itemId})`);
+  });
+
+  it.each([
+    { params: "", message: "Failed to fetch transactions" },
+    { params: "search=item", message: "Failed to search items" },
+  ])("keeps database failures private for $params", async ({ params, message }) => {
+    mocks.fetch.mockResolvedValueOnce(
+      Response.json({ code: "XX000", message: "private SQL details" }, { status: 500 })
+    );
+
+    const response = await GET(
+      new NextRequest(`http://localhost/api/stock-transactions?${params}`)
+    );
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: message });
+    expect(console.error).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ message: "private SQL details" })
+    );
+  });
 });
 
 describe("transactional Move Stock API", () => {
