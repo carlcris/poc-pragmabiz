@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { useStockTransactions } from "@/hooks/useStockTransactions";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -51,6 +53,8 @@ export default function StockTransactionsPage() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<TransactionType | "all">("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -58,12 +62,22 @@ export default function StockTransactionsPage() {
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
 
-  const { data, isLoading, error } = useStockTransactions({
-    search: search || undefined,
-    transactionType: typeFilter,
-    page,
-    limit: pageSize,
-  });
+  const invalidDateRange =
+    [startDate, endDate].some((date) => date !== "" && date.length !== 10) ||
+    (startDate !== "" && endDate !== "" && startDate > endDate);
+  const dateRangeErrorId = invalidDateRange ? "stock-transaction-date-range-error" : undefined;
+
+  const { data, isLoading, error } = useStockTransactions(
+    {
+      search: search || undefined,
+      transactionType: typeFilter,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      page,
+      limit: pageSize,
+    },
+    !invalidDateRange
+  );
 
   const transactions = data?.data || [];
   const pagination = data?.pagination;
@@ -164,37 +178,94 @@ export default function StockTransactionsPage() {
       </div>
 
       <div className="space-y-4">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-          <div className="relative w-full sm:flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={t("searchPlaceholder")}
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-8"
-            />
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
+          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row">
+            <div className="relative min-w-0 flex-1">
+              <Search
+                aria-hidden="true"
+                className="absolute left-2 top-3 h-4 w-4 text-muted-foreground"
+              />
+              <Input
+                type="search"
+                aria-label={t("searchPlaceholder")}
+                placeholder={t("searchPlaceholder")}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
+              <SelectTrigger aria-label={t("type")} className="w-full sm:w-44">
+                <Filter className="mr-2 h-4 w-4" />
+                <SelectValue placeholder={t("typePlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allTypes")}</SelectItem>
+                <SelectItem value="in">{t("stockIn")}</SelectItem>
+                <SelectItem value="out">{t("stockOut")}</SelectItem>
+                <SelectItem value="transfer">{t("transfer")}</SelectItem>
+                <SelectItem value="adjustment">{t("adjustment")}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder={t("typePlaceholder")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("allTypes")}</SelectItem>
-              <SelectItem value="in">{t("stockIn")}</SelectItem>
-              <SelectItem value="out">{t("stockOut")}</SelectItem>
-              <SelectItem value="transfer">{t("transfer")}</SelectItem>
-              <SelectItem value="adjustment">{t("adjustment")}</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="grid w-full min-w-0 grid-cols-2 gap-3 sm:w-auto">
+              <div className="min-w-0 space-y-1 sm:w-40">
+                <Label htmlFor="stock-transaction-start-date">{t("startDate")}</Label>
+                <Input
+                  id="stock-transaction-start-date"
+                  type="date"
+                  max="9999-12-31"
+                  value={startDate}
+                  aria-invalid={invalidDateRange || undefined}
+                  aria-describedby={dateRangeErrorId}
+                  onChange={(event) => {
+                    setStartDate(event.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+              <div className="min-w-0 space-y-1 sm:w-40">
+                <Label htmlFor="stock-transaction-end-date">{t("endDate")}</Label>
+                <Input
+                  id="stock-transaction-end-date"
+                  type="date"
+                  max="9999-12-31"
+                  value={endDate}
+                  aria-invalid={invalidDateRange || undefined}
+                  aria-describedby={dateRangeErrorId}
+                  onChange={(event) => {
+                    setEndDate(event.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!startDate && !endDate}
+              onClick={() => {
+                setStartDate("");
+                setEndDate("");
+                setPage(1);
+              }}
+            >
+              {t("clearDates")}
+            </Button>
+          </div>
         </div>
 
-        {isLoading ? (
+        {invalidDateRange ? (
+          <p id={dateRangeErrorId} role="alert" className="text-sm text-destructive">
+            {t("invalidDateRange")}
+          </p>
+        ) : isLoading ? (
           <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
-                  <TableHead>{t("date")}</TableHead>
+                  <TableHead>{t("createdAt")}</TableHead>
                   <TableHead>{t("type")}</TableHead>
                   <TableHead>{t("item")}</TableHead>
                   <TableHead className="w-64">{t("warehouse")}</TableHead>
@@ -249,7 +320,7 @@ export default function StockTransactionsPage() {
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
-                    <TableHead>{t("date")}</TableHead>
+                    <TableHead>{t("createdAt")}</TableHead>
                     <TableHead>{t("type")}</TableHead>
                     <TableHead>{t("item")}</TableHead>
                     <TableHead className="w-64">{t("warehouse")}</TableHead>

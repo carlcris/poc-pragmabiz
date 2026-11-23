@@ -4,6 +4,7 @@ import {
   withActivityLogging,
 } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
@@ -163,6 +164,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
 const PUTAWAY_LOCATION_LABEL = "PUTAWAY";
+const transactionDateFilterSchema = z.iso.date().refine((value) => value >= "0001-01-01");
 
 const parsePositiveInt = (value: string | null, fallback: number) => {
   const parsed = Number.parseInt(value || "", 10);
@@ -171,8 +173,14 @@ const parsePositiveInt = (value: string | null, fallback: number) => {
 
 const normalizeSearch = (value: string | null) => {
   if (!value) return null;
-  const normalized = value.trim().replace(/[,%]/g, " ");
+  const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
+};
+
+const quoteSearchLiteral = (search: string) => {
+  // Use an escaped regex so punctuation, including PostgREST's LIKE "*", stays literal.
+  const literal = search.replace(/[.*+?^$(){}|[\]\\]/g, "\\$&");
+  return '"' + literal.replace(/["\\]/g, "\\$&") + '"';
 };
 
 const pickFirst = <T>(value: T | T[] | null | undefined): T | null => {
@@ -207,6 +215,14 @@ async function GETHandler(request: NextRequest) {
     const itemId = searchParams.get("itemId");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+
+    if (
+      (startDate && !transactionDateFilterSchema.safeParse(startDate).success) ||
+      (endDate && !transactionDateFilterSchema.safeParse(endDate).success) ||
+      (startDate && endDate && startDate > endDate)
+    ) {
+      return NextResponse.json({ error: "Invalid transaction date range" }, { status: 400 });
+    }
 
     if (warehouseId && !UUID_REGEX.test(warehouseId)) {
       return NextResponse.json({ error: "Invalid warehouse filter" }, { status: 400 });
@@ -265,6 +281,7 @@ async function GETHandler(request: NextRequest) {
           item_name,
           uom:units_of_measure(id, code, name)
         )
+        ${search ? ", matching_item:items(), matching_transaction:stock_transactions()" : ""}
       `,
         { count: "exact" }
       )
@@ -292,26 +309,18 @@ async function GETHandler(request: NextRequest) {
       query = query.lte("transaction.transaction_date", endDate);
     }
     if (search) {
-      const { data: matchedItems, error: itemSearchError } = await supabase
-        .from("items")
-        .select("id")
-        .eq("company_id", companyId)
-        .is("deleted_at", null)
-        .or(`item_code.ilike.%${search}%,item_name.ilike.%${search}%`)
-        .limit(100);
-      if (itemSearchError) {
-        console.error("Error searching stock transaction items", itemSearchError);
-        return NextResponse.json({ error: "Failed to search items" }, { status: 500 });
-      }
-      const itemIdMatches = (matchedItems || []).map((row) => row.id);
-      const searchClauses = [
-        `transaction.transaction_code.ilike.%${search}%`,
-        `transaction.notes.ilike.%${search}%`,
-      ];
-      if (itemIdMatches.length > 0) {
-        searchClauses.push(`item_id.in.(${itemIdMatches.join(",")})`);
-      }
-      query = query.or(searchClauses.join(","));
+      const value = quoteSearchLiteral(search);
+      // Filter-only embeds let SQL combine item and transaction matches before pagination.
+      query = query
+        .eq("matching_item.company_id", companyId)
+        .is("matching_item.deleted_at", null)
+        .or(`item_code.imatch.${value},item_name.imatch.${value}`, {
+          referencedTable: "matching_item",
+        })
+        .or(`transaction_code.imatch.${value},notes.imatch.${value}`, {
+          referencedTable: "matching_transaction",
+        })
+        .or("matching_item.not.is.null,matching_transaction.not.is.null");
     }
 
     const {

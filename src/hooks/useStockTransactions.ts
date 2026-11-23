@@ -5,7 +5,7 @@ import { stockTransactionsApi } from "@/lib/api/stock-transactions";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import type { StockTransactionFilters } from "@/types/stock-transaction";
 
-export function useStockTransactions(filters?: StockTransactionFilters) {
+export function useStockTransactions(filters?: StockTransactionFilters, enabled = true) {
   const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
 
   useRealtimeDomainInvalidation("stock");
@@ -13,6 +13,7 @@ export function useStockTransactions(filters?: StockTransactionFilters) {
   return useQuery({
     queryKey: [STOCK_TRANSACTIONS_QUERY_KEY, currentBusinessUnitId ?? null, filters],
     queryFn: () => stockTransactionsApi.getTransactions(filters),
+    enabled,
   });
 }
 

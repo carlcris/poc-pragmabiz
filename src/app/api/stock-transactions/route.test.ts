@@ -128,12 +128,13 @@ describe("stock transaction list API", () => {
       expect(url.searchParams.get("limit")).toBe(String(testCase.limit));
       expect(url.searchParams.get("transaction.company_id")).toBe("eq.company");
       expect(url.searchParams.get("transaction.business_unit_id")).toBe(`eq.${businessUnitId}`);
+      expect(url.searchParams.get("select")).not.toContain("matching_item");
+      expect(url.searchParams.has("or")).toBe(false);
     }
   );
 
   it("keeps filtered searches in the same server-side date order", async () => {
     const itemId = payload.items[0].itemId;
-    mocks.fetch.mockResolvedValueOnce(Response.json([{ id: itemId }]));
     mocks.fetch.mockResolvedValueOnce(Response.json([], { headers: { "Content-Range": "*/0" } }));
     const params = new URLSearchParams({
       search: "test item",
@@ -151,8 +152,8 @@ describe("stock transaction list API", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mocks.fetch).toHaveBeenCalledTimes(2);
-    const [input] = mocks.fetch.mock.calls[1];
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    const [input] = mocks.fetch.mock.calls[0];
     const url = new URL(String(input));
     expect(url.searchParams.get("order")).toBe("transaction(created_at).desc,id.desc");
     expect(url.searchParams.get("offset")).toBe("10");
@@ -163,12 +164,81 @@ describe("stock transaction list API", () => {
       "gte.2026-10-01",
       "lte.2026-10-31",
     ]);
-    expect(url.searchParams.get("or")).toContain(`item_id.in.(${itemId})`);
+    expect(url.searchParams.get("select")).toContain("matching_item:items()");
+    expect(url.searchParams.get("select")).toContain("matching_transaction:stock_transactions()");
+    expect(url.searchParams.get("matching_item.company_id")).toBe("eq.company");
+    expect(url.searchParams.get("matching_item.deleted_at")).toBe("is.null");
+    expect(url.searchParams.get("matching_item.or")).toBe(
+      '(item_code.imatch."test item",item_name.imatch."test item")'
+    );
+    expect(url.searchParams.get("matching_transaction.or")).toBe(
+      '(transaction_code.imatch."test item",notes.imatch."test item")'
+    );
+    expect(url.searchParams.get("or")).toBe(
+      "(matching_item.not.is.null,matching_transaction.not.is.null)"
+    );
+    expect(url.searchParams.get("limit")).toBe("10");
+  });
+
+  it("preserves punctuation in literal item code and name searches", async () => {
+    mocks.fetch.mockResolvedValueOnce(Response.json([], { headers: { "Content-Range": "*/0" } }));
+    const params = new URLSearchParams({ search: '  A,%_*(1)."\\  ' });
+
+    const response = await GET(
+      new NextRequest(`http://localhost/api/stock-transactions?${params}`)
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    const [input] = mocks.fetch.mock.calls[0];
+    const url = new URL(String(input));
+    expect(url.searchParams.get("matching_item.or")).toBe(
+      String.raw`(item_code.imatch."A,%_\\*\\(1\\)\\.\"\\\\",item_name.imatch."A,%_\\*\\(1\\)\\.\"\\\\")`
+    );
+  });
+
+  it.each([
+    { startDate: "2026-10-05", endDate: "2026-10-05" },
+    { startDate: "2026-10-05", endDate: "" },
+    { startDate: "", endDate: "2026-10-05" },
+  ])("supports inclusive and open-ended calendar dates $startDate to $endDate", async (dates) => {
+    mocks.fetch.mockResolvedValueOnce(Response.json([], { headers: { "Content-Range": "*/0" } }));
+    const params = new URLSearchParams(dates);
+
+    const response = await GET(
+      new NextRequest(`http://localhost/api/stock-transactions?${params}`)
+    );
+
+    expect(response.status).toBe(200);
+    const [input] = mocks.fetch.mock.calls[0];
+    const url = new URL(String(input));
+    expect(url.searchParams.getAll("transaction.transaction_date")).toEqual([
+      ...(dates.startDate ? [`gte.${dates.startDate}`] : []),
+      ...(dates.endDate ? [`lte.${dates.endDate}`] : []),
+    ]);
+  });
+
+  it.each([
+    { startDate: "2026-02-30", endDate: "" },
+    { startDate: "", endDate: "2026-13-01" },
+    { startDate: "2026-10-01T12:00:00Z", endDate: "" },
+    { startDate: "0000-01-01", endDate: "" },
+    { startDate: "2026-10-31", endDate: "2026-10-01" },
+  ])("rejects invalid transaction date ranges before querying %j", async (dates) => {
+    const params = new URLSearchParams(dates);
+
+    const response = await GET(
+      new NextRequest(`http://localhost/api/stock-transactions?${params}`)
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Invalid transaction date range" });
+    expect(mocks.fetch).not.toHaveBeenCalled();
   });
 
   it.each([
     { params: "", message: "Failed to fetch transactions" },
-    { params: "search=item", message: "Failed to search items" },
+    { params: "search=item", message: "Failed to fetch transactions" },
   ])("keeps database failures private for $params", async ({ params, message }) => {
     mocks.fetch.mockResolvedValueOnce(
       Response.json({ code: "XX000", message: "private SQL details" }, { status: 500 })

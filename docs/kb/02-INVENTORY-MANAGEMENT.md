@@ -516,7 +516,12 @@ Putaway tasks store their own source-unit name and quantity-per-unit conversion 
 
 Every stock movement is recorded as a **Stock Transaction** for full audit trail and stock ledger reporting.
 
-The Stock Transactions list shows newest entries first, using the creation date and time displayed in the Date column. This order applies across pages and when the list is filtered.
+The Stock Transactions list shows newest entries first, using the date and time in the Created At column. This order applies across pages and when the list is filtered.
+
+Search matches partial item codes, item names, transaction codes, and transaction notes without
+regard to letter case. Enter a start date, an end date, or both to filter by the transaction date.
+Both dates are inclusive. The date range can be combined with search and the transaction type
+filter. Clear the dates to see all transaction dates for the current search and type.
 
 Stock Ledger rows separate the quantity handled by a transaction from its effect on warehouse
 inventory. The transaction quantity remains visible for receipts, issues, and internal movements.
@@ -744,7 +749,7 @@ CREATE TABLE stock_transactions (
   reference_type VARCHAR,  -- 'purchase_receipt', 'sales_order', etc.
   reference_id UUID,
   cost DECIMAL(12,2),
-  transaction_date TIMESTAMPTZ DEFAULT now(),
+  transaction_date DATE NOT NULL,
   notes TEXT,
   created_by UUID REFERENCES users(id),
   created_at TIMESTAMPTZ DEFAULT now()

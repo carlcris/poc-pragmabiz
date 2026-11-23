@@ -3803,13 +3803,17 @@ export type TranslationKeys = {
     subtitle: string;
     newTransaction: string;
     searchPlaceholder: string;
+    startDate: string;
+    endDate: string;
+    clearDates: string;
+    invalidDateRange: string;
     typePlaceholder: string;
     allTypes: string;
     stockIn: string;
     stockOut: string;
     transfer: string;
     adjustment: string;
-    date: string;
+    createdAt: string;
     type: string;
     item: string;
     warehouse: string;
@@ -8353,14 +8357,19 @@ export const translations: Record<Locale, TranslationKeys> = {
       title: "Stock Transactions",
       subtitle: "Track all inventory movements and adjustments",
       newTransaction: "New Transaction",
-      searchPlaceholder: "Search transactions...",
+      searchPlaceholder: "Search item code, name, or reference",
+      startDate: "Transaction date from",
+      endDate: "Transaction date to",
+      clearDates: "Clear dates",
+      invalidDateRange:
+        "Enter dates with a four-digit year. The end date must be on or after the start date.",
       typePlaceholder: "Type",
       allTypes: "All Types",
       stockIn: "Stock In",
       stockOut: "Stock Out",
       transfer: "Transfer",
       adjustment: "Adjustment",
-      date: "Date",
+      createdAt: "Created At",
       type: "Type",
       item: "Item",
       warehouse: "Warehouse",
@@ -15610,14 +15619,18 @@ export const translations: Record<Locale, TranslationKeys> = {
       title: "库存交易",
       subtitle: "跟踪所有库存移动和调整",
       newTransaction: "新建交易",
-      searchPlaceholder: "搜索交易...",
+      searchPlaceholder: "搜索商品编码、名称或单号",
+      startDate: "交易起始日期",
+      endDate: "交易结束日期",
+      clearDates: "清除日期",
+      invalidDateRange: "请输入四位数年份的日期。结束日期不得早于起始日期。",
       typePlaceholder: "类型",
       allTypes: "所有类型",
       stockIn: "入库",
       stockOut: "出库",
       transfer: "调拨",
       adjustment: "调整",
-      date: "日期",
+      createdAt: "创建时间",
       type: "类型",
       item: "商品",
       warehouse: "仓库",
