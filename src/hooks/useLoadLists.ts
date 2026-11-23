@@ -1,10 +1,16 @@
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+  type QueryClient,
+} from "@tanstack/react-query";
 import {
   LOAD_LISTS_QUERY_KEY,
   STOCK_IN_TRANSIT_QUERY_KEY,
-  STOCK_REQUISITIONS_QUERY_KEY,
   WAREHOUSE_DASHBOARD_QUERY_KEY,
 } from "@/hooks/queryKeys";
+import { invalidateStockRequisitionFulfillment } from "@/hooks/stock-requisition-fulfillment-cache";
 import { useRealtimeDomainInvalidation } from "@/hooks/useRealtimeDomainInvalidation";
 import { loadListsApi } from "@/lib/api/load-lists";
 import type {
@@ -145,12 +151,7 @@ export function useLinkSRsToLoadList() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: CreateLoadListSRLinkRequest }) =>
       loadListsApi.linkSRsToLoadList(id, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, variables.id] });
-      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, variables.id, "sr-links"] });
-      queryClient.invalidateQueries({ queryKey: [STOCK_REQUISITIONS_QUERY_KEY] });
-    },
+    onSuccess: (_, { id }) => invalidateLoadListRequisitionLinks(queryClient, id),
   });
 }
 
@@ -160,13 +161,25 @@ export function useRemoveLoadListSRLink() {
   return useMutation({
     mutationFn: ({ id, linkId }: { id: string; linkId: string }) =>
       loadListsApi.removeLoadListSRLink(id, linkId),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, variables.id] });
-      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, variables.id, "sr-links"] });
-      queryClient.invalidateQueries({ queryKey: [STOCK_REQUISITIONS_QUERY_KEY] });
-    },
+    onSuccess: (_, { id }) => invalidateLoadListRequisitionLinks(queryClient, id),
   });
+}
+
+function invalidateLoadListRequisitionLinks(queryClient: QueryClient, id: string) {
+  return Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: [LOAD_LISTS_QUERY_KEY],
+      predicate: ({ queryKey }) => {
+        const [, loadListId, section] = queryKey;
+        return (
+          typeof loadListId !== "string" ||
+          section === "eligible-requisition-items" ||
+          (loadListId === id && (section === undefined || section === "sr-links"))
+        );
+      },
+    }),
+    invalidateStockRequisitionFulfillment(queryClient),
+  ]);
 }
 
 export function useLoadListSRLinks(id: string) {
@@ -188,9 +201,13 @@ export function useEligibleLoadListRequisitionItems(
   enabled: boolean
 ) {
   return useQuery({
-    queryKey: [LOAD_LISTS_QUERY_KEY, id, "eligible-requisition-items", filters],
+    queryKey: [LOAD_LISTS_QUERY_KEY, id, "eligible-requisition-items", filters] as const,
     queryFn: () => loadListsApi.getEligibleRequisitionItems(id, filters),
     enabled: enabled && !!id,
-    placeholderData: keepPreviousData,
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === id &&
+      previousQuery.queryKey[3].loadListItemId === filters.loadListItemId
+        ? previous
+        : undefined,
   });
 }

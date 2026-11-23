@@ -509,40 +509,24 @@ Create stock requisition.
 
 ```json
 {
-  "warehouse_id": "uuid",
-  "requisition_date": "2025-06-14",
-  "lines": [
+  "supplierId": "uuid",
+  "requisitionDate": "2025-06-14",
+  "items": [
     {
-      "item_id": "uuid",
-      "quantity": 100,
-      "unit_id": "uuid",
+      "itemId": "uuid",
+      "itemUnitOptionId": "uuid",
+      "requestedQty": 100,
       "notes": "Urgent - low stock"
     }
   ]
 }
 ```
 
-#### POST /api/stock-requisitions/[id]/submit
+Create and draft edit save the header and lines together. Each item and pack option may appear once per requisition. Separate pack options can share a unit of measure. Send the selected `itemUnitOptionId` to distinguish them. A repeated option returns HTTP 400 with `STOCK_REQUISITION_DUPLICATE_PACK`.
 
-Submit requisition for approval.
+#### PATCH /api/stock-requisitions/[id]/status
 
-**Permissions**: `edit` on `stock_requisitions`
-
-**Effect**: Status changes to 'submitted'
-
-#### POST /api/stock-requisitions/[id]/approve
-
-Approve requisition.
-
-**Permissions**: `approve_stock_requisitions` capability
-
-**Effect**: Status changes to 'approved', can be added to load list
-
-#### POST /api/stock-requisitions/[id]/reject
-
-Reject requisition.
-
-**Permissions**: `approve_stock_requisitions` capability
+Sending a requisition uses `{ "status": "submitted" }` and requires `edit` on `stock_requisitions`. Submitted and partially fulfilled lines with outstanding quantities are eligible for load-list linking.
 
 ### Load List Management
 
@@ -560,7 +544,11 @@ Create and edit validation focuses the first invalid field. Validation messages 
 
 In the Load List detail view, an item row shows **Linked** whenever it has at least one saved stock requisition link, including a partial allocation. The status clears when the last saved link is removed. The standard `GET /api/load-lists/[id]` response exposes this status as the boolean `items[].isLinkedToStockRequisition`.
 
-The Link Stock Requisitions dialog requires `load_lists.view` plus `load_lists.operation.link_stock_requisitions.edit` and shows existing load-list item to stock-requisition item links before new links are added. Authorized users can add links in the source business unit while the load list is `draft`, `confirmed`, or `in_transit`; saved links can only be removed while it is `draft` or `confirmed`; each mutation and fulfillment reconciliation runs in one database transaction. Eligible submitted and partially fulfilled requisition lines are searched and paginated on the server by requisition number, item code, or item name, so qualifying lines are not limited to an initial fixed set. In-transit load lists accept new links, but existing saved links cannot be removed. Arrived, receiving, pending-approval, received, and cancelled load lists are read-only for linking. When a load-list item is selected, only outstanding requisition lines for the same item are selectable, and link pairs that already exist are marked and disabled. The load-list item dropdown shows the remaining quantity after existing and pending links, hides fully allocated items, and restores them when links are removed and quantity becomes available again. Use **Create Links** to save the pending links. A load-list item can be split across multiple stock-requisition items only up to the load-list item quantity, and aggregate links cannot exceed either the load-list line quantity or stock-requisition line quantity. If a load-list line is removed by another edit before submission, the API returns a validation error and the dialog refreshes instead of reporting an internal server error.
+The Link Stock Requisitions dialog requires `load_lists.view` plus `load_lists.operation.link_stock_requisitions.edit` and shows existing load-list item to stock-requisition item links before new links are added. Authorized users can add links in the source business unit while the load list is `draft`, `confirmed`, or `in_transit`. Saved links can only be removed while it is `draft` or `confirmed`. Each mutation and fulfillment reconciliation runs in one database transaction. Arrived, receiving, pending-approval, received, and cancelled load lists are read-only for linking.
+
+Eligible submitted and partially fulfilled requisition lines support server-side search by requisition number, item code, or item name. When a shipment line is selected, the server filters outstanding lines by the same item and exact pack option before pagination. For example, `BOX (50)` links to `BOX (50)`. The API rejects a cross-pack link with `LOAD_LIST_LINK_PACK_MISMATCH`. Existing link pairs are marked and disabled. The load-list item dropdown shows the remaining quantity after existing and pending links, hides fully allocated lines, and restores them when removed links free up quantity. Use **Create Links** to save pending links. Each shipment line can be split among multiple matching requisition lines within the quantity limits on both sides. When another edit removes a shipment line before submission, the dialog refreshes so the user can select an available line.
+
+On GRN confirmation, fulfilled and outstanding quantities are reconciled against each linked requisition line in its ordered pack size. Receiving stages the received stock in base units by multiplying each GRN line's quantity by its pack conversion. Putaway posts those base units to inventory under the same item.
 
 Mark In Transit requires `load_lists.view` plus `load_lists.operation.mark_in_transit.edit`. The transition locks the confirmed load list and changes the supplier shipment status atomically. It does not assign a warehouse or write warehouse-level in-transit stock because the physical receiving location is not known yet.
 
@@ -891,8 +879,8 @@ class PurchaseReceiptService {
 
 - Create, edit, and view are full pages that share the load list page layout: a Request section (supplier, requisition date, required-by date), the Items section, Notes, and a sticky Summary panel with the item count, total, and actions
 - The New item row (item, unit, qty, total qty, unit cost, line total) sits above the Items table and aligns with its columns; the unit's quantity per unit shows under the unit. Unit cost is per base unit and one currency is allowed per requisition. Enter adds the line and Esc clears the row
-- Each item can appear on only one line; picking an item that is already listed shows an inline error, and the existing line must be removed to change its unit, quantity, or cost
-- Unit cost and amounts follow the stock requisition granular cost permissions; users without unit cost access save lines without costs and the API prices them
+- An item can appear once per pack option. Add `BOX (50)` and `BOX (144)` as separate lines. Repeating a pack shows an inline error. Remove an existing line to replace its pack, quantity, or cost
+- Stock requisition granular permissions control unit cost and amount visibility. Users with restricted cost access save without sending prices. Draft edits preserve the stored cost for an existing pack, and new packs use the item's default cost
 - Only draft requisitions can be edited, and only with stock requisition edit permission; other requisitions show a message linking back to the view page
 - The view page shows Fulfilled and Outstanding quantities once the requisition has been sent, and offers Send and Edit (draft only, with edit permission), Print, and Download PDF
 - Reorder alerts open the new requisition page with prefilled line items; the hand-off lasts for that navigation only and is not kept after a reload

@@ -13,15 +13,17 @@ type EligibleRequisitionItemRow =
 
 const querySchema = z.object({
   search: z.string().trim().max(100).optional(),
+  loadListItemId: z.string().uuid().optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 
 const createListErrorResponse = (message: string) => {
-  const status =
-    message === "Unauthorized" ? 403 : message === "Load list not found" ? 404 : 500;
+  const missingResource =
+    message === "Load list not found" || message === "Load list item not found";
+  const status = message === "Unauthorized" ? 403 : missingResource ? 404 : 500;
   const safeMessage =
-    message === "Unauthorized" || message === "Load list not found"
+    message === "Unauthorized" || missingResource
       ? message
       : "Failed to list eligible requisition items";
   return NextResponse.json({ error: safeMessage }, { status });
@@ -56,6 +58,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
         p_business_unit_id: currentBusinessUnitId,
         p_user_id: userId,
         p_load_list_id: id,
+        p_load_list_item_id: parsedQuery.data.loadListItemId,
         p_search: parsedQuery.data.search || undefined,
         p_page: page,
         p_limit: limit,
@@ -123,6 +126,9 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
         itemId: row.item_id,
         itemCode: row.item_code,
         itemName: row.item_name,
+        itemUnitOptionId: row.item_unit_option_id,
+        unitName: row.unit_name,
+        qtyPerUnit: row.qty_per_unit == null ? null : Number(row.qty_per_unit),
         requestedQty: Number(row.requested_qty),
         fulfilledQty: Number(row.fulfilled_qty),
         outstandingQty: Number(row.outstanding_qty),

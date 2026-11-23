@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useEffect, useId, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Trash2, Link as LinkIcon, Package, ListChecks } from "lucide-react";
@@ -32,7 +32,9 @@ import {
 } from "@/hooks/useLoadLists";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { LOAD_LISTS_QUERY_KEY } from "@/hooks/queryKeys";
-import type { LoadList } from "@/types/load-list";
+import { getApiErrorCode } from "@/lib/api";
+import { formatDocumentQuantity } from "@/lib/documents/document-display";
+import { LOAD_LIST_LINK_ERROR_CODES, type LoadList } from "@/types/load-list";
 
 type LinkStockRequisitionsDialogProps = {
   open: boolean;
@@ -43,9 +45,10 @@ type LinkStockRequisitionsDialogProps = {
 type LinkFormItem = {
   loadListItemId: string;
   loadListItemName?: string;
-  loadListQty: number;
+  loadListPackLabel: string;
   srItemId: string;
   srItemName?: string;
+  srPackLabel: string;
   srNumber?: string;
   requestedQty: number;
   outstandingQty: number;
@@ -58,12 +61,16 @@ export function LinkStockRequisitionsDialog({
   loadList,
 }: LinkStockRequisitionsDialogProps) {
   const t = useTranslations("linkStockRequisitionsDialog");
+  const locale = useLocale();
+  const fieldId = useId();
+  const formatPackLabel = (unitName?: string | null, qtyPerUnit?: number | null) =>
+    unitName && qtyPerUnit != null && qtyPerUnit !== 1
+      ? t("packUnitLabel", { unit: unitName, qty: formatDocumentQuantity(qtyPerUnit, locale) })
+      : (unitName ?? "");
   const queryClient = useQueryClient();
   const linkMutation = useLinkSRsToLoadList();
   const removeLinkMutation = useRemoveLoadListSRLink();
-  const { data: existingLinksData, refetch: refetchExistingLinks } = useLoadListSRLinks(
-    loadList.id
-  );
+  const { data: existingLinksData } = useLoadListSRLinks(loadList.id);
 
   const [links, setLinks] = useState<LinkFormItem[]>([]);
   const [selectedLLItemId, setSelectedLLItemId] = useState("");
@@ -78,6 +85,7 @@ export function LinkStockRequisitionsDialog({
   const eligibleRequisitionItemsQuery = useEligibleLoadListRequisitionItems(
     loadList.id,
     {
+      loadListItemId: selectedLLItemId || undefined,
       search: debouncedRequisitionSearch || undefined,
       page: requisitionPage,
       limit: 20,
@@ -91,8 +99,9 @@ export function LinkStockRequisitionsDialog({
     srId: item.stockRequisitionId,
     srNumber: item.stockRequisitionNumber,
     requestedQty: item.requestedQty,
-    fulfilledQty: item.fulfilledQty,
     outstandingQty: item.outstandingQty,
+    itemUnitOptionId: item.itemUnitOptionId,
+    packLabel: formatPackLabel(item.unitName, item.qtyPerUnit),
     item: {
       id: item.itemId,
       code: item.itemCode,
@@ -167,15 +176,28 @@ export function LinkStockRequisitionsDialog({
 
   // Use the same remaining balance for the options and quantity validation.
   const selectedLLItem = availableLLItems.find((item) => item.id === selectedLLItemId);
-  const matchingSRItems = selectedLLItem
-    ? availableSRItems.filter((item) => item.item?.id === selectedLLItem.itemId)
-    : [];
+  const matchingSRItems =
+    selectedLLItem?.itemUnitOptionId && !eligibleRequisitionItemsQuery.isPlaceholderData
+      ? availableSRItems.filter(
+          (item) =>
+            item.item.id === selectedLLItem.itemId &&
+            item.itemUnitOptionId === selectedLLItem.itemUnitOptionId
+        )
+      : [];
   const selectedLLItemAvailableQty = selectedLLItem?.remainingQty ?? 0;
 
   // Get selected SR item details
   const selectedSRItem = matchingSRItems.find((item) => item.id === selectedSRItemId);
   const selectedPairKey =
     selectedLLItemId && selectedSRItemId ? `${selectedLLItemId}:${selectedSRItemId}` : "";
+
+  const selectLoadListItem = (id: string) => {
+    setSelectedLLItemId(id);
+    setSelectedSRItemId("");
+    setRequisitionPage(1);
+    setLinkQuantity("");
+    setAddLinkError("");
+  };
 
   useEffect(() => {
     if (open) {
@@ -244,20 +266,19 @@ export function LinkStockRequisitionsDialog({
 
     const newLink: LinkFormItem = {
       loadListItemId: selectedLLItemId,
-      loadListItemName: selectedLLItem?.item?.name,
-      loadListQty: selectedLLItem?.loadListQty || 0,
+      loadListItemName: selectedLLItem.item?.name,
+      loadListPackLabel: formatPackLabel(selectedLLItem.unitName, selectedLLItem.qtyPerUnit),
       srItemId: selectedSRItemId,
-      srItemName: selectedSRItem.item?.name,
+      srItemName: selectedSRItem.item.name,
+      srPackLabel: selectedSRItem.packLabel,
       srNumber: selectedSRItem.srNumber,
       requestedQty: selectedSRItem.requestedQty,
       outstandingQty: selectedSRItem.outstandingQty,
       fulfilledQty: qty,
     };
 
-    setLinks([...links, newLink]);
-    setSelectedLLItemId("");
-    setSelectedSRItemId("");
-    setLinkQuantity("");
+    setLinks((current) => [...current, newLink]);
+    selectLoadListItem("");
     toast.success(t("linkAdded"));
   };
 
@@ -279,6 +300,7 @@ export function LinkStockRequisitionsDialog({
   };
 
   const handleSubmit = async () => {
+    if (linkMutation.isPending) return;
     if (!canAddLinks) {
       toast.error(t("loadListNotModifiable"));
       return;
@@ -304,14 +326,7 @@ export function LinkStockRequisitionsDialog({
       toast.success(t("linkSuccess", { count: links.length }));
       onOpenChange(false);
     } catch (error) {
-      const cause = error instanceof Error ? error.cause : null;
-      const errorCode =
-        typeof cause === "object" &&
-        cause !== null &&
-        "code" in cause &&
-        typeof cause.code === "string"
-          ? cause.code
-          : null;
+      const errorCode = getApiErrorCode(error, LOAD_LIST_LINK_ERROR_CODES);
 
       if (errorCode === "LOAD_LIST_LINK_STATUS_CONFLICT") {
         toast.error(t("loadListNotModifiable"));
@@ -319,15 +334,15 @@ export function LinkStockRequisitionsDialog({
       }
 
       if (errorCode === "LOAD_LIST_ITEMS_NOT_FOUND") {
-        setSelectedLLItemId("");
-        setSelectedSRItemId("");
+        selectLoadListItem("");
         setLinks([]);
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, loadList.id] }),
-          eligibleRequisitionItemsQuery.refetch(),
-          refetchExistingLinks(),
-        ]);
+        await queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, loadList.id] });
         toast.error(t("staleLoadListItems"));
+        return;
+      }
+      if (errorCode === "LOAD_LIST_LINK_PACK_MISMATCH") {
+        await queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, loadList.id] });
+        toast.error(t("packMismatch"));
         return;
       }
       toast.error(error instanceof Error ? error.message : t("linkError"));
@@ -387,8 +402,20 @@ export function LinkStockRequisitionsDialog({
               />
 
               {/* Show available SRs and their items */}
+              {selectedLLItem ? (
+                <p className="mb-3 text-xs text-muted-foreground">
+                  {t("matchingPack", {
+                    pack: formatPackLabel(selectedLLItem.unitName, selectedLLItem.qtyPerUnit),
+                  })}
+                </p>
+              ) : null}
+
               {eligibleRequisitionItemsQuery.isLoading ? (
                 <div className="py-8 text-center text-sm text-gray-500">{t("loading")}</div>
+              ) : eligibleRequisitionItemsQuery.isError ? (
+                <div role="alert" className="py-8 text-center text-sm text-destructive">
+                  {t("eligibleLoadError")}
+                </div>
               ) : availableSRs.length > 0 ? (
                 <div className="max-h-[350px] space-y-2 overflow-y-auto">
                   {availableSRs.map((sr) => {
@@ -414,7 +441,14 @@ export function LinkStockRequisitionsDialog({
                                 key={item.id}
                                 className="flex items-center justify-between py-1 text-gray-700"
                               >
-                                <span className="truncate">{item.item?.name}</span>
+                                <span className="min-w-0">
+                                  <span className="block truncate">{item.item.name}</span>
+                                  {item.packLabel ? (
+                                    <span className="block text-muted-foreground">
+                                      {item.packLabel}
+                                    </span>
+                                  ) : null}
+                                </span>
                                 <span className="ml-2 flex-shrink-0 font-medium text-emerald-600">
                                   {t("outstandingPrefix", { qty: item.outstandingQty })}
                                 </span>
@@ -435,7 +469,7 @@ export function LinkStockRequisitionsDialog({
                   <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
                     <Package className="h-6 w-6 text-gray-400" />
                   </div>
-                  <p>{t("noRequisitions")}</p>
+                  <p>{t(selectedLLItem ? "noRequisitionsForPack" : "noRequisitions")}</p>
                   <p className="mt-1 text-xs">
                     {t("noRequisitionsSupplier", { supplier: loadList.supplier?.name ?? "" })}
                   </p>
@@ -448,9 +482,7 @@ export function LinkStockRequisitionsDialog({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() =>
-                      setRequisitionPage(Math.max(1, eligiblePagination.page - 1))
-                    }
+                    onClick={() => setRequisitionPage(Math.max(1, eligiblePagination.page - 1))}
                     disabled={
                       eligiblePagination.page <= 1 || eligibleRequisitionItemsQuery.isFetching
                     }
@@ -522,15 +554,21 @@ export function LinkStockRequisitionsDialog({
                         <TableRow key={link.id} className="border-b border-gray-100">
                           <TableCell className="text-sm font-semibold text-gray-900">
                             {link.loadListItem?.item?.name ?? t("unknownItem")}
+                            <div className="text-xs text-muted-foreground">
+                              {formatPackLabel(
+                                link.loadListItem?.unitName,
+                                link.loadListItem?.qtyPerUnit
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-sm text-gray-700">
                             {link.srItem?.sr?.srNumber ?? t("unknownReference")}
                           </TableCell>
                           <TableCell className="text-sm text-gray-700">
-                            {availableSRItems.find((item) => item.id === link.srItem?.id)?.item
-                              ?.name ??
-                              link.srItem?.item?.name ??
-                              t("unknownItem")}
+                            {link.srItem?.item?.name ?? t("unknownItem")}
+                            <div className="text-xs text-muted-foreground">
+                              {formatPackLabel(link.srItem?.unitName, link.srItem?.qtyPerUnit)}
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <span className="inline-flex items-center justify-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">
@@ -578,38 +616,38 @@ export function LinkStockRequisitionsDialog({
               <div className="bg-gradient-to-br from-purple-50/30 to-violet-50/30 p-5">
                 <div className="grid grid-cols-12 gap-3">
                   <div className="col-span-12 min-w-0 md:col-span-4">
-                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-700">
+                    <label
+                      htmlFor={`${fieldId}-load-list-item`}
+                      className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-700"
+                    >
                       {t("loadListItem")}
                     </label>
-                    <Select
-                      value={selectedLLItemId}
-                      onValueChange={(value) => {
-                        setSelectedLLItemId(value);
-                        setSelectedSRItemId("");
-                        setAddLinkError("");
-                      }}
-                    >
-                      <SelectTrigger className="h-14 border-gray-300 bg-white text-left text-gray-900 focus:border-purple-500 focus:ring-purple-500 [&>span>span]:truncate [&>span]:line-clamp-none [&>span]:block [&>span]:min-w-0 [&>svg]:shrink-0 [&_[data-option-details]]:hidden">
+                    <Select value={selectedLLItemId} onValueChange={selectLoadListItem}>
+                      <SelectTrigger
+                        id={`${fieldId}-load-list-item`}
+                        className="h-14 border-gray-300 bg-white text-left text-gray-900 focus:border-purple-500 focus:ring-purple-500 [&>span>span]:truncate [&>span]:line-clamp-none [&>span]:block [&>span]:min-w-0 [&>svg]:shrink-0 [&_[data-option-details]]:hidden"
+                      >
                         <SelectValue placeholder={t("selectLoadListItem")} />
                       </SelectTrigger>
-                      <SelectContent className="w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]">
+                      <SelectContent className="max-h-[min(18rem,var(--radix-select-content-available-height))] w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] md:w-screen md:max-w-xl">
                         {availableLLItems.map((item) => (
                           <SelectItem
                             key={item.id}
                             value={item.id}
-                            textValue={
-                              item.item ? `${item.item.code} ${item.item.name}` : t("unknownItem")
-                            }
+                            textValue={`${item.item?.code ?? ""} ${item.item?.name ?? t("unknownItem")} ${item.unitName}`}
+                            disabled={!item.itemUnitOptionId}
                             className="whitespace-normal break-words [&>span:last-child]:min-w-0"
                           >
                             <span className="block font-medium">
                               {item.item?.name ?? t("unknownItem")}
                             </span>
                             <span className="block text-xs">
-                              {item.item?.code}
+                              {item.item?.code ? `${item.item.code} · ` : ""}
+                              {formatPackLabel(item.unitName, item.qtyPerUnit)}
                               <span data-option-details>
-                                {item.item?.code ? " · " : ""}
+                                {" · "}
                                 {t("remainingQtyPrefix", { qty: item.remainingQty })}
+                                {!item.itemUnitOptionId ? ` · ${t("packOptionMissing")}` : ""}
                               </span>
                             </span>
                           </SelectItem>
@@ -619,7 +657,10 @@ export function LinkStockRequisitionsDialog({
                   </div>
 
                   <div className="col-span-12 min-w-0 md:col-span-4">
-                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-700">
+                    <label
+                      htmlFor={`${fieldId}-requisition-item`}
+                      className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-700"
+                    >
                       {t("srItem")}
                     </label>
                     <Select
@@ -630,10 +671,13 @@ export function LinkStockRequisitionsDialog({
                       }}
                       disabled={!selectedLLItem || matchingSRItems.length === 0}
                     >
-                      <SelectTrigger className="h-14 border-gray-300 bg-white text-left text-gray-900 focus:border-purple-500 focus:ring-purple-500 [&>span>span]:truncate [&>span]:line-clamp-none [&>span]:block [&>span]:min-w-0 [&>svg]:shrink-0 [&_[data-option-details]]:hidden">
+                      <SelectTrigger
+                        id={`${fieldId}-requisition-item`}
+                        className="h-14 border-gray-300 bg-white text-left text-gray-900 focus:border-purple-500 focus:ring-purple-500 [&>span>span]:truncate [&>span]:line-clamp-none [&>span]:block [&>span]:min-w-0 [&>svg]:shrink-0 [&_[data-option-details]]:hidden"
+                      >
                         <SelectValue placeholder={t("selectSrItem")} />
                       </SelectTrigger>
-                      <SelectContent className="w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)]">
+                      <SelectContent className="max-h-[min(18rem,var(--radix-select-content-available-height))] w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] md:w-screen md:max-w-xl">
                         {matchingSRItems.map((item) => {
                           const pairKey = `${selectedLLItemId}:${item.id}`;
                           const isAlreadyLinked = selectedLLItemId
@@ -648,12 +692,12 @@ export function LinkStockRequisitionsDialog({
                               key={item.id}
                               value={item.id}
                               disabled={isAlreadyLinked || isPending}
-                              textValue={`${item.srNumber} ${item.item?.name ?? ""}`}
+                              textValue={`${item.srNumber} ${item.item.name} ${item.packLabel}`}
                               className="whitespace-normal break-words [&>span:last-child]:min-w-0"
                             >
-                              <span className="block font-medium">{item.item?.name}</span>
+                              <span className="block font-medium">{item.item.name}</span>
                               <span className="block text-xs">
-                                {item.item?.code} · {item.srNumber}
+                                {item.item.code} · {item.srNumber} · {item.packLabel}
                                 <span data-option-details>
                                   {" · "}
                                   {t("outstandingPrefix", { qty: item.outstandingQty })}
@@ -669,10 +713,14 @@ export function LinkStockRequisitionsDialog({
                   </div>
 
                   <div className="col-span-6 min-w-0 md:col-span-2">
-                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-700">
+                    <label
+                      htmlFor={`${fieldId}-quantity`}
+                      className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-700"
+                    >
                       {t("quantityLabel")}
                     </label>
                     <Input
+                      id={`${fieldId}-quantity`}
                       type="number"
                       placeholder={t("quantityPlaceholder")}
                       value={linkQuantity}
@@ -705,7 +753,10 @@ export function LinkStockRequisitionsDialog({
 
                 {/* Inline Error Message */}
                 {addLinkError && (
-                  <div className="mt-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
+                  <div
+                    role="alert"
+                    className="mt-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3"
+                  >
                     <svg
                       className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600"
                       viewBox="0 0 20 20"
@@ -767,16 +818,22 @@ export function LinkStockRequisitionsDialog({
                     <TableBody>
                       {links.map((link, index) => (
                         <TableRow
-                          key={index}
+                          key={`${link.loadListItemId}:${link.srItemId}`}
                           className={`border-b border-gray-100 ${
                             index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
                           } transition-colors hover:bg-purple-50/50`}
                         >
                           <TableCell className="text-sm font-semibold text-gray-900">
                             {link.loadListItemName}
+                            <div className="text-xs text-muted-foreground">
+                              {link.loadListPackLabel}
+                            </div>
                           </TableCell>
                           <TableCell className="text-sm text-gray-700">{link.srNumber}</TableCell>
-                          <TableCell className="text-sm text-gray-700">{link.srItemName}</TableCell>
+                          <TableCell className="text-sm text-gray-700">
+                            {link.srItemName}
+                            <div className="text-xs text-muted-foreground">{link.srPackLabel}</div>
+                          </TableCell>
                           <TableCell className="text-right text-sm font-medium text-gray-900">
                             {link.requestedQty}
                           </TableCell>

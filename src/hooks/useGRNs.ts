@@ -14,6 +14,7 @@ import {
   STOCK_TRANSACTIONS_QUERY_KEY,
   WAREHOUSE_DASHBOARD_QUERY_KEY,
 } from "@/hooks/queryKeys";
+import { invalidateStockRequisitionFulfillment } from "@/hooks/stock-requisition-fulfillment-cache";
 import { useRealtimeDomainInvalidation } from "@/hooks/useRealtimeDomainInvalidation";
 import { grnsApi } from "@/lib/api/grns";
 import type {
@@ -127,19 +128,25 @@ export function useConfirmGRN() {
 
   return useMutation({
     mutationFn: ({ id, notes }: { id: string; notes?: string }) => grnsApi.confirmGRN(id, notes),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [GRNS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [ITEMS_STATS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [STOCK_TRANSACTIONS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [STOCK_BALANCES_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [REORDER_ALERTS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [REORDER_STOCK_LEVELS_QUERY_KEY] });
-    },
+    onSuccess: () =>
+      Promise.all([
+        invalidateStockRequisitionFulfillment(queryClient, [
+          "delayedShipments",
+          "todaysReceivingQueue",
+          "pendingApprovals",
+        ]),
+        queryClient.invalidateQueries({ queryKey: [GRNS_QUERY_KEY] }),
+        queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] }),
+        queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY] }),
+        queryClient.invalidateQueries({ queryKey: [ITEMS_STATS_QUERY_KEY] }),
+        queryClient.invalidateQueries({ queryKey: [STOCK_TRANSACTIONS_QUERY_KEY] }),
+        queryClient.invalidateQueries({ queryKey: [STOCK_BALANCES_QUERY_KEY] }),
+        queryClient.invalidateQueries({ queryKey: [EXPIRED_BATCHES_REPORT_QUERY_KEY] }),
+        queryClient.invalidateQueries({ queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY] }),
+        queryClient.invalidateQueries({ queryKey: [REORDER_ALERTS_QUERY_KEY] }),
+        queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] }),
+        queryClient.invalidateQueries({ queryKey: [REORDER_STOCK_LEVELS_QUERY_KEY] }),
+      ]),
   });
 }
 

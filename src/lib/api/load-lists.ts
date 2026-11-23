@@ -89,6 +89,7 @@ export const loadListsApi = {
   ): Promise<EligibleLoadListRequisitionItemsResponse> => {
     const params = new URLSearchParams();
     if (filters?.search) params.set("search", filters.search);
+    if (filters?.loadListItemId) params.set("loadListItemId", filters.loadListItemId);
     if (filters?.page) params.set("page", filters.page.toString());
     if (filters?.limit) params.set("limit", filters.limit.toString());
     return apiClient.get<EligibleLoadListRequisitionItemsResponse>(

@@ -6,13 +6,15 @@ import { RESOURCES } from "@/constants/resources";
 import {
   resolveStockRequisitionLineUnitOptions,
   StockRequisitionLineValidationError,
+  type ResolvedStockRequisitionLineInput,
 } from "./line-item-unit-options";
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 import { resolveStockRequisitionCapabilities } from "@/lib/stock-requisitions/permissions";
 import {
-  resolveStockRequisitionLineCosts,
-  type ResolvedCostLineItem,
-} from "@/lib/stock-requisitions/costs";
+  buildStockRequisitionHeader,
+  createStockRequisitionRequestSchema,
+  createStockRequisitionSaveErrorResponse,
+} from "./save-request";
 import { resolveStockRequisitionDocumentSettings } from "@/lib/stock-requisitions/document-settings";
 
 const normalizeCurrency = (value: unknown): string | null => {
@@ -20,11 +22,6 @@ const normalizeCurrency = (value: unknown): string | null => {
   const normalized = value.trim().toUpperCase();
   return normalized.length > 0 ? normalized : null;
 };
-
-const resolveRequestCurrency = (value: unknown) => normalizeCurrency(value) ?? "PHP";
-
-const validateCurrency = (currency: string) =>
-  /^[A-Z]{3}$/.test(currency) ? null : "Currency must be a 3-letter currency code";
 
 // GET /api/stock-requisitions
 async function GETHandler(request: NextRequest) {
@@ -315,133 +312,62 @@ async function POSTHandler(request: NextRequest) {
     const context = await requireRequestContext();
     if ("status" in context) return context;
     const { supabase, userId, companyId, currentBusinessUnitId } = context;
-    const body = await request.json();
+    const parsedBody = createStockRequisitionRequestSchema.safeParse(
+      await request.json().catch(() => null)
+    );
 
     if (!currentBusinessUnitId) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
-
+    if (!parsedBody.success) {
+      return NextResponse.json(
+        { error: "Invalid stock requisition", code: "STOCK_REQUISITION_INVALID_REQUEST" },
+        { status: 400 }
+      );
+    }
+    const body = parsedBody.data;
     const capabilities = await resolveStockRequisitionCapabilities(userId, currentBusinessUnitId);
-
-    // Validate required fields
-    if (!body.supplierId) {
-      return NextResponse.json({ error: "Supplier is required" }, { status: 400 });
-    }
-
-    if (!body.items || body.items.length === 0) {
-      return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
-    }
-
     if (
       !capabilities.canViewUnitCost &&
-      (body.currency != null ||
-        body.items.some((item: { unitPrice?: unknown }) => item.unitPrice !== undefined))
+      (body.currency != null || body.items.some((item) => item.unitPrice !== undefined))
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const submittedCurrency = resolveRequestCurrency(body.currency);
-    const currencyValidationError = capabilities.canViewUnitCost
-      ? validateCurrency(submittedCurrency)
-      : null;
-    if (currencyValidationError) {
-      return NextResponse.json({ error: currencyValidationError }, { status: 400 });
-    }
-
-    let resolvedCostLines: ResolvedCostLineItem[];
-    let currency: string;
+    let resolvedLines: ResolvedStockRequisitionLineInput[];
     try {
-      const resolvedLineItems = await resolveStockRequisitionLineUnitOptions(
-        supabase,
-        companyId,
-        body.items
-      );
-      const resolvedCosts = await resolveStockRequisitionLineCosts(
-        supabase,
-        companyId,
-        resolvedLineItems,
-        {
-          canUseSubmittedCost: capabilities.canViewUnitCost,
-          submittedCurrency,
-        }
-      );
-      resolvedCostLines = resolvedCosts.items;
-      currency = resolvedCosts.currency;
+      resolvedLines = await resolveStockRequisitionLineUnitOptions(supabase, companyId, body.items);
     } catch (error) {
       if (error instanceof StockRequisitionLineValidationError) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
+        return createStockRequisitionSaveErrorResponse("Selected unit option is unavailable");
       }
       throw error;
     }
 
-    const resolvedCurrencyValidationError = validateCurrency(currency);
-    if (resolvedCurrencyValidationError) {
-      return NextResponse.json({ error: resolvedCurrencyValidationError }, { status: 400 });
+    const { data, error } = await supabase.rpc("save_stock_requisition", {
+      p_company_id: companyId,
+      p_business_unit_id: currentBusinessUnitId,
+      p_user_id: userId,
+      p_header: buildStockRequisitionHeader(body),
+      p_lines: resolvedLines.map((item) => ({
+        item_id: item.itemId,
+        item_unit_option_id: item.item_unit_option_id,
+        uom_id: item.uom_id,
+        requested_qty: item.requestedQty,
+        ...(item.unitPrice !== undefined ? { unit_price: item.unitPrice } : {}),
+        ...(item.notes !== undefined ? { notes: item.notes } : {}),
+      })),
+    });
+    if (error) {
+      console.error("Error creating stock requisition:", error);
+      return createStockRequisitionSaveErrorResponse(error.message);
     }
-
-    // Calculate total amount
-    const totalAmount = resolvedCostLines.reduce(
-      (sum: number, item) => sum + item.requestedQty * item.qty_per_unit * item.unitPrice,
-      0
-    );
-
-    // Create stock requisition
-    const { data: sr, error: srError } = await supabase
-      .from("stock_requisitions")
-      .insert({
-        company_id: companyId,
-        business_unit_id: currentBusinessUnitId,
-        supplier_id: body.supplierId,
-        requisition_date: body.requisitionDate || new Date().toISOString().split("T")[0],
-        required_by_date: body.requiredByDate || null,
-        requested_by: userId,
-        status: body.status || "draft",
-        notes: body.notes,
-        total_amount: totalAmount,
-        currency,
-        created_by: userId,
-        updated_by: userId,
-      })
-      .select()
-      .single();
-
-    if (srError) {
-      console.error("Error creating stock requisition:", srError);
-      return NextResponse.json({ error: "Failed to create stock requisition" }, { status: 500 });
+    const saved = data?.[0];
+    if (!saved) {
+      return createStockRequisitionSaveErrorResponse("");
     }
-
-    // Create line items
-    const itemsToInsert = resolvedCostLines.map((item) => ({
-      sr_id: sr.id,
-      item_id: item.itemId,
-      item_unit_option_id: item.item_unit_option_id,
-      uom_id: item.uom_id,
-      requested_qty: item.requestedQty,
-      unit_price: item.unitPrice,
-      fulfilled_qty: 0,
-      notes: item.notes,
-    }));
-
-    const { error: itemsError } = await supabase
-      .from("stock_requisition_items")
-      .insert(itemsToInsert);
-
-    if (itemsError) {
-      console.error("Error creating stock requisition items:", itemsError);
-      // Rollback: delete the created SR
-      await supabase.from("stock_requisitions").delete().eq("id", sr.id);
-      return NextResponse.json(
-        { error: "Failed to create stock requisition items" },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json(
-      {
-        id: sr.id,
-        srNumber: sr.sr_number,
-        status: sr.status,
-      },
+      { id: saved.id, srNumber: saved.sr_number, status: saved.status },
       { status: 201 }
     );
   } catch (error) {

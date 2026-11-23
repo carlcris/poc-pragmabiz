@@ -5,7 +5,9 @@ import type {
   StockRequisitionFilters,
   StockRequisitionsResponse,
   StockRequisitionStatus,
+  SaveStockRequisitionResponse,
 } from "@/types/stock-requisition";
+import { apiClient } from "@/lib/api";
 
 const API_BASE = "/api/stock-requisitions";
 
@@ -35,33 +37,15 @@ export const stockRequisitionsApi = {
 
   createStockRequisition: async (
     data: CreateStockRequisitionRequest
-  ): Promise<StockRequisition> => {
-    const response = await fetch(API_BASE, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to create stock requisition");
-    }
-    return response.json();
+  ): Promise<SaveStockRequisitionResponse> => {
+    return apiClient.post<SaveStockRequisitionResponse>(API_BASE, data);
   },
 
   updateStockRequisition: async (
     id: string,
     data: UpdateStockRequisitionRequest
-  ): Promise<StockRequisition> => {
-    const response = await fetch(`${API_BASE}/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to update stock requisition");
-    }
-    return response.json();
+  ): Promise<SaveStockRequisitionResponse> => {
+    return apiClient.put<SaveStockRequisitionResponse>(`${API_BASE}/${id}`, data);
   },
 
   deleteStockRequisition: async (id: string): Promise<void> => {

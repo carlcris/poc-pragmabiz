@@ -80,8 +80,8 @@ type DocumentLineEntryProps<TBatch> = {
   /** Currency every line must share; null when the document has no lines or hides costs. */
   lockedCurrency: string | null;
   mixedCurrencyMessage: string;
-  /** Items already on the document; when given, adding one of them again is rejected. */
-  existingItemIds?: ReadonlySet<string>;
+  /** Pack options already on the document; when given, the same option cannot be added again. */
+  existingItemUnitOptionIds?: ReadonlySet<string>;
   batchField?: DocumentLineBatchField<TBatch>;
   itemTriggerRef: RefObject<HTMLButtonElement | null>;
   linesError: string | null;
@@ -113,7 +113,7 @@ export function DocumentLineEntry<TBatch = never>({
   canViewUnitCost,
   lockedCurrency,
   mixedCurrencyMessage,
-  existingItemIds,
+  existingItemUnitOptionIds,
   batchField,
   itemTriggerRef,
   linesError,
@@ -194,9 +194,14 @@ export function DocumentLineEntry<TBatch = never>({
     );
   }, [selectedItemDetail, unitOptions]);
 
-  const errorFor = (field: LineEntryField) => (entryError?.field === field ? entryError : null);
+  const duplicatePackError =
+    selectedItem && selectedUnitOption && existingItemUnitOptionIds?.has(selectedUnitOption.id)
+      ? t("duplicatePackNotAllowed", { code: selectedItem.code, unit: unitLabel })
+      : null;
+  const errorFor = (field: LineEntryField) =>
+    (field === "unit" && duplicatePackError != null) || entryError?.field === field;
   const errorId = `${fieldId}-error`;
-  const itemInvalid = errorFor("item") != null || linesError != null;
+  const itemInvalid = errorFor("item") || linesError != null;
 
   const focusField = (field: LineEntryField) => {
     const control = {
@@ -226,10 +231,8 @@ export function DocumentLineEntry<TBatch = never>({
 
   const handleAdd = () => {
     if (!selectedItem) return showError("item", t("itemRequired"));
-    if (existingItemIds?.has(selectedItem.id)) {
-      return showError("item", t("duplicateItemNotAllowed", { code: selectedItem.code }));
-    }
     if (!selectedUnitOption) return showError("unit", t("unitRequired"));
+    if (duplicatePackError) return focusField("unit");
     if (!isValidDocumentLineQuantity(quantity)) return showError("quantity", t("quantityRequired"));
     const batchError = batchField?.validate(batch, totalQty) ?? null;
     if (batchError) return showError("batch", batchError);
@@ -278,7 +281,7 @@ export function DocumentLineEntry<TBatch = never>({
     }
   };
 
-  const visibleMessage = entryError?.message ?? linesError;
+  const visibleMessage = duplicatePackError ?? entryError?.message ?? linesError;
   const hasUnitCost = columns.includes("unitCost");
   // Below xl, Unit, Qty and Unit Cost share one row; derived values follow on the next row.
   // Unit gets the widest share because unit names are longer than quantities and costs.
@@ -328,14 +331,7 @@ export function DocumentLineEntry<TBatch = never>({
               setSelectedUnitOptionId("");
               setBatch(null);
               setUnitCost(item ? Number(getDefaultUnitCost(item)).toFixed(2) : "");
-              setEntryError(
-                item && existingItemIds?.has(item.id)
-                  ? {
-                      field: "item",
-                      message: t("duplicateItemNotAllowed", { code: item.code }),
-                    }
-                  : null
-              );
+              setEntryError(null);
             }}
             searchValue={itemSearch}
             onSearchValueChange={setItemSearch}
@@ -390,7 +386,7 @@ export function DocumentLineEntry<TBatch = never>({
             <SelectTrigger
               ref={unitTriggerRef}
               id={`${fieldId}-unit`}
-              aria-invalid={errorFor("unit") != null}
+              aria-invalid={errorFor("unit")}
               aria-describedby={errorFor("unit") ? errorId : undefined}
               className={cn(controlHeightClassName, "bg-background")}
             >
@@ -428,7 +424,7 @@ export function DocumentLineEntry<TBatch = never>({
               setQuantity(event.target.value);
               setEntryError((error) => (error?.field === "quantity" ? null : error));
             }}
-            aria-invalid={errorFor("quantity") != null}
+            aria-invalid={errorFor("quantity")}
             aria-describedby={errorFor("quantity") ? errorId : undefined}
             className={cn(controlHeightClassName, "bg-background text-right tabular-nums")}
           />
@@ -458,7 +454,7 @@ export function DocumentLineEntry<TBatch = never>({
               },
               triggerId: `${fieldId}-batch`,
               triggerRef: batchTriggerRef,
-              invalid: errorFor("batch") != null,
+              invalid: errorFor("batch"),
               describedBy: errorFor("batch") ? errorId : undefined,
             })}
           </div>
@@ -486,7 +482,7 @@ export function DocumentLineEntry<TBatch = never>({
                     setEntryError((error) => (error?.field === "unitCost" ? null : error));
                   }
                 }}
-                aria-invalid={errorFor("unitCost") != null}
+                aria-invalid={errorFor("unitCost")}
                 aria-describedby={errorFor("unitCost") ? errorId : undefined}
                 className={cn(controlHeightClassName, "bg-background pl-8 text-right tabular-nums")}
               />

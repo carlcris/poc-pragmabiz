@@ -6,14 +6,15 @@ import { RESOURCES } from "@/constants/resources";
 import {
   resolveStockRequisitionLineUnitOptions,
   StockRequisitionLineValidationError,
+  type ResolvedStockRequisitionLineInput,
 } from "../line-item-unit-options";
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 import { resolveStockRequisitionCapabilities } from "@/lib/stock-requisitions/permissions";
 import {
-  buildLineCostKey,
-  resolveStockRequisitionLineCosts,
-  type ResolvedCostLineItem,
-} from "@/lib/stock-requisitions/costs";
+  buildStockRequisitionHeader,
+  updateStockRequisitionRequestSchema,
+  createStockRequisitionSaveErrorResponse,
+} from "../save-request";
 import { resolveStockRequisitionDocumentSettings } from "@/lib/stock-requisitions/document-settings";
 
 const normalizeCurrency = (value: unknown): string | null => {
@@ -21,11 +22,6 @@ const normalizeCurrency = (value: unknown): string | null => {
   const normalized = value.trim().toUpperCase();
   return normalized.length > 0 ? normalized : null;
 };
-
-const resolveRequestCurrency = (value: unknown) => normalizeCurrency(value) ?? "PHP";
-
-const validateCurrency = (currency: string) =>
-  /^[A-Z]{3}$/.test(currency) ? null : "Currency must be a 3-letter currency code";
 
 // GET /api/stock-requisitions/[id]
 async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -143,8 +139,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       notes: string | null;
     };
 
-    const canShowDocumentUnitPrice =
-      documentSettings.showUnitPrice && capabilities.canViewUnitCost;
+    const canShowDocumentUnitPrice = documentSettings.showUnitPrice && capabilities.canViewUnitCost;
     const canShowDocumentLineTotal =
       documentSettings.showLineTotal && capabilities.canViewTotalAmount;
     const canShowDocumentTotalAmount =
@@ -277,185 +272,68 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
     const context = await requireRequestContext();
     if ("status" in context) return context;
     const { supabase, userId, companyId, currentBusinessUnitId } = context;
-    const body = await request.json();
+    const parsedBody = updateStockRequisitionRequestSchema.safeParse(
+      await request.json().catch(() => null)
+    );
 
     if (!currentBusinessUnitId) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
-
+    if (!parsedBody.success) {
+      return NextResponse.json(
+        { error: "Invalid stock requisition", code: "STOCK_REQUISITION_INVALID_REQUEST" },
+        { status: 400 }
+      );
+    }
+    const body = parsedBody.data;
     const capabilities = await resolveStockRequisitionCapabilities(userId, currentBusinessUnitId);
-
-    // Check if stock requisition exists and is in draft status
-    const { data: existingSR, error: fetchError } = await supabase
-      .from("stock_requisitions")
-      .select("id, status, currency")
-      .eq("id", id)
-      .eq("company_id", companyId)
-      .eq("business_unit_id", currentBusinessUnitId)
-      .is("deleted_at", null)
-      .single();
-
-    if (fetchError || !existingSR) {
-      return NextResponse.json({ error: "Stock requisition not found" }, { status: 404 });
-    }
-
-    // Only allow editing draft requisitions
-    if (existingSR.status !== "draft") {
-      return NextResponse.json({ error: "Only draft requisitions can be edited" }, { status: 400 });
-    }
-
-    if (body.items && body.items.length === 0) {
-      return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
-    }
-
     if (
       !capabilities.canViewUnitCost &&
-      (body.currency != null ||
-        body.items?.some((item: { unitPrice?: unknown }) => item.unitPrice !== undefined))
+      (body.currency != null || body.items?.some((item) => item.unitPrice !== undefined))
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const submittedCurrency = resolveRequestCurrency(body.currency);
-    const currencyValidationError = capabilities.canViewUnitCost
-      ? validateCurrency(submittedCurrency)
-      : null;
-    if (currencyValidationError) {
-      return NextResponse.json({ error: currencyValidationError }, { status: 400 });
-    }
-
-    let resolvedCostLines: ResolvedCostLineItem[] | null = null;
-    let currency = normalizeCurrency(existingSR.currency) ?? "PHP";
-    if (body.items) {
-      try {
-        const resolvedLineItems = await resolveStockRequisitionLineUnitOptions(
-          supabase,
-          companyId,
-          body.items
-        );
-        const preservedCosts = new Map<string, { unitPrice: number; currency: string }>();
-
-        if (!capabilities.canViewUnitCost) {
-          const { data: existingItems, error: existingItemsError } = await supabase
-            .from("stock_requisition_items")
-            .select("item_id, item_unit_option_id, unit_price")
-            .eq("sr_id", id);
-
-          if (existingItemsError) {
-            console.error("Error fetching existing stock requisition items:", existingItemsError);
-            return NextResponse.json(
-              { error: "Failed to update stock requisition" },
-              { status: 500 }
-            );
-          }
-
-          for (const item of existingItems || []) {
-            if (!item.item_unit_option_id) continue;
-            preservedCosts.set(
-              buildLineCostKey({
-                itemId: item.item_id,
-                item_unit_option_id: item.item_unit_option_id,
-              }),
-              {
-                unitPrice: Number(item.unit_price ?? 0),
-                currency,
-              }
-            );
-          }
-        }
-
-        const resolvedCosts = await resolveStockRequisitionLineCosts(
-          supabase,
-          companyId,
-          resolvedLineItems,
-          {
-            canUseSubmittedCost: capabilities.canViewUnitCost,
-            submittedCurrency,
-            preservedCosts,
-          }
-        );
-        resolvedCostLines = resolvedCosts.items;
-        currency = resolvedCosts.currency;
-      } catch (error) {
-        if (error instanceof StockRequisitionLineValidationError) {
-          return NextResponse.json({ error: error.message }, { status: 400 });
-        }
-        throw error;
+    let resolvedLines: ResolvedStockRequisitionLineInput[] | undefined;
+    try {
+      resolvedLines = body.items
+        ? await resolveStockRequisitionLineUnitOptions(supabase, companyId, body.items)
+        : undefined;
+    } catch (error) {
+      if (error instanceof StockRequisitionLineValidationError) {
+        return createStockRequisitionSaveErrorResponse("Selected unit option is unavailable");
       }
+      throw error;
     }
 
-    const resolvedCurrencyValidationError = validateCurrency(currency);
-    if (resolvedCurrencyValidationError) {
-      return NextResponse.json({ error: resolvedCurrencyValidationError }, { status: 400 });
-    }
-
-    const totalAmount = resolvedCostLines?.reduce(
-      (sum, item) => sum + item.requestedQty * item.qty_per_unit * item.unitPrice,
-      0
-    );
-
-    // Update stock requisition
-    const { data: sr, error: updateError } = await supabase
-      .from("stock_requisitions")
-      .update({
-        supplier_id: body.supplierId,
-        requisition_date: body.requisitionDate,
-        required_by_date: body.requiredByDate || null,
-        notes: body.notes,
-        ...(resolvedCostLines
-          ? {
-              total_amount: totalAmount,
-              currency,
-            }
-          : {}),
-        updated_by: userId,
-      })
-      .eq("id", id)
-      .eq("company_id", companyId)
-      .eq("business_unit_id", currentBusinessUnitId)
-      .select()
-      .single();
-
-    if (updateError) {
-      console.error("Error updating stock requisition:", updateError);
-      return NextResponse.json({ error: "Failed to update stock requisition" }, { status: 500 });
-    }
-
-    // Update line items if provided
-    if (resolvedCostLines && resolvedCostLines.length > 0) {
-      // Delete existing items
-      await supabase.from("stock_requisition_items").delete().eq("sr_id", id);
-
-      // Insert new items
-      const itemsToInsert = resolvedCostLines.map((item) => ({
-        sr_id: id,
-        item_id: item.itemId,
-        item_unit_option_id: item.item_unit_option_id,
-        uom_id: item.uom_id,
-        requested_qty: item.requestedQty,
-        unit_price: item.unitPrice,
-        fulfilled_qty: 0,
-        notes: item.notes,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from("stock_requisition_items")
-        .insert(itemsToInsert);
-
-      if (itemsError) {
-        console.error("Error updating stock requisition items:", itemsError);
-        return NextResponse.json(
-          { error: "Failed to update stock requisition items" },
-          { status: 500 }
-        );
-      }
-    }
-
-    return NextResponse.json({
-      id: sr.id,
-      srNumber: sr.sr_number,
-      status: sr.status,
+    const { data, error } = await supabase.rpc("save_stock_requisition", {
+      p_company_id: companyId,
+      p_business_unit_id: currentBusinessUnitId,
+      p_user_id: userId,
+      p_requisition_id: id,
+      p_header: buildStockRequisitionHeader(body),
+      ...(resolvedLines
+        ? {
+            p_lines: resolvedLines.map((item) => ({
+              item_id: item.itemId,
+              item_unit_option_id: item.item_unit_option_id,
+              uom_id: item.uom_id,
+              requested_qty: item.requestedQty,
+              ...(item.unitPrice !== undefined ? { unit_price: item.unitPrice } : {}),
+              ...(item.notes !== undefined ? { notes: item.notes } : {}),
+            })),
+          }
+        : {}),
     });
+    if (error) {
+      console.error("Error updating stock requisition:", error);
+      return createStockRequisitionSaveErrorResponse(error.message);
+    }
+    const saved = data?.[0];
+    if (!saved) {
+      return createStockRequisitionSaveErrorResponse("");
+    }
+    return NextResponse.json({ id: saved.id, srNumber: saved.sr_number, status: saved.status });
   } catch (error) {
     console.error("Internal server error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

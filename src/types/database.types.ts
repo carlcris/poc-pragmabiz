@@ -13342,6 +13342,7 @@ export type Database = {
           p_company_id: string;
           p_limit?: number;
           p_load_list_id: string;
+          p_load_list_item_id?: string;
           p_page?: number;
           p_search?: string;
           p_user_id: string;
@@ -13351,7 +13352,9 @@ export type Database = {
           item_code: string;
           item_id: string;
           item_name: string;
+          item_unit_option_id: string;
           outstanding_qty: number;
+          qty_per_unit: number;
           requested_qty: number;
           requisition_date: string;
           sr_id: string;
@@ -13359,6 +13362,7 @@ export type Database = {
           sr_number: string;
           sr_status: string;
           total_count: number;
+          unit_name: string;
         }[];
       };
       list_receiving_inbox: {
@@ -13887,6 +13891,21 @@ export type Database = {
           p_user_id: string;
         };
         Returns: Json;
+      };
+      save_stock_requisition: {
+        Args: {
+          p_business_unit_id: string;
+          p_company_id: string;
+          p_header: Json;
+          p_lines?: Json;
+          p_requisition_id?: string;
+          p_user_id: string;
+        };
+        Returns: {
+          id: string;
+          sr_number: string;
+          status: string;
+        }[];
       };
       save_warehouse_floor_map: {
         Args: {

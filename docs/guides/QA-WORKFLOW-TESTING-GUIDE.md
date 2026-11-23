@@ -1206,7 +1206,7 @@ For each line, choose either **Existing Batch** or **New Batch**. Verify the Sto
 
 1. **Create** → status Draft. Select the destination business unit; there is no warehouse field.
 2. **Confirm** → status Confirmed.
-3. **Link Stock Requisitions** (optional) — attaches one or more purchasing requisitions (section 17b) to this shipment's line items, marking those requisitions as fully or partially fulfilled.
+3. **Link Stock Requisitions** (optional) — allocates shipment lines to outstanding requisition lines for the same item and exact pack option. Fulfillment updates when the linked GRN is confirmed.
    - Verify a load-list item with quantity 50 shows 40 remaining after adding a link for 10, then disappears after adding another link for 40 to a different requisition item. Removing either pending link makes the item available again. Save with **Create Links**, reopen the dialog, and verify saved allocations also reduce the available quantity; removing a saved link restores that quantity.
    - On the Load List detail page, check that a partially linked item shows **Linked** and an unlinked row has no label. Save a second link and verify the label stays after removing one link, then clears after removing the last link. Check each change without reloading the page.
 4. **Mark In Transit** → status In Transit. Captures an estimated arrival date and carrier name.
@@ -1257,7 +1257,7 @@ form at `/purchasing/stock-requisitions/new`. Opening a requisition shows its vi
 
 1. **Create** → status Draft.
 2. **Send** → status Submitted. When application email delivery is enabled, this emails the supplier the itemized request in the supplier's preferred language. With `EMAIL_ENABLED=false`, submission succeeds without sending email.
-3. Partially Fulfilled and Fulfilled are set automatically as Load Lists get linked against this requisition (section 17, step 3) — not by any button on the requisition itself.
+3. Confirm the GRN for a linked Load List to update each line's fulfilled and outstanding quantities. The requisition becomes Partially Fulfilled when some demand remains, or Fulfilled when all lines are covered.
 4. **Cancel** — allowed any time except once already Fulfilled or Cancelled.
 
 **Who can do it**: edit access to Stock Requisitions.
@@ -1266,9 +1266,10 @@ form at `/purchasing/stock-requisitions/new`. Opening a requisition shows its vi
 
 - With `EMAIL_ENABLED=true` or unset, send a requisition and verify the supplier receives an email with the correct line items, in the expected language.
 - Set `EMAIL_ENABLED=false` and restart the server. Send a requisition and confirm it becomes Submitted without sending supplier email. Confirm test emails are also suppressed. Re-enable delivery only in an environment intended to send mail.
-- Link a Load List that only partially covers the requisitioned quantity and confirm it becomes Partially Fulfilled, not Fulfilled.
+- Link a Load List that only partially covers the requisitioned quantity. Confirm its GRN and verify the requisition becomes Partially Fulfilled.
 - Try to cancel a Fulfilled requisition — should be refused.
-- In the New item row, press Enter in Qty or Unit Cost and confirm the line is added; press Esc and confirm the row clears. Pick an item that is already listed and confirm it is refused with an inline message.
+- In the New item row, press Enter in Qty or Unit Cost and confirm the line is added. Press Esc and confirm the row clears. Add 50 `BOX (50)` and 100 `BOX (144)` for the same SKU. Verify both lines save and reopen with 2,500 and 14,400 base units. Repeat either pack and verify an inline error. Switch to a different available pack and verify the error clears.
+- Add matching shipment lines, then select each one in **Link Stock Requisitions** and verify that only its matching pack is selectable. Receive 20 good and 2 damaged `BOX (50)`, and 40 good and 5 damaged `BOX (144)`. Confirm the GRN and verify 28 and 55 boxes remain outstanding. Putaway Station stages 1,000 and 5,760 base units from the good stock. Post 10 `BOX (50)` and 20 `BOX (144)`. Inventory increases by 3,380 base units, with 3,380 still pending. Post the balance and verify a total increase of 6,760 base units under the original SKU. The rollback-only `supabase/tests/stock-requisition-pack-options.sql` exercises this flow.
 - Open `/purchasing/stock-requisitions/<id>/edit` for a Submitted requisition and confirm the page says it can't be edited and links back to the view page.
 
 ---

@@ -179,12 +179,23 @@ export type LoadListsResponse = {
 };
 
 // SR to LL Linking types
+export const LOAD_LIST_LINK_ERROR_CODES = [
+  "LOAD_LIST_LINK_PACK_MISMATCH",
+  "LOAD_LIST_LINK_STATUS_CONFLICT",
+  "LOAD_LIST_ITEMS_NOT_FOUND",
+] as const;
+
+export type LoadListLinkErrorCode = (typeof LOAD_LIST_LINK_ERROR_CODES)[number];
+
 export type LoadListSRLink = {
   id: string;
   fulfilledQty: number;
   loadListItem: {
     id: string;
     loadListQty: number;
+    itemUnitOptionId: string | null;
+    unitName: string;
+    qtyPerUnit: number;
     item: {
       id: string;
       code: string;
@@ -193,6 +204,9 @@ export type LoadListSRLink = {
   };
   srItem: {
     id: string;
+    itemUnitOptionId: string | null;
+    unitName: string | null;
+    qtyPerUnit: number | null;
     requestedQty: number;
     fulfilledQty: number;
     item?: {
@@ -226,6 +240,9 @@ export type EligibleLoadListRequisitionItem = {
   itemId: string;
   itemCode: string;
   itemName: string;
+  itemUnitOptionId: string | null;
+  unitName: string | null;
+  qtyPerUnit: number | null;
   requestedQty: number;
   fulfilledQty: number;
   outstandingQty: number;
@@ -233,6 +250,7 @@ export type EligibleLoadListRequisitionItem = {
 
 export type EligibleLoadListRequisitionItemFilters = {
   search?: string;
+  loadListItemId?: string;
   page?: number;
   limit?: number;
 };

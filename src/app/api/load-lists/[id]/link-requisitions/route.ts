@@ -92,6 +92,11 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
           error: "Load list and stock requisition items must reference the same item",
           status: 400,
         },
+        "Load list and stock requisition items must reference the same pack option": {
+          error: "Select a requisition line with the same pack size as the load-list line.",
+          status: 400,
+          code: "LOAD_LIST_LINK_PACK_MISMATCH",
+        },
         "Invalid stock requisition links": {
           error: "Invalid stock requisition links",
           status: 400,
@@ -165,12 +170,21 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
           id,
           load_list_id,
           load_list_qty,
+          item_unit_option_id,
+          unit_name,
+          qty_per_unit,
           item:items(id, item_code, item_name)
         ),
         sr_item:stock_requisition_items(
           id,
           requested_qty,
           fulfilled_qty,
+          item_unit_option_id,
+          item_unit_option:item_unit_options(
+            option_label,
+            qty_per_unit,
+            uom:units_of_measure(name)
+          ),
           item:items(id, item_code, item_name),
           sr:stock_requisitions(
             id,
@@ -195,6 +209,8 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       const srItem = link.sr_item as Record<string, unknown> | null;
       const srItemItem = srItem?.item as Record<string, unknown> | null;
       const sr = srItem?.sr as Record<string, unknown> | null;
+      const srUnitOption = srItem?.item_unit_option as Record<string, unknown> | null;
+      const srUom = srUnitOption?.uom as Record<string, unknown> | null;
 
       return {
         id: link.id,
@@ -203,6 +219,9 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
           ? {
               id: loadListItem.id as string,
               loadListQty: parseFloat(String(loadListItem.load_list_qty)),
+              itemUnitOptionId: (loadListItem.item_unit_option_id as string | null) ?? null,
+              unitName: String(loadListItem.unit_name ?? ""),
+              qtyPerUnit: Number(loadListItem.qty_per_unit),
               item: loadListItemItem
                 ? {
                     id: loadListItemItem.id as string,
@@ -215,6 +234,11 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
         srItem: srItem
           ? {
               id: srItem.id as string,
+              itemUnitOptionId: (srItem.item_unit_option_id as string | null) ?? null,
+              unitName: srUnitOption
+                ? String(srUnitOption.option_label || srUom?.name || "")
+                : null,
+              qtyPerUnit: srUnitOption ? Number(srUnitOption.qty_per_unit) : null,
               requestedQty: parseFloat(String(srItem.requested_qty)),
               fulfilledQty: parseFloat(String(srItem.fulfilled_qty)),
               item: srItemItem

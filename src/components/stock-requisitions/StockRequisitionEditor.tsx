@@ -32,6 +32,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import { useCreateStockRequisition, useUpdateStockRequisition } from "@/hooks/useStockRequisitions";
 import { useSuppliers } from "@/hooks/useSuppliers";
+import { getApiErrorCode } from "@/lib/api";
 import {
   formatDocumentAmount,
   formatDocumentDate,
@@ -47,7 +48,11 @@ import {
 } from "@/lib/validations/stock-requisition";
 import { useStockRequisitionDraftStore } from "@/stores/stockRequisitionDraftStore";
 import type { DocumentFormLine } from "@/types/document-line";
-import type { CreateStockRequisitionRequest, StockRequisition } from "@/types/stock-requisition";
+import {
+  STOCK_REQUISITION_SAVE_ERROR_CODES,
+  type CreateStockRequisitionRequest,
+  type StockRequisition,
+} from "@/types/stock-requisition";
 import type { Supplier } from "@/types/supplier";
 
 type StockRequisitionEditorProps = {
@@ -80,7 +85,7 @@ const toFormLines = (stockRequisition: StockRequisition): DocumentFormLine[] =>
     quantity: item.requestedQty,
     unitPrice: item.unitPrice ?? 0,
     unitPriceCurrency: stockRequisition.currency,
-    notes: item.notes,
+    notes: item.notes ?? undefined,
   }));
 
 const getLinesSignature = (lines: DocumentFormLine[]) =>
@@ -164,7 +169,14 @@ export function StockRequisitionEditor({ stockRequisition }: StockRequisitionEdi
   const requiredByDate = form.watch("requiredByDate");
   const lockedCurrency = canViewUnitCost ? (lines[0]?.unitPriceCurrency ?? null) : null;
   const documentCurrency = lockedCurrency ?? stockRequisition?.currency ?? currentCurrency.code;
-  const lineItemIds = useMemo(() => new Set(lines.map((line) => line.itemId)), [lines]);
+  const { existingUnitOptionIds, hasDuplicatePackOptions } = useMemo(() => {
+    const optionIds = lines.map((line) => line.itemUnitOptionId).filter(Boolean);
+    const existingUnitOptionIds = new Set(optionIds);
+    return {
+      existingUnitOptionIds,
+      hasDuplicatePackOptions: existingUnitOptionIds.size !== optionIds.length,
+    };
+  }, [lines]);
   const totalAmount = canShowAmounts
     ? lines.reduce((sum, line) => sum + line.quantity * line.qtyPerUnit * line.unitPrice, 0)
     : null;
@@ -182,16 +194,25 @@ export function StockRequisitionEditor({ stockRequisition }: StockRequisitionEdi
 
   const handleRemoveLine = (key: string) => {
     setLines((current) => current.filter((line) => line.key !== key));
+    setLinesError(null);
     setSaveError(null);
   };
 
   const onSubmit = async (values: StockRequisitionFormValues) => {
+    if (isSaving) return;
     setSaveError(null);
-    if (lines.length === 0) {
-      setLinesError(t("lineItemsRequired"));
+    const lineValidationError =
+      lines.length === 0
+        ? t("lineItemsRequired")
+        : hasDuplicatePackOptions
+          ? t("duplicatePackSaveError")
+          : null;
+    if (lineValidationError) {
+      setLinesError(lineValidationError);
       itemTriggerRef.current?.focus();
       return;
     }
+    setLinesError(null);
 
     // Users without unit cost access must not send costs; the API prices those lines itself.
     const requestData: CreateStockRequisitionRequest = {
@@ -202,7 +223,7 @@ export function StockRequisitionEditor({ stockRequisition }: StockRequisitionEdi
       ...(canViewUnitCost ? { currency: documentCurrency } : {}),
       items: lines.map((line) => ({
         itemId: line.itemId,
-        itemUnitOptionId: line.itemUnitOptionId,
+        ...(line.itemUnitOptionId ? { itemUnitOptionId: line.itemUnitOptionId } : {}),
         uomId: line.uomId,
         requestedQty: line.quantity,
         ...(canViewUnitCost ? { unitPrice: line.unitPrice } : {}),
@@ -221,8 +242,30 @@ export function StockRequisitionEditor({ stockRequisition }: StockRequisitionEdi
         router.push(`/purchasing/stock-requisitions/${created.id}`);
       }
     } catch (error) {
-      // The API client surfaces the route's safe error message.
-      setSaveError(error instanceof Error && error.message ? error.message : t("saveError"));
+      switch (getApiErrorCode(error, STOCK_REQUISITION_SAVE_ERROR_CODES)) {
+        case "STOCK_REQUISITION_DUPLICATE_PACK":
+          setLinesError(t("duplicatePackSaveError"));
+          itemTriggerRef.current?.focus();
+          return;
+        case "STOCK_REQUISITION_PACK_UNAVAILABLE":
+          setLinesError(t("packUnavailable"));
+          itemTriggerRef.current?.focus();
+          return;
+        case "STOCK_REQUISITION_STATUS_CONFLICT":
+          setSaveError(t("notEditable"));
+          return;
+        case "STOCK_REQUISITION_CURRENCY_CONFLICT":
+          setSaveError(t("mixedCurrencyNotAllowed"));
+          return;
+        case "STOCK_REQUISITION_SUPPLIER_UNAVAILABLE":
+          setSaveError(t("supplierUnavailable"));
+          return;
+        case "STOCK_REQUISITION_INVALID_REQUEST":
+          setSaveError(t("invalidSaveRequest"));
+          return;
+        default:
+          setSaveError(error instanceof Error && error.message ? error.message : t("saveError"));
+      }
     }
   };
 
@@ -352,7 +395,7 @@ export function StockRequisitionEditor({ stockRequisition }: StockRequisitionEdi
                 canViewUnitCost={canViewUnitCost}
                 lockedCurrency={lockedCurrency}
                 mixedCurrencyMessage={t("mixedCurrencyNotAllowed")}
-                existingItemIds={lineItemIds}
+                existingItemUnitOptionIds={existingUnitOptionIds}
                 itemTriggerRef={itemTriggerRef}
                 linesError={linesError}
                 onAdd={handleAddLine}

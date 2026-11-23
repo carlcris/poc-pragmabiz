@@ -15,7 +15,6 @@ type ItemUnitOptionRow = {
   id: string;
   item_id: string;
   uom_id: string;
-  qty_per_unit: number | string;
   is_active: boolean;
   deleted_at: string | null;
 };
@@ -25,7 +24,6 @@ export class StockRequisitionLineValidationError extends Error {}
 export type ResolvedStockRequisitionLineInput = StockRequisitionLineInput & {
   item_unit_option_id: string;
   uom_id: string;
-  qty_per_unit: number;
 };
 
 const buildOptionMapKey = (itemId: string, uomId: string) => `${itemId}:${uomId}`;
@@ -54,7 +52,7 @@ export const resolveStockRequisitionLineUnitOptions = async (
   if (explicitOptionIds.length > 0) {
     const { data, error } = await supabase
       .from("item_unit_options")
-      .select("id, item_id, uom_id, qty_per_unit, is_active, deleted_at")
+      .select("id, item_id, uom_id, is_active, deleted_at")
       .eq("company_id", companyId)
       .in("id", explicitOptionIds);
 
@@ -72,9 +70,7 @@ export const resolveStockRequisitionLineUnitOptions = async (
 
     const { data, error } = await supabase
       .from("item_unit_options")
-      .select(
-        "id, item_id, uom_id, qty_per_unit, is_active, deleted_at, is_base, is_default, sort_order, created_at"
-      )
+      .select("id, item_id, uom_id, is_active, deleted_at")
       .eq("company_id", companyId)
       .in("item_id", itemIds)
       .in("uom_id", uomIds)
@@ -122,7 +118,6 @@ export const resolveStockRequisitionLineUnitOptions = async (
         ...item,
         item_unit_option_id: option.id,
         uom_id: option.uom_id,
-        qty_per_unit: Number(option.qty_per_unit ?? 1) || 1,
       };
     }
 
@@ -141,7 +136,6 @@ export const resolveStockRequisitionLineUnitOptions = async (
       ...item,
       item_unit_option_id: fallbackOption.id,
       uom_id: fallbackOption.uom_id,
-      qty_per_unit: Number(fallbackOption.qty_per_unit ?? 1) || 1,
     };
   });
 };

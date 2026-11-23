@@ -1,5 +1,16 @@
 import type { ItemUnitOption } from "@/types/item";
 
+export const STOCK_REQUISITION_SAVE_ERROR_CODES = [
+  "STOCK_REQUISITION_DUPLICATE_PACK",
+  "STOCK_REQUISITION_STATUS_CONFLICT",
+  "STOCK_REQUISITION_CURRENCY_CONFLICT",
+  "STOCK_REQUISITION_INVALID_REQUEST",
+  "STOCK_REQUISITION_PACK_UNAVAILABLE",
+  "STOCK_REQUISITION_SUPPLIER_UNAVAILABLE",
+] as const;
+
+export type StockRequisitionSaveErrorCode = (typeof STOCK_REQUISITION_SAVE_ERROR_CODES)[number];
+
 export type StockRequisitionStatus =
   | "draft"
   | "submitted"
@@ -28,7 +39,7 @@ export type StockRequisitionItem = {
   totalPrice: number | null;
   documentUnitPrice?: number | null;
   documentTotalPrice?: number | null;
-  notes?: string;
+  notes?: string | null;
 };
 
 export type StockRequisitionCapabilities = {
@@ -77,7 +88,7 @@ export type StockRequisition = {
   currency: string | null;
   documentTotalAmount?: number | null;
   documentCurrency?: string | null;
-  notes?: string;
+  notes?: string | null;
   items: StockRequisitionItem[];
   capabilities?: StockRequisitionCapabilities;
   documentSettings?: StockRequisitionDocumentSettings;
@@ -99,18 +110,20 @@ export type CreateStockRequisitionRequest = {
   currency?: string | null;
   requisitionDate?: string;
   requiredByDate?: string;
-  notes?: string;
+  notes?: string | null;
   items: {
     itemId: string;
     itemUnitOptionId?: string;
     uomId?: string;
     requestedQty: number;
     unitPrice?: number;
-    notes?: string;
+    notes?: string | null;
   }[];
 };
 
 export type UpdateStockRequisitionRequest = Partial<CreateStockRequisitionRequest>;
+
+export type SaveStockRequisitionResponse = Pick<StockRequisition, "id" | "srNumber" | "status">;
 
 export type StockRequisitionFilters = {
   search?: string;
