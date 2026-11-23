@@ -3245,24 +3245,48 @@ export type TranslationKeys = {
   stockInTransitPage: {
     title: string;
     subtitle: string;
-    shipmentLines: string;
-    totalBaseQuantity: string;
-    searchLabel: string;
-    searchPlaceholder: string;
-    loadList: string;
-    item: string;
-    supplier: string;
-    shipment: string;
-    estimatedArrival: string;
-    shipmentQuantity: string;
+    summaryLabel: string;
+    itemCount: string;
+    loadListCount: string;
+    lateLoadListCount: string;
+    itemListLabel: string;
+    itemSearchLabel: string;
+    itemSearchPlaceholder: string;
+    loadMore: string;
+    loadingMore: string;
+    selectedItemDetails: string;
+    inTransitOnLoadLists: string;
+    inTransitLoadListCount: string;
+    baseUnits: string;
+    quantityWithUnit: string;
+    unitWithConversion: string;
+    baseQuantityInParentheses: string;
+    arrivalMix: string;
+    late: string;
+    next7Days: string;
+    days8To14: string;
+    later: string;
+    noEta: string;
+    arrivalTimeline: string;
+    notScheduled: string;
+    daysLate: string;
+    today: string;
+    inDays: string;
+    nextArrival: string;
+    containerCount: string;
+    shipmentCount: string;
+    sameDateShipments: string;
+    destinationQuantity: string;
+    supplierToDestination: string;
+    shipmentDetails: string;
+    noContainer: string;
+    noLiner: string;
     notAvailable: string;
     emptyTitle: string;
     emptyDescription: string;
-    noSearchResultsTitle: string;
-    noSearchResultsDescription: string;
+    noMatchingItems: string;
+    tryAnotherItemSearch: string;
     loadErrorTitle: string;
-    loadErrorMessage: string;
-    loadingError: string;
     retry: string;
   };
   itemLedger: {
@@ -7725,26 +7749,51 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     stockInTransitPage: {
       title: "Stock In Transit",
-      subtitle: "Supplier shipments currently moving to the selected business unit.",
-      shipmentLines: "Shipment Lines",
-      totalBaseQuantity: "Total Base Quantity",
-      searchLabel: "Search stock in transit",
-      searchPlaceholder: "Search load list, item, or supplier...",
-      loadList: "Load List",
-      item: "Item",
-      supplier: "Supplier",
-      shipment: "Shipment",
-      estimatedArrival: "Estimated Arrival",
-      shipmentQuantity: "Shipment Quantity",
+      subtitle: "Incoming supplier shipments across all business units.",
+      summaryLabel: "Stock In Transit Summary",
+      itemCount: "{count, plural, one {# Item} other {# Items}}",
+      loadListCount: "{count, plural, one {# Load List} other {# Load Lists}}",
+      lateLoadListCount: "{count} Late",
+      itemListLabel: "Items In Transit",
+      itemSearchLabel: "Search by item, load list, supplier, or destination",
+      itemSearchPlaceholder: "Search item, load list, supplier…",
+      loadMore: "Load More",
+      loadingMore: "Loading…",
+      selectedItemDetails: "Selected Item Shipments",
+      inTransitOnLoadLists:
+        "{quantity} in transit on {count, plural, one {# load list} other {# load lists}}",
+      inTransitLoadListCount:
+        "In transit on {count, plural, one {# load list} other {# load lists}}",
+      baseUnits: "Base units",
+      quantityWithUnit: "{quantity} {unit}",
+      unitWithConversion: "{unit} ({quantityPerUnit})",
+      baseQuantityInParentheses: "({quantity})",
+      arrivalMix: "Arrival Mix",
+      late: "Late",
+      next7Days: "Next 7 Days",
+      days8To14: "8–14 Days",
+      later: "Later",
+      noEta: "No ETA",
+      arrivalTimeline: "Arrival Timeline",
+      notScheduled: "Not Scheduled",
+      daysLate: "{count, plural, one {# Day Late} other {# Days Late}}",
+      today: "Today",
+      inDays: "{count, plural, one {In # Day} other {In # Days}}",
+      nextArrival: "{date} · {relative}",
+      containerCount: "{count, plural, one {# Container} other {# Containers}}",
+      shipmentCount: "{count, plural, one {# Shipment} other {# Shipments}}",
+      sameDateShipments: "{count, plural, one {# shipment} other {# shipments}} arriving {date}",
+      destinationQuantity: "{destination} {quantity}",
+      supplierToDestination: "{supplier} to {destination}",
+      shipmentDetails: "{container} · {liner}",
+      noContainer: "No Container",
+      noLiner: "No Liner",
       notAvailable: "--",
       emptyTitle: "No stock is currently in transit",
-      emptyDescription:
-        "Confirmed supplier shipments will appear here after they are marked in transit.",
-      noSearchResultsTitle: "No matching stock in transit",
-      noSearchResultsDescription: "Try a different load list, item, or supplier search.",
+      emptyDescription: "Load lists appear here when marked In Transit.",
+      noMatchingItems: "No matching items in transit",
+      tryAnotherItemSearch: "Try a different item, load list, supplier, or destination.",
       loadErrorTitle: "Unable to load stock in transit",
-      loadErrorMessage: "The shipment pipeline could not be loaded. Please try again.",
-      loadingError: "Unable to load stock in transit",
       retry: "Retry",
     },
     itemLedger: {
@@ -10951,7 +11000,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       containerTitle: "Container",
       containerDescription: "Optional. Copy these from the shipping documents.",
       transitTitle: "Transit",
-      transitDescription: "Recorded when the load list is marked in transit.",
       notesTitle: "Notes",
       notesDescription: "Anything the team should know about this load.",
       itemsTitle: "Items",
@@ -11023,6 +11071,16 @@ export const translations: Record<Locale, TranslationKeys> = {
       inTransitDescription:
         "This will mark the supplier shipment as in transit to the destination business unit.",
       saveAndMarkInTransit: "Save and Mark In Transit",
+      editTransitDetails: "Edit Transit Details",
+      editTransitDetailsDescription: "Leave a field blank to clear its saved value.",
+      transitDetailsSaved: "Transit details updated",
+      transitDetailsInvalid: "Check the liner name and estimated arrival date, then try again.",
+      transitDetailsScopeRequired:
+        "Select the source business unit before editing transit details.",
+      transitDetailsForbidden: "You need permission to manage transit for this business unit.",
+      transitDetailsUnavailable:
+        "This load list is unavailable for transit edits. Refresh the page and check its status and source business unit.",
+      transitDetailsSaveError: "Transit details could not be saved. Try again.",
       updating: "Updating...",
       arrivedTitle: "Mark as Arrived",
       arrivedDescription:
@@ -14972,25 +15030,49 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     stockInTransitPage: {
       title: "在途库存",
-      subtitle: "当前正在运往所选业务单元的供应商货物。",
-      shipmentLines: "运输明细",
-      totalBaseQuantity: "基本单位总数量",
-      searchLabel: "搜索在途库存",
-      searchPlaceholder: "搜索装载单、商品或供应商...",
-      loadList: "装载单",
-      item: "商品",
-      supplier: "供应商",
-      shipment: "运输",
-      estimatedArrival: "预计到达",
-      shipmentQuantity: "运输数量",
+      subtitle: "正在运往公司各业务单元的供应商货物。",
+      summaryLabel: "在途库存汇总",
+      itemCount: "{count} 个商品",
+      loadListCount: "{count} 张装载单",
+      lateLoadListCount: "{count} 张延迟",
+      itemListLabel: "在途商品",
+      itemSearchLabel: "按商品、装载单、供应商或目的地搜索",
+      itemSearchPlaceholder: "搜索商品、装载单、供应商…",
+      loadMore: "加载更多",
+      loadingMore: "加载中…",
+      selectedItemDetails: "所选商品的运输批次",
+      inTransitOnLoadLists: "{quantity}，在途于 {count} 张装载单",
+      inTransitLoadListCount: "在途于 {count} 张装载单",
+      baseUnits: "基本单位",
+      quantityWithUnit: "{quantity} {unit}",
+      unitWithConversion: "{unit}（{quantityPerUnit}）",
+      baseQuantityInParentheses: "（{quantity}）",
+      arrivalMix: "到货分布",
+      late: "延迟",
+      next7Days: "未来 7 天",
+      days8To14: "8–14 天",
+      later: "更晚",
+      noEta: "无预计到达日期",
+      arrivalTimeline: "到货时间线",
+      notScheduled: "未排期",
+      daysLate: "延迟 {count} 天",
+      today: "今天",
+      inDays: "{count} 天后",
+      nextArrival: "{date} · {relative}",
+      containerCount: "{count} 个集装箱",
+      shipmentCount: "{count} 个运输批次",
+      sameDateShipments: "{date} 到达 {count} 个运输批次",
+      destinationQuantity: "{destination} {quantity}",
+      supplierToDestination: "{supplier} 运往 {destination}",
+      shipmentDetails: "{container} · {liner}",
+      noContainer: "无集装箱",
+      noLiner: "无船公司",
       notAvailable: "--",
       emptyTitle: "当前没有在途库存",
-      emptyDescription: "供应商货物标记为运输中后，将显示在此处。",
-      noSearchResultsTitle: "没有匹配的在途库存",
-      noSearchResultsDescription: "请尝试其他装载单、商品或供应商搜索条件。",
+      emptyDescription: "装载单标记为运输中后会显示在此处。",
+      noMatchingItems: "没有匹配的在途商品",
+      tryAnotherItemSearch: "请尝试其他商品、装载单、供应商或目的地。",
       loadErrorTitle: "无法加载在途库存",
-      loadErrorMessage: "无法加载运输流程，请重试。",
-      loadingError: "无法加载在途库存",
       retry: "重试",
     },
     itemLedger: {
@@ -18051,7 +18133,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       containerTitle: "集装箱",
       containerDescription: "选填。请按运输单据填写。",
       transitTitle: "运输",
-      transitDescription: "在装载单标记为在途时记录。",
       notesTitle: "备注",
       notesDescription: "团队需要了解的关于此批货物的信息。",
       itemsTitle: "商品",
@@ -18121,6 +18202,15 @@ export const translations: Record<Locale, TranslationKeys> = {
       inTransitTitle: "标记为在途",
       inTransitDescription: "这会将供应商发运标记为正在运往目标业务单元。",
       saveAndMarkInTransit: "保存并标记为在途",
+      editTransitDetails: "编辑运输信息",
+      editTransitDetailsDescription: "清空字段即可删除其已保存的值。",
+      transitDetailsSaved: "运输信息已更新",
+      transitDetailsInvalid: "请检查船公司名称和预计到达日期，然后重试。",
+      transitDetailsScopeRequired: "请先选择来源业务单元，再编辑运输信息。",
+      transitDetailsForbidden: "您需要具有此业务单元的运输管理权限。",
+      transitDetailsUnavailable:
+        "当前无法编辑此装载单的运输信息。请刷新页面并检查单据状态和来源业务单元。",
+      transitDetailsSaveError: "运输信息保存失败。请重试。",
       updating: "更新中...",
       arrivedTitle: "标记为已到达",
       arrivedDescription:

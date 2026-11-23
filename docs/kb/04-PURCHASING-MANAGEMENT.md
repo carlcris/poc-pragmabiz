@@ -548,7 +548,7 @@ Reject requisition.
 
 Load lists are created, edited, and viewed on one full-page layout with three modes: `/purchasing/load-lists/new` (create), `/purchasing/load-lists/[id]` (view), and `/purchasing/load-lists/[id]/edit` (edit). The page shows Shipment, Container, Items, and Notes sections beside a summary panel that holds the total and the page actions. Edit is available to the source business unit while the load list is `draft` or `confirmed` and the user can view unit prices; the destination business unit is locked once the load list exists.
 
-Liner and estimated arrival date are not part of create or edit. They are captured by Mark In Transit, and create stores them empty while edits keep the stored values. The view shows them in a Transit section once the load list is in transit or they have values.
+Mark In Transit captures the shipping liner and estimated arrival date. The detail page shows both values in the Transit section. While the load list is In Transit, authorized users in the source business unit can choose **Edit Transit Details** in that section to change or clear either value. Saving keeps the shipment in transit and refreshes the updated transit details and arrival views.
 
 Load Date is optional, but a partially entered date blocks saving with an inline message and focuses the field. Complete the date or clear every part of it before retrying. Quantity precision is checked directly from the entered text, so values with more than two decimal places cannot be added.
 
@@ -564,10 +564,31 @@ The Link Stock Requisitions dialog requires `load_lists.view` plus `load_lists.o
 
 Mark In Transit requires `load_lists.view` plus `load_lists.operation.mark_in_transit.edit`. The transition locks the confirmed load list and changes the supplier shipment status atomically. It does not assign a warehouse or write warehouse-level in-transit stock because the physical receiving location is not known yet.
 
-The inventory **Stock In Transit** page reads active in-transit load-list lines for the selected
-destination business unit. It is searched and paginated on the server and shows the load list,
-supplier name, item, shipment details, estimated arrival, and shipment quantity. Transit quantities
-and ETA are not copied into `item_warehouse`.
+The inventory **Stock In Transit** page covers active in-transit load lists headed to any business
+unit in the company. It is one split view. The item list shows each item's ordered-unit totals, its
+combined base-unit total, and its next arrival, and search can match an item, load list, supplier, or destination. A search
+keeps the matching item's complete in-transit total. Selecting an item shows its arrival mix (Late,
+Next 7 Days, 8-14 Days, Later, and No ETA) and an arrival timeline.
+
+Ordered units are the primary quantity and base units are shown underneath. The base quantity is
+hidden when it would repeat the ordered quantity, such as `10 STICK` for an item whose base unit is
+Stick. Different ordered units are listed separately, such as `100 BOX (144) + 10 STICK`, because
+they cannot be added together. The saved conversion also distinguishes packs with the same label.
+For example, two boxes of 144 sticks and five boxes of 72 sticks labeled `BOX` appear as
+`5 BOX (72) + 2 BOX (144)`, with a base total of 648 sticks.
+Load lists with the same estimated arrival date share one timeline stop with the date's ordered-unit
+totals, base total, and destination split. Each load list then shows its quantities, supplier,
+destination, container, and liner. Base quantities use the conversions saved on the load-list lines,
+and the arrival mix bar is proportioned by base quantity. Arrival timing uses the current
+business unit's timezone and defaults to Asia/Manila. Transit quantities and estimated arrivals stay
+on the load lists.
+
+`GET /api/stock-in-transit?view=items` returns one row per item with ordered-unit and base totals, company load-list counts for the
+current search, and pagination by item. `view=arrivals&itemId=<uuid>` returns that item's load lists
+in arrival order, with complete ordered-unit and base totals by load list, date, destination, and arrival window, and pagination by load list. Page size is
+capped at 50. Both views require Items view access and use the authenticated user's company. Opening
+a load list requires Load Lists view access in its source or destination business unit.
+Each ordered-unit total includes `unitName`, `quantity`, and the saved `quantityPerUnit` conversion.
 
 Mark Arrived requires `load_lists.view` plus `load_lists.operation.mark_arrived.edit`; Stockman receives this capability by default. The transition locks the in-transit load list, records its arrival date, and creates the target-business-unit GRN and all GRN lines in one transaction. A failure at any point leaves the load list in transit without a partial GRN.
 
@@ -607,6 +628,12 @@ Confirm load list.
 **Permissions**: `edit` on `load_lists`
 
 **Effect**: Status changes to 'confirmed', ready to create PO
+
+#### PATCH /api/load-lists/[id]/transit-details
+
+Updates the shipping liner or estimated arrival date for an in-transit load list. Requires `load_lists.view` and `load_lists.operation.mark_in_transit.edit` in the source business unit.
+
+Send at least one of `linerName` (up to 150 characters) or `estimatedArrivalDate` (`YYYY-MM-DD`). Send `null` to clear a field and omit fields whose values should be kept. The response contains `id` and `llNumber`. The API returns `409` if the load list is unavailable for transit edits, including when it has already arrived.
 
 ### Purchase Order Management
 

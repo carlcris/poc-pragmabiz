@@ -493,7 +493,7 @@ Company Level
 - **Available**: On hand - reserved - warehouse-bound pending putaway
 - **Reserved**: Allocated to sales orders/delivery notes
 - **Putaway**: The sum of `pending_quantity` on open putaway tasks in the selected BU or warehouse
-- **In Transit**: Supplier load-list quantities moving to a business unit, shown on the separate Stock In Transit page
+- **In Transit**: Supplier load-list quantities moving to any business unit in the company. Open **Stock In Transit** for company-wide item totals and each item's arrival timeline by load list, container, and destination.
 - **Reorder Alert Basis**: Total available stock across all company warehouses compared to the effective item reorder point
 
 When an item has an inventory preview unit, the desktop and mobile layouts of the **Inventory** tab

@@ -12503,34 +12503,64 @@ export type Database = {
           total_items_tracked: number
         }[]
       }
-      get_stock_in_transit_page: {
+      get_stock_in_transit_item_arrivals_page: {
         Args: {
-          p_business_unit_id: string
+          p_as_of_date: string
+          p_company_id: string
+          p_item_id: string
+          p_limit?: number
+          p_page?: number
+        }
+        Returns: {
+          arrival_base_quantity: number
+          arrival_container_count: number
+          arrival_destination_totals: Json
+          arrival_ordered_unit_totals: Json
+          arrival_shipment_count: number
+          arrival_window: string
+          arrival_window_ordered_unit_totals: Json
+          base_quantity: number
+          container_number: string
+          days_8_to_14_base_quantity: number
+          days_until_arrival: number
+          destination_business_unit_id: string
+          destination_business_unit_name: string
+          estimated_arrival_date: string
+          late_base_quantity: number
+          later_base_quantity: number
+          liner_name: string
+          ll_number: string
+          load_list_id: string
+          next_7_days_base_quantity: number
+          no_eta_base_quantity: number
+          ordered_unit_totals: Json
+          source_business_unit_id: string
+          supplier_name: string
+          total_count: number
+        }[]
+      }
+      get_stock_in_transit_item_summary_page: {
+        Args: {
+          p_as_of_date: string
           p_company_id: string
           p_limit?: number
           p_page?: number
           p_search?: string
         }
         Returns: {
-          base_quantity: number
-          container_number: string
-          estimated_arrival_date: string
-          id: string
+          base_unit_name: string
           item_code: string
           item_id: string
           item_name: string
-          liner_name: string
-          ll_number: string
-          load_list_id: string
-          load_list_qty: number
-          qty_per_unit: number
-          source_business_unit_code: string
-          source_business_unit_name: string
-          supplier_code: string
-          supplier_name: string
+          late_load_list_count: number
+          load_list_count: number
+          next_arrival_window: string
+          next_days_until_arrival: number
+          next_estimated_arrival_date: string
+          ordered_unit_totals: Json
+          shipment_count: number
           total_base_quantity: number
           total_count: number
-          unit_name: string
         }[]
       }
       get_stock_ledger_summary: {

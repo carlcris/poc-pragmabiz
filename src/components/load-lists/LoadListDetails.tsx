@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Link as LinkIcon, Pencil } from "lucide-react";
@@ -35,8 +35,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { RESOURCES } from "@/constants/resources";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useUpdateLoadListStatus } from "@/hooks/useLoadLists";
+import { useUpdateLoadListStatus, useUpdateLoadListTransitDetails } from "@/hooks/useLoadLists";
 import { useResourcePermissions } from "@/hooks/usePermissions";
+import { getApiErrorCode } from "@/lib/api";
 import { canEditLoadList } from "@/lib/load-lists/editability";
 import {
   formatDocumentAmount,
@@ -47,11 +48,18 @@ import {
   LOAD_LIST_STATUS_LABEL_KEYS,
   LOAD_LIST_STATUS_TONES,
 } from "@/lib/load-lists/load-list-display";
-import type { LoadListDetail, LoadListStatus } from "@/types/load-list";
+import {
+  LOAD_LIST_TRANSIT_DETAILS_ERROR_CODES,
+  type LoadListDetail,
+  type LoadListStatus,
+  type UpdateLoadListTransitDetailsRequest,
+} from "@/types/load-list";
 
 type LoadListDetailsProps = {
   loadList: LoadListDetail;
 };
+
+type TransitDialogMode = "mark" | "edit";
 
 const STOCK_REQUISITION_LINK_STATUSES: readonly LoadListStatus[] = [
   "draft",
@@ -60,21 +68,29 @@ const STOCK_REQUISITION_LINK_STATUSES: readonly LoadListStatus[] = [
   "arrived",
 ];
 const PRE_TRANSIT_STATUSES: readonly LoadListStatus[] = ["draft", "confirmed", "cancelled"];
+const EMPTY_TRANSIT_DETAILS = { linerName: "", estimatedArrivalDate: "" };
 
 export function LoadListDetails({ loadList }: LoadListDetailsProps) {
   const t = useTranslations("loadListPage");
   const locale = useLocale();
   const { currentCurrency } = useCurrency();
   const updateStatusMutation = useUpdateLoadListStatus();
+  const updateTransitDetailsMutation = useUpdateLoadListTransitDetails();
   const { canEdit: canEditResource } = useResourcePermissions(RESOURCES.LOAD_LISTS);
 
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [inTransitDialogOpen, setInTransitDialogOpen] = useState(false);
+  const [transitDialogOpen, setTransitDialogOpen] = useState(false);
+  const [transitDialogMode, setTransitDialogMode] = useState<TransitDialogMode>("mark");
+  const [initialTransitDetails, setInitialTransitDetails] = useState({
+    ...EMPTY_TRANSIT_DETAILS,
+    loadListId: "",
+  });
+  const [transitDetails, setTransitDetails] = useState(EMPTY_TRANSIT_DETAILS);
+  const [transitDetailsError, setTransitDetailsError] = useState<string | null>(null);
+  const transitDialogTrigger = useRef<HTMLButtonElement | null>(null);
   const [arrivedDialogOpen, setArrivedDialogOpen] = useState(false);
   const [reverseArrivalDialogOpen, setReverseArrivalDialogOpen] = useState(false);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
-  const [inTransitEstimatedArrivalDate, setInTransitEstimatedArrivalDate] = useState("");
-  const [inTransitLinerName, setInTransitLinerName] = useState("");
 
   const capabilities = loadList.capabilities;
   const canViewUnitPrice = capabilities?.canViewUnitPrice === true;
@@ -85,10 +101,9 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
 
   const canEdit = canEditLoadList(loadList, canEditResource);
   const canConfirm = loadList.isSourceBusinessUnit && canEditResource && status === "draft";
-  const canMarkInTransit =
-    loadList.isSourceBusinessUnit &&
-    capabilities?.canMarkInTransit === true &&
-    status === "confirmed";
+  const canManageTransit = loadList.isSourceBusinessUnit && capabilities?.canMarkInTransit === true;
+  const canMarkInTransit = canManageTransit && status === "confirmed";
+  const canEditTransitDetails = canManageTransit && status === "in_transit";
   const canMarkArrived =
     loadList.isTargetBusinessUnit &&
     capabilities?.canMarkArrived === true &&
@@ -131,10 +146,79 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
     }
   };
 
-  const openInTransitDialog = () => {
-    setInTransitEstimatedArrivalDate(loadList.estimatedArrivalDate?.split("T")[0] ?? "");
-    setInTransitLinerName(loadList.linerName ?? "");
-    setInTransitDialogOpen(true);
+  const isEditingTransitDetails = transitDialogMode === "edit";
+  const isTransitDialogPending = isEditingTransitDetails
+    ? updateTransitDetailsMutation.isPending
+    : updateStatusMutation.isPending;
+  const linerName = transitDetails.linerName.trim();
+  const estimatedArrivalDate = transitDetails.estimatedArrivalDate;
+  const linerNameChanged = linerName !== initialTransitDetails.linerName.trim();
+  const estimatedArrivalDateChanged =
+    estimatedArrivalDate !== initialTransitDetails.estimatedArrivalDate;
+  const hasTransitDetailsChanges = linerNameChanged || estimatedArrivalDateChanged;
+
+  const openTransitDialog = (mode: TransitDialogMode, trigger: HTMLButtonElement) => {
+    const savedDetails = {
+      linerName: loadList.linerName ?? "",
+      estimatedArrivalDate: loadList.estimatedArrivalDate?.split("T")[0] ?? "",
+    };
+    transitDialogTrigger.current = trigger;
+    setInitialTransitDetails({ ...savedDetails, loadListId: loadList.id });
+    setTransitDetails(savedDetails);
+    setTransitDetailsError(null);
+    setTransitDialogMode(mode);
+    setTransitDialogOpen(true);
+  };
+
+  const closeTransitDialog = () => {
+    setTransitDialogOpen(false);
+    setTransitDetailsError(null);
+  };
+
+  const submitTransitDetails = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isTransitDialogPending || initialTransitDetails.loadListId !== loadList.id) return;
+
+    if (!isEditingTransitDetails) {
+      await changeStatus(
+        {
+          status: "in_transit",
+          linerName: linerName || undefined,
+          estimatedArrivalDate: estimatedArrivalDate || undefined,
+        },
+        closeTransitDialog
+      );
+      return;
+    }
+
+    if (!hasTransitDetailsChanges) return;
+    const data: UpdateLoadListTransitDetailsRequest = {};
+    if (linerNameChanged) data.linerName = linerName || null;
+    if (estimatedArrivalDateChanged) data.estimatedArrivalDate = estimatedArrivalDate || null;
+
+    setTransitDetailsError(null);
+    try {
+      await updateTransitDetailsMutation.mutateAsync({ id: loadList.id, data });
+      closeTransitDialog();
+      toast.success(t("transitDetailsSaved"));
+    } catch (error) {
+      switch (getApiErrorCode(error, LOAD_LIST_TRANSIT_DETAILS_ERROR_CODES)) {
+        case "INVALID_LOAD_LIST_TRANSIT_DETAILS":
+          setTransitDetailsError(t("transitDetailsInvalid"));
+          break;
+        case "LOAD_LIST_TRANSIT_DETAILS_SCOPE_REQUIRED":
+          setTransitDetailsError(t("transitDetailsScopeRequired"));
+          break;
+        case "LOAD_LIST_TRANSIT_DETAILS_FORBIDDEN":
+          setTransitDetailsError(t("transitDetailsForbidden"));
+          break;
+        case "LOAD_LIST_TRANSIT_DETAILS_UNAVAILABLE":
+          setTransitDetailsError(t("transitDetailsUnavailable"));
+          break;
+        default:
+          setTransitDetailsError(t("transitDetailsSaveError"));
+      }
+    }
   };
 
   const primaryAction = canConfirm ? (
@@ -142,7 +226,11 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
       {t("confirm")}
     </Button>
   ) : canMarkInTransit ? (
-    <Button type="button" className="h-11 w-full" onClick={openInTransitDialog}>
+    <Button
+      type="button"
+      className="h-11 w-full"
+      onClick={(event) => openTransitDialog("mark", event.currentTarget)}
+    >
       {t("markInTransit")}
     </Button>
   ) : canMarkArrived ? (
@@ -259,11 +347,7 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
           </DocumentSection>
 
           {showTransit ? (
-            <DocumentSection
-              id="load-list-transit"
-              title={t("transitTitle")}
-              description={t("transitDescription")}
-            >
+            <DocumentSection id="load-list-transit" title={t("transitTitle")}>
               <dl className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 <DocumentDetailField
                   label={t("linerName")}
@@ -283,6 +367,17 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
                   numeric
                 />
               </dl>
+              {canEditTransitDetails ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-4"
+                  onClick={(event) => openTransitDialog("edit", event.currentTarget)}
+                >
+                  <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
+                  {t("editTransitDetails")}
+                </Button>
+              ) : null}
             </DocumentSection>
           ) : null}
 
@@ -440,56 +535,98 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={inTransitDialogOpen} onOpenChange={setInTransitDialogOpen}>
-        <DialogContent>
+      <Dialog
+        open={transitDialogOpen && initialTransitDetails.loadListId === loadList.id}
+        onOpenChange={(open) => {
+          if (!open && !isTransitDialogPending) closeTransitDialog();
+        }}
+      >
+        <DialogContent
+          hideCloseButton={isTransitDialogPending}
+          onCloseAutoFocus={(event) => {
+            if (transitDialogTrigger.current?.isConnected) {
+              event.preventDefault();
+              transitDialogTrigger.current.focus();
+            }
+          }}
+        >
           <DialogHeader>
-            <DialogTitle>{t("inTransitTitle")}</DialogTitle>
-            <DialogDescription>{t("inTransitDescription")}</DialogDescription>
+            <DialogTitle>
+              {isEditingTransitDetails ? t("editTransitDetails") : t("inTransitTitle")}
+            </DialogTitle>
+            <DialogDescription>
+              {isEditingTransitDetails
+                ? t("editTransitDetailsDescription")
+                : t("inTransitDescription")}
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid gap-2">
-              <label className="text-sm font-medium" htmlFor="load-list-liner-name">
-                {t("linerName")}
-              </label>
-              <Input
-                id="load-list-liner-name"
-                value={inTransitLinerName}
-                onChange={(event) => setInTransitLinerName(event.target.value)}
-                placeholder={t("linerNamePlaceholder")}
-              />
+          <form className="space-y-4" onSubmit={submitTransitDetails}>
+            <div className="grid gap-4 py-2">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium" htmlFor="load-list-liner-name">
+                  {t("linerName")}
+                </label>
+                <Input
+                  id="load-list-liner-name"
+                  value={transitDetails.linerName}
+                  onChange={(event) => {
+                    setTransitDetails({ ...transitDetails, linerName: event.target.value });
+                    setTransitDetailsError(null);
+                  }}
+                  placeholder={t("linerNamePlaceholder")}
+                  maxLength={150}
+                  disabled={isTransitDialogPending}
+                />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium" htmlFor="load-list-estimated-arrival-date">
+                  {t("estimatedArrival")}
+                </label>
+                <Input
+                  id="load-list-estimated-arrival-date"
+                  type="date"
+                  min="0001-01-01"
+                  max="9999-12-31"
+                  value={estimatedArrivalDate}
+                  onChange={(event) => {
+                    setTransitDetails({
+                      ...transitDetails,
+                      estimatedArrivalDate: event.target.value,
+                    });
+                    setTransitDetailsError(null);
+                  }}
+                  disabled={isTransitDialogPending}
+                />
+              </div>
             </div>
-            <div className="grid gap-2">
-              <label className="text-sm font-medium" htmlFor="load-list-estimated-arrival-date">
-                {t("estimatedArrival")}
-              </label>
-              <Input
-                id="load-list-estimated-arrival-date"
-                type="date"
-                value={inTransitEstimatedArrivalDate}
-                onChange={(event) => setInTransitEstimatedArrivalDate(event.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setInTransitDialogOpen(false)}>
-              {t("cancel")}
-            </Button>
-            <Button
-              onClick={() =>
-                changeStatus(
-                  {
-                    status: "in_transit",
-                    estimatedArrivalDate: inTransitEstimatedArrivalDate || undefined,
-                    linerName: inTransitLinerName.trim() || undefined,
-                  },
-                  () => setInTransitDialogOpen(false)
-                )
-              }
-              disabled={updateStatusMutation.isPending}
-            >
-              {updateStatusMutation.isPending ? t("updating") : t("saveAndMarkInTransit")}
-            </Button>
-          </DialogFooter>
+            {transitDetailsError ? (
+              <p role="alert" className="text-sm font-medium text-destructive">
+                {transitDetailsError}
+              </p>
+            ) : null}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeTransitDialog}
+                disabled={isTransitDialogPending}
+              >
+                {t("cancel")}
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  isTransitDialogPending || (isEditingTransitDetails && !hasTransitDetailsChanges)
+                }
+              >
+                {isTransitDialogPending
+                  ? t("updating")
+                  : isEditingTransitDetails
+                    ? t("saveChanges")
+                    : t("saveAndMarkInTransit")}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

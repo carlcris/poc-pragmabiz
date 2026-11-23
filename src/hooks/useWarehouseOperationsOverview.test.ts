@@ -12,6 +12,7 @@ import { useCreatePickList } from "./usePickLists";
 import {
   ITEMS_QUERY_KEY,
   PUTAWAY_TASKS_QUERY_KEY,
+  STOCK_IN_TRANSIT_QUERY_KEY,
   STOCK_MOVEMENT_REPORT_QUERY_KEY,
   STOCK_TRANSACTIONS_QUERY_KEY,
 } from "./queryKeys";
@@ -48,6 +49,32 @@ vi.mock("@/stores/businessUnitStore", () => ({
 
 beforeEach(() => {
   state.unit = { currentBusinessUnit: { id: "unit-a" }, isLoading: false, isSwitching: false };
+});
+
+it("refreshes the active item summary and stales item arrivals after a load-list status change", async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { staleTime: Infinity, retry: false } },
+  });
+  state.client = client;
+  const itemSummary = [STOCK_IN_TRANSIT_QUERY_KEY, "company-a", "items", undefined, 25];
+  const itemArrivals = [STOCK_IN_TRANSIT_QUERY_KEY, "company-a", "arrivals", "item-a", 25];
+  const unrelated = [ITEMS_QUERY_KEY, { page: 1 }];
+  for (const key of [itemSummary, itemArrivals, unrelated]) client.setQueryData(key, "before");
+  const fetchSummary = vi.fn(async () => "after");
+  const observer = new QueryObserver(client, { queryKey: itemSummary, queryFn: fetchSummary });
+  const stop = observer.subscribe(() => {});
+
+  try {
+    useUpdateLoadListStatus();
+    await state.onSuccess!({}, { id: "load-list" });
+    await vi.waitFor(() => expect(client.getQueryData(itemSummary)).toBe("after"));
+    expect(fetchSummary).toHaveBeenCalledTimes(1);
+    expect(client.getQueryState(itemArrivals)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(unrelated)?.isInvalidated).toBe(false);
+  } finally {
+    stop();
+    client.clear();
+  }
 });
 
 it.each([

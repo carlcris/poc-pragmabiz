@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   LOAD_LISTS_QUERY_KEY,
+  STOCK_IN_TRANSIT_QUERY_KEY,
   STOCK_REQUISITIONS_QUERY_KEY,
   WAREHOUSE_DASHBOARD_QUERY_KEY,
 } from "@/hooks/queryKeys";
@@ -11,9 +12,17 @@ import type {
   CreateLoadListRequest,
   UpdateLoadListRequest,
   UpdateLoadListStatusRequest,
+  UpdateLoadListTransitDetailsRequest,
   CreateLoadListSRLinkRequest,
   EligibleLoadListRequisitionItemFilters,
 } from "@/types/load-list";
+
+const ARRIVAL_DASHBOARD_WIDGETS = new Set([
+  "expectedArrivalsThisWeek",
+  "delayedShipments",
+  "incomingDeliveriesWithSRs",
+  "activeContainers",
+]);
 
 export function useLoadLists(filters?: LoadListFilters) {
   useRealtimeDomainInvalidation("purchasing", { queryKeys: [LOAD_LISTS_QUERY_KEY] });
@@ -83,7 +92,49 @@ export function useUpdateLoadListStatus() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, variables.id] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_IN_TRANSIT_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY] });
+    },
+  });
+}
+
+export function useUpdateLoadListTransitDetails() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateLoadListTransitDetailsRequest }) =>
+      loadListsApi.updateLoadListTransitDetails(id, data),
+    onSuccess: async (_, { id, data }) => {
+      const changedEta = data.estimatedArrivalDate !== undefined;
+      const refreshes = [
+        queryClient.invalidateQueries({
+          queryKey: [LOAD_LISTS_QUERY_KEY],
+          predicate: ({ queryKey }) =>
+            typeof queryKey[1] !== "string" || (queryKey[1] === id && queryKey.length === 2),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: [STOCK_IN_TRANSIT_QUERY_KEY],
+          predicate: ({ queryKey }) => changedEta || queryKey[2] === "arrivals",
+        }),
+        queryClient.invalidateQueries({ queryKey: ["shipments-report"] }),
+      ];
+
+      if (changedEta) {
+        refreshes.push(
+          queryClient.invalidateQueries({ queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY] }),
+          queryClient.invalidateQueries({
+            queryKey: ["purchasing-dashboard"],
+            predicate: ({ queryKey }) => {
+              const widgetOrParams = queryKey[1];
+              return (
+                typeof widgetOrParams !== "string" || ARRIVAL_DASHBOARD_WIDGETS.has(widgetOrParams)
+              );
+            },
+          })
+        );
+      }
+
+      await Promise.all(refreshes);
     },
   });
 }

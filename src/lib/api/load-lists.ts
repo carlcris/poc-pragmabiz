@@ -6,6 +6,7 @@ import type {
   LoadListFilters,
   LoadListsResponse,
   UpdateLoadListStatusRequest,
+  UpdateLoadListTransitDetailsRequest,
   LoadListSRLink,
   CreateLoadListSRLinkRequest,
   EligibleLoadListRequisitionItemFilters,
@@ -54,6 +55,16 @@ export const loadListsApi = {
   ): Promise<{ id: string; llNumber: string; status: string; message: string }> => {
     return apiClient.patch<{ id: string; llNumber: string; status: string; message: string }>(
       `${API_BASE}/${id}/status`,
+      data
+    );
+  },
+
+  updateLoadListTransitDetails: async (
+    id: string,
+    data: UpdateLoadListTransitDetailsRequest
+  ): Promise<{ id: string; llNumber: string }> => {
+    return apiClient.patch<{ id: string; llNumber: string }>(
+      `${API_BASE}/${id}/transit-details`,
       data
     );
   },

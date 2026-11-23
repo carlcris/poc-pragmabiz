@@ -141,6 +141,21 @@ export type UpdateLoadListStatusRequest = {
   linerName?: string;
 };
 
+export type UpdateLoadListTransitDetailsRequest = {
+  linerName?: string | null;
+  estimatedArrivalDate?: string | null;
+};
+
+export const LOAD_LIST_TRANSIT_DETAILS_ERROR_CODES = [
+  "INVALID_LOAD_LIST_TRANSIT_DETAILS",
+  "LOAD_LIST_TRANSIT_DETAILS_SCOPE_REQUIRED",
+  "LOAD_LIST_TRANSIT_DETAILS_FORBIDDEN",
+  "LOAD_LIST_TRANSIT_DETAILS_UNAVAILABLE",
+] as const;
+
+export type LoadListTransitDetailsErrorCode =
+  (typeof LOAD_LIST_TRANSIT_DETAILS_ERROR_CODES)[number];
+
 export type LoadListFilters = {
   search?: string;
   status?: LoadListStatus | "all";
