@@ -1964,6 +1964,11 @@ more, and verify the tab in Chinese and at phone width.
 
 Regression checks for the selected stock panel:
 
+- In **Item → Locations**, select a bin with a depleted batch, a fully reserved batch, and a batch
+  with available stock. Verify the depleted batch is hidden, the fully reserved batch shows zero
+  Available, and pagination counts only the batches with stock on hand. On a later page, deplete
+  its last batch while stock remains on earlier pages. Verify the view returns to the last populated
+  page after refresh and the depleted batch record remains in inventory history.
 - Open a warehouse location detail, post an adjustment that removes its final stock, then return
   before cache expiry. Quantity and Move/Disable restrictions must refresh without a reload.
   Repeat after posting putaway: destination and ancestor quantities and pending-work counts refresh.

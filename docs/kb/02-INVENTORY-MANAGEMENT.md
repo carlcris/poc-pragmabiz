@@ -83,6 +83,8 @@ the Prices and Unit Options tabs show stacked rows instead of tables; price Edit
 each row's **More** menu. Location names in the Locations tab wrap instead of truncating.
 
 **Locations tab batches**:
+The list and its page count include batches with stock on hand at the selected location, including
+fully reserved batches. Batches with zero on hand remain in inventory records and are hidden here.
 Each batch shows its code with Received Date and Expiration Date beneath, then On Hand, Reserved,
 and Available. **Edit Expiration** and **Print QR** are in the batch row's **More** menu at every
 width. Below 1024px batches render as stacked rows; the location tree sits beside the batch panel

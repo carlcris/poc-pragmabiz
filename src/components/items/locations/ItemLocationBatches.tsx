@@ -45,7 +45,7 @@ type ItemLocationBatchesProps = {
   onPrint: (batch: ItemLocationBatch) => void;
 };
 
-// Batches stored directly at one location, oldest first, 20 per page.
+// Batches with stock on hand directly at one location, oldest first, 20 per page.
 export function ItemLocationBatches({
   itemId,
   locationId,
@@ -77,6 +77,17 @@ export function ItemLocationBatches({
   const batches = location?.batches ?? [];
   const batchCount = location?.batchCount ?? 0;
   const pageSize = location?.batchPageSize ?? BATCH_PAGE_SIZE;
+  const totalPages = Math.max(1, Math.ceil(batchCount / pageSize));
+
+  // Depleting a batch can remove the current page after the stock queries refresh.
+  if (
+    query.isSuccess &&
+    !query.isPlaceholderData &&
+    query.fetchStatus === "idle" &&
+    page > totalPages
+  ) {
+    setPage(totalPages);
+  }
 
   const formatExpiration = (batch: ItemLocationBatch) =>
     batch.expirationDate
@@ -247,10 +258,10 @@ export function ItemLocationBatches({
           onClose={() => setEditingBatch(null)}
         />
       ) : null}
-      {batchCount > pageSize ? (
+      {totalPages > 1 ? (
         <DataTablePagination
           currentPage={page}
-          totalPages={Math.ceil(batchCount / pageSize)}
+          totalPages={totalPages}
           pageSize={pageSize}
           totalItems={batchCount}
           onPageChange={setPage}

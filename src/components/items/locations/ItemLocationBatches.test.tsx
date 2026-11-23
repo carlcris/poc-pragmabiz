@@ -6,16 +6,39 @@ import {
   createItemInventoryPreviewLabel,
   type ItemInventoryPreviewLabel,
 } from "@/lib/items/inventory-preview-quantity";
+import type { ItemLocationBatch } from "@/types/inventory-location";
 import { ItemLocationBatches } from "./ItemLocationBatches";
 
 const state = vi.hoisted(() => ({
   page: 1,
+  batchCount: 21,
+  isFetching: false,
   canEdit: false,
   nextPage: undefined as undefined | ((page: number) => void),
   printed: vi.fn(),
   print: undefined as undefined | (() => void),
 }));
 const noPreview = () => null;
+const stockedBatches: ItemLocationBatch[] = [
+  ...Array.from({ length: 20 }, (_, id) => ({
+    id: String(id),
+    batchCode: id === 0 ? "FULLY-RESERVED" : `BATCH-${id}`,
+    qtyOnHand: 10,
+    qtyAvailable: id === 0 ? 0 : 10,
+    qtyReserved: id === 0 ? 10 : 0,
+    receivedAt: "2026-01-01",
+    expirationDate: null,
+  })),
+  {
+    id: "stocked",
+    batchCode: "STOCKED",
+    qtyOnHand: 50,
+    qtyAvailable: 50,
+    qtyReserved: 0,
+    receivedAt: "2026-02-01",
+    expirationDate: "2026-05-01",
+  },
+];
 vi.mock("react", async (load) => ({
   ...(await load<typeof import("react")>()),
   useState: (initial: unknown) =>
@@ -41,35 +64,16 @@ vi.mock("next-intl", () => ({
 }));
 vi.mock("@tanstack/react-query", () => ({
   useQuery: ({ queryKey }: { queryKey: unknown[] }) => {
-    const page = queryKey.at(-1);
+    const offset = (Number(queryKey.at(-1)) - 1) * 20;
     return {
+      isSuccess: true,
+      fetchStatus: state.isFetching ? "fetching" : "idle",
       data: {
         data: [
           {
-            batchCount: 21,
+            batchCount: state.batchCount,
             batchPageSize: 20,
-            batches:
-              page === 1
-                ? Array.from({ length: 20 }, (_, id) => ({
-                    id: String(id),
-                    batchCode: `EMPTY-${id}`,
-                    qtyOnHand: 0,
-                    qtyAvailable: 0,
-                    qtyReserved: 0,
-                    receivedAt: "2026-01-01",
-                    expirationDate: null,
-                  }))
-                : [
-                    {
-                      id: "stocked",
-                      batchCode: "STOCKED",
-                      qtyOnHand: 50,
-                      qtyAvailable: 50,
-                      qtyReserved: 0,
-                      receivedAt: "2026-02-01",
-                      expirationDate: "2026-05-01",
-                    },
-                  ],
+            batches: stockedBatches.slice(offset, Math.min(offset + 20, state.batchCount)),
           },
         ],
       },
@@ -109,11 +113,13 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
 }));
 beforeEach(() => {
   state.page = 1;
+  state.batchCount = 21;
+  state.isFetching = false;
   state.canEdit = false;
   state.nextPage = undefined;
   state.printed.mockReset();
 });
-it("reaches and prints the stocked batch after twenty exhausted batches", () => {
+it("shows fully reserved stock and can print a stocked batch from the next page", () => {
   const render = () =>
     renderToStaticMarkup(
       <ItemLocationBatches
@@ -125,19 +131,51 @@ it("reaches and prints the stocked batch after twenty exhausted batches", () => 
         onPrint={state.printed}
       />
     );
-  expect(render()).toContain("21 batches / 2 pages");
-  expect(render()).toContain("Expiration Date");
-  expect(render()).toContain("—");
+  const firstPage = render();
+  expect(firstPage).toContain("21 batches / 2 pages");
+  expect(firstPage).toContain("FULLY-RESERVED");
+  expect(firstPage).toContain("Expiration Date");
+  expect(firstPage).toContain("—");
   expect(state.nextPage).toBeDefined();
   state.nextPage!(2);
   const html = render();
   expect(html).toContain("STOCKED");
   expect(html).toContain("2026-05-01");
-  expect(html).not.toContain("EMPTY-");
+  expect(html).not.toContain("FULLY-RESERVED");
   state.print!();
   expect(state.printed).toHaveBeenCalledWith(
     expect.objectContaining({ id: "stocked", qtyOnHand: 50 })
   );
+});
+
+it("returns to the last available page when the loaded batch count shrinks", () => {
+  const render = () =>
+    renderToStaticMarkup(
+      <ItemLocationBatches
+        itemId="item"
+        locationId="rack"
+        previewLabel={noPreview}
+        canPrint={false}
+        printDisabled={false}
+        onPrint={state.printed}
+      />
+    );
+
+  render();
+  state.nextPage!(2);
+  expect(render()).toContain("STOCKED");
+
+  state.batchCount = 20;
+  state.isFetching = true;
+  render();
+  expect(state.page).toBe(2);
+
+  state.isFetching = false;
+  render();
+  expect(state.page).toBe(1);
+  const remainingPage = render();
+  expect(remainingPage).toContain("FULLY-RESERVED");
+  expect(remainingPage).not.toContain("batches /");
 });
 
 it("shows expiration editing only to item editors", () => {
