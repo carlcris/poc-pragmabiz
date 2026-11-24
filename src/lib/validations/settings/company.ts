@@ -2,10 +2,6 @@ import { z } from "zod";
 
 export const createCompanySettingsSchema = () =>
   z.object({
-    code: z
-      .string()
-      .min(1, "Company code is required")
-      .max(50, "Company code must be 50 characters or less"),
     name: z
       .string()
       .min(1, "Company name is required")

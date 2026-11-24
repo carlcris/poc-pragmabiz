@@ -47,7 +47,11 @@ export interface CompanySettings {
   country?: string;
   currency_code?: string;
   is_active: boolean;
+  document_code_digits: number;
+  warehouse_location_code_digits: number;
 }
+
+export type GeneratedCodePaddingErrorCode = "INVALID_GENERATED_CODE_PADDING";
 
 export const COMPANY_SETTING_KEYS = {
   CODE: "code",
@@ -64,6 +68,8 @@ export const COMPANY_SETTING_KEYS = {
   COUNTRY: "country",
   CURRENCY_CODE: "currency_code",
   IS_ACTIVE: "is_active",
+  DOCUMENT_CODE_DIGITS: "document_code_digits",
+  WAREHOUSE_LOCATION_CODE_DIGITS: "warehouse_location_code_digits",
 } as const;
 
 // ============================================================================
@@ -98,10 +104,7 @@ export const FINANCIAL_SETTING_KEYS = {
 // INVENTORY SETTINGS
 // ============================================================================
 
-export type PickingValidationPolicy =
-  | "batch_only"
-  | "batch_and_warehouse"
-  | "batch_and_rack";
+export type PickingValidationPolicy = "batch_only" | "batch_and_warehouse" | "batch_and_rack";
 
 export interface InventorySettings {
   default_uom: string;

@@ -39,7 +39,7 @@ async function updateSettings<T extends SettingsGroupKey>(
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || "Failed to update settings");
+    throw new Error(error.error || "Failed to update settings", { cause: error });
   }
 
   const { data } = await response.json();

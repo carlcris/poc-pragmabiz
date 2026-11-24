@@ -1708,6 +1708,23 @@ export type TranslationKeys = {
     common: {
       saveChanges: string;
     };
+    generatedCodePadding: {
+      title: string;
+      description: string;
+      documentDigits: string;
+      warehouseLocationDigits: string;
+      example: string;
+      changeWarning: string;
+      save: string;
+      confirmTitle: string;
+      confirmDescription: string;
+      digitChange: string;
+      apply: string;
+      applying: string;
+      saveSuccess: string;
+      saveError: string;
+      invalidPadding: string;
+    };
     companyForm: {
       saveSuccess: string;
       saveError: string;
@@ -6066,7 +6083,7 @@ export const translations: Record<Locale, TranslationKeys> = {
         title: "Settings",
         subtitle: "Configure system-wide settings and preferences",
         companyTitle: "Company Information",
-        companyDescription: "Corporate-level company details (company admins only)",
+        companyDescription: "Company details and generated code padding",
         businessUnitTitle: "Business Unit Settings",
         businessUnitDescription: "Configure settings specific to your business unit",
         financialTitle: "Financial Settings",
@@ -6089,7 +6106,8 @@ export const translations: Record<Locale, TranslationKeys> = {
         noBusinessUnitSelectedDescription:
           "Please select a business unit to configure its settings.",
         companyTitle: "Company Information",
-        companyDescription: "Manage your company details and contact information",
+        companyDescription:
+          "Manage company details, contact information, and generated code padding",
         companyLoadError: "Failed to load company settings",
         businessUnitTitle: "Business Unit Settings",
         businessUnitDescription: "Configure settings specific to {name}",
@@ -6116,12 +6134,32 @@ export const translations: Record<Locale, TranslationKeys> = {
       common: {
         saveChanges: "Save Changes",
       },
+      generatedCodePadding: {
+        title: "Generated Code Padding",
+        description:
+          "Set the minimum number of digits for new codes across all business units. Choose 1 for no leading zeros.",
+        documentDigits: "Document code digits",
+        warehouseLocationDigits: "Digits per warehouse location level",
+        example: "Example: {example}",
+        changeWarning: "Changing the code format affects new codes across all business units.",
+        save: "Save Code Padding",
+        confirmTitle: "Confirm Code Padding",
+        confirmDescription:
+          "New codes will use the selected widths and continue from the current sequence.",
+        digitChange: "{previous, number} to {next, number}",
+        apply: "Apply Code Padding",
+        applying: "Applying Code Padding…",
+        saveSuccess: "Generated code padding saved",
+        saveError: "Could not save code padding. Try again.",
+        invalidPadding:
+          "Choose 1 to {documentMax} digits for document codes and 1 to {locationMax} digits per warehouse location level.",
+      },
       companyForm: {
         saveSuccess: "Company settings updated successfully",
         saveError: "Failed to update company settings",
         basicInformationTitle: "Basic Information",
         basicInformationDescription: "Core company details and identification",
-        companyCode: "Company Code *",
+        companyCode: "Company Code",
         companyCodePlaceholder: "ABC123",
         companyName: "Company Name *",
         companyNamePlaceholder: "My Company Ltd.",
@@ -13400,7 +13438,7 @@ export const translations: Record<Locale, TranslationKeys> = {
         title: "设置",
         subtitle: "配置系统级设置和偏好",
         companyTitle: "公司信息",
-        companyDescription: "公司级详细信息（仅限公司管理员）",
+        companyDescription: "公司详细信息和自动编码补零设置",
         businessUnitTitle: "业务单元设置",
         businessUnitDescription: "配置当前业务单元的专属设置",
         financialTitle: "财务设置",
@@ -13422,7 +13460,7 @@ export const translations: Record<Locale, TranslationKeys> = {
         noBusinessUnitSelectedTitle: "未选择业务单元",
         noBusinessUnitSelectedDescription: "请选择一个业务单元以配置其设置。",
         companyTitle: "公司信息",
-        companyDescription: "管理公司的详细信息和联系信息",
+        companyDescription: "管理公司详细信息、联系方式和自动编码补零设置",
         companyLoadError: "加载公司设置失败",
         businessUnitTitle: "业务单元设置",
         businessUnitDescription: "配置 {name} 的专属设置",
@@ -13449,12 +13487,30 @@ export const translations: Record<Locale, TranslationKeys> = {
       common: {
         saveChanges: "保存更改",
       },
+      generatedCodePadding: {
+        title: "自动编码补零",
+        description: "设置所有业务单元中新编码的最少数字位数。选择 1 表示不在数字前补零。",
+        documentDigits: "单据编码的数字位数",
+        warehouseLocationDigits: "仓库库位每一级的数字位数",
+        example: "示例：{example}",
+        changeWarning: "更改编码格式会影响所有业务单元中新生成的编码。",
+        save: "保存补零设置",
+        confirmTitle: "确认编码补零设置",
+        confirmDescription: "新编码将采用所选位数，并按现有编号顺序继续生成。",
+        digitChange: "从 {previous, number} 位改为 {next, number} 位",
+        apply: "应用补零设置",
+        applying: "正在应用补零设置…",
+        saveSuccess: "已保存自动编码补零设置",
+        saveError: "无法保存补零设置。请重试。",
+        invalidPadding:
+          "单据编码请选择 1 至 {documentMax} 位，仓库库位每一级请选择 1 至 {locationMax} 位。",
+      },
       companyForm: {
         saveSuccess: "公司设置更新成功",
         saveError: "更新公司设置失败",
         basicInformationTitle: "基本信息",
         basicInformationDescription: "核心公司详情与标识信息",
-        companyCode: "公司代码 *",
+        companyCode: "公司代码",
         companyCodePlaceholder: "ABC123",
         companyName: "公司名称 *",
         companyNamePlaceholder: "我的公司有限公司",

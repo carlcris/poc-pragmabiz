@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { SettingsPageLayout } from "@/components/settings/SettingsPageLayout";
 import { CompanySettingsForm } from "@/components/settings/forms/CompanySettingsForm";
+import { GeneratedCodePaddingForm } from "@/components/settings/forms/GeneratedCodePaddingForm";
 import { useSettings } from "@/hooks/settings/useSettings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,6 +29,15 @@ export default function CompanySettingsPage() {
       {isLoading ? (
         <div className="space-y-6">
           <Card>
+            <CardContent className="space-y-4 pt-6">
+              <Skeleton className="h-5 w-48" />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Skeleton className="h-10 w-full sm:w-48" />
+                <Skeleton className="h-10 w-full sm:w-48" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
             <CardContent className="pt-6">
               <div className="space-y-4">
                 <Skeleton className="h-10 w-full" />
@@ -37,9 +47,12 @@ export default function CompanySettingsPage() {
             </CardContent>
           </Card>
         </div>
-      ) : (
-        <CompanySettingsForm initialData={settings} />
-      )}
+      ) : settings ? (
+        <>
+          <GeneratedCodePaddingForm settings={settings} />
+          <CompanySettingsForm initialData={settings} />
+        </>
+      ) : null}
     </SettingsPageLayout>
   );
 }

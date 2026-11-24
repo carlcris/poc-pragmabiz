@@ -643,6 +643,12 @@ workflows.
 **Fields worth knowing about for testing**:
 
 - Company Code cannot be changed once set (same immutable-code pattern as Items/Suppliers/Warehouses).
+- **Admin → Settings → Company → Generated Code Padding** controls the minimum number of digits in
+  newly generated codes across the company. Document codes use 9 digits by default (range 1–18).
+  Warehouse locations use 2 digits per generated segment by default (range 1–6). Set a width to 1
+  to generate numbers without leading zeros. Changes require confirmation and apply to new codes
+  across all business units. The database continues the current sequence, skips occupied codes in
+  the document's uniqueness scope, and uses all digits when a number exceeds the selected width.
 - The Inventory settings group includes things like a company-wide default unit of measure, low-stock and critical-stock thresholds, how stock is valued, whether negative stock is allowed, and — worth calling out specifically — a **default pricing tier** setting. This setting decides which price actually shows as an item's "list price" when that item has multiple price tiers configured; if there's no matching tier price, it falls back to the item's own plain sales price.
 - The **Workflow** settings tab has toggles that look like they should require manager approval before certain documents can proceed — specifically "require approval" switches for Purchase Orders, Stock Requests, and Delivery Notes, plus a numeric approval threshold for Stock Requests. **None of these toggles are actually checked anywhere in the app.** Turning "Stock Request approval required" on or off has no effect on the real Stock Request workflow documented in section 12 — a Stock Request follows the same Submit → Approve path either way. Treat this as a confirmed gap, not something to keep re-testing hoping for a different result.
 - The **POS** settings tab (receipt header/footer text, whether to show the logo on receipts, auto-print, discount limits, a manager-approval discount threshold, cash drawer toggle, default payment method) is real and does feed into the POS screens — this one is worth testing for effect, unlike Workflow settings above.
@@ -651,6 +657,16 @@ workflows.
 
 - Change the default pricing tier setting and confirm the Items list/detail pages correctly reflect the new tier's price for items that have tiered pricing set up.
 - Confirm the Company Code field is genuinely locked/uneditable once a company profile has been saved.
+- Change the document width to 12 and the location width to 3. Check that a warning appears and that
+  selecting **Save Code Padding** asks for confirmation. Cancel and verify the draft is still
+  visible and the saved values persist after a reload. Make the changes again and confirm, then
+  reload to verify both values persist. Create a purchase order and a warehouse location and check
+  their new codes use the saved widths. Verify previously saved codes still display the same values,
+  then restore the original settings. Check that the selectors offer only supported widths and the
+  API rejects fractional and out-of-range values. Confirm a user with Company Settings view
+  permission can see the widths and that saving requires the edit permission.
+- Run `supabase/tests/generated-code-padding.sql` against the migrated local database to check that
+  allocation skips occupied document codes and that failed inserts roll back sequence changes.
 - If negative stock is toggled off, confirm the app actually blocks a transaction that would take an item below zero somewhere; if toggled on, confirm it's actually allowed.
 - Toggle each of the Workflow tab's "require approval" switches and confirm they have no observable effect on Stock Requests or Delivery Notes — if you ever find one of them does something, that's new information worth reporting, since it contradicts what's documented here.
 - Change a POS setting (e.g. the discount limit or receipt header text) and confirm it actually shows up in the POS sale screen / printed receipt.

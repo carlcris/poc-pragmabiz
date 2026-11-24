@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
   createCompanySettingsSchema,
@@ -22,22 +24,23 @@ import {
   type CompanySettingsFormData,
 } from "@/lib/validations/settings/company";
 import { useUpdateSettings } from "@/hooks/settings/useSettings";
+import type { CompanySettings } from "@/types/settings";
 import { Loader2 } from "lucide-react";
 
-interface CompanySettingsFormProps {
-  initialData?: Partial<CompanySettingsFormData>;
-}
+type CompanySettingsFormProps = {
+  initialData?: Partial<CompanySettings>;
+};
 
 export function CompanySettingsForm({ initialData }: CompanySettingsFormProps) {
   const t = useTranslations("adminSettings.companyForm");
   const commonT = useTranslations("adminSettings.common");
   const updateSettings = useUpdateSettings("company");
   const schema = createCompanySettingsSchema();
+  const companyCodeId = useId();
 
   const form = useForm<CompanySettingsFormInput, unknown, CompanySettingsFormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      code: initialData?.code || "",
       name: initialData?.name || "",
       legal_name: initialData?.legal_name || "",
       tax_id: initialData?.tax_id || "",
@@ -54,9 +57,9 @@ export function CompanySettingsForm({ initialData }: CompanySettingsFormProps) {
     },
   });
 
-  const onSubmit = async (data: CompanySettingsFormData) => {
+  const onSubmit = async (settings: CompanySettingsFormData) => {
     try {
-      await updateSettings.mutateAsync(data);
+      await updateSettings.mutateAsync(settings);
       toast.success(t("saveSuccess"));
     } catch (error) {
       console.error("Error updating company settings:", error);
@@ -77,19 +80,15 @@ export function CompanySettingsForm({ initialData }: CompanySettingsFormProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="code"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("companyCode")}</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder={t("companyCodePlaceholder")} disabled />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-2">
+                <Label htmlFor={companyCodeId}>{t("companyCode")}</Label>
+                <Input
+                  id={companyCodeId}
+                  value={initialData?.code}
+                  placeholder={t("companyCodePlaceholder")}
+                  disabled
+                />
+              </div>
 
               <FormField
                 control={form.control}

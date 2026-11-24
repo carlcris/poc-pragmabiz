@@ -4,6 +4,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import type { Setting, SettingValue, SettingsGroupKey } from "@/types/settings";
+import { generatedCodePaddingSchema } from "@/lib/validations/settings/generated-code-padding";
+
+const COMPANY_SETTINGS_PROJECTION =
+  "code, name, legal_name, tax_id, email, phone, address_line1, address_line2, city, state, postal_code, country, currency_code, is_active, document_code_digits, warehouse_location_code_digits";
+
+const COMPANY_UPDATE_KEYS = new Set([
+  "name",
+  "legal_name",
+  "tax_id",
+  "email",
+  "phone",
+  "address_line1",
+  "address_line2",
+  "city",
+  "state",
+  "postal_code",
+  "country",
+  "currency_code",
+  "is_active",
+]);
 
 const VALID_GROUPS: SettingsGroupKey[] = [
   "company",
@@ -55,9 +75,7 @@ async function GETHandler(request: NextRequest, context: { params: Promise<{ gro
     if (group === "company") {
       const { data: company, error: companyError } = await supabase
         .from("companies")
-        .select(
-          "code, name, legal_name, tax_id, email, phone, address_line1, address_line2, city, state, postal_code, country, currency_code, is_active"
-        )
+        .select(COMPANY_SETTINGS_PROJECTION)
         .eq("id", userRow.company_id)
         .is("deleted_at", null)
         .single();
@@ -172,53 +190,47 @@ async function PUTHandler(request: NextRequest, context: { params: Promise<{ gro
     }
 
     // Parse request body
-    const body = (await request.json()) as Record<string, SettingValue>;
+    const requestBody: unknown = await request.json();
 
-    if (!body || typeof body !== "object") {
+    if (
+      !requestBody ||
+      typeof requestBody !== "object" ||
+      Array.isArray(requestBody) ||
+      JSON.stringify(requestBody).length > 32_768
+    ) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
+    const body = requestBody as Record<string, SettingValue>;
+
     if (group === "company") {
-      const {
-        code,
-        name,
-        legal_name,
-        tax_id,
-        email,
-        phone,
-        address_line1,
-        address_line2,
-        city,
-        state,
-        postal_code,
-        country,
-        currency_code,
-        is_active,
-      } = body;
+      const padding = generatedCodePaddingSchema.partial().safeParse(body);
+      if (!padding.success) {
+        return NextResponse.json(
+          {
+            error:
+              "Enter a whole number from 1 to 18 for document codes and 1 to 6 for warehouse location codes.",
+            code: "INVALID_GENERATED_CODE_PADDING",
+          },
+          { status: 400 }
+        );
+      }
+
+      const companyUpdate = {
+        ...Object.fromEntries(Object.entries(body).filter(([key]) => COMPANY_UPDATE_KEYS.has(key))),
+        ...padding.data,
+      };
+
+      if (Object.keys(companyUpdate).length === 0) {
+        return NextResponse.json({ error: "No company settings supplied" }, { status: 400 });
+      }
 
       const { data: company, error: companyError } = await supabase
         .from("companies")
-        .update({
-          code,
-          name,
-          legal_name,
-          tax_id,
-          email,
-          phone,
-          address_line1,
-          address_line2,
-          city,
-          state,
-          postal_code,
-          country,
-          currency_code,
-          is_active,
-        })
+        .update(companyUpdate)
         .eq("id", userRow.company_id)
         .is("deleted_at", null)
-        .select(
-          "code, name, legal_name, tax_id, email, phone, address_line1, address_line2, city, state, postal_code, country, currency_code, is_active"
-        )
+        .select(COMPANY_SETTINGS_PROJECTION)
         .single();
 
       if (companyError) {

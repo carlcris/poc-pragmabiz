@@ -195,6 +195,7 @@ export type Database = {
           currency_code: string | null
           custom_fields: Json | null
           deleted_at: string | null
+          document_code_digits: number
           email: string | null
           id: string
           is_active: boolean | null
@@ -205,6 +206,7 @@ export type Database = {
           state: string | null
           tax_id: string | null
           updated_at: string
+          warehouse_location_code_digits: number
         }
         Insert: {
           address_line1?: string | null
@@ -216,6 +218,7 @@ export type Database = {
           currency_code?: string | null
           custom_fields?: Json | null
           deleted_at?: string | null
+          document_code_digits?: number
           email?: string | null
           id?: string
           is_active?: boolean | null
@@ -226,6 +229,7 @@ export type Database = {
           state?: string | null
           tax_id?: string | null
           updated_at?: string
+          warehouse_location_code_digits?: number
         }
         Update: {
           address_line1?: string | null
@@ -237,6 +241,7 @@ export type Database = {
           currency_code?: string | null
           custom_fields?: Json | null
           deleted_at?: string | null
+          document_code_digits?: number
           email?: string | null
           id?: string
           is_active?: boolean | null
@@ -247,6 +252,7 @@ export type Database = {
           state?: string | null
           tax_id?: string | null
           updated_at?: string
+          warehouse_location_code_digits?: number
         }
         Relationships: []
       }
