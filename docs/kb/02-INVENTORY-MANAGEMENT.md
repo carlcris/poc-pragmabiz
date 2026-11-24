@@ -502,10 +502,11 @@ Company Level
 - **Reorder Alert Basis**: Total available stock across all company warehouses compared to the effective item reorder point
 
 When an item has an inventory preview unit, the desktop and mobile layouts of the **Inventory** tab
-show its whole-unit equivalent next to **On Hand**, **Allocated** (reserved), and **Available**.
-Inventory divides each base quantity by the selected option's conversion and drops the fractional
-part. For `BOX (50)`, balances of 1,000 on hand, 200 reserved, and 800 available show
-`20 BOX (50)`, `4 BOX (50)`, and `16 BOX (50)`.
+show its whole-unit equivalent next to **On Hand**, **Allocated** (reserved), **Putaway Qty**, and
+**Available**. A base quantity of zero appears by itself. Inventory divides each nonzero base
+quantity by the selected option's conversion and drops the fractional part. For `BOX (50)`,
+quantities of 1,000 on hand, 200 allocated, 300 awaiting putaway, and 500 available show
+`20 BOX (50)`, `4 BOX (50)`, `6 BOX (50)`, and `10 BOX (50)`.
 
 The item detail summary uses the same preview. In **Locations**, each displayed stock amount uses
 its own warehouse, location, or batch quantity for the conversion. This includes location search

@@ -3,33 +3,31 @@ import type { ItemInventoryRow } from "@/types/item-inventory";
 import type { InventoryPreviewQuantityFormatter } from "@/lib/items/inventory-preview-quantity";
 
 type InventoryPreviewQuantityProps = {
-  baseQuantity: number | string | null | undefined;
+  baseQuantity: number;
   previewUnit: ItemInventoryRow["inventoryPreviewUnit"];
   formatPreviewQuantity: InventoryPreviewQuantityFormatter;
   /** Receives the formatted base figure so callers keep their own colors and emphasis. */
-  children: (baseQuantity: string) => ReactNode;
+  children?: (baseQuantity: string) => ReactNode;
 };
 
-/**
- * Renders the base quantity and, when the item nominates a unit option, appends the whole
- * unit equivalent on the same line, wrapping only when the row runs out of width. The muted
- * text and gap keep the equivalent visually separate without parentheses, and the unit's own
- * display label is rendered verbatim. Colors stay on the caller's base node.
- */
+/** Shows the equivalent below the base quantity on phones and beside it in the table. */
 export function InventoryPreviewQuantity({
   baseQuantity,
   previewUnit,
   formatPreviewQuantity,
   children,
 }: InventoryPreviewQuantityProps) {
-  const base = children(formatPreviewQuantity.formatBase(baseQuantity));
+  const formattedBase = formatPreviewQuantity.formatBase(baseQuantity);
+  const base = children ? children(formattedBase) : <span>{formattedBase}</span>;
+  if (!previewUnit || baseQuantity === 0) return <>{base}</>;
+
   const equivalent = formatPreviewQuantity.formatEquivalent(baseQuantity, previewUnit);
-  if (!previewUnit || equivalent === null) return <>{base}</>;
+  if (equivalent === null) return <>{base}</>;
 
   return (
-    <span className="inline-flex max-w-32 flex-wrap items-baseline justify-end gap-x-1">
+    <span className="block md:inline-flex md:max-w-32 md:flex-wrap md:items-baseline md:justify-end md:gap-x-1">
       {base}
-      <span className="min-w-0 whitespace-normal break-words text-xs font-normal text-muted-foreground">
+      <span className="block min-w-0 whitespace-normal break-words text-xs font-normal text-muted-foreground">
         {equivalent} {previewUnit.displayLabel}
       </span>
     </span>

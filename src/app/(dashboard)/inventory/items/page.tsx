@@ -827,7 +827,6 @@ function ItemsPageContent() {
             <InventoryItemMobileList
               items={items}
               renderStatus={getStatusBadge}
-              formatQuantity={(value) => Math.trunc(toNumber(value))}
               formatPreviewQuantity={formatPreviewQuantity}
               onEditItem={handleEditItem}
               onDeleteItem={handleDeleteItem}
@@ -890,21 +889,21 @@ function ItemsPageContent() {
                           baseQuantity={item.onHand}
                           previewUnit={item.inventoryPreviewUnit}
                           formatPreviewQuantity={formatPreviewQuantity}
-                        >
-                          {(onHand) => <span>{onHand}</span>}
-                        </InventoryPreviewQuantity>
+                        />
                       </TableCell>
                       <TableCell className="text-right text-orange-600">
                         <InventoryPreviewQuantity
                           baseQuantity={item.allocated}
                           previewUnit={item.inventoryPreviewUnit}
                           formatPreviewQuantity={formatPreviewQuantity}
-                        >
-                          {(allocated) => <span>{allocated}</span>}
-                        </InventoryPreviewQuantity>
+                        />
                       </TableCell>
                       <TableCell className="text-right text-purple-600">
-                        {Math.trunc(toNumber(item.putawayQty))}
+                        <InventoryPreviewQuantity
+                          baseQuantity={item.putawayQty}
+                          previewUnit={item.inventoryPreviewUnit}
+                          formatPreviewQuantity={formatPreviewQuantity}
+                        />
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         {(() => {

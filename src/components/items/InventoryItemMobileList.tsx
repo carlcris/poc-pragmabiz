@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { InventoryPreviewQuantity } from "@/components/items/InventoryPreviewQuantity";
 import { ItemImage } from "@/components/items/ItemImage";
 import {
   AnyPermissionGuard,
@@ -25,7 +26,6 @@ import type { InventoryPreviewQuantityFormatter } from "@/lib/items/inventory-pr
 type InventoryItemMobileListProps = {
   items: ItemInventoryRow[];
   renderStatus: (status: ItemInventoryRow["status"]) => ReactNode;
-  formatQuantity: (value: number) => number;
   formatPreviewQuantity: InventoryPreviewQuantityFormatter;
   onEditItem: (item: ItemInventoryRow) => void;
   onDeleteItem: (item: ItemInventoryRow) => void;
@@ -39,7 +39,6 @@ type InventoryItemMobileListProps = {
 export function InventoryItemMobileList({
   items,
   renderStatus,
-  formatQuantity,
   formatPreviewQuantity,
   onEditItem,
   onDeleteItem,
@@ -48,23 +47,13 @@ export function InventoryItemMobileList({
   const t = useTranslations("itemsPage");
   const tCommon = useTranslations("common");
 
-  // Four columns leave no room for an inline equivalent, so the whole unit equivalent stays
-  // on its own subline under the base figure, with the unit's display label kept verbatim.
-  const renderPreviewQuantity = (item: ItemInventoryRow, baseQuantity: number) => {
-    const previewUnit = item.inventoryPreviewUnit;
-    const equivalent = formatPreviewQuantity.formatEquivalent(baseQuantity, previewUnit);
-
-    return (
-      <>
-        {formatPreviewQuantity.formatBase(baseQuantity)}
-        {previewUnit && equivalent !== null ? (
-          <span className="block break-words text-xs font-normal text-muted-foreground">
-            {equivalent} {previewUnit.displayLabel}
-          </span>
-        ) : null}
-      </>
-    );
-  };
+  const renderPreviewQuantity = (item: ItemInventoryRow, baseQuantity: number) => (
+    <InventoryPreviewQuantity
+      baseQuantity={baseQuantity}
+      previewUnit={item.inventoryPreviewUnit}
+      formatPreviewQuantity={formatPreviewQuantity}
+    />
+  );
 
   return (
     <ul className="border-t">
@@ -140,7 +129,9 @@ export function InventoryItemMobileList({
             </div>
             <div className="flex flex-col">
               <dt className="text-xs text-muted-foreground">{t("putawayQty")}</dt>
-              <dd className="text-sm font-medium">{formatQuantity(item.putawayQty)}</dd>
+              <dd className="text-sm font-medium">
+                {renderPreviewQuantity(item, item.putawayQty)}
+              </dd>
             </div>
             <div className="flex flex-col">
               <dt className="text-xs text-muted-foreground">{t("available")}</dt>

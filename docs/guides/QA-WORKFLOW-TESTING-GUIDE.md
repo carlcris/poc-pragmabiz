@@ -235,10 +235,12 @@ These are the records everything else in the app is built on. Before testing any
 - Edit a non-default option and mark it as default while giving it the same unit and conversion as
   another option. Confirm the save is rejected and the previous default stays selected after reload.
 - In **Unit Options**, open **More** on an active non-base option and select **Show in Inventory**.
-  On the **Inventory** tab, confirm On Hand, Reserved, and Available show each base quantity and
-  its whole-unit equivalent on desktop and mobile. For `BOX (50)` and balances of 1,000, 200, and
-  800, expect `20 BOX (50)`, `4 BOX (50)`, and `16 BOX (50)`. Try a balance of 249 and confirm
-  it shows `4 BOX (50)`. Choose a different option and confirm it replaces the previous preview.
+  On the **Inventory** tab, confirm On Hand, Allocated, Putaway Qty, and Available show the
+  whole-unit equivalent for each nonzero base quantity on desktop and mobile. For `BOX (50)` and
+  quantities of 1,000, 200, 300, and 500, expect `20 BOX (50)`, `4 BOX (50)`, `6 BOX (50)`, and
+  `10 BOX (50)`. Check that a zero quantity shows only `0` and that a quantity of 49 shows
+  `0 BOX (50)` alongside the base quantity. Choose a different option and confirm it replaces the
+  previous preview.
   Remove or deactivate the nominated option and confirm the equivalents disappear.
 - On desktop, nominate a unit with a 120-character label containing no spaces. Confirm the label
   wraps inside the quantity cells and the status and row actions remain accessible.
