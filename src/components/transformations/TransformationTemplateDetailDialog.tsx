@@ -1,340 +1,226 @@
 "use client";
 
-import { useState } from "react";
-import { ScissorsLineDashed } from "lucide-react";
-import { useTranslations } from "next-intl";
-import type { TransformationTemplateApi } from "@/types/transformation-template";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useMemo, useRef, useState } from "react";
+import { Pencil } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
+import type {
+  SheetLayoutSection,
+  TransformationTemplateApi,
+  TransformationTemplateUomApi,
+} from "@/types/transformation-template";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { StatusText } from "@/components/shared/StatusText";
+import { cn } from "@/lib/utils";
+import { useTransformationTemplate } from "@/hooks/useTransformationTemplates";
+import { TransformationAdditionalOutputImagePreview } from "./TransformationAdditionalOutputImagePreview";
+import { TransformationSheetLayoutDiagram } from "./TransformationSheetLayoutDiagram";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   template?: TransformationTemplateApi;
+  /** Provided only when the template may still be edited. */
+  onEdit?: () => void;
 };
 
-export function TransformationTemplateDetailDialog({ open, onOpenChange, template }: Props) {
-  const t = useTranslations("transformation");
+const getUomLabel = (uom?: TransformationTemplateUomApi | null) =>
+  uom?.uom_name || uom?.name || uom?.code || "";
+
+/**
+ * Collapses an item's pieces into label ranges ("P1–P12, P15") by walking
+ * their layout order, so long cut lists stay one short line.
+ */
+const getPieceRanges = (sections: SheetLayoutSection[]) => {
+  const ordered = [...sections].sort((a, b) => a.order - b.order);
+  const ranges: string[] = [];
+  let start = ordered[0];
+  let previous = ordered[0];
+
+  for (const section of ordered.slice(1)) {
+    if (section.order === previous.order + 1) {
+      previous = section;
+      continue;
+    }
+    ranges.push(start === previous ? start.label : `${start.label}–${previous.label}`);
+    start = section;
+    previous = section;
+  }
+  if (start) ranges.push(start === previous ? start.label : `${start.label}–${previous.label}`);
+
+  return ranges.join(", ");
+};
+
+export function TransformationTemplateDetailDialog({
+  open,
+  onOpenChange,
+  template,
+  onEdit,
+}: Props) {
+  const t = useTranslations("transformationTemplateDetail");
+  const tTransformation = useTranslations("transformation");
+  const tCommon = useTranslations("common");
+  const format = useFormatter();
+  const contentRef = useRef<HTMLDivElement>(null);
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  const detailId = open && template?.additional_outputs?.length ? template.id : "";
+  const {
+    data: detail,
+    isPending: isLoadingImages,
+    isFetching: isFetchingImages,
+    isError: imagesLoadFailed,
+    refetch,
+  } = useTransformationTemplate(detailId);
+
+  const layoutSections = useMemo(() => template?.layout_json?.sections ?? [], [template]);
+  const outputs = useMemo(() => template?.outputs ?? [], [template]);
+
+  const sectionsByItemId = useMemo(() => {
+    const grouped = new Map<string, SheetLayoutSection[]>();
+    for (const section of layoutSections) {
+      if (section.type !== "piece" || !section.mappedItem) continue;
+      const itemSections = grouped.get(section.mappedItem.itemId) ?? [];
+      itemSections.push(section);
+      grouped.set(section.mappedItem.itemId, itemSections);
+    }
+    return grouped;
+  }, [layoutSections]);
+
+  const alternateItemIds = useMemo(
+    () =>
+      new Set(
+        outputs
+          .map((output) => output.item_id ?? output.items?.id)
+          .filter((itemId, index): itemId is string => !!itemId && index % 2 === 1)
+      ),
+    [outputs]
+  );
+
   if (!template) return null;
 
   const inputs = template.inputs ?? [];
-  const outputs = template.outputs ?? [];
-  const additionalOutputs = template.additional_outputs ?? [];
+  const additionalOutputs = detail?.data.additional_outputs ?? template.additional_outputs ?? [];
   const isSheetLayout = template.template_kind === "sheet_layout";
-  const layoutSections = template.layout_json?.sections ?? [];
   const sheetWidth = template.sheet_width ?? 0;
   const sheetHeight = template.sheet_height ?? 0;
   const sheetUnit = template.sheet_unit ?? "";
-  const outerStrokeWidth = 0.25;
-  const innerStrokeWidth = 2.2;
-  const annotationPaddingX = 2.8;
-  const annotationPaddingTop = 2.8;
-  const annotationPaddingBottom = 3.2;
+  const hasLayout = isSheetLayout && sheetWidth > 0 && sheetHeight > 0 && layoutSections.length > 0;
+  const showsSidePanel = isSheetLayout || !!template.image_url;
 
-  const formatDimension = (value: number) => {
-    if (Number.isInteger(value)) return `${value}`;
-    return value.toFixed(2).replace(/\.?0+$/, "");
-  };
+  const formatValue = (value: number) => format.number(value, { maximumFractionDigits: 2 });
+  const formatSize = (width: number, height: number) =>
+    t("cutSizeValue", { width: formatValue(width), height: formatValue(height), unit: sheetUnit });
+  const formatQuantity = (quantity: number, uom: string) =>
+    t("quantityWithUnit", { quantity: formatValue(Number(quantity)), unit: uom });
 
   const pieceSections = layoutSections.filter((section) => section.type === "piece");
-  const totalOutputPieces = [...outputs, ...additionalOutputs].reduce((total, output) => {
-    const quantity = Number(output.quantity);
-    return total + (Number.isFinite(quantity) ? quantity : 0);
-  }, 0);
-  const cutSizeSummaries = Array.from(
-    pieceSections.reduce((acc, section) => {
-      const key = `${section.width}x${section.height}`;
-      const current = acc.get(key);
-      if (current) {
-        current.count += 1;
-        return acc;
-      }
+  const leftoverCount = layoutSections.length - pieceSections.length;
+  const pieceArea = pieceSections.reduce(
+    (total, section) => total + section.width * section.height,
+    0
+  );
+  const sheetUsedRatio = sheetWidth && sheetHeight ? pieceArea / (sheetWidth * sheetHeight) : 0;
 
-      acc.set(key, {
-        width: section.width,
-        height: section.height,
-        count: 1,
-      });
-      return acc;
-    }, new Map<string, { width: number; height: number; count: number }>())
-  )
-    .map(([, value]) => value)
-    .sort((a, b) => b.width * b.height - a.width * a.height);
+  const selectedSection = selectedSectionId
+    ? (layoutSections.find((section) => section.id === selectedSectionId) ?? null)
+    : null;
 
-  const getPreviewTextLayout = (width: number, height: number) => ({
-    canShowTitle: width >= 3 && height >= 3,
-    canShowDimensions: width >= 8 && height >= 6,
-    canShowMappedItem: width >= 8 && height >= 6,
-    titleFontSize: 1.05,
-    dimensionFontSize: 0.72,
-  });
+  const isSectionHighlighted = (section: SheetLayoutSection) =>
+    selectedSectionId
+      ? section.id === selectedSectionId
+      : !!selectedItemId && section.mappedItem?.itemId === selectedItemId;
 
-  const wrapSvgText = (text: string, maxCharsPerLine: number, maxLines: number): string[] => {
-    const normalized = text.trim().replace(/\s+/g, " ");
-    if (!normalized) return [];
-
-    const words = normalized.split(" ");
-    const lines: string[] = [];
-    let currentLine = "";
-
-    for (const word of words) {
-      const nextLine = currentLine ? `${currentLine} ${word}` : word;
-      if (nextLine.length <= maxCharsPerLine) {
-        currentLine = nextLine;
-        continue;
-      }
-
-      if (currentLine) {
-        lines.push(currentLine);
-        if (lines.length === maxLines) break;
-        currentLine = word;
-        continue;
-      }
-
-      lines.push(word.slice(0, Math.max(1, maxCharsPerLine - 1)).trimEnd());
-      if (lines.length === maxLines) break;
-    }
-
-    if (lines.length < maxLines && currentLine) {
-      lines.push(currentLine);
-    }
-
-    if (words.length > 0 && lines.length) {
-      const usedWords = lines.join(" ").split(" ").length;
-      if (usedWords < words.length) {
-        lines[lines.length - 1] =
-          `${lines[lines.length - 1].slice(0, Math.max(0, maxCharsPerLine - 1)).trimEnd()}…`;
-      }
-    }
-
-    return lines.slice(0, maxLines);
+  const handleSectionSelect = (section: SheetLayoutSection) => {
+    const isDeselecting = section.id === selectedSectionId;
+    setSelectedSectionId(isDeselecting ? null : section.id);
+    setSelectedItemId(isDeselecting ? null : (section.mappedItem?.itemId ?? null));
   };
 
-  const renderSheetLayoutSvg = (className: string) => (
-    <svg
-      viewBox={`${-annotationPaddingX} ${-annotationPaddingTop} ${sheetWidth + annotationPaddingX * 2} ${sheetHeight + annotationPaddingTop + annotationPaddingBottom}`}
-      className={className}
-      style={{ aspectRatio: `${sheetWidth} / ${sheetHeight}` }}
-      shapeRendering="geometricPrecision"
-    >
-      <g aria-hidden="true">
-        <text
-          x={sheetWidth / 2}
-          y={-0.9}
-          textAnchor="middle"
-          fontSize={1.55}
-          fontWeight={700}
-          fill="#3b82f6"
-        >
-          {formatDimension(sheetWidth)}
-        </text>
-        <text
-          x={sheetWidth / 2}
-          y={sheetHeight + 2.5}
-          textAnchor="middle"
-          fontSize={1.55}
-          fontWeight={700}
-          fill="#3b82f6"
-        >
-          {formatDimension(sheetWidth)}
-        </text>
-        <text
-          x={-1.25}
-          y={sheetHeight / 2}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize={1.55}
-          fontWeight={700}
-          fill="#3b82f6"
-        >
-          {formatDimension(sheetHeight)}
-        </text>
-        <text
-          x={sheetWidth + 1.25}
-          y={sheetHeight / 2}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize={1.55}
-          fontWeight={700}
-          fill="#3b82f6"
-        >
-          {formatDimension(sheetHeight)}
-        </text>
-      </g>
-      <rect x={0} y={0} width={sheetWidth} height={sheetHeight} fill="#ffffff" />
-      {layoutSections.map((section) => {
-        const isMappedPiece = section.type === "piece" && !!section.mappedItem;
-        const fill = section.type === "piece" ? "#ffffff" : "#f8fafc";
-        const strokeColor = section.type === "piece" ? "#6b7280" : "#94a3b8";
-        const textLayout = getPreviewTextLayout(section.width, section.height);
-        const mappedItemLines =
-          section.mappedItem && textLayout.canShowMappedItem
-            ? wrapSvgText(
-                section.mappedItem.itemName,
-                Math.max(8, Math.floor(section.width * 0.75)),
-                section.height >= 24 ? 2 : 1
-              )
-            : [];
+  const handleItemSelect = (itemId: string) => {
+    setSelectedSectionId(null);
+    setSelectedItemId((current) => (current === itemId ? null : itemId));
+  };
 
+  const usageText =
+    template.usage_count > 0 ? t("usedInOrders", { count: template.usage_count }) : t("notUsedYet");
+
+  const sectionHeadingClassName = "text-sm font-semibold text-muted-foreground";
+
+  const renderSidePanel = () => {
+    if (isSheetLayout) {
+      if (!hasLayout) {
         return (
-          <g key={section.id}>
-            <rect
-              x={section.x}
-              y={section.y}
-              width={section.width}
-              height={section.height}
-              fill={fill}
-              stroke={strokeColor}
-              strokeWidth={innerStrokeWidth}
-              vectorEffect="non-scaling-stroke"
-            />
-
-            {isMappedPiece && textLayout.canShowMappedItem && section.mappedItem ? (
-              <text
-                x={section.x + 0.5}
-                y={section.y + 0.9}
-                fontSize={0.52}
-                fontWeight={700}
-                fill="#2563eb"
-              >
-                {section.mappedItem.itemCode}
-              </text>
-            ) : null}
-
-            {textLayout.canShowTitle && (
-              <>
-                <text
-                  x={section.x + section.width / 2}
-                  y={
-                    section.y +
-                    section.height / 2 -
-                    (textLayout.canShowDimensions ? textLayout.titleFontSize * 0.35 : 0)
-                  }
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontSize={textLayout.titleFontSize}
-                  fontWeight={700}
-                  fill="#111827"
-                >
-                  {section.label}
-                </text>
-                {textLayout.canShowDimensions && (
-                  <>
-                    <text
-                      x={section.x + section.width / 2}
-                      y={section.y + section.height / 2 + textLayout.titleFontSize * 0.75}
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                      fontSize={textLayout.dimensionFontSize}
-                      fill="#475569"
-                    >
-                      {section.width.toFixed(2)} x {section.height.toFixed(2)} {sheetUnit}
-                    </text>
-                    {mappedItemLines.length ? (
-                      <text
-                        x={section.x + section.width / 2}
-                        y={
-                          section.y +
-                          section.height / 2 +
-                          textLayout.titleFontSize +
-                          textLayout.dimensionFontSize * 0.95
-                        }
-                        textAnchor="middle"
-                        fontSize={Math.min(
-                          Math.max(textLayout.dimensionFontSize * 0.82, 0.68),
-                          1.05
-                        )}
-                        fontWeight={700}
-                        fill="#2563eb"
-                      >
-                        {mappedItemLines.map((line, index) => (
-                          <tspan
-                            key={`${section.id}-mapped-line-${index}`}
-                            x={section.x + section.width / 2}
-                            dy={
-                              index === 0
-                                ? textLayout.dimensionFontSize * 1.2
-                                : textLayout.dimensionFontSize * 1.05
-                            }
-                          >
-                            {line}
-                          </tspan>
-                        ))}
-                      </text>
-                    ) : null}
-                  </>
-                )}
-              </>
-            )}
-          </g>
-        );
-      })}
-      <rect x={0} y={0} width={sheetWidth} height={outerStrokeWidth} fill="#111827" />
-      <rect
-        x={0}
-        y={Math.max(sheetHeight - outerStrokeWidth, 0)}
-        width={sheetWidth}
-        height={outerStrokeWidth}
-        fill="#111827"
-      />
-      <rect x={0} y={0} width={outerStrokeWidth} height={sheetHeight} fill="#111827" />
-      <rect
-        x={Math.max(sheetWidth - outerStrokeWidth, 0)}
-        y={0}
-        width={outerStrokeWidth}
-        height={sheetHeight}
-        fill="#111827"
-      />
-    </svg>
-  );
-
-  const renderCutSizeSummary = () => (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-      <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-        <ScissorsLineDashed className="h-4 w-4" />
-        Cut Sizes
-      </div>
-      <div className="space-y-2">
-        {cutSizeSummaries.map((summary) => (
-          <div
-            key={`${summary.width}x${summary.height}`}
-            className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2"
-          >
-            <div>
-              <p className="text-sm font-semibold text-slate-900">
-                {formatDimension(summary.width)} x {formatDimension(summary.height)} {sheetUnit}
-              </p>
-              <p className="text-xs text-slate-500">Cut size</p>
-            </div>
-            <div className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-              {summary.count} pcs
-            </div>
+          <div className="flex h-64 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+            {t("noLayoutPreview")}
           </div>
-        ))}
-      </div>
-    </div>
-  );
+        );
+      }
 
-  const renderSheetLayoutPreview = () => {
-    if (!sheetWidth || !sheetHeight || !layoutSections.length) {
       return (
-        <div className="flex h-64 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
-          No layout preview available
-        </div>
+        <>
+          <TransformationSheetLayoutDiagram
+            sheetWidth={sheetWidth}
+            sheetHeight={sheetHeight}
+            sheetUnit={sheetUnit}
+            sections={layoutSections}
+            alternateItemIds={alternateItemIds}
+            isSectionHighlighted={isSectionHighlighted}
+            selectedSectionId={selectedSectionId}
+            onSectionSelect={handleSectionSelect}
+          />
+          <dl className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-sm tabular-nums">
+            <div className="flex gap-1">
+              <dt className="sr-only">{t("piecesLabel", { count: pieceSections.length })}</dt>
+              <dd className="font-semibold">{format.number(pieceSections.length)}</dd>
+              <dd aria-hidden="true" className="text-muted-foreground">
+                {t("piecesLabel", { count: pieceSections.length })}
+              </dd>
+            </div>
+            <div className="flex gap-1">
+              <dt className="sr-only">{t("sheetUsedLabel")}</dt>
+              <dd className="font-semibold">
+                {format.number(sheetUsedRatio, { style: "percent", maximumFractionDigits: 0 })}
+              </dd>
+              <dd aria-hidden="true" className="text-muted-foreground">
+                {t("sheetUsedLabel")}
+              </dd>
+            </div>
+            <div className="flex gap-1">
+              <dt className="sr-only">{t("leftoversLabel", { count: leftoverCount })}</dt>
+              <dd className="font-semibold">{format.number(leftoverCount)}</dd>
+              <dd aria-hidden="true" className="text-muted-foreground">
+                {t("leftoversLabel", { count: leftoverCount })}
+              </dd>
+            </div>
+          </dl>
+        </>
       );
     }
+
+    if (!template.image_url) return null;
 
     return (
       <button
         type="button"
-        className="block w-full rounded-md border bg-white p-3 text-left transition hover:opacity-95"
+        aria-label={t("viewTemplateImage")}
+        className="block w-full cursor-zoom-in overflow-hidden rounded-md border bg-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         onClick={() => setImagePreviewOpen(true)}
       >
-        {renderSheetLayoutSvg("w-full cursor-zoom-in rounded-md")}
-        <div className="mt-3 border-t bg-background/90 px-3 py-2 text-xs text-muted-foreground">
-          Click preview to view full size
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={template.image_url}
+          alt={t("templateImageAlt", { name: template.template_name })}
+          className="h-72 w-full object-contain"
+        />
       </button>
     );
   };
@@ -342,271 +228,355 @@ export function TransformationTemplateDetailDialog({ open, onOpenChange, templat
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{template.template_name}</DialogTitle>
+        {/* 90vh keeps the backdrop visible around a tall workbench; the preset
+            max-h-screen would let the dialog touch both viewport edges. */}
+        <DialogContent
+          ref={contentRef}
+          className="flex max-h-[90vh] max-w-6xl flex-col gap-0 overflow-hidden p-0 focus:outline-none"
+          // Focus the dialog itself rather than the first sheet piece, so the
+          // diagram does not open with a selection-like focus ring on P1.
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            contentRef.current?.focus();
+          }}
+        >
+          <DialogHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0 border-b px-6 py-4 pr-14 text-left">
+            <div className="min-w-0 space-y-1">
+              <DialogTitle className="text-xl font-semibold">{template.template_name}</DialogTitle>
+              <DialogDescription className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
+                <span>{template.template_code}</span>
+                <span aria-hidden="true">·</span>
+                <span>{isSheetLayout ? t("sheetLayoutKind") : t("recipeKind")}</span>
+                <span aria-hidden="true">·</span>
+                <StatusText tone={template.is_active ? "green" : "muted"}>
+                  {template.is_active ? tCommon("active") : tCommon("inactive")}
+                </StatusText>
+                <span aria-hidden="true">·</span>
+                <span>{usageText}</span>
+                {template.usage_count > 0 && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span>{t("locked")}</span>
+                  </>
+                )}
+              </DialogDescription>
+            </div>
+            {onEdit && (
+              <Button type="button" variant="outline" onClick={onEdit}>
+                <Pencil className="mr-2 h-4 w-4" />
+                {tCommon("edit")}
+              </Button>
+            )}
           </DialogHeader>
 
-          <div className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="space-y-4 rounded-lg border bg-card p-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Template Code
-                    </p>
-                    <p className="mt-1 font-medium">{template.template_code}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Status</p>
-                    <div className="mt-1">
-                      <Badge className={template.is_active ? "bg-green-500" : "bg-gray-500"}>
-                        {template.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Usage Count
-                    </p>
-                    <p className="mt-1 font-medium">{template.usage_count}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Materials
-                    </p>
-                    <p className="mt-1 font-medium">
-                      {isSheetLayout
-                        ? `${layoutSections.length} section${layoutSections.length !== 1 ? "s" : ""}`
-                        : `${inputs.length} input${inputs.length !== 1 ? "s" : ""} / ${outputs.length + additionalOutputs.length} output${outputs.length + additionalOutputs.length !== 1 ? "s" : ""}`}
-                    </p>
-                  </div>
-                </div>
+          <div
+            className={cn(
+              "grid min-h-0 flex-1 overflow-y-auto",
+              showsSidePanel && "lg:grid-cols-5"
+            )}
+          >
+            {showsSidePanel && (
+              <section
+                aria-label={isSheetLayout ? t("sheetLayoutRegion") : t("templateImageRegion")}
+                className="flex flex-col gap-4 border-b bg-muted/40 px-6 py-6 lg:col-span-2 lg:border-b-0 lg:border-r"
+              >
+                {renderSidePanel()}
+              </section>
+            )}
 
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Description
+            <div
+              className={cn("flex min-w-0 flex-col gap-6 p-6", showsSidePanel && "lg:col-span-3")}
+            >
+              <section aria-labelledby="template-detail-consumes" className="space-y-2">
+                <h3 id="template-detail-consumes" className={sectionHeadingClassName}>
+                  {t("consumes")}
+                </h3>
+                {inputs.length === 0 ? (
+                  <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                    {t("noInputs")}
                   </p>
-                  <p className="mt-1 min-h-10 text-sm">
-                    {template.description?.trim() || "No description provided"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-lg border bg-card p-4">
-                {isSheetLayout ? (
-                  <>
-                    <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-                      <ScissorsLineDashed className="h-4 w-4" />
-                      Sheet Layout Preview
-                    </div>
-                    {renderSheetLayoutPreview()}
-                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-md border bg-muted/30 p-3">
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                          Parent Sheet
-                        </p>
-                        <p className="mt-1 font-medium">
-                          {sheetWidth} x {sheetHeight} {sheetUnit}
-                        </p>
-                      </div>
-                      <div className="rounded-md border bg-muted/30 p-3">
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                          Pieces
-                        </p>
-                        <p className="mt-1 font-medium">{formatDimension(totalOutputPieces)}</p>
-                      </div>
-                      <div className="rounded-md border bg-muted/30 p-3">
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                          Leftovers
-                        </p>
-                        <p className="mt-1 font-medium">
-                          {layoutSections.filter((section) => section.type === "leftover").length}
-                        </p>
-                      </div>
-                    </div>
-                  </>
                 ) : (
-                  <>
-                    <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">
-                      Template Image
-                    </p>
-                    {template.image_url ? (
-                      <button
-                        type="button"
-                        className="group block w-full overflow-hidden rounded-md border bg-muted/30 text-left transition hover:opacity-95"
-                        onClick={() => setImagePreviewOpen(true)}
+                  <ul className="space-y-2">
+                    {inputs.map((input) => (
+                      <li
+                        key={input.id}
+                        className="flex items-start justify-between gap-4 rounded-md border px-4 py-3"
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={template.image_url}
-                          alt={`${template.template_name} template`}
-                          className="h-64 w-full cursor-zoom-in bg-white object-contain"
-                        />
-                        <div className="border-t bg-background/90 px-3 py-2 text-xs text-muted-foreground">
-                          Click image to view full size
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold tabular-nums">
+                            {input.items?.item_code}
+                            {hasLayout && (
+                              <span className="font-normal text-muted-foreground">
+                                {" · "}
+                                {t("parentSheetSize", {
+                                  size: formatSize(sheetWidth, sheetHeight),
+                                })}
+                              </span>
+                            )}
+                          </p>
+                          <p className="break-words text-sm">{input.items?.item_name}</p>
+                          {input.notes && (
+                            <p className="break-words text-sm text-muted-foreground">
+                              {input.notes}
+                            </p>
+                          )}
                         </div>
-                      </button>
-                    ) : (
-                      <div className="flex h-64 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
-                        No image uploaded
-                      </div>
-                    )}
-                  </>
+                        <span className="whitespace-nowrap text-base font-semibold tabular-nums">
+                          {formatQuantity(input.quantity, getUomLabel(input.uom))}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 )}
-              </div>
-            </div>
+              </section>
 
-            <div className="space-y-3">
-              <h3 className="font-semibold">
-                {isSheetLayout ? "Input Products" : "Input Materials"}
-              </h3>
-              <div className="space-y-2">
-                {inputs.length === 0 && (
-                  <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                    No input {isSheetLayout ? "products" : "materials"} configured.
-                  </div>
-                )}
-                {inputs.map((input) => (
-                  <div
-                    key={input.id}
-                    className="flex items-start justify-between gap-4 rounded-lg border bg-card p-3"
-                  >
-                    <div>
-                      <p className="font-medium leading-tight">
-                        {input.items?.item_code} <span className="text-muted-foreground">•</span>{" "}
-                        {input.items?.item_name}
-                      </p>
-                      {input.notes && (
-                        <p className="text-sm text-muted-foreground">{input.notes}</p>
-                      )}
-                    </div>
-                    <span className="whitespace-nowrap font-medium">
-                      {input.quantity}{" "}
-                      {input.uom?.uom_name || input.uom?.name || input.uom?.code || ""}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="font-semibold">Output Products</h3>
-              <div className="space-y-2">
-                {outputs.length === 0 && (
-                  <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                    No output products configured.
-                  </div>
-                )}
-                {outputs.map((output) => (
-                  <div
-                    key={output.id}
-                    className="flex items-start justify-between gap-4 rounded-lg border bg-card p-3"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium leading-tight">
-                          {output.items?.item_code} <span className="text-muted-foreground">•</span>{" "}
-                          {output.items?.item_name}
-                        </p>
-                        {output.is_scrap && (
-                          <Badge variant="outline" className="text-xs">
-                            Scrap
-                          </Badge>
-                        )}
-                      </div>
-                      {output.notes && (
-                        <p className="text-sm text-muted-foreground">{output.notes}</p>
-                      )}
-                    </div>
-                    <span className="whitespace-nowrap font-medium">
-                      {output.quantity}{" "}
-                      {output.uom?.uom_name || output.uom?.name || output.uom?.code || ""}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="font-semibold">{t("plannedAdditionalOutputs")}</h3>
-              <div className="space-y-2">
-                {additionalOutputs.length === 0 ? (
-                  <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                    {t("noPlannedAdditionalOutputs")}
-                  </div>
+              <section aria-labelledby="template-detail-produces" className="space-y-2">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <h3 id="template-detail-produces" className={sectionHeadingClassName}>
+                    {t("produces")}
+                  </h3>
+                  {hasLayout && outputs.length > 0 && (
+                    <p className="text-xs text-muted-foreground">{t("selectItemHint")}</p>
+                  )}
+                </div>
+                {outputs.length === 0 ? (
+                  <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                    {t("noOutputs")}
+                  </p>
                 ) : (
-                  additionalOutputs.map((output) => (
-                    <div
-                      key={output.id}
-                      className="flex items-start justify-between gap-4 rounded-lg border bg-card p-3"
-                    >
-                      <div>
-                        <p className="font-medium leading-tight">
-                          {output.items?.item_code} <span className="text-muted-foreground">•</span>{" "}
-                          {output.items?.item_name}
-                        </p>
-                        {output.notes ? (
-                          <p className="text-sm text-muted-foreground">{output.notes}</p>
-                        ) : null}
-                      </div>
-                      <span className="whitespace-nowrap font-medium">
-                        {output.quantity}{" "}
-                        {output.uom?.name ||
-                          output.uom?.code ||
-                          output.items?.uom?.name ||
-                          output.items?.uom?.code ||
-                          ""}
-                      </span>
-                    </div>
-                  ))
+                  <ul className="space-y-2">
+                    {outputs.map((output) => {
+                      const itemId = output.item_id ?? output.items?.id ?? "";
+                      const itemSections = sectionsByItemId.get(itemId) ?? [];
+                      const cutSizes = Array.from(
+                        new Set(
+                          itemSections.map((section) => formatSize(section.width, section.height))
+                        )
+                      ).join(", ");
+                      const isSelected = !!itemId && selectedItemId === itemId;
+                      const content = (
+                        <>
+                          {hasLayout && (
+                            <span
+                              aria-hidden="true"
+                              className={cn(
+                                "mt-1 size-3 shrink-0 border border-muted-foreground/50",
+                                alternateItemIds.has(itemId) ? "bg-muted" : "bg-background"
+                              )}
+                            />
+                          )}
+                          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <span className="flex flex-wrap items-center gap-2 text-sm font-semibold tabular-nums">
+                              <span>
+                                {output.items?.item_code}
+                                {cutSizes && (
+                                  <span className="font-normal text-muted-foreground">
+                                    {" · "}
+                                    {t("cutSizes", { sizes: cutSizes })}
+                                  </span>
+                                )}
+                              </span>
+                              {output.is_scrap && (
+                                <Badge variant="outline">{tTransformation("scrap")}</Badge>
+                              )}
+                            </span>
+                            <span className="break-words text-sm">{output.items?.item_name}</span>
+                            {hasLayout && (
+                              <span className="text-xs tabular-nums text-muted-foreground">
+                                {itemSections.length
+                                  ? t("pieceRanges", { ranges: getPieceRanges(itemSections) })
+                                  : t("noMappedPieces")}
+                              </span>
+                            )}
+                            {output.notes && (
+                              <span className="break-words text-sm text-muted-foreground">
+                                {output.notes}
+                              </span>
+                            )}
+                          </span>
+                          <span className="whitespace-nowrap text-base font-semibold tabular-nums">
+                            {formatQuantity(output.quantity, getUomLabel(output.uom))}
+                          </span>
+                        </>
+                      );
+
+                      return (
+                        <li key={output.id}>
+                          {hasLayout && itemSections.length > 0 ? (
+                            <button
+                              type="button"
+                              aria-pressed={isSelected}
+                              onClick={() => handleItemSelect(itemId)}
+                              className={cn(
+                                "flex w-full items-start gap-3 rounded-md border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                                isSelected ? "border-primary bg-secondary/40" : "hover:bg-muted/60"
+                              )}
+                            >
+                              {content}
+                            </button>
+                          ) : (
+                            <div className="flex items-start gap-3 rounded-md border px-4 py-3">
+                              {content}
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
-              </div>
+              </section>
+
+              <section aria-labelledby="template-detail-additional" className="space-y-2">
+                <h3 id="template-detail-additional" className={sectionHeadingClassName}>
+                  {t("alsoProduces")}
+                  {isSheetLayout && (
+                    <span className="font-normal">
+                      {" · "}
+                      {t("notCutFromSheet")}
+                    </span>
+                  )}
+                </h3>
+                {detailId && isLoadingImages && (
+                  <p role="status" className="text-sm text-muted-foreground">
+                    {tTransformation("additionalOutputImagesLoading")}
+                  </p>
+                )}
+                {detailId && imagesLoadFailed && (
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                    <p role="alert">{tTransformation("additionalOutputImagesLoadError")}</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={isFetchingImages}
+                      onClick={() => void refetch()}
+                    >
+                      {tTransformation("additionalOutputImagesRetry")}
+                    </Button>
+                  </div>
+                )}
+                {additionalOutputs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {tTransformation("noPlannedAdditionalOutputs")}
+                  </p>
+                ) : (
+                  <ul className="grid gap-2 sm:grid-cols-2">
+                    {additionalOutputs.map((output) => {
+                      const itemName =
+                        output.items?.item_name ??
+                        output.items?.item_code ??
+                        tTransformation("additionalOutput");
+
+                      return (
+                        <li
+                          key={output.id}
+                          className="flex min-w-0 items-center gap-3 rounded-md border p-2"
+                        >
+                          {output.image_path && (
+                            <TransformationAdditionalOutputImagePreview
+                              itemName={itemName}
+                              imageUrl={output.image_url}
+                              thumbnailUrl={output.image_thumbnail_url}
+                              isRefreshing={isFetchingImages}
+                              onRefresh={async () => (await refetch()).isSuccess}
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold tabular-nums">
+                              {output.items?.item_code}
+                              {" · "}
+                              {formatQuantity(
+                                output.quantity,
+                                getUomLabel(output.uom) || getUomLabel(output.items?.uom)
+                              )}
+                            </p>
+                            <p className="break-words text-xs text-muted-foreground">
+                              {output.items?.item_name}
+                            </p>
+                            {output.notes && (
+                              <p className="break-words text-xs text-muted-foreground">
+                                {output.notes}
+                              </p>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </section>
+
+              {template.description?.trim() && (
+                <section aria-labelledby="template-detail-description" className="space-y-2">
+                  <h3 id="template-detail-description" className={sectionHeadingClassName}>
+                    {t("description")}
+                  </h3>
+                  <p className="whitespace-pre-line break-words text-sm">
+                    {template.description.trim()}
+                  </p>
+                </section>
+              )}
+
+              {hasLayout && (
+                <section
+                  aria-live="polite"
+                  aria-label={t("pieceInspectorRegion")}
+                  className="mt-auto rounded-md bg-muted/60 px-4 py-3"
+                >
+                  {selectedSection ? (
+                    <>
+                      <p className="text-sm tabular-nums">
+                        <span className="font-semibold">
+                          {selectedSection.type === "leftover"
+                            ? t("leftover")
+                            : selectedSection.label}
+                        </span>
+                        {" · "}
+                        {formatSize(selectedSection.width, selectedSection.height)}
+                        {selectedSection.mappedItem && (
+                          <>
+                            {" · "}
+                            {selectedSection.mappedItem.itemCode}
+                          </>
+                        )}
+                        {" · "}
+                        {t("piecePosition", {
+                          x: formatValue(selectedSection.x),
+                          y: formatValue(selectedSection.y),
+                          unit: sheetUnit,
+                        })}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedSection.type === "leftover"
+                          ? t("leftoverDescription")
+                          : (selectedSection.mappedItem?.itemName ?? t("unmappedPiece"))}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t("pieceInspectorHint")}</p>
+                  )}
+                </section>
+              )}
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {(template.image_url || isSheetLayout) && (
+      {!isSheetLayout && template.image_url && (
         <Dialog open={imagePreviewOpen} onOpenChange={setImagePreviewOpen}>
-          <DialogContent className="max-h-[88vh] max-w-5xl overflow-hidden border-slate-200 bg-white p-0 shadow-xl">
-            <DialogHeader className="gap-2 border-b border-slate-200 px-5 py-4 pr-14">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-0.5">
-                  <DialogTitle className="text-lg font-semibold tracking-tight text-slate-950">
-                    {template.template_name}
-                  </DialogTitle>
-                  <p className="text-xs text-slate-500">
-                    {isSheetLayout ? "Layout preview" : "Image preview"} for{" "}
-                    <span className="font-medium text-slate-800">{template.template_code}</span>
-                  </p>
-                </div>
-                <div className="inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
-                  {isSheetLayout ? "Sheet Layout" : "Template Image"}
-                </div>
-              </div>
+          <DialogContent className="flex max-h-dvh max-w-5xl flex-col overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>{template.template_name}</DialogTitle>
+              <DialogDescription>{template.template_code}</DialogDescription>
             </DialogHeader>
-            {isSheetLayout ? (
-              <div className="max-h-[calc(88vh-76px)] overflow-auto bg-slate-50 p-4 sm:p-5">
-                <div className="grid gap-5 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start">
-                  <div className="min-w-0">
-                    {renderSheetLayoutSvg("mx-auto max-h-[68vh] w-full")}
-                  </div>
-                  <div>{renderCutSizeSummary()}</div>
-                </div>
-              </div>
-            ) : template.image_url ? (
-              <div className="max-h-[calc(88vh-76px)] overflow-auto bg-slate-50 p-4 sm:p-5">
-                <div className="flex min-h-[24rem] items-center justify-center rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={template.image_url}
-                    alt={`${template.template_name} full preview`}
-                    className="mx-auto max-h-[68vh] w-auto max-w-full object-contain"
-                  />
-                </div>
-              </div>
-            ) : null}
+            <div className="min-h-0 overflow-auto rounded-md bg-muted p-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={template.image_url}
+                alt={t("templateImageAlt", { name: template.template_name })}
+                className="mx-auto max-h-screen w-auto max-w-full object-contain"
+              />
+            </div>
           </DialogContent>
         </Dialog>
       )}

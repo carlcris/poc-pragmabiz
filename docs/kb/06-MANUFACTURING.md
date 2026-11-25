@@ -124,6 +124,10 @@ scales these outputs automatically. Copies receive independent additional-output
 new copied template cannot change its source. Primary and additional outputs must both be fully
 accounted as produced or wasted when the order is completed.
 
+When creating or copying either template kind, each additional output can include one JPEG, PNG,
+WebP, or GIF image up to 4 MB. **View Template** shows a thumbnail beside the output. Select it to
+open a larger preview. Copied templates retain the additional-output images from the source.
+
 The sheet-layout template designer requires an explicit warehouse when searching stock-backed item
 candidates. The selector is limited to active warehouses in the current business unit and never
 silently chooses the first warehouse. The warehouse is a search location only; it does not replace
@@ -463,8 +467,8 @@ description. The selector loads five results per request and can load more.
 Create transformation template.
 
 **Permissions**: `create` on `stock_transformations` in the current business unit. Template header,
-inputs, outputs, and optional copy lineage are created in one database transaction. New templates
-are active immediately.
+inputs, primary and additional outputs, image references, and optional copy lineage are created in
+one database transaction. New templates are active immediately.
 
 **Request**:
 
@@ -494,9 +498,30 @@ are active immediately.
       "isScrap": true
     }
   ],
+  "additionalOutputs": [
+    {
+      "itemId": "uuid-edge-cut",
+      "quantity": 2,
+      "imagePath": "path-returned-by-image-upload"
+    }
+  ],
   "copiedFromTemplateId": "optional-active-source-template-uuid"
 }
 ```
+
+#### POST /api/transformations/templates/additional-output-images
+
+Upload a JPEG, PNG, WebP, or GIF as the `file` field of a multipart request. The limit is 4 MiB
+(4,194,304 bytes), and image decoding is limited to 40 megapixels. Requires Stock Transformations
+`create` in the current business unit. The response includes an `imagePath` for the template create
+request and temporary `imageUrl` and `imageThumbnailUrl` values for display. The original and
+generated thumbnail use private storage.
+The activity log captures the validated media type and byte count for processed uploads.
+
+#### GET /api/transformations/templates/[id]
+
+Return the authorized template detail, including temporary `image_url` and `image_thumbnail_url`
+values for additional outputs with an image. The paginated templates list omits these URLs.
 
 #### GET /api/transformations/templates/copy-sources
 
@@ -513,6 +538,7 @@ business unit's template records.
 
 Return the active source template snapshot needed to initialize a new template. Access is restricted
 to the authenticated user's company and current-BU Stock Transformations `create` permission.
+Additional outputs include their image reference and temporary display URLs when available.
 
 ### Transformation Order Management
 
@@ -1024,6 +1050,20 @@ Day 3          - Customer picks up framed poster
 - Create/edit templates
 - Add input/output items
 - Set cost proportions
+
+#### TransformationTemplateDetailDialog
+
+**Location**: `src/components/transformations/TransformationTemplateDetailDialog.tsx`
+
+- Opens from a row on the Templates list; the header shows code, kind, status, order usage, and
+  a Locked note once the template has been used in an order
+- Lists what the template consumes, produces, and also produces (additional outputs, not cut from
+  the sheet)
+- Sheet-layout templates show the cut plan as an interactive diagram
+  (`TransformationSheetLayoutDiagram`): selecting an output highlights its pieces, and selecting a
+  piece shows its size, item, and position from the top-left corner
+- The Pieces figure counts only cut pieces on the sheet; additional outputs are listed separately
+- Edit appears only where the list allows it (recipe templates not yet used in any order)
 
 #### TransformationOrderForm
 

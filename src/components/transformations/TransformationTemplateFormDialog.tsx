@@ -5,6 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslations } from "next-intl";
+import { getApiErrorCode } from "@/lib/api";
+import { ADDITIONAL_OUTPUT_IMAGE_SAVE_ERROR_CODES } from "@/lib/transformations/additional-output-images";
 import {
   Plus,
   Trash2,
@@ -57,6 +59,7 @@ import {
   type TransformationItemFormValues,
 } from "./TransformationItemDialog";
 import { TransformationTemplateCopySourcePicker } from "./TransformationTemplateCopySourcePicker";
+import { TransformationAdditionalOutputThumbnail } from "./TransformationAdditionalOutputThumbnail";
 import {
   TemplateAdditionalOutputDialog,
   type TemplateAdditionalOutputDialogValue,
@@ -234,6 +237,8 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
               },
               quantity: Number(output.quantity),
               notes: output.notes ?? undefined,
+              imagePath: output.image_path ?? undefined,
+              imageThumbnailUrl: output.image_thumbnail_url ?? undefined,
             },
           ];
         })
@@ -337,6 +342,7 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
           quantity: output.quantity,
           sequence: index + 1,
           notes: output.notes,
+          imagePath: output.imagePath,
         })),
         copiedFromTemplateId,
       };
@@ -380,6 +386,13 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
       setAdditionalOutputs([]);
       setCopiedFromTemplateId(undefined);
     } catch (error) {
+      if (getApiErrorCode(error, ADDITIONAL_OUTPUT_IMAGE_SAVE_ERROR_CODES)) {
+        form.setError("root", {
+          type: "additionalOutputImage",
+          message: t("additionalOutputImageUnavailable"),
+        });
+        return;
+      }
       const errorMessage = (() => {
         if (error && typeof error === "object") {
           const errorWithCause = error as {
@@ -752,25 +765,36 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
                             key={output.item.id}
                             className="flex items-start justify-between gap-4 rounded-md border p-3"
                           >
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium">
-                                {output.item.item_code} - {output.item.item_name}
-                              </p>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {t("quantityPerTemplate")}: {output.quantity} · {t("baseUnit")}:{" "}
-                                {output.item.uom_code}
-                              </p>
+                            <div className="flex min-w-0 items-center gap-3">
+                              {output.imagePath && (
+                                <TransformationAdditionalOutputThumbnail
+                                  src={output.imageThumbnailUrl}
+                                  alt={t("additionalOutputImagePreview")}
+                                />
+                              )}
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium">
+                                  {output.item.item_code} - {output.item.item_name}
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {t("quantityPerTemplate")}: {output.quantity} · {t("baseUnit")}:{" "}
+                                  {output.item.uom_code}
+                                </p>
+                              </div>
                             </div>
                             <Button
                               type="button"
                               size="icon"
                               variant="ghost"
                               aria-label={t("removeAdditionalOutput")}
-                              onClick={() =>
+                              onClick={() => {
                                 setAdditionalOutputs((current) =>
                                   current.filter((entry) => entry.item.id !== output.item.id)
-                                )
-                              }
+                                );
+                                if (form.formState.errors.root?.type === "additionalOutputImage") {
+                                  form.clearErrors("root");
+                                }
+                              }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

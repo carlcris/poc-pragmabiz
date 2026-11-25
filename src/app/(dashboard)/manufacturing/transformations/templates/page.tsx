@@ -323,6 +323,14 @@ export default function TransformationTemplatesPage() {
           open={!!viewTemplate}
           onOpenChange={(open) => !open && setViewTemplate(null)}
           template={viewTemplate || undefined}
+          onEdit={
+            viewTemplate.usage_count === 0 && viewTemplate.template_kind !== "sheet_layout"
+              ? () => {
+                  setViewTemplate(null);
+                  setSelectedTemplate(viewTemplate);
+                }
+              : undefined
+          }
         />
       )}
 

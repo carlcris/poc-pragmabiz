@@ -23,7 +23,9 @@ import {
 import { useCreateTransformationTemplate } from "@/hooks/useTransformationTemplates";
 import { useItemsStock } from "@/hooks/useItemsStock";
 import { useCurrency } from "@/hooks/useCurrency";
+import { getApiErrorCode } from "@/lib/api";
 import { itemsApi } from "@/lib/api/items";
+import { ADDITIONAL_OUTPUT_IMAGE_SAVE_ERROR_CODES } from "@/lib/transformations/additional-output-images";
 import { resolvePriceTierSelection } from "@/lib/pricing/itemPriceTiers";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { toast } from "sonner";
@@ -65,6 +67,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TransformationTemplateCopySourcePicker } from "./TransformationTemplateCopySourcePicker";
+import { TransformationAdditionalOutputThumbnail } from "./TransformationAdditionalOutputThumbnail";
 import { ItemSelect } from "@/components/common/ItemSelect";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import {
@@ -774,6 +777,8 @@ export function TransformationTemplateDesignerPage() {
               },
               quantity: Number(output.quantity),
               notes: output.notes ?? undefined,
+              imagePath: output.image_path ?? undefined,
+              imageThumbnailUrl: output.image_thumbnail_url ?? undefined,
             },
           ];
         })
@@ -1607,6 +1612,7 @@ export function TransformationTemplateDesignerPage() {
         quantity: output.quantity,
         sequence: index + 1,
         notes: output.notes,
+        imagePath: output.imagePath,
       })),
       copiedFromTemplateId,
     };
@@ -1615,6 +1621,10 @@ export function TransformationTemplateDesignerPage() {
       await createTemplate.mutateAsync(payload);
       router.push("/manufacturing/transformations/templates");
     } catch (error) {
+      if (getApiErrorCode(error, ADDITIONAL_OUTPUT_IMAGE_SAVE_ERROR_CODES)) {
+        setErrorMessage(t("additionalOutputImageUnavailable"));
+        return;
+      }
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to save template. Please try again."
       );
@@ -1822,22 +1832,31 @@ export function TransformationTemplateDesignerPage() {
                 {additionalOutputs.map((output) => (
                   <div key={output.item.id} className="rounded-md border bg-muted/20 p-3">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{output.item.item_code}</p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {output.item.item_name}
-                        </p>
+                      <div className="flex min-w-0 items-center gap-3">
+                        {output.imagePath && (
+                          <TransformationAdditionalOutputThumbnail
+                            src={output.imageThumbnailUrl}
+                            alt={t("additionalOutputImagePreview")}
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{output.item.item_code}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {output.item.item_name}
+                          </p>
+                        </div>
                       </div>
                       <Button
                         type="button"
                         size="icon"
                         variant="ghost"
                         aria-label={t("removeAdditionalOutput")}
-                        onClick={() =>
+                        onClick={() => {
                           setAdditionalOutputs((current) =>
                             current.filter((entry) => entry.item.id !== output.item.id)
-                          )
-                        }
+                          );
+                          setErrorMessage(null);
+                        }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

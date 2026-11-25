@@ -14,6 +14,8 @@ export type RouteActivityConfig = {
   action: string;
   resourceType: string;
   route: string;
+  /** Disable body cloning for binary uploads and supply bounded metadata in the handler. */
+  captureRequestBody?: boolean;
 };
 
 export type ActivityPresentation = {

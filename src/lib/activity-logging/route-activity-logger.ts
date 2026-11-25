@@ -172,10 +172,17 @@ function getRequestIp(request: NextRequest): string | null {
 
 function startPayloadCapture(
   request: NextRequest,
-  method: ActivityHttpMethod
+  method: ActivityHttpMethod,
+  captureRequestBody = true
 ): ReturnType<typeof captureSanitizedRequestPayload> {
   if (!MUTATION_METHODS.has(method)) {
     return Promise.resolve({ payload: null, metadata: {} });
+  }
+  if (!captureRequestBody) {
+    return Promise.resolve({
+      payload: null,
+      metadata: { requestBodyCaptureDisabled: true },
+    });
   }
 
   try {
@@ -351,7 +358,7 @@ export function withActivityLogging<THandler extends RouteHandler>(
     const startedAt = performance.now();
     const actorContextPromise = resolveActorContext(nextRequest);
     const routeParamsPromise = getRouteParams(args as unknown[]);
-    const payloadPromise = startPayloadCapture(nextRequest, method);
+    const payloadPromise = startPayloadCapture(nextRequest, method, config.captureRequestBody);
     const store: ActivityRequestStore = {
       requestId,
       contextOverride: {},

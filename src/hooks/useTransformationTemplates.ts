@@ -1,6 +1,8 @@
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { getApiErrorCode } from "@/lib/api";
 import { transformationTemplatesApi } from "@/lib/api/transformation-templates";
+import { ADDITIONAL_OUTPUT_IMAGE_SAVE_ERROR_CODES } from "@/lib/transformations/additional-output-images";
 import type {
   TransformationTemplateFilters,
   TransformationTemplateListResponse,
@@ -77,8 +79,9 @@ export function useActiveTransformationTemplateOptions(search = "") {
 export function useTransformationTemplate(id: string) {
   return useQuery({
     queryKey: [TRANSFORMATION_TEMPLATES_QUERY_KEY, id],
-    queryFn: () => transformationTemplatesApi.getById(id),
+    queryFn: ({ signal }) => transformationTemplatesApi.getById(id, signal),
     enabled: !!id,
+    staleTime: 0,
   });
 }
 
@@ -101,6 +104,14 @@ export function useTransformationTemplateCopySource(id: string) {
   });
 }
 
+export function useUploadTransformationAdditionalOutputImage() {
+  return useMutation({
+    mutationFn: (file: File) => transformationTemplatesApi.uploadAdditionalOutputImage(file),
+    gcTime: 0,
+    networkMode: "always",
+  });
+}
+
 /**
  * Hook to create transformation template
  */
@@ -115,6 +126,7 @@ export function useCreateTransformationTemplate() {
       toast.success("Transformation template created successfully");
     },
     onError: (error: unknown) => {
+      if (getApiErrorCode(error, ADDITIONAL_OUTPUT_IMAGE_SAVE_ERROR_CODES)) return;
       toast.error(getTemplateErrorMessage(error, "Failed to create transformation template"));
     },
   });

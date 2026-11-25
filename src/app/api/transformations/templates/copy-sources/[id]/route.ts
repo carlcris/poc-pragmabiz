@@ -5,6 +5,7 @@ import { requirePermission } from "@/lib/auth";
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import type { TransformationTemplateCopySource } from "@/types/transformation-template";
+import { signAdditionalOutputImages } from "@/services/transformation-output-image-service";
 
 const templateIdSchema = z.string().uuid();
 
@@ -13,9 +14,12 @@ async function GETHandler(_request: NextRequest, { params }: { params: Promise<{
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, "create");
     if (unauthorized) return unauthorized;
 
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId, companyId } = await createServerClientWithBU();
     if (!currentBusinessUnitId) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    }
+    if (!companyId) {
+      return NextResponse.json({ error: "Company context required" }, { status: 400 });
     }
 
     const { id } = await params;
@@ -47,7 +51,16 @@ async function GETHandler(_request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Template copy source not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ data: data as TransformationTemplateCopySource });
+    const source = data as TransformationTemplateCopySource;
+    return NextResponse.json({
+      data: {
+        ...source,
+        additional_outputs: await signAdditionalOutputImages(
+          source.additional_outputs ?? [],
+          companyId
+        ),
+      },
+    });
   } catch (error) {
     console.error("Unexpected transformation template copy source detail error", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

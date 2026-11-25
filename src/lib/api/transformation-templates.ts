@@ -1,4 +1,5 @@
-import { apiClient } from "@/lib/api";
+import { API_BASE_URL, apiClient } from "@/lib/api";
+import { isSessionInvalidStatus, notifySessionInvalid } from "@/lib/auth/sessionInvalidation";
 import type {
   TransformationTemplateApi,
   TransformationTemplateFilters,
@@ -8,6 +9,7 @@ import type {
   TransformationTemplateCopySource,
   TransformationTemplateCopySourceFilters,
   TransformationTemplateCopySourceListResponse,
+  TransformationAdditionalOutputImage,
 } from "@/types/transformation-template";
 
 export const transformationTemplatesApi = {
@@ -30,9 +32,10 @@ export const transformationTemplatesApi = {
   /**
    * Get single transformation template by ID
    */
-  async getById(id: string): Promise<{ data: TransformationTemplateApi }> {
+  async getById(id: string, signal?: AbortSignal): Promise<{ data: TransformationTemplateApi }> {
     return apiClient.get<{ data: TransformationTemplateApi }>(
-      `/api/transformations/templates/${id}`
+      `/api/transformations/templates/${id}`,
+      { signal }
     );
   },
 
@@ -56,6 +59,33 @@ export const transformationTemplatesApi = {
     return apiClient.get<{ data: TransformationTemplateCopySource }>(
       `/api/transformations/templates/copy-sources/${id}`
     );
+  },
+
+  async uploadAdditionalOutputImage(file: File): Promise<TransformationAdditionalOutputImage> {
+    const body = new FormData();
+    body.set("file", file);
+    const response = await fetch(
+      `${API_BASE_URL}/api/transformations/templates/additional-output-images`,
+      {
+        method: "POST",
+        credentials: "include",
+        body,
+      }
+    );
+
+    if (!response.ok) {
+      if (isSessionInvalidStatus(response.status)) {
+        notifySessionInvalid({ status: response.status });
+      }
+      const cause: unknown =
+        response.status === 413
+          ? { code: "ADDITIONAL_OUTPUT_IMAGE_TOO_LARGE" }
+          : await response.json().catch(() => null);
+      throw new Error("Additional output image upload failed", { cause });
+    }
+
+    const { data }: { data: TransformationAdditionalOutputImage } = await response.json();
+    return data;
   },
 
   /**

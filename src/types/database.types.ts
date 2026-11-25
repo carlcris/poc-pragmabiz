@@ -10523,6 +10523,7 @@ export type Database = {
           created_at: string;
           created_by: string;
           id: string;
+          image_path: string | null;
           item_id: string;
           notes: string | null;
           quantity: number;
@@ -10535,6 +10536,7 @@ export type Database = {
           created_at?: string;
           created_by: string;
           id?: string;
+          image_path?: string | null;
           item_id: string;
           notes?: string | null;
           quantity: number;
@@ -10547,6 +10549,7 @@ export type Database = {
           created_at?: string;
           created_by?: string;
           id?: string;
+          image_path?: string | null;
           item_id?: string;
           notes?: string | null;
           quantity?: number;

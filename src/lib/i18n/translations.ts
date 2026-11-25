@@ -342,10 +342,64 @@ export type TranslationKeys = {
     selectItemForBaseUnit: string;
     baseUnitIsAutomatic: string;
     additionalOutputNotesPlaceholder: string;
+    additionalOutputImageOptional: string;
+    additionalOutputImageChoose: string;
+    additionalOutputImageRequirements: string;
+    additionalOutputImageRemove: string;
+    additionalOutputImageTooLarge: string;
+    additionalOutputImageInvalid: string;
+    additionalOutputImageUploading: string;
+    additionalOutputImageUploadFailed: string;
+    additionalOutputImageUnavailable: string;
+    additionalOutputImagesLoading: string;
+    additionalOutputImagesLoadError: string;
+    additionalOutputImagesRetry: string;
+    additionalOutputImagePreview: string;
+    additionalOutputImageView: string;
+    additionalOutputImageLoadError: string;
     addOutput: string;
     removeAdditionalOutput: string;
     primaryOutput: string;
     additionalOutput: string;
+  };
+  transformationTemplateDetail: {
+    sheetLayoutKind: string;
+    recipeKind: string;
+    notUsedYet: string;
+    usedInOrders: string;
+    consumes: string;
+    produces: string;
+    alsoProduces: string;
+    notCutFromSheet: string;
+    selectItemHint: string;
+    parentSheetSize: string;
+    cutSizeValue: string;
+    cutSizes: string;
+    dimensionValue: string;
+    quantityWithUnit: string;
+    pieceRanges: string;
+    noMappedPieces: string;
+    piecesLabel: string;
+    sheetUsedLabel: string;
+    leftoversLabel: string;
+    leftover: string;
+    leftoverDescription: string;
+    unmappedPiece: string;
+    pieceButtonLabel: string;
+    unmappedPieceButtonLabel: string;
+    leftoverButtonLabel: string;
+    piecePosition: string;
+    pieceInspectorRegion: string;
+    pieceInspectorHint: string;
+    sheetLayoutRegion: string;
+    templateImageRegion: string;
+    viewTemplateImage: string;
+    templateImageAlt: string;
+    noLayoutPreview: string;
+    noInputs: string;
+    noOutputs: string;
+    description: string;
+    locked: string;
   };
   framingDialog: {
     stockHint: string;
@@ -4662,10 +4716,66 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectItemForBaseUnit: "Select an item",
       baseUnitIsAutomatic: "The item's base unit is used and cannot be changed.",
       additionalOutputNotesPlaceholder: "Optional notes for this template output...",
+      additionalOutputImageOptional: "Image (optional)",
+      additionalOutputImageChoose: "Choose image",
+      additionalOutputImageRequirements: "JPG, PNG, WebP or GIF, up to 4 MB.",
+      additionalOutputImageRemove: "Remove image",
+      additionalOutputImageTooLarge: "Choose an image that is 4 MB or smaller.",
+      additionalOutputImageInvalid: "Choose a valid JPG, PNG, WebP or GIF image.",
+      additionalOutputImageUploading: "Uploading image…",
+      additionalOutputImageUploadFailed:
+        "The image could not be uploaded. Try adding the output again.",
+      additionalOutputImageUnavailable:
+        "An output image is unavailable. Remove the affected output and add it again with a new image.",
+      additionalOutputImagesLoading: "Loading output images…",
+      additionalOutputImagesLoadError: "Output images could not be loaded.",
+      additionalOutputImagesRetry: "Retry loading images",
+      additionalOutputImagePreview: "Output image preview",
+      additionalOutputImageView: "Preview image for {item}",
+      additionalOutputImageLoadError: "This image could not be displayed.",
       addOutput: "Add Output",
       removeAdditionalOutput: "Remove additional output",
       primaryOutput: "Primary",
       additionalOutput: "Additional",
+    },
+    transformationTemplateDetail: {
+      sheetLayoutKind: "Sheet Layout",
+      recipeKind: "Recipe",
+      notUsedYet: "Not used in any order yet",
+      usedInOrders: "Used in {count, plural, one {# order} other {# orders}}",
+      consumes: "Consumes",
+      produces: "Produces",
+      alsoProduces: "Also Produces",
+      notCutFromSheet: "Not Cut From Sheet",
+      selectItemHint: "Select an item to find its pieces",
+      parentSheetSize: "Parent Sheet {size}",
+      cutSizeValue: "{width} × {height} {unit}",
+      cutSizes: "Cut {sizes}",
+      dimensionValue: "{value} {unit}",
+      quantityWithUnit: "{quantity} {unit}",
+      pieceRanges: "Pieces {ranges}",
+      noMappedPieces: "No pieces mapped on the sheet",
+      piecesLabel: "{count, plural, one {Piece} other {Pieces}}",
+      sheetUsedLabel: "Sheet Used",
+      leftoversLabel: "{count, plural, one {Leftover} other {Leftovers}}",
+      leftover: "Leftover",
+      leftoverDescription: "Offcut left on the sheet after cutting",
+      unmappedPiece: "Not mapped to an output item",
+      pieceButtonLabel: "{label}, {size}, {item}",
+      unmappedPieceButtonLabel: "{label}, {size}, not mapped",
+      leftoverButtonLabel: "{label}, leftover, {size}",
+      piecePosition: "Starts {x} × {y} {unit} from top-left",
+      pieceInspectorRegion: "Selected piece",
+      pieceInspectorHint: "Select a piece on the sheet to see its item and position.",
+      sheetLayoutRegion: "Sheet layout",
+      templateImageRegion: "Template image",
+      viewTemplateImage: "View full-size template image",
+      templateImageAlt: "{name} template image",
+      noLayoutPreview: "No layout preview available",
+      noInputs: "No inputs configured.",
+      noOutputs: "No outputs configured.",
+      description: "Description",
+      locked: "Locked",
     },
     framingDialog: {
       stockHint: "stock +10%",
@@ -12082,10 +12192,65 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectItemForBaseUnit: "请选择物料",
       baseUnitIsAutomatic: "系统使用物料的基础单位，且不可更改。",
       additionalOutputNotesPlaceholder: "此模板产出的可选备注...",
+      additionalOutputImageOptional: "图片（可选）",
+      additionalOutputImageChoose: "选择图片",
+      additionalOutputImageRequirements: "支持 JPG、PNG、WebP 或 GIF，最大 4 MB。",
+      additionalOutputImageRemove: "移除图片",
+      additionalOutputImageTooLarge: "请选择不超过 4 MB 的图片。",
+      additionalOutputImageInvalid: "请选择有效的 JPG、PNG、WebP 或 GIF 图片。",
+      additionalOutputImageUploading: "正在上传图片…",
+      additionalOutputImageUploadFailed: "无法上传图片，请重新添加此产出。",
+      additionalOutputImageUnavailable:
+        "有一张产出图片无法使用。请移除对应的产出项，再使用新图片重新添加。",
+      additionalOutputImagesLoading: "正在加载产出图片…",
+      additionalOutputImagesLoadError: "无法加载产出图片。",
+      additionalOutputImagesRetry: "重新加载图片",
+      additionalOutputImagePreview: "产出图片预览",
+      additionalOutputImageView: "预览 {item} 的图片",
+      additionalOutputImageLoadError: "无法显示此图片。",
       addOutput: "添加产出",
       removeAdditionalOutput: "删除附加产出",
       primaryOutput: "主要产出",
       additionalOutput: "附加产出",
+    },
+    transformationTemplateDetail: {
+      sheetLayoutKind: "板材排版",
+      recipeKind: "配方",
+      notUsedYet: "尚未用于任何订单",
+      usedInOrders: "已用于 {count, plural, other {# 个订单}}",
+      consumes: "消耗",
+      produces: "产出",
+      alsoProduces: "附加产出",
+      notCutFromSheet: "非板材切割",
+      selectItemHint: "选择物料以查看其切片",
+      parentSheetSize: "原板 {size}",
+      cutSizeValue: "{width} × {height} {unit}",
+      cutSizes: "切割尺寸 {sizes}",
+      dimensionValue: "{value} {unit}",
+      quantityWithUnit: "{quantity} {unit}",
+      pieceRanges: "切片 {ranges}",
+      noMappedPieces: "板材上未映射切片",
+      piecesLabel: "{count, plural, other {切片}}",
+      sheetUsedLabel: "板材利用率",
+      leftoversLabel: "{count, plural, other {余料}}",
+      leftover: "余料",
+      leftoverDescription: "切割后留在板材上的余料",
+      unmappedPiece: "未映射到产出物料",
+      pieceButtonLabel: "{label}，{size}，{item}",
+      unmappedPieceButtonLabel: "{label}，{size}，未映射",
+      leftoverButtonLabel: "{label}，余料，{size}",
+      piecePosition: "起点距左上角 {x} × {y} {unit}",
+      pieceInspectorRegion: "已选切片",
+      pieceInspectorHint: "选择板材上的切片以查看其物料和位置。",
+      sheetLayoutRegion: "板材排版",
+      templateImageRegion: "模板图片",
+      viewTemplateImage: "查看模板原图",
+      templateImageAlt: "{name} 模板图片",
+      noLayoutPreview: "暂无排版预览",
+      noInputs: "未配置投入。",
+      noOutputs: "未配置产出。",
+      description: "描述",
+      locked: "已锁定",
     },
     framingDialog: {
       stockHint: "备料 +10%",

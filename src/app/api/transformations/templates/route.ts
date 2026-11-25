@@ -271,6 +271,20 @@ async function POSTHandler(request: NextRequest) {
         message: createError?.message,
       });
 
+      if (
+        createError?.code === "22023" &&
+        createError.message === "Invalid additional output image"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "An additional output image is unavailable. Upload the image again and save the template.",
+            code: "ADDITIONAL_OUTPUT_IMAGE_UNAVAILABLE",
+          },
+          { status: 400 }
+        );
+      }
+
       if (createError?.code === "23505") {
         return NextResponse.json({ error: "Template code already exists" }, { status: 400 });
       }

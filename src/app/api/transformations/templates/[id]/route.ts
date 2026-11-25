@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { updateTransformationTemplateSchema } from "@/lib/validations/transformation-template";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { signAdditionalOutputImages } from "@/services/transformation-output-image-service";
 
 const TEMPLATE_DETAIL_SELECT = `
   id,
@@ -55,6 +56,7 @@ const TEMPLATE_DETAIL_SELECT = `
     quantity,
     sequence,
     notes,
+    image_path,
     items:items(
       id,
       item_code,
@@ -108,7 +110,15 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Template not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ data: template });
+    return NextResponse.json({
+      data: {
+        ...template,
+        additional_outputs: await signAdditionalOutputImages(
+          template.additional_outputs ?? [],
+          userData.company_id
+        ),
+      },
+    });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

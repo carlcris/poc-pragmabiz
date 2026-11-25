@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ADDITIONAL_OUTPUT_IMAGE_PATH_PATTERN } from "@/lib/transformations/additional-output-images";
 
 // ============================================================================
 // UUID Validation (accepts all UUID formats including nil UUID)
@@ -101,6 +102,7 @@ export const templateAdditionalOutputSchema = z.object({
   quantity: numberSchema,
   sequence: sequenceSchema.optional(),
   notes: z.string().max(500).optional(),
+  imagePath: z.string().regex(ADDITIONAL_OUTPUT_IMAGE_PATH_PATTERN).optional(),
 });
 
 // ============================================================================

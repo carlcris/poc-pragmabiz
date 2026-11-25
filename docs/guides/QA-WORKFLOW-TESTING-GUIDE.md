@@ -626,6 +626,13 @@ workflows.
 - Copy an active current-BU template, modify its name, code, quantities, and materials before saving,
   then confirm the source is unchanged.
 - Copy an active template from another BU and confirm the copy is active and owned by the current BU.
+- In both a recipe and a sheet-layout template, add an optional image to an additional output.
+  Save, reopen **View Template**, and select the output thumbnail to preview the original. Confirm
+  an output without an image still displays its item and quantity. Try a file larger than 4 MB and
+  an unsupported file type, then choose a valid image and save without re-entering the output.
+- Copy a template with an additional-output image and confirm the copy's thumbnail and preview
+  still open after the source is deactivated. Confirm a user without template creation access
+  cannot upload an additional-output image.
 - Switch to a non-default BU, copy an active template from the default BU, and confirm it appears
   under **Template from another business unit** even when the session must use the selected-BU
   database fallback.

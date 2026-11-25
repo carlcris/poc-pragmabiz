@@ -145,8 +145,17 @@ export type TransformationTemplateAdditionalOutputApi = {
   sequence: number;
   quantity: number;
   notes?: string | null;
+  image_path?: string | null;
+  image_url?: string | null;
+  image_thumbnail_url?: string | null;
   items?: TransformationTemplateItemApi | null;
   uom?: TransformationTemplateUomApi | null;
+};
+
+export type TransformationAdditionalOutputImage = {
+  imagePath: string;
+  imageUrl: string;
+  imageThumbnailUrl: string;
 };
 
 export type TransformationAdditionalOutputItem = {
@@ -266,6 +275,7 @@ export interface CreateTransformationTemplateRequest {
     quantity: number;
     sequence?: number;
     notes?: string;
+    imagePath?: string;
   }[];
   copiedFromTemplateId?: string;
 }
