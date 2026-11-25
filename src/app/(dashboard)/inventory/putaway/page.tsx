@@ -343,9 +343,9 @@ export default function PutawayStationPage() {
                   return (
                     <TableRow key={task.id} data-state={selectedTask?.id === task.id && "selected"}>
                       <TableCell>
-                        <div className="font-medium">{sourceLabel(task.sourceType)}</div>
+                        <div className="font-medium">{task.sourceReference || "-"}</div>
                         <div className="text-sm text-muted-foreground">
-                          {task.sourceReference || "-"}
+                          {sourceLabel(task.sourceType)}
                         </div>
                       </TableCell>
                       <TableCell>
