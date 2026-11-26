@@ -1,13 +1,21 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Trash2, Link as LinkIcon, Package, ListChecks } from "lucide-react";
+import { MoreVertical, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -17,14 +25,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import {
   useLinkSRsToLoadList,
   useEligibleLoadListRequisitionItems,
   useLoadListSRLinks,
@@ -33,8 +33,9 @@ import {
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { LOAD_LISTS_QUERY_KEY } from "@/hooks/queryKeys";
 import { getApiErrorCode } from "@/lib/api";
-import { formatDocumentQuantity } from "@/lib/documents/document-display";
-import { LOAD_LIST_LINK_ERROR_CODES, type LoadList } from "@/types/load-list";
+import { formatDocumentDate, formatDocumentQuantity } from "@/lib/documents/document-display";
+import { cn } from "@/lib/utils";
+import { LOAD_LIST_LINK_ERROR_CODES, type LoadList, type LoadListItem } from "@/types/load-list";
 
 type LinkStockRequisitionsDialogProps = {
   open: boolean;
@@ -42,18 +43,51 @@ type LinkStockRequisitionsDialogProps = {
   loadList: LoadList;
 };
 
-type LinkFormItem = {
+// A pending link snapshots the requisition line's outstanding quantity when it is ticked so
+// links on load list items that are not currently selected can still be validated before submit.
+type PendingLink = {
   loadListItemId: string;
-  loadListItemName?: string;
-  loadListPackLabel: string;
   srItemId: string;
-  srItemName?: string;
-  srPackLabel: string;
-  srNumber?: string;
-  requestedQty: number;
+  srNumber: string;
+  packLabel: string;
   outstandingQty: number;
-  fulfilledQty: number;
+  quantity: string;
 };
+
+type LoadListItemSummary = {
+  item: LoadListItem;
+  packLabel: string;
+  linkedQty: number;
+  pendingQty: number;
+  remainingQty: number;
+  pendingCount: number;
+  hasPendingError: boolean;
+};
+
+const REQUISITION_PAGE_SIZE = 20;
+
+const toPairKey = (loadListItemId: string, srItemId: string) => `${loadListItemId}:${srItemId}`;
+
+const roundQuantity = (value: number) => Number(value.toFixed(2));
+
+const parseQuantity = (value: string) => {
+  const trimmed = value.trim();
+  if (trimmed === "") return Number.NaN;
+  return Number(trimmed);
+};
+
+const sumPendingQuantity = (
+  links: PendingLink[],
+  matches: (link: PendingLink) => boolean,
+  excludeKey?: string
+) =>
+  links.reduce((total, link) => {
+    if (!matches(link) || toPairKey(link.loadListItemId, link.srItemId) === excludeKey) {
+      return total;
+    }
+    const quantity = parseQuantity(link.quantity);
+    return Number.isFinite(quantity) && quantity > 0 ? total + quantity : total;
+  }, 0);
 
 export function LinkStockRequisitionsDialog({
   open,
@@ -62,252 +96,204 @@ export function LinkStockRequisitionsDialog({
 }: LinkStockRequisitionsDialogProps) {
   const t = useTranslations("linkStockRequisitionsDialog");
   const locale = useLocale();
-  const fieldId = useId();
-  const formatPackLabel = (unitName?: string | null, qtyPerUnit?: number | null) =>
-    unitName && qtyPerUnit != null && qtyPerUnit !== 1
-      ? t("packUnitLabel", { unit: unitName, qty: formatDocumentQuantity(qtyPerUnit, locale) })
-      : (unitName ?? "");
   const queryClient = useQueryClient();
   const linkMutation = useLinkSRsToLoadList();
   const removeLinkMutation = useRemoveLoadListSRLink();
   const { data: existingLinksData } = useLoadListSRLinks(loadList.id);
 
-  const [links, setLinks] = useState<LinkFormItem[]>([]);
-  const [selectedLLItemId, setSelectedLLItemId] = useState("");
-  const [selectedSRItemId, setSelectedSRItemId] = useState("");
-  const [linkQuantity, setLinkQuantity] = useState("");
-  const [addLinkError, setAddLinkError] = useState("");
+  const [pendingLinks, setPendingLinks] = useState<PendingLink[]>([]);
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
+  const [pickedItemId, setPickedItemId] = useState("");
   const [removingLinkId, setRemovingLinkId] = useState<string | null>(null);
   const [requisitionSearch, setRequisitionSearch] = useState("");
   const [requisitionPage, setRequisitionPage] = useState(1);
   const debouncedRequisitionSearch = useDebouncedValue(requisitionSearch.trim());
 
-  const eligibleRequisitionItemsQuery = useEligibleLoadListRequisitionItems(
-    loadList.id,
-    {
-      loadListItemId: selectedLLItemId || undefined,
-      search: debouncedRequisitionSearch || undefined,
-      page: requisitionPage,
-      limit: 20,
-    },
-    open && loadList.isSourceBusinessUnit
-  );
-  const eligibleRequisitionItems = eligibleRequisitionItemsQuery.data?.data ?? [];
-  const eligiblePagination = eligibleRequisitionItemsQuery.data?.pagination;
-  const availableSRItems = eligibleRequisitionItems.map((item) => ({
-    id: item.id,
-    srId: item.stockRequisitionId,
-    srNumber: item.stockRequisitionNumber,
-    requestedQty: item.requestedQty,
-    outstandingQty: item.outstandingQty,
-    itemUnitOptionId: item.itemUnitOptionId,
-    packLabel: formatPackLabel(item.unitName, item.qtyPerUnit),
-    item: {
-      id: item.itemId,
-      code: item.itemCode,
-      name: item.itemName,
-    },
-  }));
-  const availableSRs = Array.from(
-    availableSRItems
-      .reduce(
-        (requisitions, item) => {
-          const existing = requisitions.get(item.srId);
-          if (existing) {
-            existing.items.push(item);
-          } else {
-            requisitions.set(item.srId, {
-              id: item.srId,
-              srNumber: item.srNumber,
-              items: [item],
-            });
-          }
-          return requisitions;
-        },
-        new Map<
-          string,
-          {
-            id: string;
-            srNumber: string;
-            items: typeof availableSRItems;
-          }
-        >()
-      )
-      .values()
-  );
-  const existingLinks = existingLinksData?.data ?? [];
-  const existingLinkPairs = new Set(
-    existingLinks
-      .filter((link) => link.loadListItem?.id && link.srItem?.id)
-      .map((link) => `${link.loadListItem.id}:${link.srItem.id}`)
-  );
-  const pendingLinkPairs = new Set(links.map((link) => `${link.loadListItemId}:${link.srItemId}`));
+  const formatQuantity = (value: number) => formatDocumentQuantity(value, locale);
+  const formatPackLabel = (unitName?: string | null, qtyPerUnit?: number | null) =>
+    unitName && qtyPerUnit != null && qtyPerUnit !== 1
+      ? t("packUnitLabel", { unit: unitName, qty: formatQuantity(qtyPerUnit) })
+      : (unitName ?? "");
+
+  const loadListItems = loadList.items ?? [];
   const canModifyLinks =
     loadList.isSourceBusinessUnit &&
     (loadList.status === "draft" || loadList.status === "confirmed");
   const canAddLinks =
     canModifyLinks || (loadList.isSourceBusinessUnit && loadList.status === "in_transit");
-  const existingLinkedQtyByLLItem = existingLinks.reduce((totals, link) => {
+
+  const existingLinks = existingLinksData?.data ?? [];
+  const existingLinkPairs = new Set(
+    existingLinks
+      .filter((link) => link.loadListItem?.id && link.srItem?.id)
+      .map((link) => toPairKey(link.loadListItem.id, link.srItem.id))
+  );
+  const existingLinkedQtyByItem = existingLinks.reduce((totals, link) => {
     const loadListItemId = link.loadListItem?.id;
     if (!loadListItemId) return totals;
-    totals.set(loadListItemId, (totals.get(loadListItemId) || 0) + link.fulfilledQty);
-    return totals;
-  }, new Map<string, number>());
-  const pendingLinkedQtyByLLItem = links.reduce((totals, link) => {
-    totals.set(link.loadListItemId, (totals.get(link.loadListItemId) || 0) + link.fulfilledQty);
+    totals.set(loadListItemId, (totals.get(loadListItemId) ?? 0) + link.fulfilledQty);
     return totals;
   }, new Map<string, number>());
 
-  const availableLLItems = (loadList.items ?? [])
-    .map((item) => ({
-      ...item,
-      remainingQty: Math.max(
-        0,
-        Number(
-          (
-            item.loadListQty -
-            (existingLinkedQtyByLLItem.get(item.id) || 0) -
-            (pendingLinkedQtyByLLItem.get(item.id) || 0)
-          ).toFixed(2)
-        )
+  const getLoadListAvailableQty = (item: LoadListItem, excludeKey?: string) =>
+    roundQuantity(
+      item.loadListQty -
+        (existingLinkedQtyByItem.get(item.id) ?? 0) -
+        sumPendingQuantity(pendingLinks, (link) => link.loadListItemId === item.id, excludeKey)
+    );
+
+  const getRequisitionAvailableQty = (
+    srItemId: string,
+    outstandingQty: number,
+    excludeKey?: string
+  ) =>
+    roundQuantity(
+      outstandingQty -
+        sumPendingQuantity(pendingLinks, (link) => link.srItemId === srItemId, excludeKey)
+    );
+
+  const pendingErrors = new Map<string, string>();
+  for (const link of pendingLinks) {
+    const key = toPairKey(link.loadListItemId, link.srItemId);
+    const item = loadListItems.find((candidate) => candidate.id === link.loadListItemId);
+    const quantity = parseQuantity(link.quantity);
+    if (!item) continue;
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      pendingErrors.set(key, t("quantityRequired"));
+      continue;
+    }
+    const requisitionLimit = getRequisitionAvailableQty(link.srItemId, link.outstandingQty, key);
+    if (quantity > requisitionLimit) {
+      pendingErrors.set(
+        key,
+        t("exceedOutstanding", {
+          reference: link.srNumber,
+          limit: formatQuantity(Math.max(0, requisitionLimit)),
+          pack: link.packLabel,
+        })
+      );
+      continue;
+    }
+    const loadListLimit = getLoadListAvailableQty(item, key);
+    if (quantity > loadListLimit) {
+      pendingErrors.set(
+        key,
+        t("exceedAvailableLoadListQty", {
+          limit: formatQuantity(Math.max(0, loadListLimit)),
+          pack: link.packLabel,
+        })
+      );
+    }
+  }
+
+  const itemSummaries: LoadListItemSummary[] = loadListItems.map((item) => {
+    const itemPendingLinks = pendingLinks.filter((link) => link.loadListItemId === item.id);
+    const linkedQty = existingLinkedQtyByItem.get(item.id) ?? 0;
+    const pendingQty = sumPendingQuantity(itemPendingLinks, () => true);
+    return {
+      item,
+      packLabel: formatPackLabel(item.unitName, item.qtyPerUnit),
+      linkedQty,
+      pendingQty,
+      remainingQty: Math.max(0, roundQuantity(item.loadListQty - linkedQty - pendingQty)),
+      pendingCount: itemPendingLinks.length,
+      hasPendingError: itemPendingLinks.some((link) =>
+        pendingErrors.has(toPairKey(link.loadListItemId, link.srItemId))
       ),
-    }))
-    .filter((item) => item.remainingQty > 0);
+    };
+  });
+  // Until the user picks an item (or if the picked item disappears after a refresh), select the
+  // first item that can be matched by pack.
+  const selectedSummary =
+    itemSummaries.find((summary) => summary.item.id === pickedItemId) ??
+    itemSummaries.find((summary) => summary.item.itemUnitOptionId) ??
+    itemSummaries[0];
+  const selectedItem = selectedSummary?.item;
+  const selectedItemId = selectedItem?.id ?? "";
 
-  // Use the same remaining balance for the options and quantity validation.
-  const selectedLLItem = availableLLItems.find((item) => item.id === selectedLLItemId);
-  const matchingSRItems =
-    selectedLLItem?.itemUnitOptionId && !eligibleRequisitionItemsQuery.isPlaceholderData
-      ? availableSRItems.filter(
-          (item) =>
-            item.item.id === selectedLLItem.itemId &&
-            item.itemUnitOptionId === selectedLLItem.itemUnitOptionId
-        )
-      : [];
-  const selectedLLItemAvailableQty = selectedLLItem?.remainingQty ?? 0;
-
-  // Get selected SR item details
-  const selectedSRItem = matchingSRItems.find((item) => item.id === selectedSRItemId);
-  const selectedPairKey =
-    selectedLLItemId && selectedSRItemId ? `${selectedLLItemId}:${selectedSRItemId}` : "";
-
-  const selectLoadListItem = (id: string) => {
-    setSelectedLLItemId(id);
-    setSelectedSRItemId("");
-    setRequisitionPage(1);
-    setLinkQuantity("");
-    setAddLinkError("");
-  };
+  const eligibleRequisitionItemsQuery = useEligibleLoadListRequisitionItems(
+    loadList.id,
+    {
+      loadListItemId: selectedItem?.id,
+      search: debouncedRequisitionSearch || undefined,
+      page: requisitionPage,
+      limit: REQUISITION_PAGE_SIZE,
+    },
+    open && loadList.isSourceBusinessUnit && !!selectedItem?.itemUnitOptionId
+  );
+  const requisitionLines = eligibleRequisitionItemsQuery.data?.data ?? [];
+  const requisitionPagination = eligibleRequisitionItemsQuery.data?.pagination;
+  const selectedItemLinks = existingLinks.filter(
+    (link) => link.loadListItem?.id === selectedItemId
+  );
 
   useEffect(() => {
-    if (open) {
-      setLinks([]);
-      setSelectedLLItemId("");
-      setSelectedSRItemId("");
-      setLinkQuantity("");
-      setAddLinkError("");
-      setRequisitionSearch("");
-      setRequisitionPage(1);
-    }
+    if (!open) return;
+    setPendingLinks([]);
+    setQuantityDrafts({});
+    setRequisitionSearch("");
+    setRequisitionPage(1);
+    setPickedItemId("");
   }, [open]);
 
   useEffect(() => {
     setRequisitionPage(1);
-    setSelectedSRItemId("");
   }, [debouncedRequisitionSearch]);
 
-  useEffect(() => {
-    setSelectedSRItemId("");
-  }, [requisitionPage]);
-
-  const handleAddLink = () => {
-    // Clear previous error
-    setAddLinkError("");
-
-    if (!canAddLinks) {
-      setAddLinkError(t("loadListNotModifiable"));
-      return;
-    }
-
-    // Validation
-    if (!selectedLLItem || !selectedSRItemId || !linkQuantity) {
-      setAddLinkError(t("addLinkError"));
-      return;
-    }
-
-    const qty = parseFloat(linkQuantity);
-
-    if (!selectedSRItem) {
-      setAddLinkError(t("selectedSrItemNotFound"));
-      return;
-    }
-
-    if (existingLinkPairs.has(selectedPairKey)) {
-      setAddLinkError(t("alreadyLinked"));
-      return;
-    }
-
-    if (pendingLinkPairs.has(selectedPairKey)) {
-      setAddLinkError(t("alreadyPending"));
-      return;
-    }
-
-    // Validate quantity doesn't exceed outstanding
-    if (qty > selectedSRItem.outstandingQty) {
-      setAddLinkError(t("exceedOutstanding", { qty: selectedSRItem.outstandingQty }));
-      return;
-    }
-
-    // Validate quantity doesn't exceed remaining LL item qty after existing and pending links
-    if (qty > selectedLLItemAvailableQty) {
-      setAddLinkError(t("exceedAvailableLoadListQty", { qty: selectedLLItemAvailableQty }));
-      return;
-    }
-
-    const newLink: LinkFormItem = {
-      loadListItemId: selectedLLItemId,
-      loadListItemName: selectedLLItem.item?.name,
-      loadListPackLabel: formatPackLabel(selectedLLItem.unitName, selectedLLItem.qtyPerUnit),
-      srItemId: selectedSRItemId,
-      srItemName: selectedSRItem.item.name,
-      srPackLabel: selectedSRItem.packLabel,
-      srNumber: selectedSRItem.srNumber,
-      requestedQty: selectedSRItem.requestedQty,
-      outstandingQty: selectedSRItem.outstandingQty,
-      fulfilledQty: qty,
-    };
-
-    setLinks((current) => [...current, newLink]);
-    selectLoadListItem("");
-    toast.success(t("linkAdded"));
+  const selectItem = (itemId: string) => {
+    setPickedItemId(itemId);
+    setRequisitionSearch("");
+    setRequisitionPage(1);
   };
 
-  const handleRemoveLink = (index: number) => {
-    setLinks(links.filter((_, i) => i !== index));
+  const setLinePending = (link: PendingLink, selected: boolean) => {
+    const key = toPairKey(link.loadListItemId, link.srItemId);
+    if (selected) {
+      setPendingLinks((current) => [...current, link]);
+      setQuantityDrafts((current) => {
+        const next = { ...current };
+        delete next[key];
+        return next;
+      });
+      return;
+    }
+    setPendingLinks((current) =>
+      current.filter((candidate) => toPairKey(candidate.loadListItemId, candidate.srItemId) !== key)
+    );
+    setQuantityDrafts((current) => ({ ...current, [key]: link.quantity }));
+  };
+
+  const changeLineQuantity = (link: PendingLink, isPending: boolean) => {
+    if (!isPending) {
+      setLinePending(link, true);
+      return;
+    }
+    const key = toPairKey(link.loadListItemId, link.srItemId);
+    setPendingLinks((current) =>
+      current.map((candidate) =>
+        toPairKey(candidate.loadListItemId, candidate.srItemId) === key
+          ? { ...candidate, quantity: link.quantity }
+          : candidate
+      )
+    );
   };
 
   const handleRemoveExistingLink = async (linkId: string) => {
     setRemovingLinkId(linkId);
-
     try {
       await removeLinkMutation.mutateAsync({ id: loadList.id, linkId });
       toast.success(t("removeLinkSuccess"));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("removeLinkError"));
+    } catch {
+      toast.error(t("removeLinkError"));
     } finally {
       setRemovingLinkId(null);
     }
   };
 
   const handleSubmit = async () => {
-    if (linkMutation.isPending) return;
+    if (linkMutation.isPending || pendingLinks.length === 0 || pendingErrors.size > 0) return;
     if (!canAddLinks) {
       toast.error(t("loadListNotModifiable"));
-      return;
-    }
-
-    if (links.length === 0) {
-      toast.error(t("linksRequired"));
       return;
     }
 
@@ -315,15 +301,15 @@ export function LinkStockRequisitionsDialog({
       await linkMutation.mutateAsync({
         id: loadList.id,
         data: {
-          links: links.map((link) => ({
+          links: pendingLinks.map((link) => ({
             loadListItemId: link.loadListItemId,
             srItemId: link.srItemId,
-            fulfilledQty: link.fulfilledQty,
+            fulfilledQty: parseQuantity(link.quantity),
           })),
         },
       });
 
-      toast.success(t("linkSuccess", { count: links.length }));
+      toast.success(t("linkSuccess", { count: pendingLinks.length }));
       onOpenChange(false);
     } catch (error) {
       const errorCode = getApiErrorCode(error, LOAD_LIST_LINK_ERROR_CODES);
@@ -332,10 +318,8 @@ export function LinkStockRequisitionsDialog({
         toast.error(t("loadListNotModifiable"));
         return;
       }
-
       if (errorCode === "LOAD_LIST_ITEMS_NOT_FOUND") {
-        selectLoadListItem("");
-        setLinks([]);
+        setPendingLinks([]);
         await queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, loadList.id] });
         toast.error(t("staleLoadListItems"));
         return;
@@ -345,576 +329,465 @@ export function LinkStockRequisitionsDialog({
         toast.error(t("packMismatch"));
         return;
       }
-      toast.error(error instanceof Error ? error.message : t("linkError"));
+      toast.error(t("linkError"));
     }
+  };
+
+  const pendingItemCount = new Set(pendingLinks.map((link) => link.loadListItemId)).size;
+
+  const renderItemStatus = (summary: LoadListItemSummary) => {
+    const linkedTotal = formatQuantity(summary.linkedQty + summary.pendingQty);
+    const total = formatQuantity(summary.item.loadListQty);
+    if (!summary.item.itemUnitOptionId) {
+      return <span className="text-muted-foreground">{t("packOptionMissing")}</span>;
+    }
+    if (summary.hasPendingError) {
+      return <span className="text-destructive">{t("checkQuantities")}</span>;
+    }
+    if (summary.pendingCount > 0) {
+      return (
+        <span className="text-primary">
+          {t("itemPendingStatus", { linked: linkedTotal, total, count: summary.pendingCount })}
+        </span>
+      );
+    }
+    if (summary.remainingQty === 0) {
+      return <span className="text-emerald-700">{t("fullyLinked")}</span>;
+    }
+    return (
+      <span className="text-muted-foreground">
+        {t("itemLinkedStatus", { linked: linkedTotal, total })}
+      </span>
+    );
+  };
+
+  const renderRequisitionLines = () => {
+    if (!selectedItem) {
+      return <p className="py-10 text-center text-sm text-muted-foreground">{t("noItems")}</p>;
+    }
+    if (!selectedItem.itemUnitOptionId) {
+      return (
+        <p className="py-10 text-center text-sm text-muted-foreground">
+          {t("packOptionMissingDescription")}
+        </p>
+      );
+    }
+    if (eligibleRequisitionItemsQuery.isLoading) {
+      return (
+        <div className="space-y-3 py-4" aria-label={t("loading")}>
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      );
+    }
+    if (eligibleRequisitionItemsQuery.isError) {
+      return (
+        <p role="alert" className="py-10 text-center text-sm text-destructive">
+          {t("eligibleLoadError")}
+        </p>
+      );
+    }
+    if (requisitionLines.length === 0) {
+      return (
+        <div className="py-10 text-center text-sm text-muted-foreground">
+          <p>{t(debouncedRequisitionSearch ? "noSearchResults" : "noRequisitionsForPack")}</p>
+          <p className="mt-1">
+            {t("noRequisitionsSupplier", { supplier: loadList.supplier?.name ?? "" })}
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-12">
+                <span className="sr-only">{t("selectColumn")}</span>
+              </TableHead>
+              <TableHead>{t("requisition")}</TableHead>
+              <TableHead className="text-right">{t("requested")}</TableHead>
+              <TableHead className="text-right">{t("outstanding")}</TableHead>
+              <TableHead className="w-40 text-right">{t("linkQty")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {requisitionLines.map((line) => {
+              const key = toPairKey(selectedItem.id, line.id);
+              const isLinked = existingLinkPairs.has(key);
+              const pendingLink = pendingLinks.find(
+                (link) => toPairKey(link.loadListItemId, link.srItemId) === key
+              );
+              const limit = Math.max(
+                0,
+                Math.min(
+                  getRequisitionAvailableQty(line.id, line.outstandingQty, key),
+                  getLoadListAvailableQty(selectedItem, key)
+                )
+              );
+              const quantity =
+                pendingLink?.quantity ?? quantityDrafts[key] ?? (limit > 0 ? String(limit) : "");
+              const lineLink: PendingLink = {
+                loadListItemId: selectedItem.id,
+                srItemId: line.id,
+                srNumber: line.stockRequisitionNumber,
+                packLabel: formatPackLabel(line.unitName, line.qtyPerUnit),
+                outstandingQty: line.outstandingQty,
+                quantity,
+              };
+              const canSelect = canAddLinks && !isLinked && (!!pendingLink || limit > 0);
+              const error = pendingErrors.get(key);
+              const checkboxId = `link-line-${line.id}`;
+              const errorId = `${checkboxId}-error`;
+
+              return (
+                <Fragment key={line.id}>
+                  <TableRow
+                    data-state={pendingLink ? "selected" : undefined}
+                    className={cn(error && "border-b-0")}
+                  >
+                    {/* Each cell's first line sits in an h-9 row so text centers on the
+                        Link Qty input's line. */}
+                    <TableCell className="align-top">
+                      <div className="flex h-9 items-center">
+                        <Checkbox
+                          id={checkboxId}
+                          checked={!!pendingLink || isLinked}
+                          disabled={!canSelect}
+                          onCheckedChange={(checked) => setLinePending(lineLink, checked === true)}
+                          aria-label={t("selectLine", { reference: line.stockRequisitionNumber })}
+                          className="h-5 w-5"
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell className="align-top">
+                      <label htmlFor={checkboxId} className="flex h-9 items-center font-medium">
+                        {line.stockRequisitionNumber}
+                      </label>
+                      <span className="text-xs text-muted-foreground">
+                        {t("requestedOn", {
+                          date: formatDocumentDate(line.requisitionDate, locale),
+                        })}
+                      </span>
+                    </TableCell>
+                    <TableCell className="align-top">
+                      <span className="flex h-9 items-center justify-end tabular-nums">
+                        {formatQuantity(line.requestedQty)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="align-top">
+                      <span className="flex h-9 items-center justify-end tabular-nums">
+                        {formatQuantity(line.outstandingQty)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="align-top">
+                      {isLinked ? (
+                        <p className="flex h-9 items-center justify-end text-sm text-emerald-700">
+                          {t("alreadyLinkedLabel")}
+                        </p>
+                      ) : !pendingLink && limit === 0 ? (
+                        <p className="flex h-9 items-center justify-end text-sm text-muted-foreground">
+                          {t("nothingLeftToLink")}
+                        </p>
+                      ) : (
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          step="0.01"
+                          value={quantity}
+                          disabled={!canSelect}
+                          onChange={(event) =>
+                            changeLineQuantity(
+                              { ...lineLink, quantity: event.target.value },
+                              !!pendingLink
+                            )
+                          }
+                          aria-label={t("linkQtyFor", { reference: line.stockRequisitionNumber })}
+                          aria-invalid={!!error}
+                          aria-describedby={error ? errorId : undefined}
+                          className={cn(
+                            "h-9 text-right tabular-nums",
+                            pendingLink && !error && "border-primary",
+                            error && "border-destructive"
+                          )}
+                        />
+                      )}
+                    </TableCell>
+                  </TableRow>
+                  {error ? (
+                    <TableRow className="hover:bg-transparent">
+                      <TableCell colSpan={5} className="pt-0 text-right">
+                        <p id={errorId} role="alert" className="text-xs text-destructive">
+                          {error}
+                        </p>
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </Fragment>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    );
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[92vh] max-w-6xl flex-col gap-0 p-0">
-        {/* Modern Header */}
-        <div className="flex-shrink-0 border-b border-gray-200 bg-white px-6 pb-5 pt-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-violet-600 shadow-lg">
-                <LinkIcon className="h-7 w-7 text-white" />
-              </div>
-              <div>
-                <DialogTitle className="mb-1 text-2xl font-bold text-gray-900">
-                  {t("title")}
-                </DialogTitle>
-                <DialogDescription className="text-sm text-gray-500">
-                  {t("description", { supplier: loadList.supplier?.name ?? "" })}
-                </DialogDescription>
-              </div>
-            </div>
-          </div>
+      {/* 85vh keeps a fixed dialog height so both panes scroll independently; the preset
+          height scale stops at full-screen values. */}
+      <DialogContent className="flex h-[85vh] max-w-6xl flex-col gap-0 overflow-hidden p-0">
+        <div className="shrink-0 border-b px-6 py-5 pr-12">
+          <DialogTitle className="text-xl font-semibold">{t("title")}</DialogTitle>
+          <DialogDescription className="mt-1">
+            {t("description", { supplier: loadList.supplier?.name ?? "" })}
+          </DialogDescription>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto bg-gray-50 px-6 py-5">
-          <div className="mx-auto max-w-5xl space-y-5">
-            {/* Outstanding Requisitions Section */}
-            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100">
-                    <Package className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-900">{t("outstandingTitle")}</h3>
-                </div>
-                {availableSRItems.length > 0 ? (
-                  <Badge variant="secondary" className="text-xs">
-                    {t("itemsAvailable", { count: availableSRItems.length })}
-                  </Badge>
-                ) : availableSRs.length > 0 ? (
-                  <Badge variant="outline" className="border-amber-300 text-xs text-amber-700">
-                    {t("noOutstandingItems")}
-                  </Badge>
-                ) : null}
-              </div>
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          <nav
+            aria-label={t("loadListItems")}
+            className="max-h-56 shrink-0 overflow-y-auto border-b bg-muted/40 p-4 lg:max-h-none lg:w-80 lg:border-b-0 lg:border-r"
+          >
+            <div className="mb-2 flex items-baseline justify-between px-2">
+              <h3 className="text-sm font-semibold text-muted-foreground">{t("loadListItems")}</h3>
+              <span className="text-xs text-muted-foreground">
+                {t("itemCount", { count: loadListItems.length })}
+              </span>
+            </div>
+            <ul className="space-y-2">
+              {itemSummaries.map((summary) => {
+                const isSelected = summary.item.id === selectedItemId;
+                const total = summary.item.loadListQty || 1;
+                return (
+                  <li key={summary.item.id}>
+                    <button
+                      type="button"
+                      onClick={() => selectItem(summary.item.id)}
+                      aria-current={isSelected ? "true" : undefined}
+                      className={cn(
+                        "w-full space-y-2 rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        isSelected
+                          ? "border-primary bg-background shadow-sm"
+                          : "border-transparent hover:border-border hover:bg-background"
+                      )}
+                    >
+                      <span className="block text-sm font-semibold leading-snug">
+                        {summary.item.item?.name ?? t("unknownItem")}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {summary.item.item?.code ? `${summary.item.item.code} · ` : ""}
+                        {summary.packLabel}
+                      </span>
+                      <span className="flex h-1.5 overflow-hidden rounded-full bg-border">
+                        <span
+                          className="bg-primary"
+                          style={{ width: `${Math.min(100, (summary.linkedQty / total) * 100)}%` }}
+                        />
+                        <span
+                          className="bg-primary/40"
+                          style={{
+                            width: `${Math.min(100, (summary.pendingQty / total) * 100)}%`,
+                          }}
+                        />
+                      </span>
+                      <span className="block text-xs font-medium">{renderItemStatus(summary)}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
 
-              <Input
-                value={requisitionSearch}
-                onChange={(event) => setRequisitionSearch(event.target.value)}
-                placeholder={t("searchPlaceholder")}
-                className="mb-4"
-              />
-
-              {/* Show available SRs and their items */}
-              {selectedLLItem ? (
-                <p className="mb-3 text-xs text-muted-foreground">
-                  {t("matchingPack", {
-                    pack: formatPackLabel(selectedLLItem.unitName, selectedLLItem.qtyPerUnit),
-                  })}
-                </p>
-              ) : null}
-
-              {eligibleRequisitionItemsQuery.isLoading ? (
-                <div className="py-8 text-center text-sm text-gray-500">{t("loading")}</div>
-              ) : eligibleRequisitionItemsQuery.isError ? (
-                <div role="alert" className="py-8 text-center text-sm text-destructive">
-                  {t("eligibleLoadError")}
-                </div>
-              ) : availableSRs.length > 0 ? (
-                <div className="max-h-[350px] space-y-2 overflow-y-auto">
-                  {availableSRs.map((sr) => {
-                    const srItems = sr.items?.filter((item) => item.outstandingQty > 0) || [];
-                    return (
-                      <div
-                        key={sr.id}
-                        className="rounded-lg border border-gray-200 bg-gray-50/50 p-3 text-xs"
-                      >
-                        <div className="mb-2 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Package className="h-3.5 w-3.5 text-purple-600" />
-                            <span className="font-semibold text-gray-900">{sr.srNumber}</span>
-                          </div>
-                          <Badge variant="secondary" className="h-5 text-[10px]">
-                            {t("srItemsCount", { count: srItems.length })}
-                          </Badge>
-                        </div>
-                        {srItems.length > 0 ? (
-                          <div className="ml-5 space-y-1">
-                            {srItems.map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex items-center justify-between py-1 text-gray-700"
-                              >
-                                <span className="min-w-0">
-                                  <span className="block truncate">{item.item.name}</span>
-                                  {item.packLabel ? (
-                                    <span className="block text-muted-foreground">
-                                      {item.packLabel}
-                                    </span>
-                                  ) : null}
-                                </span>
-                                <span className="ml-2 flex-shrink-0 font-medium text-emerald-600">
-                                  {t("outstandingPrefix", { qty: item.outstandingQty })}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="ml-5 italic text-gray-500">
-                            {t("noOutstandingDescription")}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="py-8 text-center text-sm text-gray-500">
-                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
-                    <Package className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <p>{t(selectedLLItem ? "noRequisitionsForPack" : "noRequisitions")}</p>
-                  <p className="mt-1 text-xs">
-                    {t("noRequisitionsSupplier", { supplier: loadList.supplier?.name ?? "" })}
+          <section className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+            {selectedSummary ? (
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div className="min-w-0">
+                  <h3 className="text-lg font-semibold">
+                    {selectedSummary.item.item?.name ?? t("unknownItem")}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedSummary.item.item?.code ? `${selectedSummary.item.item.code} · ` : ""}
+                    {selectedSummary.packLabel}
                   </p>
                 </div>
-              )}
-
-              {eligiblePagination && eligiblePagination.totalPages > 1 && (
-                <div className="mt-4 flex items-center justify-between gap-3 border-t pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setRequisitionPage(Math.max(1, eligiblePagination.page - 1))}
-                    disabled={
-                      eligiblePagination.page <= 1 || eligibleRequisitionItemsQuery.isFetching
-                    }
-                  >
-                    {t("previous")}
-                  </Button>
-                  <span className="text-xs text-gray-500">
-                    {t("pageOfTotal", {
-                      page: eligiblePagination.page,
-                      totalPages: eligiblePagination.totalPages,
-                      total: eligiblePagination.total,
-                    })}
+                <p className="text-sm text-muted-foreground">
+                  <span className="mr-1 text-2xl font-semibold tabular-nums text-foreground">
+                    {formatQuantity(selectedSummary.remainingQty)}
                   </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setRequisitionPage(
-                        Math.min(eligiblePagination.totalPages, eligiblePagination.page + 1)
-                      )
-                    }
-                    disabled={
-                      eligiblePagination.page >= eligiblePagination.totalPages ||
-                      eligibleRequisitionItemsQuery.isFetching
-                    }
-                  >
-                    {t("next")}
-                  </Button>
-                </div>
-              )}
-            </div>
+                  {t("leftToLink", {
+                    total: formatQuantity(selectedSummary.item.loadListQty),
+                    unit: selectedSummary.item.unitName,
+                  })}
+                </p>
+              </div>
+            ) : null}
 
-            {/* Existing Links */}
-            {existingLinks.length > 0 && (
-              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                <div className="border-b border-gray-200 bg-gray-50 px-5 py-3.5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100">
-                      <ListChecks className="h-4 w-4 text-emerald-600" />
-                    </div>
-                    <h3 className="text-sm font-semibold text-gray-900">{t("currentLinks")}</h3>
-                    <Badge variant="secondary" className="text-xs">
-                      {existingLinks.length}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-b border-gray-200 bg-gray-50 hover:bg-gray-50">
-                        <TableHead className="text-xs font-semibold text-gray-700">
-                          {t("llItem")}
-                        </TableHead>
-                        <TableHead className="text-xs font-semibold text-gray-700">
-                          {t("srReference")}
-                        </TableHead>
-                        <TableHead className="text-xs font-semibold text-gray-700">
-                          {t("srItem")}
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-700">
-                          {t("linkedQty")}
-                        </TableHead>
-                        {canModifyLinks && <TableHead className="w-12"></TableHead>}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {existingLinks.map((link) => (
-                        <TableRow key={link.id} className="border-b border-gray-100">
-                          <TableCell className="text-sm font-semibold text-gray-900">
-                            {link.loadListItem?.item?.name ?? t("unknownItem")}
-                            <div className="text-xs text-muted-foreground">
-                              {formatPackLabel(
-                                link.loadListItem?.unitName,
-                                link.loadListItem?.qtyPerUnit
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm text-gray-700">
-                            {link.srItem?.sr?.srNumber ?? t("unknownReference")}
-                          </TableCell>
-                          <TableCell className="text-sm text-gray-700">
-                            {link.srItem?.item?.name ?? t("unknownItem")}
-                            <div className="text-xs text-muted-foreground">
-                              {formatPackLabel(link.srItem?.unitName, link.srItem?.qtyPerUnit)}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <span className="inline-flex items-center justify-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">
-                              {link.fulfilledQty}
-                            </span>
-                          </TableCell>
-                          {canModifyLinks && (
-                            <TableCell>
+            {!canAddLinks ? (
+              <p role="status" className="rounded-lg bg-muted px-4 py-3 text-sm">
+                {t("loadListNotModifiable")}
+              </p>
+            ) : selectedSummary?.item.itemUnitOptionId ? (
+              <p className="rounded-lg bg-primary/10 px-4 py-3 text-sm">
+                {t("packMatchNote", { pack: selectedSummary.packLabel })}
+              </p>
+            ) : null}
+
+            {selectedItem?.itemUnitOptionId ? (
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <Input
+                  value={requisitionSearch}
+                  onChange={(event) => setRequisitionSearch(event.target.value)}
+                  placeholder={t("searchPlaceholder")}
+                  aria-label={t("searchPlaceholder")}
+                  className="pl-9"
+                />
+              </div>
+            ) : null}
+
+            {renderRequisitionLines()}
+
+            {requisitionPagination && requisitionPagination.totalPages > 1 ? (
+              <div className="flex items-center justify-between gap-3 border-t pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRequisitionPage(Math.max(1, requisitionPagination.page - 1))}
+                  disabled={
+                    requisitionPagination.page <= 1 || eligibleRequisitionItemsQuery.isFetching
+                  }
+                >
+                  {t("previous")}
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {t("pageOfTotal", {
+                    page: requisitionPagination.page,
+                    totalPages: requisitionPagination.totalPages,
+                    total: requisitionPagination.total,
+                  })}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setRequisitionPage(
+                      Math.min(requisitionPagination.totalPages, requisitionPagination.page + 1)
+                    )
+                  }
+                  disabled={
+                    requisitionPagination.page >= requisitionPagination.totalPages ||
+                    eligibleRequisitionItemsQuery.isFetching
+                  }
+                >
+                  {t("next")}
+                </Button>
+              </div>
+            ) : null}
+
+            {selectedItemLinks.length > 0 ? (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold">
+                  {t("currentLinks")} ({selectedItemLinks.length})
+                </h4>
+                <ul className="divide-y rounded-lg border">
+                  {selectedItemLinks.map((link) => (
+                    <li key={link.id} className="flex items-center justify-between gap-3 px-4 py-2">
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium">
+                          {link.srItem?.sr?.srNumber ?? t("unknownReference")}
+                        </span>
+                        <span className="text-xs text-emerald-700">{t("linkedStatus")}</span>
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <span className="text-sm font-semibold tabular-nums">
+                          {formatQuantity(link.fulfilledQty)}
+                        </span>
+                        {canModifyLinks ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
                               <Button
                                 type="button"
                                 variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemoveExistingLink(link.id)}
+                                size="icon"
+                                className="h-8 w-8"
                                 disabled={removingLinkId === link.id}
-                                title={t("removeLink")}
-                                aria-label={t("removeLink")}
-                                className="h-8 w-8 rounded-lg p-0 hover:bg-red-50 hover:text-red-600"
+                                aria-label={t("linkActions", {
+                                  reference: link.srItem?.sr?.srNumber ?? t("unknownReference"),
+                                })}
                               >
-                                {removingLinkId === link.id ? (
-                                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-200 border-t-red-600" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4" />
-                                )}
+                                <MoreVertical className="h-4 w-4" />
                               </Button>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onSelect={() => handleRemoveExistingLink(link.id)}
+                              >
+                                {t("removeLink")}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            )}
-
-            {/* Add Link Form */}
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-              <div className="border-b border-purple-100 bg-gradient-to-r from-purple-50 to-violet-50 px-5 py-3.5">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-600">
-                    <Plus className="h-4 w-4 text-white" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-900">{t("addLink")}</h3>
-                </div>
-              </div>
-              <div className="bg-gradient-to-br from-purple-50/30 to-violet-50/30 p-5">
-                <div className="grid grid-cols-12 gap-3">
-                  <div className="col-span-12 min-w-0 md:col-span-4">
-                    <label
-                      htmlFor={`${fieldId}-load-list-item`}
-                      className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-700"
-                    >
-                      {t("loadListItem")}
-                    </label>
-                    <Select value={selectedLLItemId} onValueChange={selectLoadListItem}>
-                      <SelectTrigger
-                        id={`${fieldId}-load-list-item`}
-                        className="h-14 border-gray-300 bg-white text-left text-gray-900 focus:border-purple-500 focus:ring-purple-500 [&>span>span]:truncate [&>span]:line-clamp-none [&>span]:block [&>span]:min-w-0 [&>svg]:shrink-0 [&_[data-option-details]]:hidden"
-                      >
-                        <SelectValue placeholder={t("selectLoadListItem")} />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[min(18rem,var(--radix-select-content-available-height))] w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] md:w-screen md:max-w-xl">
-                        {availableLLItems.map((item) => (
-                          <SelectItem
-                            key={item.id}
-                            value={item.id}
-                            textValue={`${item.item?.code ?? ""} ${item.item?.name ?? t("unknownItem")} ${item.unitName}`}
-                            disabled={!item.itemUnitOptionId}
-                            className="whitespace-normal break-words [&>span:last-child]:min-w-0"
-                          >
-                            <span className="block font-medium">
-                              {item.item?.name ?? t("unknownItem")}
-                            </span>
-                            <span className="block text-xs">
-                              {item.item?.code ? `${item.item.code} · ` : ""}
-                              {formatPackLabel(item.unitName, item.qtyPerUnit)}
-                              <span data-option-details>
-                                {" · "}
-                                {t("remainingQtyPrefix", { qty: item.remainingQty })}
-                                {!item.itemUnitOptionId ? ` · ${t("packOptionMissing")}` : ""}
-                              </span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="col-span-12 min-w-0 md:col-span-4">
-                    <label
-                      htmlFor={`${fieldId}-requisition-item`}
-                      className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-700"
-                    >
-                      {t("srItem")}
-                    </label>
-                    <Select
-                      value={selectedSRItemId}
-                      onValueChange={(value) => {
-                        setSelectedSRItemId(value);
-                        setAddLinkError("");
-                      }}
-                      disabled={!selectedLLItem || matchingSRItems.length === 0}
-                    >
-                      <SelectTrigger
-                        id={`${fieldId}-requisition-item`}
-                        className="h-14 border-gray-300 bg-white text-left text-gray-900 focus:border-purple-500 focus:ring-purple-500 [&>span>span]:truncate [&>span]:line-clamp-none [&>span]:block [&>span]:min-w-0 [&>svg]:shrink-0 [&_[data-option-details]]:hidden"
-                      >
-                        <SelectValue placeholder={t("selectSrItem")} />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[min(18rem,var(--radix-select-content-available-height))] w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] md:w-screen md:max-w-xl">
-                        {matchingSRItems.map((item) => {
-                          const pairKey = `${selectedLLItemId}:${item.id}`;
-                          const isAlreadyLinked = selectedLLItemId
-                            ? existingLinkPairs.has(pairKey)
-                            : false;
-                          const isPending = selectedLLItemId
-                            ? pendingLinkPairs.has(pairKey)
-                            : false;
-
-                          return (
-                            <SelectItem
-                              key={item.id}
-                              value={item.id}
-                              disabled={isAlreadyLinked || isPending}
-                              textValue={`${item.srNumber} ${item.item.name} ${item.packLabel}`}
-                              className="whitespace-normal break-words [&>span:last-child]:min-w-0"
-                            >
-                              <span className="block font-medium">{item.item.name}</span>
-                              <span className="block text-xs">
-                                {item.item.code} · {item.srNumber} · {item.packLabel}
-                                <span data-option-details>
-                                  {" · "}
-                                  {t("outstandingPrefix", { qty: item.outstandingQty })}
-                                  {isAlreadyLinked ? ` · ${t("alreadyLinkedLabel")}` : ""}
-                                  {isPending ? ` · ${t("pendingLabel")}` : ""}
-                                </span>
-                              </span>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="col-span-6 min-w-0 md:col-span-2">
-                    <label
-                      htmlFor={`${fieldId}-quantity`}
-                      className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-700"
-                    >
-                      {t("quantityLabel")}
-                    </label>
-                    <Input
-                      id={`${fieldId}-quantity`}
-                      type="number"
-                      placeholder={t("quantityPlaceholder")}
-                      value={linkQuantity}
-                      onChange={(e) => {
-                        setLinkQuantity(e.target.value);
-                        setAddLinkError("");
-                      }}
-                      step="0.01"
-                      max={
-                        selectedSRItem
-                          ? Math.min(selectedSRItem.outstandingQty, selectedLLItemAvailableQty)
-                          : undefined
-                      }
-                      className="h-10 border-gray-300 bg-white focus:border-purple-500 focus:ring-purple-500 md:h-14"
-                    />
-                  </div>
-
-                  <div className="col-span-6 flex min-w-0 items-end md:col-span-2">
-                    <Button
-                      type="button"
-                      onClick={handleAddLink}
-                      disabled={!canAddLinks}
-                      className="h-10 w-full bg-gradient-to-r from-purple-600 to-violet-600 text-sm font-semibold shadow-lg hover:from-purple-700 hover:to-violet-700 md:h-14"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      {t("addLink")}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Inline Error Message */}
-                {addLinkError && (
-                  <div
-                    role="alert"
-                    className="mt-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3"
-                  >
-                    <svg
-                      className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <p className="text-sm font-medium text-red-800">{addLinkError}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Links Table */}
-            {links.length > 0 ? (
-              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-3.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100">
-                        <ListChecks className="h-4 w-4 text-emerald-600" />
-                      </div>
-                      <h3 className="text-sm font-semibold text-gray-900">{t("pendingLinks")}</h3>
-                      <Badge variant="secondary" className="text-xs">
-                        {links.length}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-b border-gray-200 bg-gray-50 hover:bg-gray-50">
-                        <TableHead className="text-xs font-semibold text-gray-700">
-                          {t("llItem")}
-                        </TableHead>
-                        <TableHead className="text-xs font-semibold text-gray-700">
-                          {t("srReference")}
-                        </TableHead>
-                        <TableHead className="text-xs font-semibold text-gray-700">
-                          {t("srItem")}
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-700">
-                          {t("requested")}
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-700">
-                          {t("outstanding")}
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-gray-700">
-                          {t("linkedQty")}
-                        </TableHead>
-                        <TableHead className="w-[60px]"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {links.map((link, index) => (
-                        <TableRow
-                          key={`${link.loadListItemId}:${link.srItemId}`}
-                          className={`border-b border-gray-100 ${
-                            index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                          } transition-colors hover:bg-purple-50/50`}
-                        >
-                          <TableCell className="text-sm font-semibold text-gray-900">
-                            {link.loadListItemName}
-                            <div className="text-xs text-muted-foreground">
-                              {link.loadListPackLabel}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm text-gray-700">{link.srNumber}</TableCell>
-                          <TableCell className="text-sm text-gray-700">
-                            {link.srItemName}
-                            <div className="text-xs text-muted-foreground">{link.srPackLabel}</div>
-                          </TableCell>
-                          <TableCell className="text-right text-sm font-medium text-gray-900">
-                            {link.requestedQty}
-                          </TableCell>
-                          <TableCell className="text-right text-sm font-medium text-amber-600">
-                            {link.outstandingQty}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <span className="inline-flex items-center justify-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">
-                              {link.fulfilledQty}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveLink(index)}
-                              className="h-8 w-8 rounded-lg p-0 hover:bg-red-50 hover:text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-xl border-2 border-dashed border-gray-300 bg-white p-12 shadow-sm">
-                <div className="text-center">
-                  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-violet-100">
-                    <LinkIcon className="h-8 w-8 text-purple-600" />
-                  </div>
-                  <h3 className="mb-2 text-base font-semibold text-gray-900">
-                    {t("noLinksTitle")}
-                  </h3>
-                  <p className="mx-auto max-w-sm text-sm text-gray-500">
-                    {t("noLinksDescription")}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+            ) : null}
+          </section>
         </div>
 
-        {/* Fixed Footer */}
-        <div className="flex-shrink-0 border-t border-gray-200 bg-white px-6 py-4">
-          <div className="mx-auto flex max-w-5xl items-center justify-between">
-            <div className="text-sm text-gray-500">
-              {links.length > 0 && (
-                <span>
-                  <span className="font-semibold text-gray-900">{links.length}</span>
-                </span>
-              )}
-            </div>
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                className="h-10 min-w-[100px] border-gray-300 text-sm hover:bg-gray-50"
-              >
-                {t("cancel")}
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSubmit}
-                disabled={!canAddLinks || linkMutation.isPending || links.length === 0}
-                className="h-10 min-w-[140px] bg-gradient-to-r from-purple-600 to-violet-600 text-sm font-semibold shadow-lg hover:from-purple-700 hover:to-violet-700"
-              >
-                {linkMutation.isPending ? (
-                  <span className="flex items-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    {t("submitting")}
-                  </span>
-                ) : (
-                  t("submit")
-                )}
-              </Button>
-            </div>
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-muted/40 px-6 py-4">
+          <div className="min-w-0 text-sm">
+            {pendingLinks.length > 0 ? (
+              <>
+                <p className="font-semibold">
+                  {t("linksReady", { count: pendingLinks.length, itemCount: pendingItemCount })}
+                </p>
+                <p
+                  className={cn(
+                    "text-muted-foreground",
+                    pendingErrors.size > 0 && "text-destructive"
+                  )}
+                >
+                  {pendingErrors.size > 0
+                    ? t("fixQuantities", { count: pendingErrors.size })
+                    : t("nothingSavedYet")}
+                </p>
+              </>
+            ) : (
+              <p className="text-muted-foreground">{t("noPendingLinks")}</p>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {t("cancel")}
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={
+                !canAddLinks ||
+                linkMutation.isPending ||
+                pendingLinks.length === 0 ||
+                pendingErrors.size > 0
+              }
+            >
+              {linkMutation.isPending
+                ? t("submitting")
+                : pendingLinks.length > 0
+                  ? t("submitCount", { count: pendingLinks.length })
+                  : t("submit")}
+            </Button>
           </div>
         </div>
       </DialogContent>

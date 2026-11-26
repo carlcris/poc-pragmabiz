@@ -1232,11 +1232,29 @@ For each line, choose either **Existing Batch** or **New Batch**. Verify the Sto
 1. **Create** → status Draft. Select the destination business unit; there is no warehouse field.
 2. **Confirm** → status Confirmed.
 3. **Link Stock Requisitions** (optional) — allocates shipment lines to outstanding requisition lines for the same item and exact pack option. Fulfillment updates when the linked GRN is confirmed.
-   - Verify a load-list item with quantity 50 shows 40 remaining after adding a link for 10, then disappears after adding another link for 40 to a different requisition item. Removing either pending link makes the item available again. Save with **Create Links**, reopen the dialog, and verify saved allocations also reduce the available quantity; removing a saved link restores that quantity.
+   - Open the dialog and verify the first load list item with a pack option is selected. Switch items
+     and confirm the requisition pane shows only lines for the selected item and exact pack.
+   - For a load list item with 50 available, tick a requisition line with 10 outstanding. Verify
+     **Link Qty** defaults to 10 and the item shows 40 left to link. Tick a second line with at least
+     40 outstanding and verify the item stays visible with 0 left to link. Untick either line and
+     verify its quantity becomes available again. Tick it again, save with **Create 2 Links**,
+     reopen the dialog, and verify the allocations appear under **Current Links**. On a draft or
+     confirmed load list, use **Remove Link** from a saved row's actions menu and verify that
+     quantity becomes available again.
+   - Queue two links on other items, then select a shipment line with 50 `BOX (50)` and a matching
+     requisition with 10 boxes outstanding. Check that the pane shows 50 left to link and
+     **Link Qty** starts at 10. Enter 50 in **Link Qty** and verify the line becomes checked, the
+     inline error names the requisition and gives the valid limit, and **Create 3 Links** is
+     disabled. Switch items and return to verify the pending links are preserved. Correct the
+     quantity to 10 and save all three with **Create 3 Links**.
    - On the Load List detail page, check that a partially linked item shows **Linked** and an unlinked row has no label. Save a second link and verify the label stays after removing one link, then clears after removing the last link. Check each change without reloading the page.
 4. **Mark In Transit** → status In Transit. Captures an estimated arrival date and carrier name.
    - With Mark In Transit access in the source business unit, open **Edit Transit Details** and verify the current liner and estimated arrival date are prefilled. Change the ETA and clear the liner. Verify the Transit section updates without reloading, the ETA updates in **Stock In Transit**, and the load list stays In Transit. Verify the edit action is unavailable in the destination business unit and after arrival.
-   - In the source business unit, verify **Add Link** and **Create Links** remain available with unallocated quantities. Received load lists must reject new links in both the UI and API. Saved-link removal remains limited to Draft and Confirmed. Run `supabase/tests/in-transit-load-list-links.sql` for status, allocation, scope, and rollback checks.
+   - In the source business unit, verify eligible requisition checkboxes can be ticked for
+     unallocated quantities and **Create Links** becomes available once a valid link is pending.
+     Received load lists must reject new links in both the UI and API. Saved-link removal remains
+     limited to Draft and Confirmed. Run `supabase/tests/in-transit-load-list-links.sql` for status,
+     allocation, scope, and rollback checks.
 5. In the destination business-unit context, **Mark Arrived** → status Arrived. **This is the key trigger: it automatically creates the linked Goods Receipt Note** (section 18) without assigning a warehouse — you never manually create one from scratch. The confirmation will show the new receipt's number.
    - **Reverse Arrival** is available to the destination business unit immediately after, to undo an accidental click — puts it back to In Transit.
 6. From here, Receiving and Pending Approval are driven entirely by progress on the linked Goods Receipt Note, not by any button on the Load List itself.
@@ -1322,6 +1340,8 @@ form at `/purchasing/stock-requisitions/new`. Opening a requisition shows its vi
 **Things to test**:
 
 - Confirm Start Receiving is blocked if the Load List isn't actually Arrived yet.
+- Reverse an Arrived load list with an untouched draft GRN. Confirm the load list returns to In Transit and marking it Arrived again creates a new draft GRN. Verify that reversal is blocked after GRN receiving activity. The rollback-only `supabase/tests/grn-arrival-reversal.sql` covers both paths and forced transaction failures.
+- Confirm the GRN detail has Receive Items, Damage Items, and Notes, and that Purchasing Overview omits the former box assignment widgets. Record a carton count during receiving, then print the item-batch labels from Putaway Station when posting.
 - Confirm Start Receiving accepts no warehouse input, succeeds only in the destination business unit, and does not change warehouse-level stock.
 - Try to Submit for Approval with every line at zero received quantity — should be refused.
 - On mobile, change a line without tapping Save and then Submit; confirm the line and submission commit together. Repeat with a forced submission failure and confirm neither the line change nor any stock/putaway write is committed.
@@ -1340,8 +1360,6 @@ form at `/purchasing/stock-requisitions/new`. Opening a requisition shows its vi
 
 **Stages**: Pending → Partial → Completed, or Cancelled.
 
-- Reverse an Arrived load list with an untouched draft GRN. Confirm the load list returns to In Transit and marking it Arrived again creates a new draft GRN. Verify that reversal is blocked after GRN receiving activity. The rollback-only `supabase/tests/grn-arrival-reversal.sql` covers both paths and forced transaction failures.
-- Confirm the GRN detail has Receive Items, Damage Items, and Notes, and that Purchasing Overview omits the former box assignment widgets. Record a carton count during receiving, then print the item-batch labels from Putaway Station when posting.
 **Step-by-step workflow**:
 
 1. A task appears in the queue, showing the item, quantity, and where it came from.

@@ -1,5 +1,7 @@
 # Point of Sale & Mobile App Module
 
+This backup describes an earlier mobile design. See the [Mobile App knowledge base](09-MOBILE-APP.md) for current receiving and picking workflows.
+
 ## Overview
 
 The POS & Mobile module provides a Point of Sale system for retail transactions and a React Native mobile app for warehouse operations including picking, receiving, and barcode scanning.
