@@ -84,29 +84,6 @@ export type PendingApprovalsData = {
 };
 
 /**
- * Box Assignment Queue Item
- * Represents an item that needs box assignment
- */
-export type BoxAssignmentQueueItem = {
-  grnId: string;
-  grnNumber: string;
-  itemId: string;
-  itemName: string;
-  itemCode: string;
-  receivedQty: number;
-  boxesAssigned: number;
-};
-
-/**
- * Box Assignment Queue Widget Data
- * Shows items that need box assignments
- */
-export type BoxAssignmentQueueData = {
-  count: number;
-  items: BoxAssignmentQueueItem[];
-};
-
-/**
  * Warehouse Capacity Widget Data
  * Shows warehouse space utilization metrics
  */
@@ -177,17 +154,6 @@ export type ActiveContainersData = {
   items: ActiveContainerItem[];
 };
 
-/**
- * Location Assignment Status Widget Data
- * Shows warehouse location assignment metrics
- */
-export type LocationAssignmentStatusData = {
-  totalBoxes: number;
-  assignedBoxes: number;
-  unassignedBoxes: number;
-  assignmentPercent: number;
-};
-
 // ============================================================================
 // MAIN DASHBOARD RESPONSE
 // ============================================================================
@@ -205,12 +171,10 @@ export type PurchasingDashboardData = {
   delayedShipments?: DelayedShipmentsData;
   todaysReceivingQueue?: TodaysReceivingQueueData;
   pendingApprovals?: PendingApprovalsData;
-  boxAssignmentQueue?: BoxAssignmentQueueData;
   warehouseCapacity?: WarehouseCapacityData;
   activeRequisitions?: ActiveRequisitionsData;
   incomingDeliveriesWithSRs?: IncomingDeliveriesData;
   activeContainers?: ActiveContainersData;
-  locationAssignmentStatus?: LocationAssignmentStatusData;
 };
 
 // ============================================================================
@@ -245,12 +209,10 @@ export type WidgetName =
   | "delayedShipments"
   | "todaysReceivingQueue"
   | "pendingApprovals"
-  | "boxAssignmentQueue"
   | "warehouseCapacity"
   | "activeRequisitions"
   | "incomingDeliveriesWithSRs"
-  | "activeContainers"
-  | "locationAssignmentStatus";
+  | "activeContainers";
 export type DamageType = "broken" | "defective" | "missing" | "expired" | "wrong_item" | "other";
 
 export type DashboardSupplier = {

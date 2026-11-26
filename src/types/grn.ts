@@ -32,21 +32,7 @@ export type GRNItem = {
   receivedQty: number;
   damagedQty: number;
   numBoxes: number;
-  barcodesPrinted: boolean;
   notes?: string;
-};
-
-export type GRNBox = {
-  id: string;
-  grnItemId: string;
-  itemId?: string;
-  boxNumber: number;
-  barcode: string;
-  qtyPerBox: number;
-  deliveryDate: string | null;
-  containerNumber?: string;
-  sealNumber?: string;
-  createdAt: string;
 };
 
 export type DamagedItem = {

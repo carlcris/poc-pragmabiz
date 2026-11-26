@@ -49,7 +49,6 @@ export const realtimeDomains = {
       "load_list_sr_items",
       "grns",
       "grn_items",
-      "grn_boxes",
     ],
     queryKeys: [STOCK_REQUISITIONS_QUERY_KEY, LOAD_LISTS_QUERY_KEY, GRNS_QUERY_KEY],
     channelKey: "purchasing",

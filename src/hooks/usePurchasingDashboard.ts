@@ -17,12 +17,10 @@ import type {
   DelayedShipmentsData,
   TodaysReceivingQueueData,
   PendingApprovalsData,
-  BoxAssignmentQueueData,
   WarehouseCapacityData,
   ActiveRequisitionsData,
   IncomingDeliveriesData,
   ActiveContainersData,
-  LocationAssignmentStatusData,
 } from "@/types/purchasing-dashboard";
 import type { PurchasingDashboardCapabilities } from "@/constants/granular-permissions";
 
@@ -113,12 +111,10 @@ export const usePurchasingDashboardCapabilities = (
           canViewDelayedShipments: false,
           canViewTodaysReceivingQueue: false,
           canViewPendingApprovals: false,
-          canViewBoxAssignmentQueue: false,
           canViewWarehouseCapacity: false,
           canViewActiveRequisitions: false,
           canViewIncomingDeliveries: false,
           canViewActiveContainers: false,
-          canViewLocationAssignment: false,
         }
       );
     },
@@ -320,36 +316,6 @@ export const usePendingApprovals = (
 };
 
 /**
- * Hook for Box Assignment Queue widget
- * Shows items that need box assignments
- */
-export const useBoxAssignmentQueue = (
-  params?: Omit<DashboardQueryParams, "widgets">,
-  options?: Omit<UseQueryOptions<BoxAssignmentQueueData>, "queryKey" | "queryFn">
-) => {
-  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
-  return useQuery<BoxAssignmentQueueData>({
-    queryKey: ["purchasing-dashboard", "boxAssignmentQueue", params],
-    queryFn: async () => {
-      const response = await apiClient.get<PurchasingDashboardData>(
-        `/api/dashboard/purchasing?widgets=boxAssignmentQueue`
-      );
-      return (
-        response.boxAssignmentQueue ?? {
-          count: 0,
-          items: [],
-        }
-      );
-    },
-    staleTime: 1000 * 60 * 2,
-    gcTime: 1000 * 60 * 5,
-    refetchInterval: 1000 * 60 * 5,
-    ...options,
-    enabled: isLoggingOut ? false : options?.enabled,
-  });
-};
-
-/**
  * Hook for Warehouse Capacity widget
  * Shows warehouse space utilization metrics
  */
@@ -460,38 +426,6 @@ export const useActiveContainers = (
         response.activeContainers ?? {
           count: 0,
           items: [],
-        }
-      );
-    },
-    staleTime: 1000 * 60 * 2,
-    gcTime: 1000 * 60 * 5,
-    refetchInterval: 1000 * 60 * 5,
-    ...options,
-    enabled: isLoggingOut ? false : options?.enabled,
-  });
-};
-
-/**
- * Hook for Location Assignment Status widget
- * Shows warehouse location assignment metrics
- */
-export const useLocationAssignmentStatus = (
-  params?: Omit<DashboardQueryParams, "widgets">,
-  options?: Omit<UseQueryOptions<LocationAssignmentStatusData>, "queryKey" | "queryFn">
-) => {
-  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
-  return useQuery<LocationAssignmentStatusData>({
-    queryKey: ["purchasing-dashboard", "locationAssignmentStatus", params],
-    queryFn: async () => {
-      const response = await apiClient.get<PurchasingDashboardData>(
-        `/api/dashboard/purchasing?widgets=locationAssignmentStatus`
-      );
-      return (
-        response.locationAssignmentStatus ?? {
-          totalBoxes: 0,
-          assignedBoxes: 0,
-          unassignedBoxes: 0,
-          assignmentPercent: 0,
         }
       );
     },

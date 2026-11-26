@@ -2049,66 +2049,8 @@ export type Database = {
           },
         ];
       };
-      grn_boxes: {
-        Row: {
-          barcode: string;
-          batch_location_sku: string | null;
-          box_number: number;
-          container_number: string | null;
-          created_at: string;
-          delivery_date: string;
-          grn_item_id: string;
-          id: string;
-          qty_per_box: number;
-          seal_number: string | null;
-          warehouse_location_id: string | null;
-        };
-        Insert: {
-          barcode: string;
-          batch_location_sku?: string | null;
-          box_number: number;
-          container_number?: string | null;
-          created_at?: string;
-          delivery_date: string;
-          grn_item_id: string;
-          id?: string;
-          qty_per_box: number;
-          seal_number?: string | null;
-          warehouse_location_id?: string | null;
-        };
-        Update: {
-          barcode?: string;
-          batch_location_sku?: string | null;
-          box_number?: number;
-          container_number?: string | null;
-          created_at?: string;
-          delivery_date?: string;
-          grn_item_id?: string;
-          id?: string;
-          qty_per_box?: number;
-          seal_number?: string | null;
-          warehouse_location_id?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "grn_boxes_grn_item_id_fkey";
-            columns: ["grn_item_id"];
-            isOneToOne: false;
-            referencedRelation: "grn_items";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "grn_boxes_warehouse_location_id_fkey";
-            columns: ["warehouse_location_id"];
-            isOneToOne: false;
-            referencedRelation: "warehouse_locations";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       grn_items: {
         Row: {
-          barcodes_printed: boolean | null;
           created_at: string;
           damaged_qty: number;
           grn_id: string;
@@ -2125,7 +2067,6 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
-          barcodes_printed?: boolean | null;
           created_at?: string;
           damaged_qty?: number;
           grn_id: string;
@@ -2142,7 +2083,6 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
-          barcodes_printed?: boolean | null;
           created_at?: string;
           damaged_qty?: number;
           grn_id?: string;
@@ -13706,16 +13646,6 @@ export type Database = {
       };
       refresh_delivery_note_item_received_qty: {
         Args: { p_company_id: string; p_dn_item_id: string };
-        Returns: number;
-      };
-      regenerate_grn_boxes: {
-        Args: {
-          p_company_id: string;
-          p_grn_id: string;
-          p_grn_item_id: string;
-          p_num_boxes: number;
-          p_user_id: string;
-        };
         Returns: number;
       };
       reject_delivery_note_receiving_exception: {

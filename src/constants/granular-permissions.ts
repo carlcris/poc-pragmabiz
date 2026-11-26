@@ -44,12 +44,10 @@ export const GRANULAR_CAPABILITIES = {
   PURCHASING_DELAYED_SHIPMENTS: "purchasing_dashboard.widget.delayed_shipments.view",
   PURCHASING_TODAYS_RECEIVING_QUEUE: "purchasing_dashboard.widget.todays_receiving_queue.view",
   PURCHASING_PENDING_APPROVALS: "purchasing_dashboard.widget.pending_approvals.view",
-  PURCHASING_BOX_ASSIGNMENT_QUEUE: "purchasing_dashboard.widget.box_assignment_queue.view",
   PURCHASING_WAREHOUSE_CAPACITY: "purchasing_dashboard.widget.warehouse_capacity.view",
   PURCHASING_ACTIVE_REQUISITIONS: "purchasing_dashboard.widget.active_requisitions.view",
   PURCHASING_INCOMING_DELIVERIES: "purchasing_dashboard.widget.incoming_deliveries.view",
   PURCHASING_ACTIVE_CONTAINERS: "purchasing_dashboard.widget.active_containers.view",
-  PURCHASING_LOCATION_ASSIGNMENT: "purchasing_dashboard.widget.location_assignment.view",
 
   SALES_ANALYTICS_TOTAL_SALES: "sales_analytics.widget.total_sales.view",
   SALES_ANALYTICS_COMMISSIONS: "sales_analytics.widget.commissions.view",
@@ -124,12 +122,10 @@ export type PurchasingDashboardCapabilities = {
   canViewDelayedShipments: boolean;
   canViewTodaysReceivingQueue: boolean;
   canViewPendingApprovals: boolean;
-  canViewBoxAssignmentQueue: boolean;
   canViewWarehouseCapacity: boolean;
   canViewActiveRequisitions: boolean;
   canViewIncomingDeliveries: boolean;
   canViewActiveContainers: boolean;
-  canViewLocationAssignment: boolean;
 };
 
 export type SalesAnalyticsCapabilities = {

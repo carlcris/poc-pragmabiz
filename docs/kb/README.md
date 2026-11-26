@@ -128,7 +128,7 @@ Vendor management and procurement workflow:
 - Supplier master data (company-scoped as of June 2025)
 - Purchase orders with approval workflow
 - Purchase receipts (tablet-optimized)
-- Goods Receipt Notes (GRN) with multi-box receiving
+- Goods Receipt Notes (GRN) with line quantities, carton counts, and a handoff to Putaway Station
 - Stock requisitions for internal requests
 - Load lists (consolidating multiple requisitions)
 - Damaged item tracking and reporting
@@ -145,7 +145,7 @@ Stock Requisition → Load List → Purchase Order → GRN → Purchase Receipt
 - Managing suppliers and vendors
 - Creating purchase orders
 - Receiving goods from suppliers
-- Processing GRNs with multi-box tracking
+- Recording supplier receipts and staging stock for putaway
 - Handling damaged items
 - Managing stock requisitions and load lists
 

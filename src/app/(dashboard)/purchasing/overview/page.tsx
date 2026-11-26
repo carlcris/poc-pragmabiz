@@ -63,13 +63,6 @@ const PendingApprovalsWidget = dynamic(
     ),
   { ssr: false, loading: widgetFallback }
 );
-const BoxAssignmentQueueWidget = dynamic(
-  () =>
-    import("@/components/dashboard/widgets/BoxAssignmentQueueWidget").then(
-      (mod) => mod.BoxAssignmentQueueWidget
-    ),
-  { ssr: false, loading: widgetFallback }
-);
 const WarehouseCapacityWidget = dynamic(
   () =>
     import("@/components/dashboard/widgets/WarehouseCapacityWidget").then(
@@ -95,13 +88,6 @@ const ActiveContainersWidget = dynamic(
   () =>
     import("@/components/dashboard/widgets/ActiveContainersWidget").then(
       (mod) => mod.ActiveContainersWidget
-    ),
-  { ssr: false, loading: widgetFallback }
-);
-const LocationAssignmentWidget = dynamic(
-  () =>
-    import("@/components/dashboard/widgets/LocationAssignmentWidget").then(
-      (mod) => mod.LocationAssignmentWidget
     ),
   { ssr: false, loading: widgetFallback }
 );
@@ -139,12 +125,10 @@ export default function PurchasingOverviewPage() {
     loadingCapabilities ||
     capabilities?.canViewTodaysReceivingQueue ||
     capabilities?.canViewPendingApprovals ||
-    capabilities?.canViewBoxAssignmentQueue ||
     capabilities?.canViewWarehouseCapacity ||
     capabilities?.canViewActiveRequisitions ||
     capabilities?.canViewIncomingDeliveries ||
-    capabilities?.canViewActiveContainers ||
-    capabilities?.canViewLocationAssignment;
+    capabilities?.canViewActiveContainers;
 
   return (
     <MultiResourceProtectedRoute resources={PURCHASING_MODULE_RESOURCES}>
@@ -237,9 +221,6 @@ export default function PurchasingOverviewPage() {
                 : capabilities?.canViewPendingApprovals && <PendingApprovalsWidget />}
               {loadingCapabilities
                 ? widgetFallback()
-                : capabilities?.canViewBoxAssignmentQueue && <BoxAssignmentQueueWidget />}
-              {loadingCapabilities
-                ? widgetFallback()
                 : capabilities?.canViewWarehouseCapacity && (
                     <WarehouseCapacityWidget warehouseId={warehouseId} />
                   )}
@@ -261,9 +242,6 @@ export default function PurchasingOverviewPage() {
                 : capabilities?.canViewActiveContainers && (
                     <ActiveContainersWidget businessUnitId={currentBusinessUnit?.id} />
                   )}
-              {loadingCapabilities
-                ? widgetFallback()
-                : capabilities?.canViewLocationAssignment && <LocationAssignmentWidget />}
             </div>
           </section>
         )}

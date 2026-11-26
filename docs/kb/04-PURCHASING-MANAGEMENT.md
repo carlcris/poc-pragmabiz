@@ -2,14 +2,14 @@
 
 ## Overview
 
-The Purchasing Management module handles the complete procurement workflow from supplier management through goods receipt. It includes purchase orders, purchase receipts, stock requisitions, load lists, and Goods Receipt Notes (GRNs) with multi-box receiving and damaged item tracking.
+The Purchasing Management module handles procurement from supplier management through goods receipt. It includes purchase orders, purchase receipts, stock requisitions, load lists, and Goods Receipt Notes (GRNs) with line-level receiving and damage tracking.
 
 ## Key Features
 
 - **Supplier** master data (company-scoped as of June 2025)
 - **Purchase Orders** with approval workflow
 - **Purchase Receipts** for tablet-optimized receiving
-- **Goods Receipt Notes (GRN)** with multi-box receiving
+- **Goods Receipt Notes (GRN)** with received quantities, damaged quantities, and carton counts
 - **Stock Requisitions** for internal requests
 - **Load Lists** consolidating multiple requisitions
 - **Damaged Item** tracking and reporting
@@ -25,9 +25,9 @@ Load List (Consolidation)
     ↓
 Purchase Order (To Supplier)
     ↓
-GRN (Multi-Box Receiving)
+GRN (Receiving)
     ↓
-Purchase Receipt (Inventory Update)
+Putaway Station (Warehouse Placement and Labels)
 ```
 
 ### Warehouse Capacity Widget
@@ -122,31 +122,15 @@ A **Purchase Order** is a formal request to a supplier to provide goods at agree
 
 ### 5. Goods Receipt Note (GRN)
 
-A **GRN** documents the receipt of goods from suppliers with multi-box receiving capability.
+A **GRN** documents a supplier shipment's received and damaged quantities by load-list line. Receivers can record carton counts and notes during receiving.
 
 **Key Features**:
 
-- **Multi-box receiving**: Track items across multiple boxes/containers
-- Linked to purchase order
-- Box-level item tracking
-- Damage tracking per box
-- Confirmation workflow before creating purchase receipt
+- Created automatically when the linked load list is marked arrived
+- Records received quantities, damaged quantities, and carton counts per line
 - Submit-for-confirmation stages received stock into the shared Putaway Station
-- Barcode/QR scanning support
-- Photo capture for damaged items
-
-**Multi-Box Workflow**:
-
-```
-GRN #001 (PO #123)
-  Box 1:
-    - Widget ABC: 50 units (good)
-    - Widget XYZ: 20 units (damaged: 2)
-  Box 2:
-    - Widget ABC: 50 units (good)
-  Box 3:
-    - Widget XYZ: 80 units (good)
-```
+- Confirmation closes the GRN and marks its load list received
+- Putaway Station handles warehouse placement and label printing
 
 ### 6. Purchase Receipt
 
@@ -310,54 +294,11 @@ CREATE TABLE purchase_order_lines (
 
 #### grns (Goods Receipt Notes)
 
-```sql
-CREATE TABLE grns (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_id UUID REFERENCES companies(id),
-  grn_number VARCHAR UNIQUE NOT NULL,
-  purchase_order_id UUID REFERENCES purchase_orders(id),
-  supplier_id UUID REFERENCES suppliers(id),
-  warehouse_id UUID REFERENCES warehouses(id),
-  receipt_date TIMESTAMPTZ DEFAULT now(),
-  status VARCHAR DEFAULT 'draft',  -- 'draft', 'approved', 'completed'
-  total_boxes INTEGER DEFAULT 0,
-  notes TEXT,
-  approved_by UUID REFERENCES users(id),
-  approved_at TIMESTAMPTZ,
-  created_by UUID REFERENCES users(id),
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
-#### grn_boxes
-
-```sql
-CREATE TABLE grn_boxes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  grn_id UUID REFERENCES grns(id) ON DELETE CASCADE,
-  box_number INTEGER NOT NULL,  -- Box 1, 2, 3, etc.
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(grn_id, box_number)
-);
-```
+The header stores the receipt number, linked `load_list_id`, destination `business_unit_id`, workflow status, and receipt audit fields.
 
 #### grn_items
 
-```sql
-CREATE TABLE grn_items (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  grn_id UUID REFERENCES grns(id) ON DELETE CASCADE,
-  grn_box_id UUID REFERENCES grn_boxes(id) ON DELETE CASCADE,
-  po_line_id UUID REFERENCES purchase_order_lines(id),
-  item_id UUID REFERENCES items(id),
-  quantity_received DECIMAL(12,3) NOT NULL,
-  quantity_damaged DECIMAL(12,3) DEFAULT 0,
-  unit_id UUID REFERENCES units_of_measure(id),
-  notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-```
+Each line links to the GRN, load-list item, and catalog item. It stores the receiving unit snapshot, `received_qty`, `damaged_qty`, carton count (`num_boxes`), and notes. Putaway tasks and their postings provide the item and batch data for labels.
 
 #### purchase_receipts
 
@@ -711,10 +652,10 @@ Confirm GRN.
 **Effect**:
 
 1. Status changes to 'approved'
-2. Ready to create purchase receipt
+2. Linked load list changes to 'received'
 3. Records confirming user and timestamp
 
-GRN inventory handoff begins when the receiving user submits the GRN for confirmation. The submit action creates business-unit-level putaway tasks grouped by GRN line and batch code, copies each GRN line's source-unit name and quantity-per-unit conversion into the putaway task, records the staged receipt without a warehouse, and does not update `item_warehouse`, `item_batches`, or `item_batch_locations`. Confirmation completes the GRN workflow status and atomically marks the linked load list received; load lists cannot be marked received directly. At the Putaway Station, the operator selects an active warehouse in the destination business unit and then a storable rack in that warehouse. Posting atomically creates or increments the selected warehouse stock and final batch/location inventory. The Putaway Station list reads its transaction-owned snapshot to show the source quantity, source unit, qty/unit conversion, and **Total Qty** expressed in base units, so upstream unit changes cannot alter a staged task. GRN box regeneration likewise calculates each box's base quantity from the GRN line's snapshotted quantity-per-unit conversion, even if the referenced live unit option is later edited or deleted. Box generation does not preassign a warehouse or rack. Damaged stock handling will be implemented in a separate workflow.
+GRN inventory handoff begins when the receiving user submits the GRN for confirmation. The submit action creates business-unit-level putaway tasks by GRN line and batch code, copies each line's source unit and quantity-per-unit conversion, and records the staged receipt. Confirmation completes the GRN and atomically marks the linked load list received. At the Putaway Station, the operator selects an active warehouse in the destination business unit and a storable rack in that warehouse. Posting atomically creates or increments warehouse stock and batch/location inventory. The Putaway Station displays quantities from the task's unit snapshot, including **Total Qty** in base units. Operators can print labels when posting and reprint them from completed putaway.
 
 ### Purchase Receipt Management
 
@@ -797,27 +738,13 @@ For each receipt item:
 7. If approved, PO sent to supplier
 8. System tracks PO status: Ordered → Completed
 
-### Workflow 3: Multi-Box GRN Receiving
+### Workflow 3: GRN Receiving
 
-1. Goods arrive from supplier (multiple boxes)
-2. Destination business unit marks the load list arrived, automatically creating its draft GRN
-3. Receiver starts the destination-business-unit GRN, transitioning it and the linked load list to receiving without selecting a warehouse
-4. For each box:
-   - Scan/enter box number
-   - Scan/enter items in box
-   - Record quantities (good + damaged)
-   - Take photos of damaged items
-   - Add notes
-5. Save receiving quantities as needed
-6. Complete GRN with all boxes
-7. Submit GRN for confirmation, staging received quantities into Putaway Station
-8. Supervisor confirms GRN
-9. Putaway Station selects the warehouse and rack, posts the staged stock into that final location, and prints final location labels
-10. Create purchase receipt from confirmed GRN
-11. Post receipt:
-    - Costs calculated
-    - Damaged items tracked
-12. PO updated with received quantities
+1. The destination business unit marks the load list arrived, creating its draft GRN.
+2. The receiver starts receiving on the GRN and records received quantities, damaged quantities, carton counts, and notes by line.
+3. The receiver submits the GRN for confirmation and stages the good quantities in Putaway Station.
+4. The supervisor confirms the GRN.
+5. The Putaway Station operator selects the warehouse and rack, posts the staged stock, and prints the item-batch labels.
 
 ### Workflow 4: Damaged Item Processing
 
@@ -907,14 +834,13 @@ class PurchaseReceiptService {
 
 **Location**: `src/components/purchasing/PurchaseOrderForm.tsx`
 
-#### GRNReceivingUI
+#### GRN receiving detail
 
-**Location**: `src/components/purchasing/GRNReceivingUI.tsx`
+**Location**: `src/app/(dashboard)/purchasing/grns/[id]/page.tsx`
 
-- Tablet-optimized interface
-- Multi-box receiving workflow
-- Barcode scanning
-- Photo capture for damages
+- GRN line quantities, carton counts, and receiving notes
+- Damaged item reporting
+- Receiving, submission, and confirmation controls
 
 #### PurchaseReceiptForm
 

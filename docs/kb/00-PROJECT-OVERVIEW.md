@@ -225,7 +225,7 @@ or Metric-to-Imperial conversion modes; unit choices are restricted to the selec
 ### Purchasing Workflow
 - Purchase Requisition → PO → Receipt
 - Load list consolidation
-- Multi-box GRN receiving
+- GRN receiving by shipment line and warehouse placement through Putaway Station
 - Damaged item tracking
 - Supplier management
 

@@ -164,11 +164,6 @@ const menuItems = [
         icon: PackageCheck,
       },
       // {
-      //   title: "Putaway Station",
-      //   href: "/purchasing/grns/putaway",
-      //   resource: RESOURCES.GOODS_RECEIPT_NOTES as Resource,
-      // },
-      // {
       //   title: "Purchase Orders",
       //   href: "/purchasing/orders",
       //   resource: RESOURCES.PURCHASE_ORDERS as Resource,

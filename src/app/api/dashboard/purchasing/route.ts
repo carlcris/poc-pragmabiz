@@ -106,10 +106,6 @@ async function GETHandler(request: NextRequest) {
         userCapabilities,
         GRANULAR_CAPABILITIES.PURCHASING_PENDING_APPROVALS
       ),
-      canViewBoxAssignmentQueue: hasCapability(
-        userCapabilities,
-        GRANULAR_CAPABILITIES.PURCHASING_BOX_ASSIGNMENT_QUEUE
-      ),
       canViewWarehouseCapacity: hasCapability(
         userCapabilities,
         GRANULAR_CAPABILITIES.PURCHASING_WAREHOUSE_CAPACITY
@@ -125,10 +121,6 @@ async function GETHandler(request: NextRequest) {
       canViewActiveContainers: hasCapability(
         userCapabilities,
         GRANULAR_CAPABILITIES.PURCHASING_ACTIVE_CONTAINERS
-      ),
-      canViewLocationAssignment: hasCapability(
-        userCapabilities,
-        GRANULAR_CAPABILITIES.PURCHASING_LOCATION_ASSIGNMENT
       ),
     };
 
@@ -536,71 +528,7 @@ async function GETHandler(request: NextRequest) {
     }
 
     // ========================================================================
-    // 7. Box Assignment Queue
-    // ========================================================================
-    if (shouldFetch("boxAssignmentQueue") && dashboardCapabilities.canViewBoxAssignmentQueue) {
-      // Items that have been received but don't have box assignments yet
-      const { data, error } = await supabase
-        .from("grn_items")
-        .select(
-          `
-          id,
-          grn_id,
-          item_id,
-          received_qty,
-          grns!inner(grn_number),
-          items!inner(item_name, item_code)
-        `
-        )
-        .gt("received_qty", 0);
-
-      if (!error && data) {
-        type GrnItemRow = {
-          id: string;
-          grn_id: string;
-          item_id: string;
-          received_qty: number | null;
-          grns?: { grn_number?: string | null } | null;
-          items?: { item_name?: string | null; item_code?: string | null } | null;
-        };
-        const grnItems = data as GrnItemRow[];
-
-        // For each GRN item, count how many boxes are assigned
-        const itemsWithBoxCounts = await Promise.all(
-          grnItems.map(async (grnItem) => {
-            const { count: boxCount } = await supabase
-              .from("grn_boxes")
-              .select("id", { count: "exact", head: true })
-              .eq("grn_item_id", grnItem.id);
-
-            const grnNumber = grnItem.grns?.grn_number || "";
-            const itemName = grnItem.items?.item_name || "";
-            const itemCode = grnItem.items?.item_code || "";
-
-            return {
-              grnId: grnItem.grn_id,
-              grnNumber,
-              itemId: grnItem.item_id,
-              itemName,
-              itemCode,
-              receivedQty: grnItem.received_qty || 0,
-              boxesAssigned: boxCount || 0,
-            };
-          })
-        );
-
-        // Filter only items that don't have boxes assigned
-        const itemsNeedingBoxes = itemsWithBoxCounts.filter((item) => item.boxesAssigned === 0);
-
-        dashboardData.boxAssignmentQueue = {
-          count: itemsNeedingBoxes.length,
-          items: itemsNeedingBoxes,
-        };
-      }
-    }
-
-    // ========================================================================
-    // 8. Warehouse Capacity
+    // 7. Warehouse Capacity
     // ========================================================================
     if (shouldFetch("warehouseCapacity") && dashboardCapabilities.canViewWarehouseCapacity) {
       if (!businessUnitId) {
@@ -642,7 +570,7 @@ async function GETHandler(request: NextRequest) {
     }
 
     // ========================================================================
-    // 9. Active Requisitions by Status
+    // 8. Active Requisitions by Status
     // ========================================================================
     if (shouldFetch("activeRequisitions") && dashboardCapabilities.canViewActiveRequisitions) {
       let query = supabase
@@ -683,7 +611,7 @@ async function GETHandler(request: NextRequest) {
     }
 
     // ========================================================================
-    // 10. Incoming Deliveries with SRs
+    // 9. Incoming Deliveries with SRs
     // ========================================================================
     if (
       shouldFetch("incomingDeliveriesWithSRs") &&
@@ -776,7 +704,7 @@ async function GETHandler(request: NextRequest) {
     }
 
     // ========================================================================
-    // 11. Active Containers
+    // 10. Active Containers
     // ========================================================================
     if (shouldFetch("activeContainers") && dashboardCapabilities.canViewActiveContainers) {
       let query = supabase
@@ -824,32 +752,6 @@ async function GETHandler(request: NextRequest) {
         dashboardData.activeContainers = {
           count: containers.length,
           items: containers,
-        };
-      }
-    }
-
-    // ========================================================================
-    // 12. Location Assignment Status
-    // ========================================================================
-    if (
-      shouldFetch("locationAssignmentStatus") &&
-      dashboardCapabilities.canViewLocationAssignment
-    ) {
-      const { data: boxes, error } = await supabase
-        .from("grn_boxes")
-        .select("id, warehouse_location_id", { count: "exact" });
-
-      if (!error && boxes) {
-        const totalBoxes = boxes.length;
-        const assignedBoxes = boxes.filter((box) => box.warehouse_location_id !== null).length;
-        const unassignedBoxes = totalBoxes - assignedBoxes;
-        const assignmentPercent = totalBoxes > 0 ? (assignedBoxes / totalBoxes) * 100 : 0;
-
-        dashboardData.locationAssignmentStatus = {
-          totalBoxes,
-          assignedBoxes,
-          unassignedBoxes,
-          assignmentPercent: Math.round(assignmentPercent * 100) / 100,
         };
       }
     }

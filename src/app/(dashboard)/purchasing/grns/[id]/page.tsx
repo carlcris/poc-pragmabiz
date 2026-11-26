@@ -67,18 +67,6 @@ const DamagedItemsSection = dynamic(
   }
 );
 
-const BoxManagementSection = dynamic(
-  () => import("@/components/grns/BoxManagementSection").then((mod) => mod.BoxManagementSection),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex items-center justify-center p-6">
-        <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary"></div>
-      </div>
-    ),
-  }
-);
-
 interface GRNDetailPageProps {
   params: Promise<{ id: string }>;
 }
@@ -527,10 +515,9 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
       </div>
 
       <Tabs defaultValue="receive-items" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="receive-items">{t("receiveItemsTab")}</TabsTrigger>
           <TabsTrigger value="damage-items">{t("damageItemsTab")}</TabsTrigger>
-          <TabsTrigger value="box-management">{t("boxManagementTab")}</TabsTrigger>
           <TabsTrigger value="notes">{t("notesTab")}</TabsTrigger>
         </TabsList>
 
@@ -744,10 +731,6 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
 
         <TabsContent value="damage-items">
           <DamagedItemsSection grnId={grn.id} grnItems={grn.items} isEditable={isEditable} />
-        </TabsContent>
-
-        <TabsContent value="box-management">
-          <BoxManagementSection grn={grn} isEditable={isEditable} />
         </TabsContent>
 
         <TabsContent value="notes">

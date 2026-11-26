@@ -71,7 +71,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
         received_by_user:users!grns_received_by_fkey(id, email, first_name, last_name),
         checked_by_user:users!grns_checked_by_fkey(id, email, first_name, last_name),
         items:grn_items(
-          id, item_id, load_list_item_id, item_unit_option_id, unit_name, qty_per_unit, load_list_qty, received_qty, damaged_qty, num_boxes, barcodes_printed, notes,
+          id, item_id, load_list_item_id, item_unit_option_id, unit_name, qty_per_unit, load_list_qty, received_qty, damaged_qty, num_boxes, notes,
           item:items(id, item_code, item_name)
         )
       `
@@ -175,7 +175,6 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
           receivedQty: parseFloat(String(item.received_qty)),
           damagedQty: parseFloat(String(item.damaged_qty)),
           numBoxes: item.num_boxes as number | null,
-          barcodesPrinted: item.barcodes_printed as boolean | null,
           notes: item.notes as string | null,
         };
       }),
