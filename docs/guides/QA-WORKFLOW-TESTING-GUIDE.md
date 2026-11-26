@@ -236,10 +236,10 @@ These are the records everything else in the app is built on. Before testing any
   another option. Confirm the save is rejected and the previous default stays selected after reload.
 - In **Unit Options**, open **More** on an active non-base option and select **Show in Inventory**.
   On the **Inventory** tab, confirm On Hand, Allocated, Putaway Qty, and Available show the
-  whole-unit equivalent for each nonzero base quantity on desktop and mobile. For `BOX (50)` and
+  whole-unit equivalent below each nonzero base quantity on desktop and mobile. For `BOX (50)` and
   quantities of 1,000, 200, 300, and 500, expect `20 BOX (50)`, `4 BOX (50)`, `6 BOX (50)`, and
   `10 BOX (50)`. Check that a zero quantity shows only `0` and that a quantity of 49 shows
-  `0 BOX (50)` alongside the base quantity. Choose a different option and confirm it replaces the
+  `0 BOX (50)` below the base quantity. Choose a different option and confirm it replaces the
   previous preview.
   Remove or deactivate the nominated option and confirm the equivalents disappear.
 - On desktop, nominate a unit with a 120-character label containing no spaces. Confirm the label
@@ -727,6 +727,8 @@ requires the granular delivery-note receiving capability.
 
 **Things to test**:
 
+- Open a Stock Request on desktop and phone widths and confirm the item code appears below the
+  name in the same column.
 - Confirm the form selects only a fulfilling business unit and does not expose source or destination
   warehouse selectors.
 - Open a line's optional batch selector and confirm it initially loads no more than five eligible
@@ -762,6 +764,9 @@ requires the granular delivery-note receiving capability.
 ---
 
 ## 13. Delivery Notes
+
+Open a Delivery Note at desktop and phone widths and confirm the item code appears below the name
+in the same **Item** column. Check the same layout in the receiving overage table when present.
 
 The list's **Business Unit** column shows only the transfer's other party, with its name and
 code. From the requesting BU, the row is labeled **Fulfilled By** and shows the fulfilling BU.
@@ -1247,7 +1252,10 @@ For each line, choose either **Existing Batch** or **New Batch**. Verify the Sto
      inline error names the requisition and gives the valid limit, and **Create 3 Links** is
      disabled. Switch items and return to verify the pending links are preserved. Correct the
      quantity to 10 and save all three with **Create 3 Links**.
-   - On the Load List detail page, check that a partially linked item shows **Linked** and an unlinked row has no label. Save a second link and verify the label stays after removing one link, then clears after removing the last link. Check each change without reloading the page.
+   - On the Load List detail page, check that the item code appears below the name on desktop and
+     phones. A partially linked item shows **Linked** and an unlinked row has no label. Save a
+     second link and verify the label stays after removing one link, then clears after removing
+     the last link. Check each change without reloading the page.
 4. **Mark In Transit** → status In Transit. Captures an estimated arrival date and carrier name.
    - With Mark In Transit access in the source business unit, open **Edit Transit Details** and verify the current liner and estimated arrival date are prefilled. Change the ETA and clear the liner. Verify the Transit section updates without reloading, the ETA updates in **Stock In Transit**, and the load list stays In Transit. Verify the edit action is unavailable in the destination business unit and after arrival.
    - In the source business unit, verify eligible requisition checkboxes can be ticked for
@@ -1307,6 +1315,8 @@ form at `/purchasing/stock-requisitions/new`. Opening a requisition shows its vi
 
 **Things to test**:
 
+- Open a Stock Requisition on desktop and phone widths and confirm the item code appears below
+  the name in the same column.
 - With `EMAIL_ENABLED=true` or unset, send a requisition and verify the supplier receives an email with the correct line items, in the expected language.
 - Set `EMAIL_ENABLED=false` and restart the server. Send a requisition and confirm it becomes Submitted without sending supplier email. Confirm test emails are also suppressed. Re-enable delivery only in an environment intended to send mail.
 - Link a Load List that only partially covers the requisitioned quantity. Confirm its GRN and verify the requisition becomes Partially Fulfilled.
@@ -1342,12 +1352,16 @@ form at `/purchasing/stock-requisitions/new`. Opening a requisition shows its vi
 - Confirm Start Receiving is blocked if the Load List isn't actually Arrived yet.
 - Reverse an Arrived load list with an untouched draft GRN. Confirm the load list returns to In Transit and marking it Arrived again creates a new draft GRN. Verify that reversal is blocked after GRN receiving activity. The rollback-only `supabase/tests/grn-arrival-reversal.sql` covers both paths and forced transaction failures.
 - Confirm the GRN detail has Receive Items, Damage Items, and Notes, and that Purchasing Overview omits the former box assignment widgets. Record a carton count during receiving, then print the item-batch labels from Putaway Station when posting.
+- In the web **Receive Items** table, check that the item code appears below the name. For a unit
+  such as `BOX (144)`, check that the unit name and `Qty/Unit: 144` each fit on their own line.
+  At narrow widths, scroll the table sideways to reach the later columns.
 - Confirm Start Receiving accepts no warehouse input, succeeds only in the destination business unit, and does not change warehouse-level stock.
 - Try to Submit for Approval with every line at zero received quantity — should be refused.
 - On mobile, change a line without tapping Save and then Submit; confirm the line and submission commit together. Repeat with a forced submission failure and confirm neither the line change nor any stock/putaway write is committed.
 - After Submit, confirm the received quantity appears as a business-unit-level Putaway task but does **not** appear in any warehouse's on-hand or available stock until Putaway (section 19) is completed.
 - Test with a user who has, say, Start and Save permissions but not Confirm — confirm the Confirm button/action is genuinely unavailable to them, not just hidden but still triggerable another way.
-- Report a damaged item during receiving and follow it through its own lifecycle.
+- Report a damaged item during receiving. In **Damage Items**, confirm the item code appears below
+  the name in the same column, then follow the report through its lifecycle.
 - Mobile: use the mobile receiving screens for the same shipment and confirm behavior matches the web version (Start Receiving → enter received/damaged quantities → Save/Submit).
 
 ---

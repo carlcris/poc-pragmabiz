@@ -413,6 +413,7 @@ export function LoadListDetails({ loadList }: LoadListDetailsProps) {
                 totalAmount={canViewTotalAmount ? (loadList.totalAmount ?? null) : null}
                 emptyTitle={t("noItemsTitle")}
                 emptyDescription={t("noItemsViewDescription")}
+                itemNameFirst
               />
             </div>
           </section>

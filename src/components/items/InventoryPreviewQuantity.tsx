@@ -10,7 +10,7 @@ type InventoryPreviewQuantityProps = {
   children?: (baseQuantity: string) => ReactNode;
 };
 
-/** Shows the equivalent below the base quantity on phones and beside it in the table. */
+/** Shows the equivalent below the base quantity. */
 export function InventoryPreviewQuantity({
   baseQuantity,
   previewUnit,
@@ -25,11 +25,11 @@ export function InventoryPreviewQuantity({
   if (equivalent === null) return <>{base}</>;
 
   return (
-    <span className="block md:inline-flex md:max-w-32 md:flex-wrap md:items-baseline md:justify-end md:gap-x-1">
+    <>
       {base}
-      <span className="block min-w-0 whitespace-normal break-words text-xs font-normal text-muted-foreground">
+      <span className="block whitespace-normal break-words text-xs font-normal text-muted-foreground md:ml-auto md:max-w-32">
         {equivalent} {previewUnit.displayLabel}
       </span>
-    </span>
+    </>
   );
 }

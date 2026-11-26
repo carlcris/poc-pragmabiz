@@ -272,12 +272,10 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
                 {damagedItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{item.item?.code || t("noValue")}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {item.item?.name || t("noValue")}
-                        </div>
-                      </div>
+                      <div className="font-medium">{item.item?.name || t("noValue")}</div>
+                      {item.item?.code && (
+                        <div className="text-xs text-muted-foreground">{item.item.code}</div>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">{item.qty}</TableCell>
                     <TableCell>{getDamageTypeBadge(item.damageType)}</TableCell>

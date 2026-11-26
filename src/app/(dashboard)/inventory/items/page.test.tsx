@@ -128,13 +128,16 @@ it("keeps the table and inline filters from md up", () => {
 });
 
 it.each([true, false])(
-  "shows the nominated unit equivalent beside base quantities without parentheses (table layout: %s)",
+  "shows the nominated unit equivalent below base quantities without parentheses (table layout: %s)",
   (isTableLayout) => {
     mocks.isTableLayout = isTableLayout;
     mocks.inventoryPreviewUnit = { displayLabel: "BOX (50)", qtyPerUnit: 50 };
     mocks.quantities = { onHand: 1000, allocated: 200, putawayQty: 350, available: 800 };
     const html = renderToStaticMarkup(<ItemsPage />);
-    expect(html).toContain("20 BOX (50)");
+    const onHandPreview = html.match(
+      /<(?:td|dd)[^>]*><span>1000<\/span><span class="([^"]+)">20 BOX \(50\)<\/span>/
+    );
+    expect(onHandPreview?.[1].split(" ")).toContain("block");
     expect(html).toContain("4 BOX (50)");
     expect(html).toContain("7 BOX (50)");
     expect(html).toContain("16 BOX (50)");

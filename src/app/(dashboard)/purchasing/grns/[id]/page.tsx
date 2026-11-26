@@ -549,12 +549,9 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                   <TableHeader>
                     <TableRow className="border-b border-gray-200 bg-gray-50 hover:bg-gray-50">
                       <TableHead className="text-xs font-semibold text-gray-700">
-                        {t("itemCode")}
-                      </TableHead>
-                      <TableHead className="text-xs font-semibold text-gray-700">
                         {t("itemName")}
                       </TableHead>
-                      <TableHead className="text-xs font-semibold text-gray-700">
+                      <TableHead className="min-w-36 text-xs font-semibold text-gray-700">
                         {t("unitWithQtyPerUnitLabel")}
                       </TableHead>
                       <TableHead className="text-right text-xs font-semibold text-gray-700">
@@ -601,20 +598,24 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                           key={item.id}
                           className={`border-b border-gray-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50/50"} transition-colors hover:bg-blue-50/50`}
                         >
-                          <TableCell className="text-sm font-semibold text-gray-900">
-                            {item.item?.code || t("noValue")}
-                          </TableCell>
-                          <TableCell className="text-sm text-gray-700">
-                            {item.item?.name || t("noValue")}
+                          <TableCell>
+                            <div className="font-medium text-gray-900">
+                              {item.item?.name || t("noValue")}
+                            </div>
+                            {item.item?.code && (
+                              <div className="text-xs text-muted-foreground">{item.item.code}</div>
+                            )}
                           </TableCell>
                           <TableCell>
-                            <div className="font-medium text-gray-900">{item.unitName}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {t("qtyPerUnitInlineLabel", {
-                                qty: item.qtyPerUnit.toLocaleString(locale, {
-                                  maximumFractionDigits: 4,
-                                }),
-                              })}
+                            <div className="max-w-40 break-words">
+                              <div className="font-medium text-gray-900">{item.unitName}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {t("qtyPerUnitInlineLabel", {
+                                  qty: item.qtyPerUnit.toLocaleString(locale, {
+                                    maximumFractionDigits: 4,
+                                  }),
+                                })}
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right text-sm font-medium text-gray-900">

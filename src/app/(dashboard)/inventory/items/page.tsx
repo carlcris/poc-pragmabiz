@@ -889,7 +889,7 @@ function ItemsPageContent() {
                           formatPreviewQuantity={formatPreviewQuantity}
                         />
                       </TableCell>
-                      <TableCell className="text-right text-orange-600">
+                      <TableCell className="text-right text-blue-700 dark:text-blue-400">
                         <InventoryPreviewQuantity
                           baseQuantity={item.allocated}
                           previewUnit={item.inventoryPreviewUnit}

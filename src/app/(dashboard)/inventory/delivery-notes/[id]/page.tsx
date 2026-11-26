@@ -332,10 +332,16 @@ export default function DeliveryNoteDetailPage() {
     }
   };
 
-  const itemLabel = (item: (typeof items)[number]) => {
-    const row = item as typeof item & { items?: EmbeddedItemRef | EmbeddedItemRef[] | null };
-    const ref = one(row.items);
-    return ref?.item_name || ref?.item_code || t("unknownItem");
+  const renderItemIdentity = (item: (typeof items)[number], showCode = true) => {
+    const ref = one(item.items);
+    const name = ref?.item_name;
+    const code = ref?.item_code;
+    return (
+      <>
+        <div className="text-sm font-medium">{name || code || t("unknownItem")}</div>
+        {showCode && name && code && <div className="text-xs text-muted-foreground">{code}</div>}
+      </>
+    );
   };
 
   const uomLabel = (item: (typeof items)[number]) => {
@@ -1011,7 +1017,7 @@ export default function DeliveryNoteDetailPage() {
                             {requestLabel(item)}
                           </TableCell>
                           <TableCell>
-                            <div className="font-medium">{itemLabel(item)}</div>
+                            {renderItemIdentity(item)}
                             {item.void_reason && item.is_voided && (
                               <div className="mt-1 text-xs text-muted-foreground">
                                 {item.void_reason}
@@ -1176,7 +1182,7 @@ export default function DeliveryNoteDetailPage() {
                     return (
                       <TableRow key={item.id}>
                         <TableCell>
-                          <div className="font-medium">{itemLabel(item)}</div>
+                          {renderItemIdentity(item)}
                           <div className="text-xs text-muted-foreground">{requestLabel(item)}</div>
                           {item.receiving_overage_review_notes && (
                             <div className="mt-1 text-xs text-muted-foreground">
@@ -1471,7 +1477,7 @@ export default function DeliveryNoteDetailPage() {
                     className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3"
                   >
                     <div className="flex-1">
-                      <div className="text-sm font-medium">{itemLabel(item)}</div>
+                      {renderItemIdentity(item, false)}
                       <div className="text-xs text-muted-foreground">{requestLabel(item)}</div>
                     </div>
                     <div className="flex items-center gap-2">

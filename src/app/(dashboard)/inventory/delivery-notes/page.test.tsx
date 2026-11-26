@@ -240,3 +240,48 @@ describe("delivery-note detail business-unit perspective", () => {
     expect(html).not.toContain(translations.zh.deliveryNoteDetailPage.fulfillingBusinessUnit);
   });
 });
+
+it("shows the code below the item name in both detail and overage rows", () => {
+  mocks.currentBusinessUnitId = "requesting-bu";
+  mocks.detail = {
+    ...deliveryNote,
+    status: "received",
+    can_view_receiving_details: true,
+    delivery_note_items: [
+      {
+        id: "overage-line",
+        company_id: deliveryNote.company_id,
+        dn_id: deliveryNote.id,
+        sr_id: "stock-request",
+        sr_item_id: "stock-request-line",
+        requesting_warehouse_id: "requesting-warehouse",
+        fulfilling_warehouse_id: "fulfilling-warehouse",
+        item_id: "item",
+        uom_id: "unit",
+        allocated_qty: 10,
+        picked_qty: 10,
+        short_qty: 0,
+        dispatched_qty: 10,
+        received_qty: 12,
+        receiving_status: "over",
+        receiving_variance_qty: 2,
+        receiving_overage_review_status: "pending_review",
+        created_at: deliveryNote.created_at,
+        updated_at: deliveryNote.updated_at,
+        items: [{ item_name: "Polystyrene Moulding", item_code: "PM057WT000" }],
+        units_of_measure: { code: "BOX" },
+        stock_requests: { request_code: "SR-OVERAGE-001" },
+      },
+    ],
+  };
+
+  const html = renderToStaticMarkup(<DeliveryNoteDetailPage />);
+  const [itemDetails, overageReview] = html.match(/<table\b[^>]*>[\s\S]*?<\/table>/g) ?? [];
+  const itemIdentity =
+    'Polystyrene Moulding</div><div class="text-xs text-muted-foreground">PM057WT000</div>';
+
+  expect(itemDetails).toContain(`${itemIdentity}</td>`);
+  expect(overageReview).toContain(
+    `${itemIdentity}<div class="text-xs text-muted-foreground">SR-OVERAGE-001</div></td>`
+  );
+});

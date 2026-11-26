@@ -239,6 +239,7 @@ export function StockRequisitionDetails({ stockRequisition }: StockRequisitionDe
                 totalAmount={canViewTotalAmount ? stockRequisition.totalAmount : null}
                 emptyTitle={t("noItemsTitle")}
                 emptyDescription={t("noItemsViewDescription")}
+                itemNameFirst
               />
             </div>
           </section>

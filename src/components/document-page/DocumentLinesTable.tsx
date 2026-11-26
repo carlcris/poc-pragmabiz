@@ -40,6 +40,7 @@ type DocumentLinesTableProps = {
   totalAmount: number | null;
   emptyTitle: string;
   emptyDescription: string;
+  itemNameFirst?: boolean;
   onRemove?: (key: string) => void;
 };
 
@@ -72,6 +73,7 @@ export function DocumentLinesTable({
   totalAmount,
   emptyTitle,
   emptyDescription,
+  itemNameFirst = false,
   onRemove,
 }: DocumentLinesTableProps) {
   const t = useTranslations("documentLines");
@@ -110,10 +112,18 @@ export function DocumentLinesTable({
 
   const renderCell = (row: DocumentLinesTableRow, column: DocumentLineColumn) => {
     switch (column) {
-      case "item":
+      case "item": {
+        const showNameFirst = itemNameFirst && Boolean(row.itemName);
         return (
           <>
-            <div className="font-semibold">
+            {showNameFirst ? <div className="break-words font-semibold">{row.itemName}</div> : null}
+            <div
+              className={
+                showNameFirst
+                  ? "mt-0.5 break-words text-xs text-muted-foreground empty:hidden"
+                  : "font-semibold"
+              }
+            >
               {row.itemCode}
               {row.isUnsaved ? (
                 <span className="ml-2 text-xs font-semibold text-amber-700 dark:text-amber-400">
@@ -122,12 +132,15 @@ export function DocumentLinesTable({
               ) : null}
               {row.itemStatus ? <span className="ml-2">{row.itemStatus}</span> : null}
             </div>
-            <div className="mt-0.5 text-sm text-muted-foreground">{row.itemName}</div>
+            {!showNameFirst ? (
+              <div className="mt-0.5 text-sm text-muted-foreground">{row.itemName}</div>
+            ) : null}
             {row.note ? (
               <div className="mt-0.5 text-xs italic text-muted-foreground">{row.note}</div>
             ) : null}
           </>
         );
+      }
       case "unit":
         return (
           <>

@@ -124,6 +124,10 @@ A **Purchase Order** is a formal request to a supplier to provide goods at agree
 
 A **GRN** documents a supplier shipment's received and damaged quantities by load-list line. Receivers can record carton counts and notes during receiving.
 
+In the web GRN's **Receive Items** and **Damage Items** tables, the item code appears below the
+item name. In **Receive Items**, the **Unit** column shows the unit name with its quantity per unit
+beneath it.
+
 **Key Features**:
 
 - Created automatically when the linked load list is marked arrived
@@ -425,6 +429,9 @@ Get supplier details with analytics.
 
 ### Stock Requisition Management
 
+On desktop and phones, the **Items** section of Stock Requisition details shows the item code
+below the name in the same column.
+
 Submitting a stock requisition emails the supplier when application email delivery is enabled and
 the supplier has an email address. Set the server environment variable `EMAIL_ENABLED=false` to
 disable all application email, including supplier requisitions and test emails. Submission still
@@ -483,7 +490,7 @@ Lines are entered in a New item row above the items table whose fields align wit
 
 Create and edit validation focuses the first invalid field. Validation messages remain inline, with an invalid-field indicator, until the relevant value changes or validation is retried. Field messages appear beside the affected control; New item messages use a full-width row below the inputs. Saving without line items shows the message under the New item row and focuses the item picker. New item validation checks the item, active unit, positive quantity with up to two decimal places, and visible nonnegative unit cost. If a unit selector is disabled because no units are available, focus returns to the item selector so another item can be chosen. Save failures remain visible in the summary panel above the save button; retrying or editing clears stale errors. In edit mode the summary shows "Unsaved changes" and lines added since the last save are marked "Not saved".
 
-In the Load List detail view, an item row shows **Linked** whenever it has at least one saved stock requisition link, including a partial allocation. The status clears when the last saved link is removed. The standard `GET /api/load-lists/[id]` response exposes this status as the boolean `items[].isLinkedToStockRequisition`.
+In the Load List detail view, the item code appears below the name on desktop and phones. An item row shows **Linked** whenever it has at least one saved stock requisition link, including a partial allocation. The status clears when the last saved link is removed. The standard `GET /api/load-lists/[id]` response exposes this status as the boolean `items[].isLinkedToStockRequisition`.
 
 The Link Stock Requisitions dialog requires `load_lists.view` plus `load_lists.operation.link_stock_requisitions.edit` and shows existing load-list item to stock-requisition item links before new links are added. Authorized users can add links in the source business unit while the load list is `draft`, `confirmed`, or `in_transit`. Saved links can only be removed while it is `draft` or `confirmed`. Each mutation and fulfillment reconciliation runs in one database transaction. Arrived, receiving, pending-approval, received, and cancelled load lists are read-only for linking.
 

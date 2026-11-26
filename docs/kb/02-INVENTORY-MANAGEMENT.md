@@ -502,9 +502,9 @@ Company Level
 - **Reorder Alert Basis**: Total available stock across all company warehouses compared to the effective item reorder point
 
 When an item has an inventory preview unit, the desktop and mobile layouts of the **Inventory** tab
-show its whole-unit equivalent next to **On Hand**, **Allocated** (reserved), **Putaway Qty**, and
-**Available**. A base quantity of zero appears by itself. Inventory divides each nonzero base
-quantity by the selected option's conversion and drops the fractional part. For `BOX (50)`,
+show its whole-unit equivalent below each quantity for **On Hand**, **Allocated** (reserved),
+**Putaway Qty**, and **Available**. A base quantity of zero appears by itself. Inventory divides each
+nonzero base quantity by the selected option's conversion and drops the fractional part. For `BOX (50)`,
 quantities of 1,000 on hand, 200 allocated, 300 awaiting putaway, and 500 available show
 `20 BOX (50)`, `4 BOX (50)`, `6 BOX (50)`, and `10 BOX (50)`.
 
@@ -1688,12 +1688,16 @@ class LocationService {
 - The New Item row (item, unit, qty, total qty, batch) sits above the Items table; Enter adds the line and Esc clears it. Batch defaults to Auto (FIFO); a specific batch can be pinned once Requested To is chosen, and the row rejects a batch whose availability is below the requested base quantity
 - Requested To is fixed after creation and stays locked while any line pins a batch, because pinned batches belong to that warehouse
 - Only drafts from the requesting business unit can be edited, and only with stock request edit permission; other transfers show a message linking back to the view page
+- In the view page's **Items** section, the item code appears below the name in the same column on desktop and phones
 - The view page shows each line's batch, delivered quantity once fulfillment starts, and linked delivery notes. The requesting side can Submit, Edit, Cancel, or Delete a draft; the fulfilling side can Approve or Reject a submitted transfer. Reject and Cancel require a reason
 - Save errors for unavailable or insufficient batches show their own messages instead of the generic save failure
 
 #### Delivery-note list and detail
 
 **Location**: `src/app/(dashboard)/inventory/delivery-notes/page.tsx` and `src/app/(dashboard)/inventory/delivery-notes/[id]/page.tsx`
+
+On the detail page, the **Item** column shows the item code below the name in the item details
+and receiving overage tables.
 
 The **Business Unit** column shows only the transfer's other party relative to the currently
 selected BU: **Fulfilled By** for requesting BUs and **Requested By** for fulfilling BUs. Each row

@@ -39,7 +39,7 @@ const rows: DocumentLinesTableRow[] = [
   },
 ];
 
-const renderLines = (isStackedLayout: boolean) => {
+const renderLines = (isStackedLayout: boolean, itemNameFirst?: boolean) => {
   mocks.isStackedLayout = isStackedLayout;
   return renderToStaticMarkup(
     <NextIntlClientProvider locale="en" messages={translations.en} timeZone="Asia/Manila">
@@ -55,6 +55,7 @@ const renderLines = (isStackedLayout: boolean) => {
         totalAmount={null}
         emptyTitle="No items"
         emptyDescription="No items to show."
+        itemNameFirst={itemNameFirst}
       />
     </NextIntlClientProvider>
   );
@@ -68,6 +69,7 @@ it.each([
   (_, stacked) => {
     const html = renderLines(stacked);
 
+    expect(html.indexOf("ITEM-LINKED")).toBeLessThan(html.indexOf("Galvanized Steel Sheet"));
     // One status node total: present on the linked row, absent from the unlinked one.
     expect(html.split(LINKED_STATUS_NODE)).toHaveLength(2);
     expect(html.slice(html.indexOf("ITEM-LINKED"), html.indexOf("ITEM-UNLINKED"))).toContain(
@@ -78,3 +80,18 @@ it.each([
     expect(html).toContain("text-green-700");
   }
 );
+
+it.each([
+  ["table", false],
+  ["stacked", true],
+] as const)("puts the code below the name with its status in the %s layout", (_, stacked) => {
+  const html = renderLines(stacked, true);
+
+  expect(html).toMatch(
+    /Galvanized Steel Sheet<\/div><div class="[^"]*text-xs text-muted-foreground[^"]*">ITEM-LINKED/
+  );
+  expect(html).toMatch(/Copper Wire Spool<\/div><div[^>]*>ITEM-UNLINKED<\/div>/);
+  expect(html.slice(html.indexOf("ITEM-LINKED"), html.indexOf("Copper Wire Spool"))).toContain(
+    LINKED_STATUS_NODE
+  );
+});

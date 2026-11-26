@@ -327,6 +327,7 @@ export function StockRequestDetails({ stockRequest }: StockRequestDetailsProps) 
                 totalAmount={null}
                 emptyTitle={t("noItemsTitle")}
                 emptyDescription={t("noItemsViewDescription")}
+                itemNameFirst
               />
             </div>
           </section>
