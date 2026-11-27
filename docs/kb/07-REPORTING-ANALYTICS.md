@@ -256,7 +256,7 @@ selected unit, including matching items with zero stock.
 
 For each item, the report sums on-hand stock across the warehouses in scope and uses the largest
 active conversion for the selected unit. Rows are sorted by item name. Each row displays the item
-name and code, on-hand quantity, quantity per selected unit, full units, and loose base units.
+name and code, on-hand quantity, full units, and loose base units.
 Items without an active conversion for the selected unit appear only in the excluded count
 in the first-page summary. Negative stock remains visible in the on-hand column and contributes
 zero full units and zero loose units. The first-page **Unit** summary shows the largest size

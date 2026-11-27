@@ -10225,7 +10225,6 @@ export const translations: Record<Locale, TranslationKeys> = {
         "{kind, select, box {The header size is a reference. For each item, divide its on-hand stock by its largest box size among active options and round down. Loose units are the remainder.} other {The header size is a reference. For each item, divide its on-hand stock by its largest {code} size among active options and round down. Loose units are the remainder.}}",
       item: "Item",
       onHand: "On Hand",
-      qtyPerPackingUnit: "{kind, select, box {Qty per Box} other {Qty per {code}}}",
       fullPackingUnits: "{kind, select, box {Full Boxes} other {Full {code}}}",
       looseUnits: "Loose Units",
       empty:
@@ -17414,7 +17413,6 @@ export const translations: Record<Locale, TranslationKeys> = {
         "{kind, select, box {页首的每箱数量仅供参考。各商品的现存数量除以该商品有效选项中的最大每箱数量后向下取整，余数为散件数量。} other {页首的每 {code} 数量仅供参考。各商品的现存数量除以该商品有效选项中的最大每 {code} 数量后向下取整，余数为散件数量。}}",
       item: "商品",
       onHand: "现存数量",
-      qtyPerPackingUnit: "{kind, select, box {每箱数量} other {每 {code} 数量}}",
       fullPackingUnits: "{kind, select, box {整箱数} other {完整 {code} 数}}",
       looseUnits: "散件数量",
       empty:

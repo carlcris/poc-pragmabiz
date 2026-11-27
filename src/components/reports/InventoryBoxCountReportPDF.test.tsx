@@ -34,7 +34,6 @@ const props: InventoryBoxCountReportPDFProps = {
     fullPackingUnitsNote: "Full boxes are on-hand stock divided by the quantity per box.",
     item: "Item",
     onHand: "On Hand",
-    qtyPerPackingUnit: "Qty per Box",
     fullPackingUnits: "Full Boxes",
     looseUnits: "Loose Units",
     empty: "No items in this category have an active box size.",
@@ -105,11 +104,11 @@ it("places the eligible and excluded counts above the table and keeps eligible z
     props.labels.fullPackingUnitsNote,
   ]);
   expect(headings).toMatchObject({ props: { fixed: true } });
-  expect(textOf(headings)).toEqual(["Item", "On Hand", "Qty per Box", "Full Boxes", "Loose Units"]);
+  expect(textOf(headings)).toEqual(["Item", "On Hand", "Full Boxes", "Loose Units"]);
   expect(rows.map((row) => textOf(row).join("|"))).toEqual([
-    "Black Moulding|MLD-001|125| PCS|50| PCS|2|25| PCS",
-    "Oak Moulding|MLD-002|96| PCS|30| PCS|3|6| PCS",
-    "White Moulding|MLD-003|0| PCS|40| PCS|0|0| PCS",
+    "Black Moulding|MLD-001|125| PCS|2|25| PCS",
+    "Oak Moulding|MLD-002|96| PCS|3|6| PCS",
+    "White Moulding|MLD-003|0| PCS|0|0| PCS",
   ]);
   expect(footer).toMatchObject({ props: { fixed: true } });
   expect(textOf(footer)).toEqual(["Stock Count by Unit · Moldings · Main-Bulacan · Box (50)"]);
@@ -146,7 +145,6 @@ it("shows the largest PACK size in the first-page Unit summary and on all footer
       totalFullPackingUnits: t("totalFullPackingUnits", unit),
       excludedItems: t("excludedItems", unit),
       fullPackingUnitsNote: t("fullPackingUnitsNote", unit),
-      qtyPerPackingUnit: t("qtyPerPackingUnit", unit),
       fullPackingUnits: t("fullPackingUnits", unit),
       empty: t("empty", unit),
     },
@@ -164,22 +162,18 @@ it("shows the largest PACK size in the first-page Unit summary and on all footer
     ])
   );
   expect(textOf(children[0]).join(" ")).toContain("largest PACK size");
-  expect(textOf(children[1])).toEqual([
-    "Item",
-    "On Hand",
-    "Qty per PACK",
-    "Full PACK",
-    "Loose Units",
-  ]);
-  expect(textOf(children[2]).join("|")).toBe("Black Moulding|MLD-001|125| PCS|10| PCS|12|5| PCS");
-  expect(textOf(children[3]).join("|")).toBe("Oak Moulding|MLD-002|96| PCS|50| PCS|1|46| PCS");
+  const headings = ["Item", "On Hand", "Full PACK", "Loose Units"];
+  expect(textOf(children[1])).toEqual(headings);
+  expect(textOf(children[2]).join("|")).toBe("Black Moulding|MLD-001|125| PCS|12|5| PCS");
+  expect(textOf(children[3]).join("|")).toBe("Oak Moulding|MLD-002|96| PCS|1|46| PCS");
   expect(textOf(document).filter((text) => text === "Pack (50)")).toHaveLength(1);
   expect(textOf(children.at(-1))).toEqual([
     "Stock Count by Unit · Moldings · Main-Bulacan · Pack (50)",
   ]);
   const nextDocument = InventoryBoxCountReportPDF({ ...pack, showReportHeader: false });
   const nextPage = textOf(nextDocument);
-  expect(nextPage).toContain("Qty per PACK");
+  const [continuationHeadings] = Children.toArray(nextDocument.props.children.props.children);
+  expect(textOf(continuationHeadings)).toEqual(headings);
   expect(nextPage).toContain("Stock Count by Unit · Moldings · Main-Bulacan · Pack (50)");
   expect(nextPage).not.toContain("Total Full PACK");
   expect(nextPage).not.toContain("Unit");

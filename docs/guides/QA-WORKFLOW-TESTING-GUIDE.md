@@ -2118,10 +2118,10 @@ redistribute stock. Concurrent allocation or location edits must not create dupl
   option with a restricted user and confirm totals only include units where the user has Reports
   view access.
 - Generate a multi-page PDF with different sizes for the same selected unit. Verify the first-page
-  **Unit** summary shows the largest reported size, such as **Pack (50)**. Verify item rows retain
-  their own quantities per unit and are sorted by name with each code below its name. Check
-  repeated column headings and the category, business unit, matching unit reference, and page
-  number in each footer. Confirm the printed and downloaded PDFs include every eligible item once.
+  **Unit** summary shows the largest reported size, such as **Pack (50)**. Verify the table shows
+  Item, On Hand, Full Units, and Loose Units, with rows sorted by item name and each code below its
+  name. Check repeated headings and matching unit references in page footers. Confirm the printed
+  and downloaded PDFs include every eligible item once and use continuous page numbers.
 
 ### Stock Reports item picker
 

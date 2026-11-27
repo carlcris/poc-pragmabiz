@@ -189,7 +189,6 @@ export function InventoryBoxCountReportPreview({
             fullPackingUnitsNote: t("fullPackingUnitsNote", unitLabelValues),
             item: t("item"),
             onHand: t("onHand"),
-            qtyPerPackingUnit: t("qtyPerPackingUnit", unitLabelValues),
             fullPackingUnits: t("fullPackingUnits", unitLabelValues),
             looseUnits: t("looseUnits"),
             empty: t("empty", unitLabelValues),

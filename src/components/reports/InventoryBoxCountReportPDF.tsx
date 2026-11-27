@@ -25,7 +25,6 @@ export type InventoryBoxCountReportPDFProps = {
     fullPackingUnitsNote: string;
     item: string;
     onHand: string;
-    qtyPerPackingUnit: string;
     fullPackingUnits: string;
     looseUnits: string;
     empty: string;
@@ -106,11 +105,10 @@ const styles = StyleSheet.create({
   unit: { fontSize: 9, color: "#6b7280" },
   fullPackingUnitsCell: { backgroundColor: "#f9fafb", fontSize: 11 },
   empty: { paddingHorizontal: 7, paddingVertical: 8, color: MUTED },
-  item: { width: "49%" },
-  onHand: { width: "14%" },
-  qtyPerPackingUnit: { width: "13%" },
-  fullPackingUnits: { width: "11%" },
-  looseUnits: { width: "13%" },
+  item: { width: "52%" },
+  onHand: { width: "16%" },
+  fullPackingUnits: { width: "16%" },
+  looseUnits: { width: "16%" },
   footer: {
     position: "absolute",
     left: INVENTORY_BOX_COUNT_PAGE_MARGIN,
@@ -210,9 +208,6 @@ export function InventoryBoxCountReportPDF({
         <View style={styles.columnHeadings} fixed>
           <Text style={[styles.heading, styles.item]}>{labels.item}</Text>
           <Text style={[styles.heading, styles.onHand, styles.quantity]}>{labels.onHand}</Text>
-          <Text style={[styles.heading, styles.qtyPerPackingUnit, styles.quantity]}>
-            {labels.qtyPerPackingUnit}
-          </Text>
           <Text
             style={[
               styles.heading,
@@ -242,9 +237,6 @@ export function InventoryBoxCountReportPDF({
             </View>
             <Text style={[styles.cell, styles.onHand, styles.quantity]}>
               {renderQuantity(row.onHand, row.baseUnit)}
-            </Text>
-            <Text style={[styles.cell, styles.qtyPerPackingUnit, styles.quantity]}>
-              {renderQuantity(row.qtyPerPackingUnit, row.baseUnit)}
             </Text>
             <Text
               style={[
