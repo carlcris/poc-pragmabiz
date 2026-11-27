@@ -2078,6 +2078,7 @@ redistribute stock. Concurrent allocation or location edits must not create dupl
 
 ### Stock Aging completeness regression
 
+- Confirm the column header is **Age** (Chinese: **库龄**), with the year/month/day duration above smaller total-day subtext when months or years are present. Days-only ages (for example, `18 d` and `0 d`) must have no secondary day count. Check zero and missing receipt dates; missing duration should retain `--` above its day count. On-hand, reserved, and available quantities and their subtotals should omit unnecessary decimal zeros (`936`, `12.5`, `0.25`, `0`), while stock values retain two decimal places. Check both Item and Batch grouping.
 - Create or select more than 50 matching location-batch balances within one business unit. Generate Stock Aging with All Ages and confirm the PDF includes rows after the first 50, complete item subtotals, and correct printed page numbers.
 - Open the Stock Aging Item picker. Confirm six items plus **All Items**, more results on scroll, search by code or name, and a full-name tooltip on item hover. Select an item and confirm Preview includes only that item, even when another item shares a batch code. Choose **All Items** to clear the filter.
 - With more than 1,000 positive source balances (but at most 5,000), make an API request with `search` for an item beyond the first source batch. Confirm it appears and totals include its complete matching stock. Repeat with a lower Supabase API row cap.

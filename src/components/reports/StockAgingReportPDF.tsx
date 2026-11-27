@@ -73,6 +73,10 @@ export function partitionStockAgingPdfGroups(groups: StockAgingReportPDFGroup[])
   return pages;
 }
 
+function formatStockQuantity(quantity: number) {
+  return quantity.toFixed(2).replace(/\.00$|(\.\d)0$/, "$1");
+}
+
 const styles = StyleSheet.create({
   page: {
     padding: 28,
@@ -297,8 +301,7 @@ export const StockAgingReportPDF = ({
                     </Text>
                   </View>
                   <View style={[styles.cell, styles.colAge]}>
-                    <Text style={[styles.cellText, styles.right]}>{String(row.batchAgeDays)}</Text>
-                    <Text style={[styles.cellMuted, styles.right]}>
+                    <Text style={[styles.cellText, styles.right]}>
                       {row.batchAgeDuration
                         ? ageDurationLabel(
                             row.batchAgeDuration.years,
@@ -307,18 +310,25 @@ export const StockAgingReportPDF = ({
                           )
                         : noValueLabel}
                     </Text>
-                  </View>
-                  <View style={[styles.cell, styles.colQty]}>
-                    <Text style={[styles.cellText, styles.right]}>{row.qtyOnHand.toFixed(2)}</Text>
+                    {(!row.batchAgeDuration ||
+                      row.batchAgeDuration.years > 0 ||
+                      row.batchAgeDuration.months > 0) && (
+                      <Text style={[styles.cellMuted, styles.right]}>{String(row.batchAgeDays)}</Text>
+                    )}
                   </View>
                   <View style={[styles.cell, styles.colQty]}>
                     <Text style={[styles.cellText, styles.right]}>
-                      {row.qtyReserved.toFixed(2)}
+                      {formatStockQuantity(row.qtyOnHand)}
                     </Text>
                   </View>
                   <View style={[styles.cell, styles.colQty]}>
                     <Text style={[styles.cellText, styles.right]}>
-                      {row.qtyAvailable.toFixed(2)}
+                      {formatStockQuantity(row.qtyReserved)}
+                    </Text>
+                  </View>
+                  <View style={[styles.cell, styles.colQty]}>
+                    <Text style={[styles.cellText, styles.right]}>
+                      {formatStockQuantity(row.qtyAvailable)}
                     </Text>
                   </View>
                   <View style={[styles.cell, styles.colValue]}>
@@ -341,17 +351,17 @@ export const StockAgingReportPDF = ({
                   </View>
                   <View style={[styles.cell, styles.colQty]}>
                     <Text style={[styles.cellBold, styles.right]}>
-                      {group.subtotalQtyOnHand.toFixed(2)}
+                      {formatStockQuantity(group.subtotalQtyOnHand)}
                     </Text>
                   </View>
                   <View style={[styles.cell, styles.colQty]}>
                     <Text style={[styles.cellBold, styles.right]}>
-                      {group.subtotalQtyReserved.toFixed(2)}
+                      {formatStockQuantity(group.subtotalQtyReserved)}
                     </Text>
                   </View>
                   <View style={[styles.cell, styles.colQty]}>
                     <Text style={[styles.cellBold, styles.right]}>
-                      {group.subtotalQtyAvailable.toFixed(2)}
+                      {formatStockQuantity(group.subtotalQtyAvailable)}
                     </Text>
                   </View>
                   <View style={[styles.cell, styles.colValue]}>
