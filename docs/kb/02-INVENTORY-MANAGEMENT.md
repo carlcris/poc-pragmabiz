@@ -55,7 +55,8 @@ Item list/detail pricing and customer price resolution without an explicit `asOf
 
 **Key Attributes**:
 
-- **Code**: Unique item identifier (SKU)
+- **Code**: Unique item identifier (SKU). The New Item input accepts up to 15 characters,
+  including typed and pasted text, and converts letters to uppercase. Saved codes cannot be edited.
 - **Name**: Product name
 - **Description**: Detailed description
 - **Category**: Product categorization

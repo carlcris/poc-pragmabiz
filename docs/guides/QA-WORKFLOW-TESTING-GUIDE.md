@@ -193,7 +193,7 @@ These are the records everything else in the app is built on. Before testing any
 
 **Required fields**:
 
-- **Item Code** — you type this yourself; it is **not** auto-generated. Letters, numbers, spaces, and hyphens only — the field automatically converts what you type to uppercase as you go. Must be unique; a duplicate code is rejected with a clear "already exists" error.
+- **Item Code** — you type this yourself; it is **not** auto-generated. The input accepts up to **15 characters** when typing or pasting. Letters, numbers, spaces, and hyphens only — the field automatically converts what you type to uppercase as you go. Must be unique; a duplicate code is rejected with a clear "already exists" error.
 - **Item Name**.
 - **Item Type** — Raw Material, Finished Good, Asset, or Service. Choosing Service means the item is treated as non-stock (it never carries a quantity).
 - **Base Unit of Measure** — must be chosen from the existing list (see Units of Measure, section 3 — these can't be created from the Items screen).
@@ -229,6 +229,7 @@ These are the records everything else in the app is built on. Before testing any
 
 **Things to test**:
 
+- Enter a 15-character item code, then try to type another character or paste a longer code. The input must stay within 15 characters after uppercase conversion. Save a unique 15-character code and reload the item to confirm the complete code persists.
 - Try to save an item code with lowercase letters or punctuation other than a hyphen — should be rejected or auto-corrected.
 - Try to create two items with the same code — second one should be refused.
 - Add a second unit option to an item (e.g. "BOX" = 144 base units) and confirm the auto-generated label looks right, and that switching the default unit option actually changes which one shows as default elsewhere.
