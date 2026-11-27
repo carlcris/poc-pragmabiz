@@ -12,10 +12,7 @@ import {
   getInventoryBoxCountReportErrorCode,
   useInventoryBoxCountReport,
 } from "@/hooks/useInventoryBoxCountReport";
-import {
-  getInventoryBoxCountReferenceSize,
-  renderInventoryBoxCountReportPdf,
-} from "@/lib/reports/inventory-box-count-report-pdf";
+import { renderInventoryBoxCountReportPdf } from "@/lib/reports/inventory-box-count-report-pdf";
 import { getNamedPdfPreviewUrl } from "@/lib/reports/named-pdf-preview-url";
 import { useAuthStore } from "@/stores/authStore";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
@@ -156,22 +153,12 @@ export function InventoryBoxCountReportPreview({
         kind: data.packingUnit.code === "BOX" ? "box" : "other",
         code: data.packingUnit.code,
       };
-      const referenceSize = getInventoryBoxCountReferenceSize(data.data);
-      const packingUnitSummary =
-        referenceSize === null
-          ? t("unitNameWithCode", { name: data.packingUnit.name, code: data.packingUnit.code })
-          : t("unitNameWithReferenceSize", {
-              name: data.packingUnit.name,
-              size: new Intl.NumberFormat(locale, { maximumFractionDigits: 4 }).format(
-                referenceSize
-              ),
-            });
       const blob = await renderInventoryBoxCountReportPdf(
         {
           title: reportName,
           categoryName: data.category.name,
           businessUnitName: data.businessUnit?.name ?? t("allBusinessUnits"),
-          packingUnitSummary,
+          packingUnitName: data.packingUnit.name,
           generatedAtLine: t("generatedAtLine", { date: generatedAtLabel }),
           totalFullPackingUnits: data.summary.totalFullPackingUnits,
           totalItems: data.summary.totalItems,
@@ -189,7 +176,7 @@ export function InventoryBoxCountReportPreview({
             fullPackingUnitsNote: t("fullPackingUnitsNote", unitLabelValues),
             item: t("item"),
             onHand: t("onHand"),
-            fullPackingUnits: t("fullPackingUnits", unitLabelValues),
+            qtyPerPackingUnit: t("qtyPerPackingUnit", unitLabelValues),
             looseUnits: t("looseUnits"),
             empty: t("empty", unitLabelValues),
           },

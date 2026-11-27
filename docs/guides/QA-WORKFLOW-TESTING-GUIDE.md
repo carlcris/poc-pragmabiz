@@ -2117,11 +2117,12 @@ redistribute stock. Concurrent allocation or location edits must not create dupl
   that the PDF shows zero reported items and explains the empty result. Try the all-business-units
   option with a restricted user and confirm totals only include units where the user has Reports
   view access.
-- Generate a multi-page PDF with different sizes for the same selected unit. Verify the first-page
-  **Unit** summary shows the largest reported size, such as **Pack (50)**. Verify the table shows
-  Item, On Hand, Full Units, and Loose Units, with rows sorted by item name and each code below its
-  name. Check repeated headings and matching unit references in page footers. Confirm the printed
-  and downloaded PDFs include every eligible item once and use continuous page numbers.
+- Generate a multi-page PDF with different sizes for the same selected unit. With 1,440 sticks
+  and a 144-stick box for one item, and 500 sticks and a 50-stick box for another, verify that
+  **Qty per Box** shows 144 and 50, and the **Box** column shows 10 on each row, for a total of 20
+  across those two items. Confirm that the **Unit** summary and footer show the unit name **Box**.
+  Check item name sorting, repeated column headings, continuous page numbers, and one row per
+  eligible item in the printed and downloaded PDFs.
 
 ### Stock Reports item picker
 

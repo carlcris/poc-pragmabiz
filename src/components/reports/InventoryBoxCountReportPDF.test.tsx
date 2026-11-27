@@ -7,19 +7,25 @@ import { PDFArray, PDFDocument, PDFRawStream, decodePDFRawStream } from "pdf-lib
 import { expect, it } from "vitest";
 import { translations } from "@/lib/i18n/translations";
 import { buildInventoryBoxCountReportPdf } from "@/lib/reports/build-inventory-box-count-report-pdf";
-import { getInventoryBoxCountReferenceSize } from "@/lib/reports/inventory-box-count-report-pdf";
 import {
   InventoryBoxCountReportPDF,
   type InventoryBoxCountReportPDFProps,
 } from "./InventoryBoxCountReportPDF";
 
+const t = createTranslator({
+  locale: "en",
+  messages: { inventoryBoxCountReport: translations.en.inventoryBoxCountReport },
+  namespace: "inventoryBoxCountReport",
+});
+const box = { kind: "box", code: "BOX" };
+
 const props: InventoryBoxCountReportPDFProps = {
   title: translations.en.reportsPage.inventoryBoxCountName,
   categoryName: "Moldings",
   businessUnitName: "Main-Bulacan",
-  packingUnitSummary: "Box (50)",
+  packingUnitName: "Box",
   generatedAtLine: "Generated At: Nov 26, 2026, 2:30 PM",
-  totalFullPackingUnits: 5,
+  totalFullPackingUnits: 20,
   totalItems: 3,
   itemsWithoutPackingUnitSize: 1,
   locale: "en",
@@ -31,10 +37,10 @@ const props: InventoryBoxCountReportPDFProps = {
     totalFullPackingUnits: "Total Full Boxes",
     reportedItems: "Reported Items",
     excludedItems: "Excluded · No Box Size",
-    fullPackingUnitsNote: "Full boxes are on-hand stock divided by the quantity per box.",
+    fullPackingUnitsNote: t("fullPackingUnitsNote", box),
     item: "Item",
     onHand: "On Hand",
-    fullPackingUnits: "Full Boxes",
+    qtyPerPackingUnit: t("qtyPerPackingUnit", box),
     looseUnits: "Loose Units",
     empty: "No items in this category have an active box size.",
   },
@@ -43,21 +49,21 @@ const props: InventoryBoxCountReportPDFProps = {
       itemId: "item-1",
       itemCode: "MLD-001",
       itemName: "Black Moulding",
-      baseUnit: "PCS",
-      onHand: 125,
-      qtyPerPackingUnit: 50,
-      fullPackingUnits: 2,
-      looseUnits: 25,
+      baseUnit: "STICK",
+      onHand: 1440,
+      qtyPerPackingUnit: 144,
+      fullPackingUnits: 10,
+      looseUnits: 0,
     },
     {
       itemId: "item-2",
       itemCode: "MLD-002",
       itemName: "Oak Moulding",
-      baseUnit: "PCS",
-      onHand: 96,
-      qtyPerPackingUnit: 30,
-      fullPackingUnits: 3,
-      looseUnits: 6,
+      baseUnit: "STICK",
+      onHand: 500,
+      qtyPerPackingUnit: 50,
+      fullPackingUnits: 10,
+      looseUnits: 0,
     },
     {
       itemId: "item-3",
@@ -79,7 +85,7 @@ function textOf(node: ReactNode): string[] {
   });
 }
 
-it("places the eligible and excluded counts above the table and keeps eligible zero-stock rows", () => {
+it("shows each item’s box size and the total of full boxes across different sizes", () => {
   const document = InventoryBoxCountReportPDF(props);
   const children = Children.toArray(document.props.children.props.children);
   const [header, headings, ...rows] = children.slice(0, -1);
@@ -92,11 +98,11 @@ it("places the eligible and excluded counts above the table and keeps eligible z
     "Business Unit",
     "Main-Bulacan",
     "Unit",
-    "Box (50)",
+    "Box",
     props.generatedAtLine,
     "Sorted By Item Name",
     "Total Full Boxes",
-    "5",
+    "20",
     "Reported Items",
     "3",
     "Excluded · No Box Size",
@@ -104,38 +110,42 @@ it("places the eligible and excluded counts above the table and keeps eligible z
     props.labels.fullPackingUnitsNote,
   ]);
   expect(headings).toMatchObject({ props: { fixed: true } });
-  expect(textOf(headings)).toEqual(["Item", "On Hand", "Full Boxes", "Loose Units"]);
+  expect(textOf(headings)).toEqual(["Item", "On Hand", "Qty per Box", "Box", "Loose Units"]);
   expect(rows.map((row) => textOf(row).join("|"))).toEqual([
-    "Black Moulding|MLD-001|125| PCS|2|25| PCS",
-    "Oak Moulding|MLD-002|96| PCS|3|6| PCS",
-    "White Moulding|MLD-003|0| PCS|0|0| PCS",
+    "Black Moulding|MLD-001|1,440| STICK|144| STICK|10|0| STICK",
+    "Oak Moulding|MLD-002|500| STICK|50| STICK|10|0| STICK",
+    "White Moulding|MLD-003|0| PCS|40| PCS|0|0| PCS",
   ]);
   expect(footer).toMatchObject({ props: { fixed: true } });
-  expect(textOf(footer)).toEqual(["Stock Count by Unit · Moldings · Main-Bulacan · Box (50)"]);
+  expect(textOf(footer)).toEqual(["Stock Count by Unit · Moldings · Main-Bulacan · Box"]);
   expect(textOf(InventoryBoxCountReportPDF({ ...props, showReportHeader: false }))).not.toContain(
     props.labels.totalFullPackingUnits
   );
 });
 
-it("shows the largest PACK size in the first-page Unit summary and on all footers", () => {
-  const t = createTranslator({
-    locale: "en",
-    messages: { inventoryBoxCountReport: translations.en.inventoryBoxCountReport },
-    namespace: "inventoryBoxCountReport",
-  });
+it("shows the selected unit name and repeats the per-item PACK column on continuation pages", () => {
   const unit = { kind: "other", code: "PACK" };
   const rows = [
-    { ...props.rows[0], qtyPerPackingUnit: 10, fullPackingUnits: 12, looseUnits: 5 },
-    { ...props.rows[1], qtyPerPackingUnit: 50, fullPackingUnits: 1, looseUnits: 46 },
+    {
+      ...props.rows[0],
+      baseUnit: "PCS",
+      onHand: 125,
+      qtyPerPackingUnit: 10,
+      fullPackingUnits: 12,
+      looseUnits: 5,
+    },
+    {
+      ...props.rows[1],
+      baseUnit: "PCS",
+      onHand: 96,
+      qtyPerPackingUnit: 50,
+      fullPackingUnits: 1,
+      looseUnits: 46,
+    },
   ];
-  const referenceSize = getInventoryBoxCountReferenceSize(rows);
-  expect(referenceSize).toBe(50);
   const pack = {
     ...props,
-    packingUnitSummary: t("unitNameWithReferenceSize", {
-      name: "Pack",
-      size: String(referenceSize),
-    }),
+    packingUnitName: "Pack",
     totalFullPackingUnits: 13,
     totalItems: 2,
     itemsWithoutPackingUnitSize: 2,
@@ -145,7 +155,7 @@ it("shows the largest PACK size in the first-page Unit summary and on all footer
       totalFullPackingUnits: t("totalFullPackingUnits", unit),
       excludedItems: t("excludedItems", unit),
       fullPackingUnitsNote: t("fullPackingUnitsNote", unit),
-      fullPackingUnits: t("fullPackingUnits", unit),
+      qtyPerPackingUnit: t("qtyPerPackingUnit", unit),
       empty: t("empty", unit),
     },
     rows,
@@ -153,28 +163,19 @@ it("shows the largest PACK size in the first-page Unit summary and on all footer
   const document = InventoryBoxCountReportPDF(pack);
   const children = Children.toArray(document.props.children.props.children);
   expect(textOf(children[0])).toEqual(
-    expect.arrayContaining([
-      "Unit",
-      "Pack (50)",
-      "Total Full PACK",
-      "13",
-      "Excluded · No PACK Size",
-    ])
+    expect.arrayContaining(["Unit", "Pack", "Total Full PACK", "13", "Excluded · No PACK Size"])
   );
-  expect(textOf(children[0]).join(" ")).toContain("largest PACK size");
-  const headings = ["Item", "On Hand", "Full PACK", "Loose Units"];
+  expect(textOf(children[0]).join(" ")).toContain("largest active PACK size");
+  const headings = ["Item", "On Hand", "Qty per PACK", "Pack", "Loose Units"];
   expect(textOf(children[1])).toEqual(headings);
-  expect(textOf(children[2]).join("|")).toBe("Black Moulding|MLD-001|125| PCS|12|5| PCS");
-  expect(textOf(children[3]).join("|")).toBe("Oak Moulding|MLD-002|96| PCS|1|46| PCS");
-  expect(textOf(document).filter((text) => text === "Pack (50)")).toHaveLength(1);
-  expect(textOf(children.at(-1))).toEqual([
-    "Stock Count by Unit · Moldings · Main-Bulacan · Pack (50)",
-  ]);
+  expect(textOf(children[2]).join("|")).toBe("Black Moulding|MLD-001|125| PCS|10| PCS|12|5| PCS");
+  expect(textOf(children[3]).join("|")).toBe("Oak Moulding|MLD-002|96| PCS|50| PCS|1|46| PCS");
+  expect(textOf(children.at(-1))).toEqual(["Stock Count by Unit · Moldings · Main-Bulacan · Pack"]);
   const nextDocument = InventoryBoxCountReportPDF({ ...pack, showReportHeader: false });
   const nextPage = textOf(nextDocument);
   const [continuationHeadings] = Children.toArray(nextDocument.props.children.props.children);
   expect(textOf(continuationHeadings)).toEqual(headings);
-  expect(nextPage).toContain("Stock Count by Unit · Moldings · Main-Bulacan · Pack (50)");
+  expect(nextPage).toContain("Stock Count by Unit · Moldings · Main-Bulacan · Pack");
   expect(nextPage).not.toContain("Total Full PACK");
   expect(nextPage).not.toContain("Unit");
 });
@@ -183,7 +184,6 @@ it("renders zero eligible items with the excluded count on a single numbered pag
   const empty = {
     ...props,
     rows: [],
-    packingUnitSummary: "Box (BOX)",
     totalFullPackingUnits: 0,
     totalItems: 0,
     itemsWithoutPackingUnitSize: 4,
@@ -192,8 +192,7 @@ it("renders zero eligible items with the excluded count on a single numbered pag
   const [header, headings, emptyMessage, footer] = Children.toArray(
     document.props.children.props.children
   );
-  expect(getInventoryBoxCountReferenceSize(empty.rows)).toBeNull();
-  expect(textOf(header).slice(5, 7)).toEqual(["Unit", "Box (BOX)"]);
+  expect(textOf(header).slice(5, 7)).toEqual(["Unit", "Box"]);
   expect(textOf(header).slice(9)).toEqual([
     "Total Full Boxes",
     "0",
@@ -206,7 +205,7 @@ it("renders zero eligible items with the excluded count on a single numbered pag
   expect(textOf(emptyMessage)).toEqual([props.labels.empty]);
   expect(headings).toMatchObject({ props: { fixed: true } });
   expect(footer).toMatchObject({ props: { fixed: true } });
-  expect(textOf(footer)).toEqual(["Stock Count by Unit · Moldings · Main-Bulacan · Box (BOX)"]);
+  expect(textOf(footer)).toEqual(["Stock Count by Unit · Moldings · Main-Bulacan · Box"]);
   Font.register({ family: "ArialUnicode", src: path.resolve("public/fonts/ArialUnicode.ttf") });
   const blob = await buildInventoryBoxCountReportPdf(empty);
   const pdf = await PDFDocument.load(await blob.arrayBuffer());
@@ -228,13 +227,9 @@ it("renders the full item list across multiple jobs with continuous physical pag
         ? "山形木线条 Moulding with a long description that wraps across lines while its quantities stay on the same item row"
         : props.rows[index % props.rows.length].itemName,
   }));
-  // The highest size comes from a later render job but belongs in the first-page summary.
-  const referenceSize = getInventoryBoxCountReferenceSize(rows);
-  expect(referenceSize).toBe(125.625);
   const startedAt = performance.now();
   const blob = await buildInventoryBoxCountReportPdf({
     ...props,
-    packingUnitSummary: `Box (${referenceSize})`,
     rows,
     totalFullPackingUnits: rows.reduce((sum, row) => sum + row.fullPackingUnits, 0),
     totalItems: rows.length,

@@ -256,14 +256,14 @@ selected unit, including matching items with zero stock.
 
 For each item, the report sums on-hand stock across the warehouses in scope and uses the largest
 active conversion for the selected unit. Rows are sorted by item name. Each row displays the item
-name and code, on-hand quantity, full units, and loose base units.
+name and code, on-hand quantity, quantity per selected unit, full units, and loose base units.
+The full-unit column uses the selected unit name, such as **Box** or **Pack**, as its heading.
 Items without an active conversion for the selected unit appear only in the excluded count
 in the first-page summary. Negative stock remains visible in the on-hand column and contributes
-zero full units and zero loose units. The first-page **Unit** summary shows the largest size
-among the reported items, such as **Pack (50)**, alongside the category and business unit.
-An empty report shows the selected unit with its code. The full-unit total covers the entire
-report. Column headings repeat on subsequent pages. Every footer repeats the header's unit
-reference alongside the category, business unit, and page number.
+zero full units and zero loose units. The first-page **Unit** summary and every page footer
+display the selected unit name, such as **Box**. The full-unit total adds the whole-unit counts
+calculated for each item. Column headings repeat on subsequent pages, and page footers show
+the category, business unit, unit name, and page number.
 
 **Endpoint**: `GET /api/reports/inventory-box-count`
 

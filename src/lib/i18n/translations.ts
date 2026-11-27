@@ -10207,7 +10207,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       retryBusinessUnits: "Retry loading business units",
       calculationUnit: "Unit",
       unitNameWithCode: "{name} ({code})",
-      unitNameWithReferenceSize: "{name} ({size})",
       selectCalculationUnit: "Select unit",
       searchCalculationUnits: "Search by unit name or code",
       noCalculationUnits: "No matching units.",
@@ -10222,10 +10221,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       excludedItems:
         "{kind, select, box {Excluded · No Box Size} other {Excluded · No {code} Size}}",
       fullPackingUnitsNote:
-        "{kind, select, box {The header size is a reference. For each item, divide its on-hand stock by its largest box size among active options and round down. Loose units are the remainder.} other {The header size is a reference. For each item, divide its on-hand stock by its largest {code} size among active options and round down. Loose units are the remainder.}}",
+        "{kind, select, box {For each item, divide on-hand stock by its largest active box size and round down for full boxes. Loose units are the remainder.} other {For each item, divide on-hand stock by its largest active {code} size and round down for full units. Loose units are the remainder.}}",
       item: "Item",
       onHand: "On Hand",
-      fullPackingUnits: "{kind, select, box {Full Boxes} other {Full {code}}}",
+      qtyPerPackingUnit: "{kind, select, box {Qty per Box} other {Qty per {code}}}",
       looseUnits: "Loose Units",
       empty:
         "{kind, select, box {No items in this category have an active box size.} other {No items in this category have an active {code} size.}}",
@@ -17396,7 +17395,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       retryBusinessUnits: "重试加载业务单元",
       calculationUnit: "单位",
       unitNameWithCode: "{name}（{code}）",
-      unitNameWithReferenceSize: "{name}（{size}）",
       selectCalculationUnit: "选择单位",
       searchCalculationUnits: "按单位名称或代码搜索",
       noCalculationUnits: "没有匹配的单位。",
@@ -17410,10 +17408,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       excludedItems:
         "{kind, select, box {排除 · 未设定装箱数量} other {排除 · 未设定 {code} 包装数量}}",
       fullPackingUnitsNote:
-        "{kind, select, box {页首的每箱数量仅供参考。各商品的现存数量除以该商品有效选项中的最大每箱数量后向下取整，余数为散件数量。} other {页首的每 {code} 数量仅供参考。各商品的现存数量除以该商品有效选项中的最大每 {code} 数量后向下取整，余数为散件数量。}}",
+        "{kind, select, box {各商品的现存数量除以该商品最大的有效装箱数量后向下取整，得出整箱数。余数为散件数量。} other {各商品的现存数量除以该商品最大的有效每 {code} 数量后向下取整，得出完整包装数。余数为散件数量。}}",
       item: "商品",
       onHand: "现存数量",
-      fullPackingUnits: "{kind, select, box {整箱数} other {完整 {code} 数}}",
+      qtyPerPackingUnit: "{kind, select, box {每箱数量} other {每 {code} 数量}}",
       looseUnits: "散件数量",
       empty:
         "{kind, select, box {此类别下没有商品设有有效装箱数量。} other {此类别下没有商品设有有效 {code} 包装数量。}}",

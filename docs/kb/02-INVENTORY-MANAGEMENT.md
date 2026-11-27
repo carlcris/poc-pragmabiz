@@ -1765,8 +1765,9 @@ Normal list calls are capped at 50 rows per page. PDF preview uses `exportMode=p
 
 Shows category items with an active conversion for the selected unit, such as Box
 or Pack. It combines stock from the selected business unit's warehouses and uses each item's
-largest active conversion for that unit. The first PDF page shows the largest reported size
-in the **Unit** summary, the full-unit total, and the count of excluded category items. See
+largest active conversion for that unit. The first PDF page shows the selected unit name,
+the full-unit total, and the count of excluded category items. Each item row shows the quantity
+per selected unit used in its calculation. See
 [Stock Count by Unit](07-REPORTING-ANALYTICS.md#stock-count-by-unit) for filters and export limits.
 
 ## Troubleshooting

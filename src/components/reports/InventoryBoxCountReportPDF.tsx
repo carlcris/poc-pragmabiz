@@ -7,7 +7,7 @@ export type InventoryBoxCountReportPDFProps = {
   title: string;
   categoryName: string;
   businessUnitName: string;
-  packingUnitSummary: string;
+  packingUnitName: string;
   generatedAtLine: string;
   totalFullPackingUnits: number;
   totalItems: number;
@@ -25,7 +25,7 @@ export type InventoryBoxCountReportPDFProps = {
     fullPackingUnitsNote: string;
     item: string;
     onHand: string;
-    fullPackingUnits: string;
+    qtyPerPackingUnit: string;
     looseUnits: string;
     empty: string;
   };
@@ -105,10 +105,11 @@ const styles = StyleSheet.create({
   unit: { fontSize: 9, color: "#6b7280" },
   fullPackingUnitsCell: { backgroundColor: "#f9fafb", fontSize: 11 },
   empty: { paddingHorizontal: 7, paddingVertical: 8, color: MUTED },
-  item: { width: "52%" },
-  onHand: { width: "16%" },
-  fullPackingUnits: { width: "16%" },
-  looseUnits: { width: "16%" },
+  item: { width: "49%" },
+  onHand: { width: "14%" },
+  qtyPerPackingUnit: { width: "13%" },
+  fullPackingUnits: { width: "11%" },
+  looseUnits: { width: "13%" },
   footer: {
     position: "absolute",
     left: INVENTORY_BOX_COUNT_PAGE_MARGIN,
@@ -127,7 +128,7 @@ export function InventoryBoxCountReportPDF({
   title,
   categoryName,
   businessUnitName,
-  packingUnitSummary,
+  packingUnitName,
   generatedAtLine,
   totalFullPackingUnits,
   totalItems,
@@ -166,7 +167,7 @@ export function InventoryBoxCountReportPDF({
                   </View>
                   <View style={styles.scopeItem}>
                     <Text style={styles.muted}>{labels.packingUnit}</Text>
-                    <Text>{packingUnitSummary}</Text>
+                    <Text>{packingUnitName}</Text>
                   </View>
                 </View>
               </View>
@@ -208,6 +209,9 @@ export function InventoryBoxCountReportPDF({
         <View style={styles.columnHeadings} fixed>
           <Text style={[styles.heading, styles.item]}>{labels.item}</Text>
           <Text style={[styles.heading, styles.onHand, styles.quantity]}>{labels.onHand}</Text>
+          <Text style={[styles.heading, styles.qtyPerPackingUnit, styles.quantity]}>
+            {labels.qtyPerPackingUnit}
+          </Text>
           <Text
             style={[
               styles.heading,
@@ -216,7 +220,7 @@ export function InventoryBoxCountReportPDF({
               styles.fullPackingUnitsHeading,
             ]}
           >
-            {labels.fullPackingUnits}
+            {packingUnitName}
           </Text>
           <Text style={[styles.heading, styles.looseUnits, styles.quantity]}>
             {labels.looseUnits}
@@ -238,6 +242,9 @@ export function InventoryBoxCountReportPDF({
             <Text style={[styles.cell, styles.onHand, styles.quantity]}>
               {renderQuantity(row.onHand, row.baseUnit)}
             </Text>
+            <Text style={[styles.cell, styles.qtyPerPackingUnit, styles.quantity]}>
+              {renderQuantity(row.qtyPerPackingUnit, row.baseUnit)}
+            </Text>
             <Text
               style={[
                 styles.cell,
@@ -255,7 +262,7 @@ export function InventoryBoxCountReportPDF({
         ))}
 
         <Text style={styles.footer} fixed>
-          {[title, categoryName, businessUnitName, packingUnitSummary].join(" · ")}
+          {[title, categoryName, businessUnitName, packingUnitName].join(" · ")}
         </Text>
       </Page>
     </Document>
