@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "arialunicode",
+        "createdAt": "2026-11-26T12:40:46.105Z",
+        "reason": "Existing report PDF font used by every react-pdf report for CJK coverage; user chose to keep the current PDF look"
+      }
+    ]
+  }
+}

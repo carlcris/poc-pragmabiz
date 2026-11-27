@@ -32,6 +32,7 @@ import Link from "next/link";
 type ReportStatus = "implemented" | "coming-soon" | "in-development";
 type SupportedReportPreviewType =
   | "inventory"
+  | "inventory-box-count"
   | "stock-aging"
   | "expired-batches"
   | "shipments"
@@ -147,6 +148,15 @@ export default function ReportsPage() {
             previewType: "inventory",
             icon: BarChart3,
             requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_VALUATION_CARDS],
+          },
+          {
+            id: "inventory-box-count",
+            name: t("inventoryBoxCountName"),
+            description: t("inventoryBoxCountDescription"),
+            status: "implemented",
+            businessValue: t("inventoryBoxCountValue"),
+            previewType: "inventory-box-count",
+            icon: Package,
           },
           {
             id: "fast-moving-products",

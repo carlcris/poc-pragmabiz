@@ -49,7 +49,8 @@ export type TransactionalResource =
   | typeof RESOURCES.PICK_LISTS
   | typeof RESOURCES.INVENTORY_RESERVATIONS
   | typeof RESOURCES.STOCK_ADJUSTMENTS
-  | typeof RESOURCES.STOCK_TRANSFORMATIONS;
+  | typeof RESOURCES.STOCK_TRANSFORMATIONS
+  | typeof RESOURCES.REPORTS;
 
 /**
  * Maps transactional features to their required lookup data
@@ -194,6 +195,9 @@ export const LOOKUP_DATA_ACCESS_MAP: Record<TransactionalResource, LookupResourc
     RESOURCES.WAREHOUSES,
     RESOURCES.ITEM_CATEGORIES,
   ],
+
+  // Report filters need category names without granting item catalog access.
+  [RESOURCES.REPORTS]: [RESOURCES.ITEM_CATEGORIES],
 };
 
 /**

@@ -12703,6 +12703,17 @@ export type Database = {
           warehouse_id: string;
         }[];
       };
+      get_inventory_box_count_report: {
+        Args: {
+          p_business_unit_id?: string;
+          p_category_id: string;
+          p_company_id: string;
+          p_limit?: number;
+          p_packing_unit_id: string;
+          p_page?: number;
+        };
+        Returns: Json;
+      };
       get_inventory_picking_policy: {
         Args: { p_business_unit_id: string; p_company_id: string };
         Returns: string;

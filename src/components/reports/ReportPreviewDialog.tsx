@@ -8,6 +8,7 @@ import {
   REPORT_PREVIEW_FIELDS_CLASS_NAME,
 } from "./report-preview-layout";
 import { ExpiredBatchesReportPreview } from "./ExpiredBatchesReportPreview";
+import { InventoryBoxCountReportPreview } from "./InventoryBoxCountReportPreview";
 import { ReportItemSelect } from "./ReportItemSelect";
 import type { StockAgingAgeBucket, StockAgingGroupBy } from "@/types/stock-aging-report";
 import type { ReportItemOption } from "@/types/report-item-options";
@@ -90,6 +91,7 @@ import {
 
 type SupportedReportPreviewType =
   | "inventory"
+  | "inventory-box-count"
   | "stock-aging"
   | "expired-batches"
   | "shipments"
@@ -2386,6 +2388,13 @@ export function ReportPreviewDialog({
         <div className="min-h-0 flex-1 overflow-hidden px-6 py-5">
           {reportType === "inventory" && (
             <InventoryReportPreview
+              open={open}
+              reportName={reportName}
+              onPreviewStateChange={setPreviewState}
+            />
+          )}
+          {reportType === "inventory-box-count" && (
+            <InventoryBoxCountReportPreview
               open={open}
               reportName={reportName}
               onPreviewStateChange={setPreviewState}

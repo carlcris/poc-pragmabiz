@@ -243,6 +243,50 @@ and horizontal row separators remain visible.
 - `sortBy` / `sortOrder` (optional; default `updated_at` descending)
 - `page` / `limit` (optional; default 25 rows, maximum 50 normally or 500 with `exportMode=pdf`)
 
+#### Stock Count by Unit
+
+In **Reports → Inventory → Stock Count by Unit**, select an item category, a business unit,
+and a **Unit**, then preview the report. Box is selected by default when it is active.
+Search by name or code to select another active unit, such as Pack or Bundle.
+The business-unit picker starts with the current business unit selected, loads five accessible
+units at a time, and searches the server by name or code. Scroll to load more options.
+**All accessible business units** combines stock from the active business units where you have
+Reports view access. The report lists each category item with an active conversion for the
+selected unit, including matching items with zero stock.
+
+For each item, the report sums on-hand stock across the warehouses in scope and uses the largest
+active conversion for the selected unit. Rows are sorted by item name. Each row displays the item
+name and code, on-hand quantity, quantity per selected unit, full units, and loose base units.
+Items without an active conversion for the selected unit appear only in the excluded count
+in the first-page summary. Negative stock remains visible in the on-hand column and contributes
+zero full units and zero loose units. The first-page **Unit** summary shows the largest size
+among the reported items, such as **Pack (50)**, alongside the category and business unit.
+An empty report shows the selected unit with its code. The full-unit total covers the entire
+report. Column headings repeat on subsequent pages. Every footer repeats the header's unit
+reference alongside the category, business unit, and page number.
+
+**Endpoint**: `GET /api/reports/inventory-box-count`
+
+- Reports view access allows the pickers to look up company-scoped categories and active
+  units. Business unit membership and Reports view access scope the stock totals.
+- `categoryId` and `packingUnitId` are required UUIDs. `businessUnitId` is an optional business
+  unit UUID. Omitting it includes all authorized business units.
+- The server orders rows by item name, then item code and ID. `page` defaults to 1, and
+  `limit` defaults to 25 with a maximum of 50. Only items with an active conversion for the
+  selected unit contribute to `summary.totalItems`, `summary.totalFullPackingUnits`, and
+  pagination. `summary.itemsWithoutPackingUnitSize` counts excluded items.
+- `exportMode=pdf` includes up to 5,000 items with a matching conversion. Larger exports return
+  a size error before generating a PDF.
+- `GET /api/reports/inventory-box-count/packing-units` lists active company units with
+  server-side search and pagination. The unfiltered first page includes the default Box
+  selection when available. The picker starts with five search results per request.
+- `GET /api/reports/inventory-box-count/business-units` requires Reports view access and
+  lists only active business units in the current company where the signed-in user has
+  membership. It accepts `search` by name or code (maximum 100 characters), `page` (default 1),
+  and `limit` (default 5, maximum 50). Results are ordered by name and ID, with pagination
+  totals computed on the server. Generating the report also requires Reports view access
+  in the selected business unit.
+
 ### Sales Reports
 
 #### Sales by Employee

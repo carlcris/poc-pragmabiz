@@ -1794,7 +1794,7 @@ The shop-floor screen shows one dynamic primary button per order, depending on c
 
 **What it's for**: a catalog of business reports, reachable from the main Reports menu. The directory displays implemented reports and hides report definitions that are still marked as coming soon.
 
-**Reports that are actually implemented (safe to test as real features)**: Stock Reports, Stock Aging, Inventory Report, Fast-Moving Products, Slow-Moving Products, Item-Location-Batch report, Customer Ledger, AR Aging, Shipments Report, Delivery Performance, Picking Efficiency, Transformation Efficiency.
+**Reports that are actually implemented (safe to test as real features)**: Stock Reports, Stock Aging, Inventory Report, Stock Count by Unit, Fast-Moving Products, Slow-Moving Products, Item-Location-Batch report, Customer Ledger, AR Aging, Shipments Report, Delivery Performance, Picking Efficiency, Transformation Efficiency.
 
 **Things to test**:
 
@@ -2095,6 +2095,31 @@ redistribute stock. Concurrent allocation or location edits must not create dupl
   borders, shaded header, and horizontal row separators remain. Quantities, statuses, and
   valuation cells must remain aligned and readable.
 - Open the Inventory Report preview. Verify six initial items plus **All Items**, more results on scroll, search by name or code, and the full name on item hover. Select an item and confirm the PDF and its row count include only that item's stock within the warehouse, category, and status filters. Choose **All Items** to clear the filter and prior preview.
+
+### Stock Count by Unit
+
+- Verify that **Business Unit** defaults to the current unit and lists five initial server
+  results plus **All accessible business units**. Search by name or code, scroll for later
+  pages, and confirm the selected name remains visible when it is outside the current page.
+  A restricted user must not receive inactive, foreign-company, or non-member units in the
+  lookup response. Changing the unit clears the previous PDF; choosing **All accessible
+  business units** clears the exact-unit filter.
+- Verify that **Unit** defaults to Box when active. Search for another unit by
+  name or code, and verify that changing it clears the previous PDF.
+- Choose a category and a business unit with two warehouses. For an item with 35 units at one
+  warehouse, 25 at the other, box sizes of 25 and 50, and pack sizes of 10 and 20, verify that
+  Box shows one full box and 10 loose units. Pack shows three full packs and zero loose units.
+  Switch business units and confirm the stock changes.
+- Verify that zero-stock items with a matching size appear once. Items with no active size
+  for the selected unit appear only in the excluded count. If every item is excluded, verify
+  that the PDF shows zero reported items and explains the empty result. Try the all-business-units
+  option with a restricted user and confirm totals only include units where the user has Reports
+  view access.
+- Generate a multi-page PDF with different sizes for the same selected unit. Verify the first-page
+  **Unit** summary shows the largest reported size, such as **Pack (50)**. Verify item rows retain
+  their own quantities per unit and are sorted by name with each code below its name. Check
+  repeated column headings and the category, business unit, matching unit reference, and page
+  number in each footer. Confirm the printed and downloaded PDFs include every eligible item once.
 
 ### Stock Reports item picker
 

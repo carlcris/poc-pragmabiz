@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { requireLookupDataAccess } from "./requirePermission";
+import { requireLookupDataAccess, requirePermission } from "./requirePermission";
 
 const mocks = vi.hoisted(() => ({ user: vi.fn(), check: vi.fn(), checkForUser: vi.fn() }));
 vi.mock("./checkPermission", () => ({
@@ -72,6 +72,38 @@ describe("lookup access with one verified actor", () => {
   });
   it("denies category access without direct or dependent permission", async () => {
     expect((await requireLookupDataAccess("item_categories", actor))?.status).toBe(403);
+  });
+  it("allows the category filter with Reports view permission alone", async () => {
+    mocks.checkForUser.mockImplementation(
+      async (_actor: unknown, resource: string, action: string) =>
+        resource === "reports" && action === "view"
+    );
+    expect(await requireLookupDataAccess("item_categories", actor)).toBeNull();
+    expect(mocks.checkForUser).toHaveBeenCalledWith(actor, "reports", "view");
+  });
+  it("requires Reports view for report-based category access", async () => {
+    mocks.checkForUser.mockImplementation(
+      async (_actor: unknown, resource: string, action: string) =>
+        resource === "reports" && action === "edit"
+    );
+    expect((await requireLookupDataAccess("item_categories", actor))?.status).toBe(403);
+  });
+  it.each(["items", "warehouses", "suppliers"] as const)(
+    "does not extend Reports view to %s lookup data",
+    async (resource) => {
+      mocks.checkForUser.mockImplementation(
+        async (_actor: unknown, checkedResource: string, action: string) =>
+          checkedResource === "reports" && action === "view"
+      );
+      expect((await requireLookupDataAccess(resource, actor))?.status).toBe(403);
+    }
+  );
+  it("keeps category creation behind direct category permissions", async () => {
+    mocks.checkForUser.mockImplementation(
+      async (_actor: unknown, resource: string, action: string) =>
+        resource === "reports" && action === "view"
+    );
+    expect((await requirePermission("item_categories", "create"))?.status).toBe(403);
   });
   it("rejects unauthenticated callers", async () => {
     mocks.user.mockResolvedValue(null);

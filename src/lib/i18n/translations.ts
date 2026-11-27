@@ -4199,6 +4199,7 @@ export type TranslationKeys = {
   purchaseReceiptDetailPage: Record<string, string>;
   reportsPage: Record<string, string>;
   expiredBatchesReport: Record<string, string>;
+  inventoryBoxCountReport: Record<string, string>;
   inventoryReportPage: Record<string, string>;
   stockReportsPage: Record<string, string>;
   stockAgingReportPage: Record<string, string>;
@@ -10200,6 +10201,47 @@ export const translations: Record<Locale, TranslationKeys> = {
       batchSubtotal: "Batch Subtotal",
       generatedAt: "Generated At",
     },
+    inventoryBoxCountReport: {
+      category: "Category",
+      businessUnit: "Business Unit",
+      allBusinessUnits: "All accessible business units",
+      businessUnitsLoadError: "Could not load business units.",
+      retryBusinessUnits: "Retry loading business units",
+      calculationUnit: "Unit",
+      unitNameWithCode: "{name} ({code})",
+      unitNameWithReferenceSize: "{name} ({size})",
+      selectCalculationUnit: "Select unit",
+      searchCalculationUnits: "Search by unit name or code",
+      noCalculationUnits: "No matching units.",
+      loadingCalculationUnits: "Loading units…",
+      calculationUnitsLoadError: "Could not load units.",
+      retryCalculationUnits: "Retry loading units",
+      generatedAtLine: "Generated At: {date}",
+      sortedByItemName: "Sorted By Item Name",
+      totalFullPackingUnits:
+        "{kind, select, box {Total Full Boxes} other {Total Full {code}}}",
+      reportedItems: "Reported Items",
+      excludedItems:
+        "{kind, select, box {Excluded · No Box Size} other {Excluded · No {code} Size}}",
+      fullPackingUnitsNote:
+        "{kind, select, box {The header size is a reference. For each item, divide its on-hand stock by its largest box size among active options and round down. Loose units are the remainder.} other {The header size is a reference. For each item, divide its on-hand stock by its largest {code} size among active options and round down. Loose units are the remainder.}}",
+      item: "Item",
+      onHand: "On Hand",
+      qtyPerPackingUnit: "{kind, select, box {Qty per Box} other {Qty per {code}}}",
+      fullPackingUnits: "{kind, select, box {Full Boxes} other {Full {code}}}",
+      looseUnits: "Loose Units",
+      empty:
+        "{kind, select, box {No items in this category have an active box size.} other {No items in this category have an active {code} size.}}",
+      tooLarge: "This report exceeds the 5,000-item PDF limit. Choose a smaller category.",
+      categoryNotFound: "This category is unavailable. Choose another category and try again.",
+      packingUnitNotFound: "This unit is unavailable. Choose another unit and try again.",
+      forbidden:
+        "You don’t have report access for this business unit. Choose an accessible business unit.",
+      invalidFilters: "Check the category, business unit, and selected unit, then try again.",
+      previewTimeout: "The PDF took too long to generate. Try again or choose a smaller category.",
+      loadError: "Could not generate the Stock Count by Unit report. Try again.",
+      cancelPreview: "Cancel Preview",
+    },
     reportsPage: {
       expiredBatchesName: "Expired Batches",
       expiredBatchesDescription: "Expired batches with stock, grouped by item or batch.",
@@ -10254,6 +10296,11 @@ export const translations: Record<Locale, TranslationKeys> = {
         "Review warehouse stock balances by item, category, status, and warehouse",
       inventoryReportValue:
         "Operational visibility into on-hand, allocated, and available warehouse stock",
+      inventoryBoxCountName: "Stock Count by Unit",
+      inventoryBoxCountDescription:
+        "Count full boxes or other selected units on hand by item category and business unit.",
+      inventoryBoxCountValue:
+        "Review full and loose quantities using each item’s largest size for the selected unit.",
       fastMovingProductsName: "Fast Moving Products",
       fastMovingProductsDescription:
         "Rank products by sales velocity, sold quantity, and revenue for the selected period",
@@ -17345,6 +17392,45 @@ export const translations: Record<Locale, TranslationKeys> = {
       batchSubtotal: "批次小计",
       generatedAt: "生成时间",
     },
+    inventoryBoxCountReport: {
+      category: "类别",
+      businessUnit: "业务单元",
+      allBusinessUnits: "所有可访问的业务单元",
+      businessUnitsLoadError: "无法加载业务单元。",
+      retryBusinessUnits: "重试加载业务单元",
+      calculationUnit: "单位",
+      unitNameWithCode: "{name}（{code}）",
+      unitNameWithReferenceSize: "{name}（{size}）",
+      selectCalculationUnit: "选择单位",
+      searchCalculationUnits: "按单位名称或代码搜索",
+      noCalculationUnits: "没有匹配的单位。",
+      loadingCalculationUnits: "正在加载单位…",
+      calculationUnitsLoadError: "无法加载单位。",
+      retryCalculationUnits: "重试加载单位",
+      generatedAtLine: "生成时间：{date}",
+      sortedByItemName: "按商品名称排序",
+      totalFullPackingUnits: "{kind, select, box {整箱总数} other {完整 {code} 总数}}",
+      reportedItems: "报表商品数",
+      excludedItems:
+        "{kind, select, box {排除 · 未设定装箱数量} other {排除 · 未设定 {code} 包装数量}}",
+      fullPackingUnitsNote:
+        "{kind, select, box {页首的每箱数量仅供参考。各商品的现存数量除以该商品有效选项中的最大每箱数量后向下取整，余数为散件数量。} other {页首的每 {code} 数量仅供参考。各商品的现存数量除以该商品有效选项中的最大每 {code} 数量后向下取整，余数为散件数量。}}",
+      item: "商品",
+      onHand: "现存数量",
+      qtyPerPackingUnit: "{kind, select, box {每箱数量} other {每 {code} 数量}}",
+      fullPackingUnits: "{kind, select, box {整箱数} other {完整 {code} 数}}",
+      looseUnits: "散件数量",
+      empty:
+        "{kind, select, box {此类别下没有商品设有有效装箱数量。} other {此类别下没有商品设有有效 {code} 包装数量。}}",
+      tooLarge: "该报表超出 PDF 的 5,000 个商品上限。请选择商品较少的类别。",
+      categoryNotFound: "此类别不可用。请选择其他类别后重试。",
+      packingUnitNotFound: "此单位不可用。请选择其他单位后重试。",
+      forbidden: "您没有此业务单元的报表查看权限。请选择可访问的业务单元。",
+      invalidFilters: "请检查类别、业务单元和所选单位后重试。",
+      previewTimeout: "生成 PDF 超时。请重试或选择商品较少的类别。",
+      loadError: "无法生成按单位统计库存报表。请重试。",
+      cancelPreview: "取消预览",
+    },
     reportsPage: {
       expiredBatchesName: "过期批次",
       expiredBatchesDescription: "按商品或批次分组查看仍有库存的过期批次。",
@@ -17394,6 +17480,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       inventoryReportName: "库存报表",
       inventoryReportDescription: "按商品、分类、状态和仓库查看库存余额",
       inventoryReportValue: "掌握现有、已分配和可用仓库库存的运营可视化",
+      inventoryBoxCountName: "按单位统计库存",
+      inventoryBoxCountDescription: "按商品类别、业务单元和所选单位统计现存库存的完整包装数。",
+      inventoryBoxCountValue: "按所选单位中各商品的最大包装数量查看完整包装数和散件数量。",
       fastMovingProductsName: "畅销商品",
       fastMovingProductsDescription: "按所选期间的销售速度、销售数量和收入排行商品",
       fastMovingProductsValue: "提升补货重点和需求可视化",
