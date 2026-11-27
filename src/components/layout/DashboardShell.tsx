@@ -146,7 +146,7 @@ function DashboardSessionShell({
     >
       <NavigationActivityLogger />
       {/* Positioning context for the phone header, which sits over the sidebar's brand bar. */}
-      <div className="relative flex h-screen min-h-0 flex-col overflow-hidden">
+      <div className="relative flex h-dvh min-h-0 flex-col overflow-hidden">
         {!isManufacturingFloorFullscreen ? (
           <Sidebar
             initialPermissions={initialPermissions}

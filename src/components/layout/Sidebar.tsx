@@ -31,6 +31,7 @@ import {
   ChefHat,
   Activity,
   LockKeyhole,
+  Tags,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BusinessUnitSwitcher } from "@/components/business-unit/BusinessUnitSwitcher";
@@ -59,6 +60,12 @@ const menuItems = [
         href: "/inventory/items",
         resource: RESOURCES.ITEMS as Resource,
         icon: Package,
+      },
+      {
+        title: "Item Categories",
+        href: "/inventory/item-categories",
+        resource: RESOURCES.ITEM_CATEGORIES as Resource,
+        icon: Tags,
       },
       {
         title: "Stock In Transit",
@@ -341,7 +348,7 @@ export function Sidebar({
     <aside
       className={cn(
         "flex w-full flex-col border-b border-gray-800 transition-all duration-300",
-        "md:fixed md:inset-y-0 md:left-0 md:z-30 md:h-screen md:min-h-screen md:shrink-0 md:border-b-0 md:border-r",
+        "md:fixed md:inset-y-0 md:left-0 md:z-30 md:h-dvh md:shrink-0 md:border-b-0 md:border-r",
         sidebarOpen ? "md:w-64" : "md:w-20"
       )}
       style={{ backgroundColor: "#240032" }}
